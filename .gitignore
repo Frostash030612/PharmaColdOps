@@ -1,0 +1,26 @@
+# Course materials (copyrighted — keep out of the repo)
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment / secrets
+.env
+.env.*
+
+# Large data (downloadable — keep out of git)
+data/
+*.csv
+*.parquet
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db
