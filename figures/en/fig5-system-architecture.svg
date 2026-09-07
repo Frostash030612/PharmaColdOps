@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 660" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif">
+  <defs>
+    <marker id="arrUp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4A5568"/>
+    </marker>
+  </defs>
+
+  <text x="480" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#1A202C">System Architecture (layered)</text>
+
+  <!-- presentation layer -->
+  <rect x="60" y="66" width="840" height="120" rx="12" fill="#F0FFF4" stroke="#2F855A" stroke-width="2"/>
+  <text x="80" y="96" font-size="15" font-weight="700" fill="#2F855A">Presentation</text>
+  <g>
+    <rect x="230" y="112" width="120" height="30" rx="8" fill="#FFFFFF" stroke="#2F855A"/>
+    <rect x="362" y="112" width="120" height="30" rx="8" fill="#FFFFFF" stroke="#2F855A"/>
+    <rect x="494" y="112" width="120" height="30" rx="8" fill="#FFFFFF" stroke="#2F855A"/>
+    <rect x="626" y="112" width="120" height="30" rx="8" fill="#FFFFFF" stroke="#2F855A"/>
+    <rect x="758" y="112" width="120" height="30" rx="8" fill="#FFFFFF" stroke="#2F855A"/>
+    <text x="290" y="132" text-anchor="middle" font-size="11.5" fill="#2D3748">Anomaly list</text>
+    <text x="422" y="132" text-anchor="middle" font-size="11.5" fill="#2D3748">Disposition card</text>
+    <text x="554" y="132" text-anchor="middle" font-size="11.5" fill="#2D3748">Route visualisation</text>
+    <text x="686" y="132" text-anchor="middle" font-size="11.5" fill="#2D3748">Audit report</text>
+    <text x="818" y="132" text-anchor="middle" font-size="11.5" fill="#2D3748">Compliance Q&amp;A</text>
+  </g>
+
+  <line x1="480" y1="186" x2="480" y2="216" stroke="#4A5568" stroke-width="2" marker-end="url(#arrUp)"/>
+
+  <!-- knowledge layer -->
+  <rect x="60" y="216" width="840" height="120" rx="12" fill="#E6FFFA" stroke="#2C7A7B" stroke-width="2"/>
+  <text x="80" y="246" font-size="15" font-weight="700" fill="#2C7A7B">Knowledge &amp; Explanation</text>
+  <g>
+    <rect x="230" y="262" width="150" height="30" rx="8" fill="#FFFFFF" stroke="#2C7A7B"/>
+    <rect x="400" y="262" width="150" height="30" rx="8" fill="#FFFFFF" stroke="#2C7A7B"/>
+    <rect x="570" y="262" width="150" height="30" rx="8" fill="#FFFFFF" stroke="#2C7A7B"/>
+    <rect x="740" y="262" width="150" height="30" rx="8" fill="#FFFFFF" stroke="#2C7A7B"/>
+    <text x="305" y="282" text-anchor="middle" font-size="11.5" fill="#2D3748">Knowledge graph</text>
+    <text x="475" y="282" text-anchor="middle" font-size="11.5" fill="#2D3748">Evidence tracing</text>
+    <text x="645" y="282" text-anchor="middle" font-size="11.5" fill="#2D3748">Compliance Q&amp;A</text>
+    <text x="815" y="282" text-anchor="middle" font-size="11.5" fill="#2D3748">Decision-chain store</text>
+  </g>
+
+  <line x1="480" y1="336" x2="480" y2="366" stroke="#4A5568" stroke-width="2" marker-end="url(#arrUp)"/>
+
+  <!-- rules & models layer -->
+  <rect x="60" y="366" width="840" height="120" rx="12" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="2"/>
+  <text x="80" y="396" font-size="15" font-weight="700" fill="#2B6CB0">Rules &amp; Models</text>
+  <g>
+    <rect x="230" y="412" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#2B6CB0"/>
+    <rect x="440" y="412" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#2B6CB0"/>
+    <rect x="650" y="412" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#2B6CB0"/>
+    <rect x="230" y="450" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#2B6CB0"/>
+    <rect x="440" y="450" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#2B6CB0"/>
+    <text x="325" y="432" text-anchor="middle" font-size="11.5" fill="#2D3748">Anomaly detection</text>
+    <text x="535" y="432" text-anchor="middle" font-size="11.5" fill="#2D3748">Risk prediction</text>
+    <text x="745" y="432" text-anchor="middle" font-size="11.5" fill="#2D3748">Rule engine</text>
+    <text x="325" y="470" text-anchor="middle" font-size="11.5" fill="#2D3748">Root-cause classification</text>
+    <text x="535" y="470" text-anchor="middle" font-size="11.5" fill="#2D3748">Route optimisation</text>
+  </g>
+
+  <line x1="480" y1="486" x2="480" y2="516" stroke="#4A5568" stroke-width="2" marker-end="url(#arrUp)"/>
+
+  <!-- data layer -->
+  <rect x="60" y="516" width="840" height="120" rx="12" fill="#EDF2F7" stroke="#4A5568" stroke-width="2"/>
+  <text x="80" y="546" font-size="15" font-weight="700" fill="#4A5568">Data</text>
+  <g>
+    <rect x="230" y="562" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
+    <rect x="440" y="562" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
+    <rect x="650" y="562" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
+    <rect x="230" y="600" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
+    <rect x="440" y="600" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
+    <rect x="650" y="600" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
+    <text x="325" y="582" text-anchor="middle" font-size="11.5" fill="#2D3748">Temperature logs</text>
+    <text x="535" y="582" text-anchor="middle" font-size="11.5" fill="#2D3748">GPS traces</text>
+    <text x="745" y="582" text-anchor="middle" font-size="11.5" fill="#2D3748">Order data</text>
+    <text x="325" y="620" text-anchor="middle" font-size="11.5" fill="#2D3748">Inventory data</text>
+    <text x="535" y="620" text-anchor="middle" font-size="11.5" fill="#2D3748">Vehicle info</text>
+    <text x="745" y="620" text-anchor="middle" font-size="11.5" fill="#2D3748">Stability parameters</text>
+  </g>
+</svg>

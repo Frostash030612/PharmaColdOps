@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif">
+  <defs>
+    <marker id="arrGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#718096"/>
+    </marker>
+  </defs>
+
+  <text x="480" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#1A202C">Rule-Engine Disposition Decision Flow</text>
+
+  <!-- inputs -->
+  <g>
+    <rect x="38" y="70" width="164" height="64" rx="10" fill="#F7FAFC" stroke="#718096" stroke-width="1.5"/>
+    <rect x="218" y="70" width="164" height="64" rx="10" fill="#F7FAFC" stroke="#718096" stroke-width="1.5"/>
+    <rect x="398" y="70" width="164" height="64" rx="10" fill="#F7FAFC" stroke="#718096" stroke-width="1.5"/>
+    <rect x="578" y="70" width="164" height="64" rx="10" fill="#F7FAFC" stroke="#718096" stroke-width="1.5"/>
+    <rect x="758" y="70" width="164" height="64" rx="10" fill="#F7FAFC" stroke="#718096" stroke-width="1.5"/>
+    <text x="120" y="99" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2D3748">Product &amp; storage temp</text>
+    <text x="120" y="119" text-anchor="middle" font-size="11" fill="#718096">2–8 °C / −20 °C</text>
+    <text x="300" y="99" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2D3748">Deviation &amp; duration</text>
+    <text x="300" y="119" text-anchor="middle" font-size="11" fill="#718096">magnitude · minutes</text>
+    <text x="480" y="99" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2D3748">MKT &amp; excursion limit</text>
+    <text x="480" y="119" text-anchor="middle" font-size="11" fill="#718096">USP &lt;1079&gt; calc</text>
+    <text x="660" y="99" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2D3748">Packaging &amp; stage</text>
+    <text x="660" y="119" text-anchor="middle" font-size="11" fill="#718096">shipper · dock</text>
+    <text x="840" y="99" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2D3748">History &amp; regulation</text>
+    <text x="840" y="119" text-anchor="middle" font-size="11" fill="#718096">records · SOP</text>
+  </g>
+
+  <!-- inputs → engine -->
+  <line x1="120" y1="134" x2="120" y2="196" stroke="#718096" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="300" y1="134" x2="300" y2="196" stroke="#718096" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="480" y1="134" x2="480" y2="196" stroke="#718096" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="660" y1="134" x2="660" y2="196" stroke="#718096" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="840" y1="134" x2="840" y2="196" stroke="#718096" stroke-width="1.5" marker-end="url(#arrGray)"/>
+
+  <!-- engine -->
+  <rect x="38" y="196" width="884" height="76" rx="12" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="2"/>
+  <text x="480" y="228" text-anchor="middle" font-size="16" font-weight="700" fill="#2B6CB0">Rule Engine · Deterministic Matching</text>
+  <text x="480" y="252" text-anchor="middle" font-size="12" fill="#4A5568">WHO / EU GDP / ICH rule base · product stability parameters · SOP thresholds</text>
+
+  <!-- engine → outputs -->
+  <line x1="120" y1="272" x2="120" y2="340" stroke="#718096" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="300" y1="272" x2="300" y2="340" stroke="#718096" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="480" y1="272" x2="480" y2="340" stroke="#718096" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="660" y1="272" x2="660" y2="340" stroke="#718096" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="840" y1="272" x2="840" y2="340" stroke="#718096" stroke-width="1.5" marker-end="url(#arrGray)"/>
+
+  <!-- outputs -->
+  <g>
+    <rect x="38" y="340" width="164" height="64" rx="10" fill="#F0FFF4" stroke="#2F855A" stroke-width="1.5"/>
+    <text x="120" y="366" text-anchor="middle" font-size="14" font-weight="700" fill="#2F855A">Release</text>
+    <text x="120" y="384" text-anchor="middle" font-size="11" fill="#4A5568">within safe range</text>
+
+    <rect x="218" y="340" width="164" height="64" rx="10" fill="#FFFAF0" stroke="#DD6B20" stroke-width="1.5"/>
+    <text x="300" y="366" text-anchor="middle" font-size="14" font-weight="700" fill="#DD6B20">Quarantine</text>
+    <text x="300" y="384" text-anchor="middle" font-size="11" fill="#4A5568">quality assessment needed</text>
+
+    <rect x="398" y="340" width="164" height="64" rx="10" fill="#FFFFF0" stroke="#D69E2E" stroke-width="1.5"/>
+    <text x="480" y="366" text-anchor="middle" font-size="14" font-weight="700" fill="#B7791F">Retest</text>
+    <text x="480" y="384" text-anchor="middle" font-size="11" fill="#4A5568">lab testing needed</text>
+
+    <rect x="578" y="340" width="164" height="64" rx="10" fill="#FFF5F5" stroke="#C53030" stroke-width="1.5"/>
+    <text x="660" y="366" text-anchor="middle" font-size="14" font-weight="700" fill="#C53030">Scrap</text>
+    <text x="660" y="384" text-anchor="middle" font-size="11" fill="#4A5568">risk unacceptable</text>
+
+    <rect x="758" y="340" width="164" height="64" rx="10" fill="#FAF5FF" stroke="#6B46C1" stroke-width="1.5"/>
+    <text x="840" y="366" text-anchor="middle" font-size="14" font-weight="700" fill="#6B46C1">Reshipment</text>
+    <text x="840" y="384" text-anchor="middle" font-size="11" fill="#4A5568">replenish &amp; re-deliver</text>
+  </g>
+
+  <!-- outputs → evidence -->
+  <line x1="120" y1="404" x2="120" y2="470" stroke="#A0AEC0" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="300" y1="404" x2="300" y2="470" stroke="#A0AEC0" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="480" y1="404" x2="480" y2="470" stroke="#A0AEC0" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="660" y1="404" x2="660" y2="470" stroke="#A0AEC0" stroke-width="1.5" marker-end="url(#arrGray)"/>
+  <line x1="840" y1="404" x2="840" y2="470" stroke="#A0AEC0" stroke-width="1.5" marker-end="url(#arrGray)"/>
+
+  <!-- evidence chain -->
+  <rect x="38" y="470" width="884" height="110" rx="12" fill="#FAFAFA" stroke="#718096" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="58" y="500" font-size="14" font-weight="700" fill="#2D3748">Rule path &amp; evidence chain (output with every decision)</text>
+  <text x="58" y="528" font-size="12.5" fill="#4A5568">Example: a 2–8 °C product held at 12 °C for 35 min exceeds the 30-min allowance → recommend quarantine and quality assessment</text>
+  <text x="58" y="552" font-size="11.5" fill="#718096">(Basis: product stability data §4.2 · WHO TRS 961 Annex 9 §5.3 · SOP-EXC-07)</text>
+</svg>

@@ -54,6 +54,10 @@ The cold-chain visibility market is populated but fragmented. Established vendor
 
 Key trends reinforce the opportunity: tightening EU GDP 2013/C 343/01 enforcement, growth in temperature-sensitive biologics and mRNA vaccines, and rising audit demand for traceable decisions. PharmaColdOps positions itself in the gap between commodity monitoring and bespoke consultancy — an automated, rule-grounded decision layer that turns an excursion into a compliant disposition and an executable reshipment plan.
 
+![Figure 1 — Cold-chain market positioning matrix](figures/en/fig1-market-positioning.svg)
+
+**Figure 1 — Cold-chain market positioning matrix**
+
 ## 4. Stakeholders & Business Value
 
 - **Quality leads / QA** — receive compliant, explainable and traceable release / quarantine / retest / scrap recommendations.
@@ -106,6 +110,10 @@ Output decisions include:
 
 Every conclusion carries its rule path, e.g. "A 2–8 °C product held at 12 °C for 35 minutes exceeds the product's allowable 30 minutes; therefore recommend quarantine and initiate quality assessment."
 
+![Figure 2 — Rule-engine disposition decision flow](figures/en/fig2-rule-engine-flow.svg)
+
+**Figure 2 — Rule-engine disposition decision flow**
+
 ### 6.3 Knowledge discovery: risk prediction & root-cause diagnosis
 
 Risk prediction uses tabular machine-learning baselines:
@@ -120,16 +128,28 @@ Root-cause diagnosis categories include: refrigeration-unit failure, frequent or
 
 Reshipment and re-routing are modelled as a Vehicle Routing Problem with Time Windows (VRPTW), with multi-temperature zones, capacity constraints, driver working hours and stockout priority.
 
+![Figure 3 — Delivery re-routing (VRPTW) schematic](figures/en/fig3-vrptw-replan.svg)
+
+**Figure 3 — Delivery re-routing (VRPTW) schematic**
+
 - **Main constraints:** vehicle capacity and multi-temperature-zone capacity, time windows, driver hours, priority delivery of temperature-sensitive orders, and replacement-warehouse stock availability.
 - **Optimisation objectives:** minimise stockout time, minimise scrap loss, minimise total distance / time / carbon emissions, and maximise constraint satisfaction.
 - **Implementation strategy:** first generate an explainable greedy baseline, then optimise with OR-Tools / CP-SAT or a genetic algorithm, and report the improvement in on-time rate, cost and scrap loss relative to the greedy baseline.
 
 ### 6.5 Cognitive systems: knowledge graph & compliance Q&A
 
+![Figure 4 — Cold-chain knowledge graph](figures/en/fig4-knowledge-graph.svg)
+
+**Figure 4 — Cold-chain knowledge graph**
+
 Knowledge-graph entities include: product, temperature requirement, stability parameter, transport order, vehicle, route, warehouse, temperature event, anomaly cause, disposition recommendation, regulatory clause, SOP and historical case.
 
 The graph may be built with Neo4j or NetworkX. The Q&A system generates answers primarily from rules, knowledge-graph queries and the decision chain. If a large language model is introduced, it is used only for natural-language polishing and is not allowed to generate unverified compliance conclusions.
+![Figure 5 — System architecture (layered)](figures/en/fig5-system-architecture.svg)
 
+**Figure 5 — System architecture (layered)**
+
+**Figure 6
 ### 6.6 System architecture
 
 - **Data layer:** temperature logs, orders, inventory, vehicles, product-stability parameters.
@@ -235,6 +255,10 @@ This separates rule correctness (human rubric vs. engine) from data-driven corre
 - Real patient data or protected medical data.
 
 ## 10. Project Plan & Team Division (4-member)
+![Figure 7 — Project timeline gantt chart](figures/en/fig7-gantt.svg)
+
+**Figure 7 — Project timeline gantt chart**
+
 
 ### 10.1 Member roles & responsibilities
 

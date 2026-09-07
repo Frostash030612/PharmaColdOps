@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif">
+  <defs>
+    <marker id="arrRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#E53E3E"/>
+    </marker>
+    <marker id="arrGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2F855A"/>
+    </marker>
+    <marker id="arrPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6B46C1"/>
+    </marker>
+  </defs>
+
+  <text x="480" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#1A202C">Delivery Re-routing (VRPTW) Schematic</text>
+
+  <!-- depots -->
+  <rect x="80" y="250" width="110" height="64" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="2"/>
+  <text x="135" y="278" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2B6CB0">Main depot W1</text>
+  <text x="135" y="296" text-anchor="middle" font-size="11" fill="#4A5568">2–8 °C zone</text>
+
+  <rect x="760" y="80" width="110" height="64" rx="10" fill="#FAF5FF" stroke="#6B46C1" stroke-width="2"/>
+  <text x="815" y="108" text-anchor="middle" font-size="12.5" font-weight="700" fill="#6B46C1">Backup depot W2</text>
+  <text x="815" y="126" text-anchor="middle" font-size="11" fill="#4A5568">−20 °C zone</text>
+
+  <!-- customer nodes -->
+  <g>
+    <circle cx="350" cy="130" r="34" fill="#FFFFFF" stroke="#2B6CB0" stroke-width="2"/>
+    <text x="350" y="126" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2D3748">Pharmacy A</text>
+    <text x="350" y="142" text-anchor="middle" font-size="11" fill="#718096">9:00–10:00</text>
+  </g>
+  <g>
+    <circle cx="540" cy="230" r="34" fill="#FFF5F5" stroke="#E53E3E" stroke-width="3"/>
+    <text x="540" y="226" text-anchor="middle" font-size="12.5" font-weight="700" fill="#C53030">Clinic B</text>
+    <text x="540" y="242" text-anchor="middle" font-size="11" fill="#718096">10:00–11:30</text>
+  </g>
+  <g>
+    <circle cx="700" cy="320" r="34" fill="#FFFFFF" stroke="#2B6CB0" stroke-width="2"/>
+    <text x="700" y="316" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2D3748">Hospital C</text>
+    <text x="700" y="332" text-anchor="middle" font-size="11" fill="#718096">12:00–14:00</text>
+  </g>
+  <g>
+    <circle cx="390" cy="390" r="34" fill="#FFFFFF" stroke="#2B6CB0" stroke-width="2"/>
+    <text x="390" y="386" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2D3748">Vax site D</text>
+    <text x="390" y="402" text-anchor="middle" font-size="11" fill="#718096">13:00–15:00</text>
+  </g>
+
+  <!-- original route (red) -->
+  <line x1="185" y1="282" x2="322" y2="150" stroke="#E53E3E" stroke-width="2" marker-end="url(#arrRed)"/>
+  <line x1="380" y1="146" x2="510" y2="214" stroke="#E53E3E" stroke-width="2" marker-end="url(#arrRed)"/>
+  <line x1="570" y1="247" x2="670" y2="303" stroke="#E53E3E" stroke-width="2" marker-end="url(#arrRed)"/>
+  <text x="455" y="175" text-anchor="start" font-size="11.5" fill="#E53E3E">original route (interrupted)</text>
+
+  <!-- interruption cross on B→C -->
+  <line x1="612" y1="267" x2="628" y2="283" stroke="#E53E3E" stroke-width="3"/>
+  <line x1="628" y1="267" x2="612" y2="283" stroke="#E53E3E" stroke-width="3"/>
+
+  <!-- excursion tag -->
+  <text x="578" y="198" font-size="12" font-weight="700" fill="#C53030">⚠ temperature excursion</text>
+
+  <!-- re-routed plan (green dashed) -->
+  <line x1="355" y1="164" x2="385" y2="356" stroke="#2F855A" stroke-width="2" stroke-dasharray="7,5" marker-end="url(#arrGreen)"/>
+  <line x1="423" y1="382" x2="667" y2="328" stroke="#2F855A" stroke-width="2" stroke-dasharray="7,5" marker-end="url(#arrGreen)"/>
+  <text x="362" y="272" text-anchor="start" font-size="11.5" fill="#2F855A">re-routed plan (via D · skip B)</text>
+
+  <!-- backup-depot reshipment (purple dashed) -->
+  <line x1="760" y1="136" x2="571" y2="217" stroke="#6B46C1" stroke-width="2" stroke-dasharray="7,5" marker-end="url(#arrPurple)"/>
+  <text x="665" y="168" text-anchor="end" font-size="11.5" fill="#6B46C1">B order replenished from W2</text>
+
+  <!-- legend -->
+  <line x1="60" y1="520" x2="110" y2="520" stroke="#E53E3E" stroke-width="2"/>
+  <text x="118" y="524" font-size="12" fill="#4A5568">original route (interrupted)</text>
+  <line x1="290" y1="520" x2="340" y2="520" stroke="#2F855A" stroke-width="2" stroke-dasharray="7,5"/>
+  <text x="348" y="524" font-size="12" fill="#4A5568">re-routed plan</text>
+  <line x1="475" y1="520" x2="525" y2="520" stroke="#6B46C1" stroke-width="2" stroke-dasharray="7,5"/>
+  <text x="533" y="524" font-size="12" fill="#4A5568">backup-depot reshipment</text>
+  <circle cx="735" cy="520" r="7" fill="#FFF5F5" stroke="#E53E3E" stroke-width="2.5"/>
+  <text x="750" y="524" font-size="12" fill="#4A5568">excursion node</text>
+</svg>
