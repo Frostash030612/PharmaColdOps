@@ -54,7 +54,7 @@ PharmaColdOps 是一个面向药品冷链运输与仓储的智能决策支持系
 
 关键趋势进一步强化了这一机会：EU GDP 2013/C 343/01 执法日趋严格、温度敏感生物制品和 mRNA 疫苗的增长，以及审计对可追溯决策的需求不断上升。PharmaColdOps 定位于商品化监控与定制化咨询之间的空白——一个自动化、以规则为基础的决策层，将偏移事件转化为合规处置和可执行的补发计划。
 
-![图 1 — 冷链市场定位矩阵](figures/fig1-market-positioning.svg)
+![图 1 — 冷链市场定位矩阵](figures/en/fig1-market-positioning.svg)
 
 **图 1 — 冷链市场定位矩阵**
 
@@ -110,7 +110,7 @@ PharmaColdOps 是一个面向药品冷链运输与仓储的智能决策支持系
 
 每个结论都附带其规则路径，例如："2–8 °C 产品在 12 °C 下存放 35 分钟，超过该产品允许的 30 分钟；因此建议隔离并启动质量评估。"
 
-![图 2 — 规则引擎处置决策流程](figures/fig2-rule-engine-flow.svg)
+![图 2 — 规则引擎处置决策流程](figures/en/fig2-rule-engine-flow.svg)
 
 **图 2 — 规则引擎处置决策流程**
 
@@ -132,13 +132,13 @@ PharmaColdOps 是一个面向药品冷链运输与仓储的智能决策支持系
 - **优化目标：**最小化缺货时间、最小化报废损失、最小化总距离 / 时间 / 碳排放、最大化约束满足率。
 - **实现策略：**先生成可解释的贪心基线，再用 OR-Tools / CP-SAT 或遗传算法优化，并报告准时率、成本和报废损失相对贪心基线的改进幅度。
 
-![图 3 — 配送改派（VRPTW）示意](figures/fig3-vrptw-replan.svg)
+![图 3 — 配送改派（VRPTW）示意](figures/en/fig3-vrptw-replan.svg)
 
 **图 3 — 配送改派（VRPTW）示意**
 
 ### 6.5 认知系统：知识图谱与合规问答
 
-![图 4 — 冷链知识图谱示意](figures/fig4-knowledge-graph.svg)
+![图 4 — 冷链知识图谱示意](figures/en/fig4-knowledge-graph.svg)
 
 **图 4 — 冷链知识图谱示意**
 
@@ -153,11 +153,11 @@ PharmaColdOps 是一个面向药品冷链运输与仓储的智能决策支持系
 - **知识与解释层：**知识图谱、证据追溯、合规问答。
 - **展示层：**异常列表、处置建议、路线可视化、审计报告、自然语言问答界面。
 
-![图 5 — 系统分层架构](figures/fig5-system-architecture.svg)
+![图 5 — 系统分层架构](figures/en/fig5-system-architecture.svg)
 
 **图 5 — 系统分层架构**
 
-![图 6 — 端到端系统流水线](figures/fig6-pipeline.svg)
+![图 6 — 端到端系统流水线](figures/en/fig6-pipeline.svg)
 
 **图 6 — 端到端系统流水线**
 
@@ -262,7 +262,7 @@ PharmaColdOps 是一个面向药品冷链运输与仓储的智能决策支持系
 - A：确定项目边界、MVP 范围和 1–2 个产品类别；起草引言、问题陈述、系统设计；整理 WHO / GDP / ICH 规则来源。
 - B：确认三个主要数据集及补充数据的可下载性；记录字段、规模和许可；撰写数据收集与预处理计划。
 - C：确认 CVRPLIB 和 OR-Tools 的可行性；定义 VRPTW 的输入、输出和目标函数；撰写优化实验设计。
-![图 7 — 项目时间线甘特图](figures/fig7-gantt.svg)
+![图 7 — 项目时间线甘特图](figures/en/fig7-gantt.svg)
 
 **图 7 — 项目时间线甘特图**
 

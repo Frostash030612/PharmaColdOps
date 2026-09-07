@@ -2,9 +2,13 @@
 
 An intelligent decision-support system for cold-chain pharmaceutical transport and warehousing. When a temperature excursion occurs, PharmaColdOps issues an explainable disposition (release / quarantine / retest / scrap + reshipment) and generates an alternative inventory-allocation and delivery re-routing plan — grounded in WHO / EU GDP / ICH rules.
 
-- Proposal: [PharmaColdOps-Proposal-EN.md](PharmaColdOps-Proposal-EN.md)
-- Presentation deck: [PharmaColdOps-Proposal-Presentation.pptx](PharmaColdOps-Proposal-Presentation.pptx)
-- Ground-truth evaluation design: [处置决策-ground-truth评估方案.md](处置决策-ground-truth评估方案.md)
+Proposal & related documents live in [`proposal/`](proposal/):
+
+- Proposal (EN): [proposal/PharmaColdOps-Proposal-EN.md](proposal/PharmaColdOps-Proposal-EN.md)
+- Proposal (中文): [proposal/PharmaColdOps-Proposal-ZH.md](proposal/PharmaColdOps-Proposal-ZH.md)
+- Presentation deck: [proposal/PharmaColdOps-Proposal-Presentation.pptx](proposal/PharmaColdOps-Proposal-Presentation.pptx)
+- Figures: [`proposal/figures/`](proposal/figures/)
+- Ground-truth evaluation design: [proposal/处置决策-ground-truth评估方案.md](proposal/处置决策-ground-truth评估方案.md)
 
 ## Modules (IRS technique groups)
 
