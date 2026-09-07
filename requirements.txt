@@ -1,0 +1,15 @@
+# Rule-engine v1 has no third-party dependencies.
+pytest>=8.0
+
+# Data download (scripts/download_data.py)
+huggingface_hub>=0.23
+requests>=2.31
+
+# ML / data (next modules)
+datasets>=2.14
+pandas>=2.0
+
+# Add as modules are built:
+# numpy pandas scikit-learn lightgbm xgboost shap
+# ortools networkx
+# fastapi uvicorn

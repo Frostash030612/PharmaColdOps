@@ -15,9 +15,9 @@ venv/
 .env
 .env.*
 
-# Large data (downloadable — keep out of git)
-data/
-*.csv
+# Large raw datasets (downloadable) — keep out of git; curated scenario bank is tracked
+data/raw/
+data/processed/
 *.parquet
 
 # Logs / OS

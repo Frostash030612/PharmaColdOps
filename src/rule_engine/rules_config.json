@@ -1,0 +1,21 @@
+{
+  "products": [
+    {
+      "product_id": "vaccine_2_8",
+      "storage_min_c": 2.0,
+      "storage_max_c": 8.0,
+      "allowable_duration_min": 30,
+      "mkt_threshold_c": 10.0,
+      "retestable": true
+    },
+    {
+      "product_id": "frozen_m20",
+      "storage_min_c": -25.0,
+      "storage_max_c": -15.0,
+      "allowable_duration_min": 15,
+      "mkt_threshold_c": -12.0,
+      "retestable": false
+    }
+  ],
+  "_note": "Thresholds are placeholders to be replaced with product-specific stability data from WHO TRS 961 Annex 9 / EU GDP 2013/C 343/01 and supplier stability reports."
+}
