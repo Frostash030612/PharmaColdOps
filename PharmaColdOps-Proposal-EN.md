@@ -145,11 +145,7 @@ Reshipment and re-routing are modelled as a Vehicle Routing Problem with Time Wi
 Knowledge-graph entities include: product, temperature requirement, stability parameter, transport order, vehicle, route, warehouse, temperature event, anomaly cause, disposition recommendation, regulatory clause, SOP and historical case.
 
 The graph may be built with Neo4j or NetworkX. The Q&A system generates answers primarily from rules, knowledge-graph queries and the decision chain. If a large language model is introduced, it is used only for natural-language polishing and is not allowed to generate unverified compliance conclusions.
-![Figure 5 — System architecture (layered)](figures/en/fig5-system-architecture.svg)
 
-**Figure 5 — System architecture (layered)**
-
-**Figure 6
 ### 6.6 System architecture
 
 - **Data layer:** temperature logs, orders, inventory, vehicles, product-stability parameters.
@@ -157,18 +153,13 @@ The graph may be built with Neo4j or NetworkX. The Q&A system generates answers 
 - **Knowledge & explanation layer:** knowledge graph, evidence tracing, compliance Q&A.
 - **Presentation layer:** anomaly list, disposition recommendation, route visualisation, audit report, natural-language Q&A interface.
 
-**Figure 1 — End-to-end system pipeline**
+![Figure 5 — System architecture (layered)](figures/en/fig5-system-architecture.svg)
 
-```mermaid
-flowchart TD
-    IN["INPUT: sensor · GPS · order · inventory · vehicle · stability data"] --> S1["1 · Ingest & normalise"]
-    S1 --> S2["2 · Detect excursion · MKT · risk"]
-    S2 --> S3["3 · Rule engine → disposition"]
-    S3 --> S4["4 · Root-cause diagnosis"]
-    S4 --> S5["5 · Optimiser → VRPTW re-route"]
-    S5 --> S6["6 · Knowledge graph + Q&A"]
-    S6 --> OUT["OUTPUT: disposition + routes + audit report"]
-```
+**Figure 5 — System architecture (layered)**
+
+![Figure 6 — End-to-end system pipeline](figures/en/fig6-pipeline.svg)
+
+**Figure 6 — End-to-end system pipeline**
 
 ## 7. Data Collection & Preprocessing
 
@@ -255,10 +246,6 @@ This separates rule correctness (human rubric vs. engine) from data-driven corre
 - Real patient data or protected medical data.
 
 ## 10. Project Plan & Team Division (4-member)
-![Figure 7 — Project timeline gantt chart](figures/en/fig7-gantt.svg)
-
-**Figure 7 — Project timeline gantt chart**
-
 
 ### 10.1 Member roles & responsibilities
 
@@ -275,6 +262,10 @@ This separates rule correctness (human rubric vs. engine) from data-driven corre
 - A: define project boundary, MVP scope and 1–2 product categories; draft Introduction, Problem Statement, System Design; collate WHO / GDP / ICH rule sources.
 - B: confirm downloadability of the three main datasets and supplementary data; record fields, size and licence; write Data Collection and preprocessing plan.
 - C: confirm CVRPLIB and OR-Tools feasibility; define VRPTW inputs, outputs and objective function; write the optimisation experiment design.
+![Figure 7 — Project timeline gantt chart](figures/en/fig7-gantt.svg)
+
+**Figure 7 — Project timeline gantt chart**
+
 - D: design the initial knowledge-graph entity-relationship schema; confirm Neo4j or NetworkX; write the system architecture and demo plan.
 - *Week deliverable: complete and submit the Proposal.*
 
