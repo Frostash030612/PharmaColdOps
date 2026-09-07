@@ -26,6 +26,8 @@ This project aims to build an explainable, traceable and quantitatively evaluabl
 
 ## 3. Background & Domain Foundation
 
+### 3.1 Regulatory foundation
+
 Cold-chain pharmaceutical compliance is governed by the following domain regulations:
 
 - WHO Model Guidance for the Storage and Transport of Time- and Temperature-Sensitive Pharmaceutical Products, TRS 961 Annex 9.
@@ -34,6 +36,23 @@ Cold-chain pharmaceutical compliance is governed by the following domain regulat
 - Product-stability data, allowable temperature-excursion durations, and the Mean Kinetic Temperature (MKT) calculation rules.
 
 Existing research mostly addresses single-point tasks — temperature time-series anomaly detection, cold-chain vehicle-routing optimisation, and MKT calculation — and rarely integrates "disposition decision, root-cause diagnosis, alternative stock allocation, delivery re-routing, and compliance explanation" into one system. PharmaColdOps targets this gap with a closed-loop solution.
+
+### 3.2 Related work (literature review)
+
+Work relevant to PharmaColdOps clusters into four areas:
+
+- **Cold-chain anomaly detection & temperature modelling** — time-series anomaly detection (isolation forests, LSTM autoencoders) and Mean Kinetic Temperature (MKT) calculation per USP <1079> underpin the excursion-detection module.
+- **Cold-chain / vaccine distribution optimisation** — delivery re-routing is a Vehicle Routing Problem with Time Windows (VRPTW) in the spirit of Solomon's classic benchmark; modern solvers use exact CP-SAT or metaheuristics such as genetic algorithms.
+- **Interpretable machine learning** — gradient-boosted trees (LightGBM, XGBoost) are the standard for tabular risk prediction, with SHAP supplying feature-level explanation for quality and audit reviewers.
+- **Pharmaceutical knowledge graphs & compliant Q&A** — entity-centric graphs link products, events, rules and SOPs to produce traceable, evidence-backed answers rather than free-form generation.
+
+Most existing work addresses one of these in isolation. PharmaColdOps's contribution is to compose them into a single closed loop — disposition decision, root-cause diagnosis, re-routing, and compliance explanation — with a defensible, non-circular evaluation (§8.3). Compared with black-box single-predictor systems, the rule engine gives the disposition step a deterministic, audit-friendly decision path.
+
+### 3.3 Market landscape & competitors
+
+The cold-chain visibility market is populated but fragmented. Established vendors — Controlant, Elpro, Sensitech (Carrier), Berlinger, Tive and Roambee — focus on real-time temperature logging, shipment visibility and excursion alerting. Air-cargo specialists such as Envirotainer provide active temperature-controlled containers, while logistics providers (DHL, FedEx, UPS Healthcare, World Courier) offer pharma-specific transport. Their shared limitation is that they alert and record, but stop short of an integrated, explainable disposition decision plus automatic re-routing grounded in WHO / EU GDP / ICH rules.
+
+Key trends reinforce the opportunity: tightening EU GDP 2013/C 343/01 enforcement, growth in temperature-sensitive biologics and mRNA vaccines, and rising audit demand for traceable decisions. PharmaColdOps positions itself in the gap between commodity monitoring and bespoke consultancy — an automated, rule-grounded decision layer that turns an excursion into a compliant disposition and an executable reshipment plan.
 
 ## 4. Stakeholders & Business Value
 
@@ -56,6 +75,8 @@ The processing flow is as follows:
 7. Actual disposition outcomes are written back to the knowledge base and risk model, forming a continuous-improvement loop.
 
 ## 6. Technical Approach & IRS Technique Mapping
+
+Technique selection is driven by four requirements: audit-grade transparency for the disposition step, strong performance on small tabular datasets, scalable re-routing, and hallucination-free compliance answers. Accordingly we choose a deterministic rule engine (not a classifier) for disposition; gradient-boosted trees (LightGBM / XGBoost) with SHAP for risk and root-cause prediction on tabular data (with LSTM / Transformer as an optional time-series extension); and a greedy-baseline → CP-SAT → genetic-algorithm progression for VRPTW so that an explainable lower bound is always available. The knowledge graph, rather than a free-form LLM, is the source of compliance answers; any LLM is restricted to natural-language polishing.
 
 ### 6.1 Technique mapping
 
@@ -115,6 +136,19 @@ The graph may be built with Neo4j or NetworkX. The Q&A system generates answers 
 - **Rule & model layer:** anomaly detection, risk prediction, rule engine, root-cause classification, route optimisation.
 - **Knowledge & explanation layer:** knowledge graph, evidence tracing, compliance Q&A.
 - **Presentation layer:** anomaly list, disposition recommendation, route visualisation, audit report, natural-language Q&A interface.
+
+**Figure 1 — End-to-end system pipeline**
+
+```mermaid
+flowchart TD
+    IN["INPUT: sensor · GPS · order · inventory · vehicle · stability data"] --> S1["1 · Ingest & normalise"]
+    S1 --> S2["2 · Detect excursion · MKT · risk"]
+    S2 --> S3["3 · Rule engine → disposition"]
+    S3 --> S4["4 · Root-cause diagnosis"]
+    S4 --> S5["5 · Optimiser → VRPTW re-route"]
+    S5 --> S6["6 · Knowledge graph + Q&A"]
+    S6 --> OUT["OUTPUT: disposition + routes + audit report"]
+```
 
 ## 7. Data Collection & Preprocessing
 
@@ -284,13 +318,31 @@ This separates rule correctness (human rubric vs. engine) from data-driven corre
 - Individual reflection documents.
 - Experiment scripts and reproducibility notes.
 
-## 13. References
+## 13. Conclusion
+
+PharmaColdOps addresses a real, high-stakes gap in pharmaceutical cold-chain operations: turning a temperature excursion into a compliant, explainable disposition and an executable re-routing plan, rather than a mere alarm. By composing a rule engine, interpretable machine learning, VRPTW optimisation and a knowledge-graph Q&A into one closed loop, the project spans all four IRS technique groups and bridges academic reasoning techniques with a tangible market need.
+
+Its two defining strengths are audit-grade explainability and a non-circular evaluation design (§8.3) that separates rule correctness from data-driven correctness. The MVP is deliberately scoped — a single-city, one-to-two-product network with the rule engine built first — so that the core loop is demonstrable within seven weeks, with the final deliverables (repository, report, user manual, videos) ready by 25 October 2026.
+
+## 14. References
 
 - WHO Model Guidance for the Storage and Transport of Time- and Temperature-Sensitive Pharmaceutical Products: https://www.who.int/publications/m/item/trs961-annex9-modelguidanceforstoragetransport
 - EU Guidelines on Good Distribution Practice, 2013/C 343/01: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32013C0343
 - ICH Quality Guidelines: https://www.ich.org/page/quality-guidelines
+- USP <1079> Good Storage and Distribution Practices for Drug Products (Mean Kinetic Temperature definition): https://www.usp.org/
+- Solomon, M. M. (1987). Algorithms for the Vehicle Routing and Scheduling Problems with Time Window Constraints. *Operations Research*, 35(2), 254–265.
+- Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. *ACM SIGKDD*.
+- Ke, G., et al. (2017). LightGBM: A Highly Efficient Gradient Boosting Decision Tree. *NeurIPS*.
+- Lundberg, S. M., & Lee, S.-I. (2017). A Unified Approach to Interpreting Model Predictions. *NeurIPS*.
+- Google OR-Tools: https://developers.google.com/optimization
 - Cold Chain Shipment Silent Failure Dataset: https://www.kaggle.com/datasets/skarin/cold-chain-shipment-silent-failure-dataset
 - Vaccine Distribution with Temperature Logging: https://www.kaggle.com/datasets/manankhanna0/vaccine-distribution-with-temperature-logging
 - Electric Sheep Africa vaccine-cold-chain: https://huggingface.co/datasets/electricsheepafrica/vaccine-cold-chain
 - Africa Synth Immunization Vaccine Quality Cold Chain All: https://huggingface.co/datasets/electricsheepafrica/africa-synth-immunization-vaccine-quality-cold-chain-all
 - CVRPLIB: http://vrp.atd-lab.inf.puc-rio.br/index.php/en/
+
+---
+
+## 15. Supplementary Note: Use of AI
+
+Generative AI (Claude) was used in the preparation of this proposal to draft, translate and structure the document, and to help design the evaluation methodology and the presentation deck. All technical content, references, datasets and rule/regulation details were reviewed and verified by the team; AI output was used as a drafting aid, not as a source of domain decisions. Final responsibility for the proposal's accuracy rests with the team.
