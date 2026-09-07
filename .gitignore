@@ -1,5 +1,6 @@
-# Course materials (copyrighted — keep out of the repo)
+# Course materials (copyrighted) — kept out by default, except the shared reference PDFs
 *.pdf
+!proposal/*.pdf
 
 # Python
 __pycache__/
