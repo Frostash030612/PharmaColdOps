@@ -46,3 +46,13 @@ S044,frozen_m20,-5.0,30,-9.0,intact,warehouse,scrap
 S045,frozen_m20,-2.0,40,-5.0,intact,airport_dwell,scrap
 S046,frozen_m20,-7.0,20,-9.0,intact,transit,scrap
 S047,frozen_m20,5.0,15,-8.5,compromised,transit,scrap
+S048,vaccine_2_8,-5.0,5,4.0,intact,transit,scrap
+S049,insulin_2_8,-2.0,10,3.0,intact,warehouse,scrap
+S050,frozen_m20,-30.0,5,-28.0,intact,transit,release
+S051,insulin_2_8,5.0,5,4.5,intact,transit,release
+S052,insulin_2_8,9.5,25,9.6,intact,transit,retest
+S053,insulin_2_8,11.0,35,10.8,intact,transit,quarantine
+S054,insulin_2_8,20.0,90,19.0,intact,transit,scrap
+S055,mrna_ultracold,-70.0,10,-75.0,intact,transit,release
+S056,mrna_ultracold,-40.0,70,-70.0,intact,transit,quarantine
+S057,mrna_ultracold,-30.0,150,-35.0,intact,warehouse,scrap

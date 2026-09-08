@@ -6,7 +6,8 @@
       "storage_max_c": 8.0,
       "allowable_duration_min": 30,
       "mkt_threshold_c": 10.0,
-      "retestable": true
+      "retestable": true,
+      "freeze_sensitive": true
     },
     {
       "product_id": "frozen_m20",
@@ -14,8 +15,27 @@
       "storage_max_c": -15.0,
       "allowable_duration_min": 15,
       "mkt_threshold_c": -12.0,
-      "retestable": false
+      "retestable": false,
+      "freeze_sensitive": false
+    },
+    {
+      "product_id": "insulin_2_8",
+      "storage_min_c": 2.0,
+      "storage_max_c": 8.0,
+      "allowable_duration_min": 30,
+      "mkt_threshold_c": 10.0,
+      "retestable": true,
+      "freeze_sensitive": true
+    },
+    {
+      "product_id": "mrna_ultracold",
+      "storage_min_c": -90.0,
+      "storage_max_c": -60.0,
+      "allowable_duration_min": 60,
+      "mkt_threshold_c": -55.0,
+      "retestable": false,
+      "freeze_sensitive": false
     }
   ],
-  "_note": "Thresholds are placeholders to be replaced with product-specific stability data from WHO TRS 961 Annex 9 / EU GDP 2013/C 343/01 and supplier stability reports."
+  "_note": "Thresholds are placeholders to be replaced with product-specific stability data from WHO TRS 961 Annex 9 / EU GDP 2013/C 343/01 and supplier stability reports. The freeze rule (freeze_sensitive + temp <= 0 C -> scrap) follows WHO TRS 961 Annex 9. mRNA ultra-cold thresholds are a single-threshold approximation of the manufacturer's multi-tier stability windows (e.g. 2-8 C for ~30 days, room temperature for ~6 hours after thaw); replace with the actual tiered profile."
 }

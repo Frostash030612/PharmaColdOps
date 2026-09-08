@@ -4,6 +4,48 @@
 
 ---
 
+## 2026-09-08 — 规则引擎 v2：冻结规则 + 法规引用 + 4 产品
+
+### 做了什么
+
+1. **补冻结损坏缺口（最高优先级新规则）**：旧引擎只看「破损包装 + 温度>上限」和时长/MKT，一个冻敏疫苗被冻到 −5°C（短时长）会被错误判为 `release`。新增规则 1：`freeze_sensitive 且 温度 ≤ 0°C → scrap`，依据 WHO TRS 961 Annex 9（冻敏疫苗冻结即失效）。
+2. **每个决策带法规依据**：`Decision` 新增 `regulation` 字段（同时进 `evidence`），6 条规则各挂 WHO TRS 961 Annex 9 / EU GDP 2013/C 343/01 文档级引用（**未杜撰具体条款号**，答辩前需核实）。
+3. **产品 2 → 4**：新增 `insulin_2_8`（胰岛素 2–8°C，冻敏、可复验）与 `mrna_ultracold`（mRNA −90…−60°C，非冻敏、不可复验）；现有 `vaccine_2_8` 标为冻敏。
+4. **场景库 47 → 57**：新增冻结场景、冻敏 vs 非冻敏对照、胰岛素 4 类处置全覆盖、mRNA 3 类处置。
+5. **测试 3 → 7**：新增冻结触发报废、冷冻品不触发冻结规则、新产品加载、法规字段存在性 4 个测试。
+6. **演示前端同步**（`demo/index.html` + `index-zh.html`）：4 产品可选、6 条规则、冻结规则移植、证据面板加「冻结风险」行 +「法规依据」行。
+
+### 新增 / 修改文件
+
+| 文件 | 说明 |
+|---|---|
+| `src/rule_engine/models.py` | `ProductSpec.freeze_sensitive`、`Decision.regulation` |
+| `src/rule_engine/engine.py` | 冻结规则（规则 1）+ 6 条规则法规引用 + `FREEZING_POINT_C` |
+| `src/rule_engine/rules_config.json` | 2 → 4 产品，`freeze_sensitive` 标志，更新 `_note` |
+| `data/scenarios/scenarios.csv` | 47 → 57 条 |
+| `tests/test_rule_engine.py` | 3 → 7 个测试 |
+| `demo/index.html` / `demo/index-zh.html` | 前端同步（4 产品、冻结规则、法规展示） |
+
+### 如何验证
+
+```bash
+.venv/Scripts/python.exe -m pytest -q   # 7 passed
+```
+
+### 设计决策与注意事项（重要）
+
+1. **冻结阈值用 0°C（冰点），不是 `storage_min`**：冻结损坏的本质是结冰，发生在 ≤0°C；而「低于 storage_min 但 >0°C」的「低温未冻结」是另一种更轻微的越限，暂未单独建规则（沿用时长/MKT 规则），代码里已注释，可作为后续低严重度规则。
+2. **诚实约束不变**：WHO TRS 961 Annex 9 / EU GDP 给的是**原则**，不是逐产品数值阈值；新增产品（胰岛素/mRNA）的数值阈值仍是**占位值**。唯一例外是 mRNA 有真实可引的厂商多级稳定性窗口（解冻后 2–8°C ~30 天、室温 ~6h），本引擎用**单阈值近似**并已在 `_note` 标注，后续可升级为多级阶梯模型。
+3. **冻结规则一律报废（scrap）**：WHO 对冻敏疫苗立场是「冻结即弃用」。真实操作中有「摇匀试验（shake test）」作为现场筛查手段（WHO 亦有提及），更精细版本可把「冻敏 + 冻结」降级为 `quarantine` 做摇匀试验——当前 demo 用保守的 scrap 默认。
+
+### 下一步（建议顺序）
+
+1. A：继续替换真实阈值（W1-A），mRNA 多级稳定性窗口可做成 `stability_tiers` 列表。
+2. 两名组员独立标注 + 仲裁（§8.3 第 2–3 步），把 gold_label 从「规则推导占位」换成「独立人工标注」。
+3. B/C/D：`src/ml/`、`src/optimisation/`、`src/knowledge_graph/` 基线。
+
+---
+
 ## 2026-09-07 — 仓库骨架 + 规则引擎 v1 + 场景库扩充
 
 ### 做了什么

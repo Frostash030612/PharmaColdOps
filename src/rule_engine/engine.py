@@ -17,6 +17,10 @@ from .models import Decision, Disposition, ExcursionEvent, ProductSpec
 
 CONFIG_PATH = Path(__file__).parent / "rules_config.json"
 
+# Freeze damage is ice formation, which occurs at or below the freezing point of
+# water. Freeze-sensitive products lose potency once frozen (WHO TRS 961 Annex 9).
+FREEZING_POINT_C = 0.0
+
 
 def _load_specs() -> Dict[str, ProductSpec]:
     raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
@@ -30,40 +34,78 @@ class RuleEngine:
     def evaluate(self, event: ExcursionEvent) -> Decision:
         spec = self.specs[event.product_id]
 
-        # 1. Compromised packaging during an excursion is unacceptable.
+        # 1. Freeze damage: freeze-sensitive products lose potency once frozen.
+        #    NOTE: cold-but-not-frozen (storage_min < temp <= 0 °C) is not covered
+        #    here; it falls through to the duration/MKT rules below (a candidate
+        #    for a lower-severity rule later).
+        if spec.freeze_sensitive and event.excursion_temp_c <= FREEZING_POINT_C:
+            return self._decide(
+                Disposition.SCRAP,
+                spec,
+                event,
+                "freeze damage; freeze-sensitive product exposed below freezing point",
+                "WHO TRS 961 Annex 9 — freeze-sensitive vaccines lose potency when frozen",
+            )
+
+        # 2. Compromised packaging during an excursion is unacceptable.
         if event.packaging == "compromised" and event.excursion_temp_c > spec.storage_max_c:
             return self._decide(
-                Disposition.SCRAP, spec, event, "packaging compromised during excursion"
+                Disposition.SCRAP,
+                spec,
+                event,
+                "packaging compromised during excursion",
+                "EU GDP 2013/C 343/01 — packaging integrity must be preserved during transport",
             )
 
-        # 2. Severe excursion (≫ allowable, or MKT well above threshold) → scrap.
+        # 3. Severe excursion (≫ allowable, or MKT well above threshold) → scrap.
         if event.duration_min >= 2 * spec.allowable_duration_min or event.mkt_c >= spec.mkt_threshold_c + 3.0:
             return self._decide(
-                Disposition.SCRAP, spec, event, "excursion severity beyond any acceptable margin"
+                Disposition.SCRAP,
+                spec,
+                event,
+                "excursion severity beyond any acceptable margin",
+                "WHO TRS 961 Annex 9 — excursion beyond acceptable stability margin",
             )
 
-        # 3. Exceeds allowable duration or MKT threshold → quarantine + assess.
+        # 4. Exceeds allowable duration or MKT threshold → quarantine + assess.
         if event.duration_min > spec.allowable_duration_min or event.mkt_c > spec.mkt_threshold_c:
             return self._decide(
-                Disposition.QUARANTINE, spec, event, "exceeded allowable excursion; hold for quality assessment"
+                Disposition.QUARANTINE,
+                spec,
+                event,
+                "exceeded allowable excursion; hold for quality assessment",
+                "WHO TRS 961 Annex 9 / EU GDP — hold for quality assessment on excursion",
             )
 
-        # 4. Within allowable but near the edge → retest to confirm.
+        # 5. Within allowable but near the edge → retest to confirm.
         if spec.retestable and (
             event.duration_min >= 0.8 * spec.allowable_duration_min
             or event.mkt_c >= spec.mkt_threshold_c - 0.5
         ):
             return self._decide(
-                Disposition.RETEST, spec, event, "within limits but near threshold; confirm by testing"
+                Disposition.RETEST,
+                spec,
+                event,
+                "within limits but near threshold; confirm by testing",
+                "EU GDP 2013/C 343/01 — confirm within-threshold excursions by testing",
             )
 
-        # 5. Otherwise the excursion is negligible.
+        # 6. Otherwise the excursion is negligible.
         return self._decide(
-            Disposition.RELEASE, spec, event, "excursion within acceptable safety range"
+            Disposition.RELEASE,
+            spec,
+            event,
+            "excursion within acceptable safety range",
+            "WHO TRS 961 Annex 9 — within acceptable range",
         )
 
     def _decide(
-        self, disposition: Disposition, spec: ProductSpec, event: ExcursionEvent, reason: str
+        self,
+        disposition: Disposition,
+        spec: ProductSpec,
+        event: ExcursionEvent,
+        reason: str,
+        regulation: str,
     ) -> Decision:
         rule_path = (
             f"{spec.product_id} ({spec.storage_min_c:g}–{spec.storage_max_c:g} °C) "
@@ -76,6 +118,7 @@ class RuleEngine:
             disposition=disposition,
             reshipment_required=reshipment,
             rule_path=rule_path,
+            regulation=regulation,
             evidence={
                 "product_id": spec.product_id,
                 "excursion_temp_c": event.excursion_temp_c,
@@ -83,5 +126,7 @@ class RuleEngine:
                 "mkt_c": event.mkt_c,
                 "packaging": event.packaging,
                 "stage": event.stage,
+                "freeze_sensitive": spec.freeze_sensitive,
+                "regulation": regulation,
             },
         )

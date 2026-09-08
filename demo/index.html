@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PharmaColdOps — Excursion Disposition Console</title>
+<style>
+  :root {
+    --navy: #0f2a4a; --navy-2: #16395f; --teal: #0d9488; --teal-2: #14b8a6;
+    --ink: #1a2b3c; --muted: #64748b; --line: #e2e8f0; --bg: #f4f7fb; --card: #ffffff;
+    --release: #16a34a; --retest: #d97706; --quarantine: #ea580c; --scrap: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.45;
+  }
+
+  header {
+    background: linear-gradient(120deg, var(--navy) 0%, var(--navy-2) 60%, #1d4a74 100%);
+    color: #fff; padding: 18px 26px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  header .brand { display: flex; align-items: center; gap: 12px; }
+  header .logo {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(140deg, var(--teal-2), var(--teal));
+    display: grid; place-items: center; font-size: 22px;
+  }
+  header h1 { font-size: 20px; margin: 0; }
+  header .sub { font-size: 12px; color: #bcd0e6; margin-top: 2px; }
+  header .pills { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.22); color: #e6f0fa;
+  }
+  .pill.live { background: rgba(20,184,166,.22); border-color: rgba(45,212,191,.5); color: #99f6e4; }
+
+  main {
+    max-width: 1440px; margin: 16px auto 0; padding: 0 24px;
+    display: grid; grid-template-columns: 300px 1fr 340px; gap: 16px; align-items: start;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; box-shadow: 0 1px 2px rgba(15,42,74,.05);
+  }
+  .card h2 {
+    margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: 8px;
+  }
+  .card h2::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--teal); }
+
+  /* ---------- left: presets ---------- */
+  .ex-list { display: flex; flex-direction: column; gap: 8px; }
+  .ex-item {
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; transition: .13s;
+  }
+  .ex-item:hover { border-color: #bcd0e6; }
+  .ex-item.active { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(20,184,166,.12); }
+  .ex-item .top { display: flex; align-items: center; gap: 8px; }
+  .ex-item .id { font-size: 11px; color: var(--muted); font-weight: 700; }
+  .ex-item .name { font-weight: 600; flex: 1; }
+  .ex-item .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+  /* ---------- rule config ---------- */
+  .cfg { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .cfg .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; margin-bottom: 8px; }
+  .cfg-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 12.5px; }
+  .cfg-row input[type=number] { width: 74px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 7px; font-size: 13px; }
+  .cfg-row input[type=checkbox] { width: 16px; height: 16px; }
+  .btn {
+    border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 7px 12px;
+    border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12.5px; transition: .15s; width: 100%;
+  }
+  .btn:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* ---------- center: sandbox ---------- */
+  .dispo-banner { display: flex; align-items: center; gap: 14px; border-radius: 12px; padding: 16px; color: #fff; margin-bottom: 14px; }
+  .dispo-badge {
+    width: 58px; height: 58px; border-radius: 12px; background: rgba(255,255,255,.18);
+    display: grid; place-items: center; font-weight: 800; font-size: 24px; letter-spacing: .5px;
+  }
+  .dispo-banner .big { font-size: 18px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+  .dispo-banner .why { font-size: 12.5px; opacity: .92; margin-top: 3px; }
+  .dispo-banner .reship { margin-left: auto; text-align: right; font-size: 12px; }
+  .dispo-banner .reship b { display: block; font-size: 15px; }
+
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 14px; }
+  .ctl { display: flex; flex-direction: column; gap: 4px; }
+  .ctl label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; font-weight: 700; }
+  .ctl select, .ctl input[type=number] {
+    padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; font-size: 13px; width: 100%;
+  }
+  .ctl .range-line { display: flex; align-items: center; gap: 8px; }
+  .ctl input[type=range] { flex: 1; accent-color: var(--teal); }
+  .ctl .num { width: 64px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 7px; font-size: 13px; text-align: right; }
+
+  .section-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; margin: 14px 0 6px; }
+  .rulepath {
+    background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #334155; word-break: break-word;
+  }
+  .rules-list { list-style: none; margin: 0; padding: 0; }
+  .rules-list li { padding: 7px 10px; border-radius: 8px; font-size: 12.5px; margin-bottom: 4px; color: #64748b; background: #f8fafc; }
+  .rules-list li.fired { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; font-weight: 600; }
+  .rules-list li .no { display: inline-block; width: 18px; color: #94a3b8; font-weight: 700; }
+  .rules-list li.fired .no { color: #059669; }
+
+  .zone-wrap { margin: 4px 0 2px; }
+  .zone-svg { width: 100%; height: auto; display: block; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  .plot-note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .riskbar { height: 8px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-top: 6px; }
+  .riskbar > div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f59e0b, #dc2626); }
+
+  /* ---------- timeline ---------- */
+  .timeline-controls { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+  .timeline-controls input[type=range] { flex: 1; accent-color: var(--teal); }
+  .timeline-controls .btn { width: auto; padding: 6px 14px; }
+  #timeReadout { font-size: 12px; color: var(--muted); min-width: 118px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---------- evidence ---------- */
+  .evidence { display: flex; flex-direction: column; gap: 6px; }
+  .ev-row {
+    display: flex; align-items: center; gap: 10px; font-size: 12.5px; padding: 7px 10px;
+    background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
+  }
+  .ev-row .k { width: 118px; color: #64748b; font-weight: 600; flex: none; }
+  .ev-row .v { flex: 1; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .ev-row .limit { color: #94a3b8; font-size: 11.5px; }
+  .chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; flex: none; }
+  .chip.ok { background: #dcfce7; color: #166534; }
+  .chip.near { background: #fef3c7; color: #92400e; }
+  .chip.breach { background: #ffedd5; color: #c2410c; }
+  .chip.severe { background: #fee2e2; color: #b91c1c; }
+  .ev-summary {
+    margin-top: 4px; font-size: 12.5px; font-weight: 600; color: #065f46;
+    background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 8px 10px;
+  }
+  .ev-reg {
+    margin-top: 4px; font-size: 11.5px; color: #475569;
+    background: #f1f5f9; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+  }
+
+  /* ---------- right: reroute + QA ---------- */
+  .route-svg { width: 100%; height: auto; }
+  .route-toggle { display: flex; gap: 8px; margin-bottom: 10px; }
+  .route-toggle button {
+    flex: 1; padding: 6px 8px; border: 1px solid var(--line); background: #fff;
+    border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; transition: .13s;
+  }
+  .route-toggle button.on { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .metric { background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 8px; text-align: center; }
+  .metric .mv { font-size: 15px; font-weight: 800; }
+  .metric .mk { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: .4px; }
+  .viol-note { margin-top: 8px; font-size: 12px; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 10px; }
+  .pharm-detail { margin-top: 8px; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #0f766e; }
+  .pharm-detail .nm { font-weight: 700; }
+  .pharm-node { cursor: pointer; }
+  .pharm-node:hover { stroke-width: 4; }
+  .alloc { margin-top: 12px; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #0f766e; }
+  .alloc .strong { font-weight: 700; }
+  .idle { margin-top: 12px; background: #f8fafc; border: 1px dashed var(--line); border-radius: 8px; padding: 12px; text-align: center; color: var(--muted); font-size: 12.5px; }
+
+  .qa { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .qa .qline { display: flex; gap: 8px; }
+  .qa input[type=text] { flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+  .qa button { padding: 7px 12px; border: 1px solid var(--teal); background: var(--teal); color: #fff; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12.5px; }
+  .qa .answer { margin-top: 10px; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #334155; min-height: 20px; }
+
+  /* ---------- audit ---------- */
+  .audit { max-width: 1440px; margin: 16px auto 30px; padding: 0 24px; }
+  .audit table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .audit th, .audit td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  .audit th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+  .tag { font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+
+  footer { text-align: center; color: var(--muted); font-size: 11.5px; padding: 0 24px 30px; }
+
+  @media (max-width: 1080px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">❄</div>
+    <div>
+      <h1>PharmaColdOps</h1>
+      <div class="sub">Cold-chain temperature-excursion disposition &amp; delivery re-routing</div>
+    </div>
+  </div>
+  <div class="pills">
+    <span class="pill live">● Rule engine v1 · live</span>
+    <span class="pill">WHO TRS 961 Annex 9</span>
+    <span class="pill">EU GDP 2013/C 343/01</span>
+    <span class="pill">Interactive demo</span>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT: presets + config -->
+  <aside class="card">
+    <h2>Scenario presets</h2>
+    <div class="ex-list" id="exList"></div>
+
+    <div class="cfg">
+      <div class="lbl">Rule configuration</div>
+      <div class="cfg-row"><span>Allowable duration</span><input type="number" id="allowableInput" step="1"></div>
+      <div class="cfg-row"><span>MKT threshold (°C)</span><input type="number" id="mktThresholdInput" step="0.5"></div>
+      <div class="cfg-row"><span>Retestable</span><input type="checkbox" id="retestableInput"></div>
+      <button class="btn" id="resetCfg">Reset to product defaults</button>
+    </div>
+  </aside>
+
+  <!-- CENTER: decision sandbox -->
+  <section class="card">
+    <h2>Decision sandbox</h2>
+    <div id="banner"></div>
+
+    <div class="section-label">Temperature replay</div>
+    <div id="timeline"></div>
+    <div class="timeline-controls">
+      <button class="btn" id="playBtn">▶ Replay</button>
+      <input type="range" id="timeScrub" min="0" max="100" value="0">
+      <span id="timeReadout"></span>
+    </div>
+
+    <div class="section-label">Excursion inputs</div>
+    <div class="controls">
+      <div class="ctl">
+        <label>Product</label>
+        <select id="productSelect">
+          <option value="vaccine_2_8">Vaccine (2–8 °C)</option>
+          <option value="frozen_m20">Frozen biologic (−25…−15 °C)</option>
+          <option value="insulin_2_8">Insulin (2–8 °C)</option>
+          <option value="mrna_ultracold">mRNA vaccine (−90…−60 °C)</option>
+        </select>
+      </div>
+      <div class="ctl">
+        <label>Stage</label>
+        <select id="stageSelect">
+          <option value="transit">In transit</option>
+          <option value="warehouse">Warehouse</option>
+          <option value="airport_dwell">Airport dwell</option>
+          <option value="last_mile">Last mile</option>
+        </select>
+      </div>
+      <div class="ctl">
+        <label>Packaging</label>
+        <select id="packagingSelect">
+          <option value="intact">Intact</option>
+          <option value="compromised">Compromised</option>
+        </select>
+      </div>
+      <div class="ctl">
+        <label>&nbsp;</label>
+        <button class="btn" id="randomize" style="height:32px">🎲 Randomize excursion</button>
+      </div>
+      <div class="ctl">
+        <label>Excursion temp (°C)</label>
+        <div class="range-line">
+          <input type="range" id="tempRange" step="0.5">
+          <input type="number" class="num" id="tempNum" step="0.5">
+        </div>
+      </div>
+      <div class="ctl">
+        <label>Duration (min)</label>
+        <div class="range-line">
+          <input type="range" id="durRange" step="1">
+          <input type="number" class="num" id="durNum" step="1">
+        </div>
+      </div>
+      <div class="ctl" style="grid-column: 1 / -1;">
+        <label>Mean Kinetic Temperature — MKT (°C)</label>
+        <div class="range-line">
+          <input type="range" id="mktRange" step="0.1">
+          <input type="number" class="num" id="mktNum" step="0.1">
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Decision boundary map (duration × MKT)</div>
+    <div class="zone-wrap" id="zonePlot"></div>
+    <div class="legend" id="legend"></div>
+    <div class="plot-note" id="plotNote"></div>
+
+    <div class="section-label">Auditable rule path</div>
+    <div class="rulepath" id="rulepath"></div>
+
+    <div class="section-label">Rule evaluation (priority order)</div>
+    <ul class="rules-list" id="rulesList"></ul>
+
+    <div class="section-label">ML risk score <span style="color:#94a3b8;text-transform:none;letter-spacing:0">(concept)</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="riskbar" style="flex:1"><div id="riskFill" style="width:0%"></div></div>
+      <b style="font-size:13px" id="riskVal">–/100</b>
+    </div>
+    <div class="plot-note" id="causeNote"></div>
+
+    <div class="section-label">Why this decision</div>
+    <div class="evidence" id="evidence"></div>
+  </section>
+
+  <!-- RIGHT: reroute + QA -->
+  <aside class="card">
+    <h2>Delivery re-routing</h2>
+    <div id="reroute"></div>
+
+    <div class="qa">
+      <h2>Compliance Q&amp;A <span style="color:#94a3b8;text-transform:none;letter-spacing:0">(knowledge graph · concept)</span></h2>
+      <div class="qline">
+        <input type="text" id="qaInput" placeholder="e.g. what is MKT? when to scrap?">
+        <button id="qaAsk">Ask</button>
+      </div>
+      <div class="answer" id="qaAnswer">Ask a regulatory question to see a grounded answer.</div>
+    </div>
+  </aside>
+</main>
+
+<section class="audit">
+  <div class="card">
+    <h2>Audit trail</h2>
+    <table>
+      <thead><tr><th>Time</th><th>Scenario</th><th>Product</th><th>Disposition</th><th>Rule path</th></tr></thead>
+      <tbody id="auditBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  PharmaColdOps · interactive demo — the rule engine is live; ML risk scoring, VRPTW re-routing and knowledge-graph Q&amp;A are concept mockups.
+</footer>
+
+<script>
+/* ================= config (mirrors src/rule_engine/rules_config.json) ================= */
+const PRODUCTS = {
+  vaccine_2_8:    { id: "vaccine_2_8",    name: "Vaccine (2–8 °C)", min: 2, max: 8, allowable: 30, mktThreshold: 10.0, retestable: true,  freezeSensitive: true },
+  frozen_m20:     { id: "frozen_m20",     name: "Frozen biologic (−25…−15 °C)", min: -25, max: -15, allowable: 15, mktThreshold: -12.0, retestable: false, freezeSensitive: false },
+  insulin_2_8:    { id: "insulin_2_8",    name: "Insulin (2–8 °C)", min: 2, max: 8, allowable: 30, mktThreshold: 10.0, retestable: true,  freezeSensitive: true },
+  mrna_ultracold: { id: "mrna_ultracold", name: "mRNA vaccine (−90…−60 °C)", min: -90, max: -60, allowable: 60, mktThreshold: -55.0, retestable: false, freezeSensitive: false },
+};
+const TEMP_RANGE = { vaccine_2_8: [-5, 35], frozen_m20: [-30, 15], insulin_2_8: [-5, 35], mrna_ultracold: [-90, 0] };
+const DEFAULT_EVENT = {
+  vaccine_2_8:    { excursion_temp_c: 10,  duration_min: 24, mkt_c: 9.5,  packaging: "intact", stage: "transit" },
+  frozen_m20:     { excursion_temp_c: -4,  duration_min: 25, mkt_c: -9.5, packaging: "intact", stage: "transit" },
+  insulin_2_8:    { excursion_temp_c: 10,  duration_min: 24, mkt_c: 9.5,  packaging: "intact", stage: "transit" },
+  mrna_ultracold: { excursion_temp_c: -40, duration_min: 70, mkt_c: -58.0, packaging: "intact", stage: "transit" },
+};
+const DISPO = {
+  release:    { label: "Release",    bg: "#16a34a" },
+  retest:     { label: "Retest",     bg: "#d97706" },
+  quarantine: { label: "Quarantine", bg: "#ea580c" },
+  scrap:      { label: "Scrap",      bg: "#dc2626" },
+};
+const STAGES = { transit: "In transit", warehouse: "Warehouse", airport_dwell: "Airport dwell", last_mile: "Last mile" };
+const RULES = [
+  "Freeze damage: freeze-sensitive product at or below 0 °C → scrap",
+  "Compromised packaging during an excursion → scrap",
+  "Duration ≥ 2× allowable, or MKT ≥ threshold + 3 °C → scrap",
+  "Duration > allowable, or MKT > threshold → quarantine",
+  "Retestable and near the edge (duration ≥ 0.8× allowable, or MKT ≥ threshold − 0.5 °C) → retest",
+  "Otherwise → release",
+];
+const SCENARIOS = [
+  { id: "S002", product_id: "vaccine_2_8", excursion_temp_c: 6.0,  duration_min: 10, mkt_c: 5.0,  packaging: "intact",      stage: "warehouse" },
+  { id: "S008", product_id: "vaccine_2_8", excursion_temp_c: 7.5,  duration_min: 18, mkt_c: 6.9,  packaging: "intact",      stage: "transit" },
+  { id: "S013", product_id: "vaccine_2_8", excursion_temp_c: 10.0, duration_min: 24, mkt_c: 9.5,  packaging: "intact",      stage: "transit" },
+  { id: "S009", product_id: "vaccine_2_8", excursion_temp_c: 9.0,  duration_min: 25, mkt_c: 9.6,  packaging: "intact",      stage: "transit" },
+  { id: "S017", product_id: "vaccine_2_8", excursion_temp_c: 12.0, duration_min: 35, mkt_c: 11.2, packaging: "intact",      stage: "airport_dwell" },
+  { id: "S021", product_id: "vaccine_2_8", excursion_temp_c: 9.0,  duration_min: 50, mkt_c: 9.8,  packaging: "intact",      stage: "transit" },
+  { id: "S025", product_id: "vaccine_2_8", excursion_temp_c: 20.0, duration_min: 90, mkt_c: 19.0, packaging: "intact",      stage: "transit" },
+  { id: "S029", product_id: "vaccine_2_8", excursion_temp_c: 15.0, duration_min: 40, mkt_c: 13.0, packaging: "compromised", stage: "transit" },
+  { id: "S034", product_id: "frozen_m20",  excursion_temp_c: -14.0,duration_min: 5,  mkt_c: -16.0,packaging: "intact",      stage: "transit" },
+  { id: "S041", product_id: "frozen_m20",  excursion_temp_c: -4.0, duration_min: 25, mkt_c: -9.5, packaging: "intact",      stage: "transit" },
+  { id: "S047", product_id: "frozen_m20",  excursion_temp_c: 5.0,  duration_min: 15, mkt_c: -8.5, packaging: "compromised", stage: "transit" },
+  { id: "S048", product_id: "vaccine_2_8", excursion_temp_c: -5.0, duration_min: 5,  mkt_c: 4.0,  packaging: "intact",      stage: "transit" },
+  { id: "S049", product_id: "insulin_2_8", excursion_temp_c: -2.0, duration_min: 10, mkt_c: 3.0,  packaging: "intact",      stage: "warehouse" },
+  { id: "S051", product_id: "insulin_2_8", excursion_temp_c: 5.0,  duration_min: 5,  mkt_c: 4.5,  packaging: "intact",      stage: "transit" },
+  { id: "S053", product_id: "insulin_2_8", excursion_temp_c: 11.0, duration_min: 35, mkt_c: 10.8, packaging: "intact",      stage: "transit" },
+  { id: "S055", product_id: "mrna_ultracold", excursion_temp_c: -70.0, duration_min: 10, mkt_c: -75.0, packaging: "intact",  stage: "transit" },
+  { id: "S057", product_id: "mrna_ultracold", excursion_temp_c: -30.0, duration_min: 150, mkt_c: -35.0, packaging: "intact", stage: "warehouse" },
+];
+
+/* ================= pharmacy / route data (concept mockup) ================= */
+const DEPOT = { x: 70, y: 105 };
+const PHARMACIES = [
+  { id: "A", label: "Ph A", name: "Pharmacy A · Central", tw: "09:00–11:00", zone: "2–8 °C", demand: 60, x: 150, y: 52 },
+  { id: "B", label: "Ph B", name: "Pharmacy B · North", tw: "10:30–12:30", zone: "2–8 °C", demand: 40, x: 250, y: 58 },
+  { id: "C", label: "Ph C", name: "Pharmacy C · East", tw: "13:00–15:00", zone: "−25…−15 °C", demand: 80, x: 300, y: 120 },
+  { id: "D", label: "Ph D", name: "Pharmacy D · South", tw: "15:30–17:00", zone: "2–8 °C", demand: 50, x: 235, y: 175 },
+];
+const ROUTES = {
+  optimized: { order: ["A", "B", "C", "D"], dist: "84 km", time: "4.9 h", cost: "$1,110", viol: 0, violNote: "" },
+  original:  { order: ["A", "C", "B", "D"], dist: "92 km", time: "5.4 h", cost: "$1,240", viol: 1, violNote: "Pharmacy B time window missed (+40 min)" },
+};
+
+/* ================= working state (mutable) ================= */
+let spec = { ...PRODUCTS.vaccine_2_8 };
+let current = { product_id: "vaccine_2_8", ...DEFAULT_EVENT.vaccine_2_8 };
+let nowTime = 0;
+let animTimer = null;
+let routeMode = "optimized";
+let selectedPharm = null;
+
+/* ================= helpers ================= */
+const $ = (id) => document.getElementById(id);
+function fmt(n, dec = 1) { return (Math.round(n * Math.pow(10, dec)) / Math.pow(10, dec)).toString(); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/* ================= rule engine (faithful port of engine.py) ================= */
+function evaluate(event, s) {
+  const rulePath = (disp, reason) =>
+    `${event.product_id} (${fmt(s.min)}–${fmt(s.max)} °C) at ${fmt(event.excursion_temp_c)} °C for ` +
+    `${event.duration_min} min (MKT ${fmt(event.mkt_c)} °C, allowable ${s.allowable} min) → ${disp}: ${reason}`;
+  const decide = (disp, reason, ruleNo, regulation) => ({
+    disposition: disp,
+    reshipment: (disp === "scrap" || disp === "quarantine"),
+    rulePath: rulePath(disp, reason),
+    ruleNo,
+    reason,
+    regulation,
+  });
+
+  if (s.freezeSensitive && event.excursion_temp_c <= 0)
+    return decide("scrap", "freeze damage; freeze-sensitive product exposed below freezing point", 1,
+      "WHO TRS 961 Annex 9 — freeze-sensitive vaccines lose potency when frozen");
+  if (event.packaging === "compromised" && event.excursion_temp_c > s.max)
+    return decide("scrap", "packaging compromised during excursion", 2,
+      "EU GDP 2013/C 343/01 — packaging integrity must be preserved during transport");
+  if (event.duration_min >= 2 * s.allowable || event.mkt_c >= s.mktThreshold + 3.0)
+    return decide("scrap", "excursion severity beyond any acceptable margin", 3,
+      "WHO TRS 961 Annex 9 — excursion beyond acceptable stability margin");
+  if (event.duration_min > s.allowable || event.mkt_c > s.mktThreshold)
+    return decide("quarantine", "exceeded allowable excursion; hold for quality assessment", 4,
+      "WHO TRS 961 Annex 9 / EU GDP — hold for quality assessment on excursion");
+  if (s.retestable && (event.duration_min >= 0.8 * s.allowable || event.mkt_c >= s.mktThreshold - 0.5))
+    return decide("retest", "within limits but near threshold; confirm by testing", 5,
+      "EU GDP 2013/C 343/01 — confirm within-threshold excursions by testing");
+  return decide("release", "excursion within acceptable safety range", 6,
+    "WHO TRS 961 Annex 9 — within acceptable range");
+}
+
+/* illustrative ML heuristics (concept mockup, not a real model) */
+function riskInfo(event, s) {
+  const exceed = Math.max(0, event.mkt_c - s.mktThreshold);
+  const durRatio = event.duration_min / s.allowable;
+  let risk = 0.05 + 0.35 * durRatio + 0.05 * exceed;
+  if (event.packaging === "compromised") risk += 0.25;
+  risk = clamp(risk, 0.03, 0.99);
+  const causes = [];
+  if (event.packaging === "compromised") causes.push("Packaging breach");
+  if (event.excursion_temp_c > s.max + 2) causes.push("Reefer setpoint fault");
+  if (event.stage === "airport_dwell") causes.push("Dwell-time delay");
+  if (event.duration_min > s.allowable) causes.push("Extended exposure");
+  if (causes.length === 0) causes.push("Minor sensor drift");
+  return { risk: Math.round(risk * 100), topCause: causes[0] };
+}
+
+/* ================= rendering ================= */
+function renderBanner() {
+  const d = evaluate(current, spec);
+  const dispo = DISPO[d.disposition];
+  $("banner").innerHTML = `
+    <div class="dispo-banner" style="background:${dispo.bg}">
+      <div class="dispo-badge">${dispo.label.slice(0,1)}</div>
+      <div>
+        <div class="big">${dispo.label}</div>
+        <div class="why">${d.reason}</div>
+      </div>
+      <div class="reship">Reshipment<br><b>${d.reshipment ? "REQUIRED" : "Not required"}</b></div>
+    </div>`;
+}
+
+function renderRulePath() {
+  const d = evaluate(current, spec);
+  $("rulepath").textContent = d.rulePath;
+  $("rulesList").innerHTML = RULES.map((r, i) =>
+    `<li class="${i + 1 === d.ruleNo ? "fired" : ""}"><span class="no">${i + 1}</span>${r}</li>`
+  ).join("");
+}
+
+function renderRisk() {
+  const ri = riskInfo(current, spec);
+  $("riskFill").style.width = ri.risk + "%";
+  $("riskVal").textContent = ri.risk + "/100";
+  $("causeNote").textContent = "Top root cause: " + ri.topCause;
+}
+
+function renderEvidence() {
+  const d = evaluate(current, spec);
+  const A = spec.allowable, T = spec.mktThreshold;
+  const rows = [];
+
+  rows.push({
+    k: "Packaging", v: current.packaging, limit: "",
+    level: current.packaging === "compromised" ? "breach" : "ok",
+    label: current.packaging === "compromised" ? "BREACHED" : "OK",
+  });
+  const tempOut = current.excursion_temp_c > spec.max;
+  rows.push({
+    k: "Excursion temp", v: fmt(current.excursion_temp_c) + " °C", limit: "limit " + fmt(spec.max) + " °C",
+    level: tempOut ? "breach" : "ok", label: tempOut ? "OUT OF RANGE" : "OK",
+  });
+  if (spec.freezeSensitive) {
+    const frozen = current.excursion_temp_c <= 0;
+    rows.push({
+      k: "Freeze risk", v: fmt(current.excursion_temp_c) + " °C", limit: "freezing point 0 °C",
+      level: frozen ? "severe" : "ok", label: frozen ? "FROZEN" : "OK",
+    });
+  }
+  let durLevel, durLabel;
+  if (current.duration_min >= 2 * A) { durLevel = "severe"; durLabel = "SEVERE (≥2×)"; }
+  else if (current.duration_min > A) { durLevel = "breach"; durLabel = "BREACHED (>A)"; }
+  else if (current.duration_min >= 0.8 * A) { durLevel = "near"; durLabel = "NEAR (≥0.8×)"; }
+  else { durLevel = "ok"; durLabel = "OK"; }
+  rows.push({
+    k: "Duration", v: current.duration_min + " min", limit: "allowable " + A + " min",
+    level: durLevel, label: durLabel,
+  });
+  let mktLevel, mktLabel;
+  if (current.mkt_c >= T + 3) { mktLevel = "severe"; mktLabel = "SEVERE (≥T+3)"; }
+  else if (current.mkt_c > T) { mktLevel = "breach"; mktLabel = "BREACHED (>T)"; }
+  else if (current.mkt_c >= T - 0.5) { mktLevel = "near"; mktLabel = "NEAR (≥T−0.5)"; }
+  else { mktLevel = "ok"; mktLabel = "OK"; }
+  rows.push({
+    k: "MKT", v: fmt(current.mkt_c) + " °C", limit: "threshold " + fmt(T) + " °C",
+    level: mktLevel, label: mktLabel,
+  });
+
+  let html = rows.map((r) =>
+    `<div class="ev-row"><span class="k">${r.k}</span><span class="v">${r.v}</span><span class="limit">${r.limit}</span><span class="chip ${r.level}">${r.label}</span></div>`
+  ).join("");
+  html += `<div class="ev-summary">→ Rule ${d.ruleNo}: ${d.reason}</div>`;
+  html += `<div class="ev-reg">⚖ ${d.regulation}</div>`;
+  $("evidence").innerHTML = html;
+}
+
+/* ================= timeline replay ================= */
+function genProfile(event, spec) {
+  const base = spec.min + (spec.max - spec.min) * 0.4;
+  const peak = event.excursion_temp_c;
+  const dur = event.duration_min;
+  const ramp = Math.max(6, Math.round(dur * 0.35));
+  const total = Math.max(60, dur + ramp * 2 + 20);
+  const n = 220;
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = total * i / n;
+    let temp;
+    if (t < ramp) temp = base + (peak - base) * (t / ramp);
+    else if (t < ramp + dur) temp = peak;
+    else if (t < ramp + dur + ramp) temp = peak + (base - peak) * ((t - ramp - dur) / ramp);
+    else temp = base;
+    const noise = Math.sin(t * 0.9 + 1.3) * 0.3 + Math.sin(t * 0.33 + 0.5) * 0.25;
+    pts.push({ t, temp: temp + noise });
+  }
+  return { pts, total, base, peak };
+}
+
+function buildCurvePaths(pts, spec) {
+  const segs = [];
+  let cur = [], curIn = null;
+  for (const p of pts) {
+    const inBand = p.temp >= spec.min && p.temp <= spec.max;
+    if (curIn === null) curIn = inBand;
+    if (inBand !== curIn) { segs.push({ inBand: curIn, pts: cur }); cur = []; curIn = inBand; }
+    cur.push(p);
+  }
+  segs.push({ inBand: curIn, pts: cur });
+  return segs;
+}
+
+function renderTimeline() {
+  const prof = genProfile(current, spec);
+  nowTime = clamp(nowTime, 0, prof.total);
+  const W = 640, H = 190, padL = 46, padR = 14, padT = 24, padB = 30;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const yMin = Math.min(spec.min, prof.base, prof.peak) - 2;
+  const yMax = Math.max(spec.max, prof.base, prof.peak) + 2;
+  const X = (t) => padL + (t / prof.total) * plotW;
+  const Y = (v) => padT + (yMax - v) / (yMax - yMin) * plotH;
+
+  // safe band
+  let s = `<rect x="${padL}" y="${Y(spec.max).toFixed(1)}" width="${plotW}" height="${(Y(spec.min) - Y(spec.max)).toFixed(1)}" fill="#16a34a" fill-opacity="0.07"/>`;
+  s += `<line x1="${padL}" y1="${Y(spec.min).toFixed(1)}" x2="${padL + plotW}" y2="${Y(spec.min).toFixed(1)}" stroke="#16a34a" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
+  s += `<line x1="${padL}" y1="${Y(spec.max).toFixed(1)}" x2="${padL + plotW}" y2="${Y(spec.max).toFixed(1)}" stroke="#16a34a" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
+
+  // curve coloured by in/out of band
+  const segs = buildCurvePaths(prof.pts, spec);
+  let curves = "";
+  for (const seg of segs) {
+    const color = seg.inBand ? "#16a34a" : "#dc2626";
+    const dpath = seg.pts.map((p, i) => `${i ? "L" : "M"}${X(p.t).toFixed(1)},${Y(p.temp).toFixed(1)}`).join("");
+    curves += `<path d="${dpath}" fill="none" stroke="${color}" stroke-width="2.3"/>`;
+  }
+
+  // elapsed shading + now cursor
+  const nx = X(nowTime).toFixed(1);
+  let cursor = `<rect x="${padL}" y="${padT}" width="${(nx - padL).toFixed(1)}" height="${plotH}" fill="#0f2a4a" fill-opacity="0.03"/>`;
+  cursor += `<line x1="${nx}" y1="${padT}" x2="${nx}" y2="${padT + plotH}" stroke="#0f2a4a" stroke-width="1.6"/>`;
+
+  const idx = Math.round(nowTime / prof.total * (prof.pts.length - 1));
+  const nowTemp = prof.pts[idx].temp;
+  const anomaly = nowTemp > spec.max || nowTemp < spec.min;
+  cursor += `<circle cx="${nx}" cy="${Y(nowTemp).toFixed(1)}" r="5" fill="${anomaly ? "#dc2626" : "#0f2a4a"}"/>`;
+  let badge = "";
+  if (anomaly) {
+    badge = `<g><rect x="${W - 152}" y="4" width="140" height="20" rx="10" fill="#dc2626"/><text x="${W - 82}" y="18" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="inherit">⚠ EXCURSION</text></g>`;
+  }
+
+  let labels = `<text x="${padL}" y="${(Y(spec.max) - 4).toFixed(1)}" font-size="10" fill="#16a34a" font-family="inherit">max ${fmt(spec.max, 0)}°</text>`;
+  labels += `<text x="${padL}" y="${(Y(spec.min) + 11).toFixed(1)}" font-size="10" fill="#16a34a" font-family="inherit">min ${fmt(spec.min, 0)}°</text>`;
+  labels += `<text x="${padL + plotW / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit">Time (min)</text>`;
+
+  $("timeline").innerHTML = `<svg class="zone-svg" viewBox="0 0 ${W} ${H}">${s}${curves}${cursor}${badge}${labels}</svg>`;
+
+  const scrub = $("timeScrub");
+  if (document.activeElement !== scrub) scrub.value = (nowTime / prof.total * 100).toFixed(0);
+  $("timeReadout").textContent = `t = ${nowTime.toFixed(0)} / ${prof.total.toFixed(0)} min`;
+}
+
+function playTimeline() {
+  if (animTimer) { stopTimeline(); return; }
+  const start = Date.now();
+  const durMs = 3600;
+  $("playBtn").textContent = "⏸ Pause";
+  animTimer = setInterval(() => {
+    const p = genProfile(current, spec);
+    nowTime = Math.min(p.total, p.total * ((Date.now() - start) / durMs));
+    renderTimeline();
+    if (nowTime >= p.total) stopTimeline();
+  }, 30);
+}
+function stopTimeline() {
+  if (animTimer) { clearInterval(animTimer); animTimer = null; }
+  $("playBtn").textContent = "▶ Replay";
+}
+
+/* ================= decision boundary map ================= */
+function renderZonePlot() {
+  const A = spec.allowable, T = spec.mktThreshold;
+  const xMin = 0, xMax = 2.5 * A;
+  const yMin = T - 6, yMax = T + 4;
+  const W = 380, H = 250, padL = 46, padR = 14, padT = 14, padB = 32;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const X = (d) => padL + (d - xMin) / (xMax - xMin) * plotW;
+  const Y = (m) => padT + (yMax - m) / (yMax - yMin) * plotH;
+
+  const cols = 26, rows = 18, cw = plotW / cols, ch = plotH / rows;
+  let rects = "";
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const d = xMin + (c + 0.5) / cols * (xMax - xMin);
+      const m = yMax - (r + 0.5) / rows * (yMax - yMin);
+      const ev = { product_id: current.product_id, excursion_temp_c: spec.max, duration_min: d, mkt_c: m, packaging: "intact", stage: "transit" };
+      const disp = evaluate(ev, spec).disposition;
+      rects += `<rect x="${(padL + c * cw).toFixed(1)}" y="${(padT + r * ch).toFixed(1)}" width="${(cw + 0.6).toFixed(1)}" height="${(ch + 0.6).toFixed(1)}" fill="${DISPO[disp].bg}" fill-opacity="0.14"/>`;
+    }
+  }
+
+  const vlines = [[0.8 * A, "#cbd5e1"], [A, "#94a3b8"], [2 * A, "#64748b"]];
+  const hlines = [[T - 0.5, "#cbd5e1"], [T, "#94a3b8"], [T + 3, "#64748b"]];
+  let lines = "";
+  vlines.forEach(([x, col]) => { lines += `<line x1="${X(x).toFixed(1)}" y1="${padT}" x2="${X(x).toFixed(1)}" y2="${padT + plotH}" stroke="${col}" stroke-width="1" stroke-dasharray="4 4"/>`; });
+  hlines.forEach(([y, col]) => { lines += `<line x1="${padL}" y1="${Y(y).toFixed(1)}" x2="${padL + plotW}" y2="${Y(y).toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="4 4"/>`; });
+
+  const dFull = evaluate(current, spec);
+  const px = X(clamp(current.duration_min, xMin, xMax)).toFixed(1);
+  const py = Y(clamp(current.mkt_c, yMin, yMax)).toFixed(1);
+  const point = `<circle cx="${px}" cy="${py}" r="6.5" fill="#fff" stroke="${DISPO[dFull.disposition].bg}" stroke-width="3"/>`;
+
+  let ticks = `<text x="${padL + plotW / 2}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit">Duration (min)</text>`;
+  ticks += `<text x="12" y="${padT + plotH / 2}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit" transform="rotate(-90 12 ${padT + plotH / 2})">MKT (°C)</text>`;
+  ticks += `<text x="${X(0)}" y="${padT + plotH + 16}" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="inherit">0</text>`;
+  ticks += `<text x="${X(A)}" y="${padT + plotH + 16}" text-anchor="middle" font-size="10" fill="#64748b" font-family="inherit">${fmt(A, 0)}</text>`;
+  ticks += `<text x="${X(2 * A)}" y="${padT + plotH + 16}" text-anchor="middle" font-size="10" fill="#64748b" font-family="inherit">${fmt(2 * A, 0)}</text>`;
+  ticks += `<text x="${padL - 6}" y="${Y(yMin) + 3}" text-anchor="end" font-size="10" fill="#94a3b8" font-family="inherit">${fmt(yMin, 0)}</text>`;
+  ticks += `<text x="${padL - 6}" y="${Y(T) + 3}" text-anchor="end" font-size="10" fill="#64748b" font-family="inherit">${fmt(T, 0)}</text>`;
+  ticks += `<text x="${padL - 6}" y="${Y(yMax) + 3}" text-anchor="end" font-size="10" fill="#64748b" font-family="inherit">${fmt(yMax, 0)}</text>`;
+
+  $("zonePlot").innerHTML = `<svg class="zone-svg" viewBox="0 0 ${W} ${H}">${rects}${lines}${point}${ticks}</svg>`;
+
+  const legendItems = ["release", "retest", "quarantine", "scrap"].filter((k) => k !== "retest" || spec.retestable);
+  $("legend").innerHTML = legendItems.map((k) => `<span><i style="background:${DISPO[k].bg}"></i>${DISPO[k].label}</span>`).join("");
+
+  const rule1 = current.packaging === "compromised" && current.excursion_temp_c > spec.max;
+  $("plotNote").textContent = rule1
+    ? "Rule 1 override active: compromised packaging during excursion → scrap (map shows rules 2–5)."
+    : "Map shows rules 2–5 (packaging intact). Drag the duration / MKT sliders to move the dot across decision boundaries.";
+}
+
+/* ================= re-routing ================= */
+function renderReroute() {
+  const d = evaluate(current, spec);
+  if (!d.reshipment) {
+    $("reroute").innerHTML = `
+      <svg class="route-svg" viewBox="0 0 360 180">
+        <rect x="0" y="0" width="360" height="180" rx="10" fill="#f8fafc"/>
+        <circle cx="180" cy="90" r="26" fill="#e2e8f0"/>
+        <text x="180" y="95" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="inherit">no route</text>
+      </svg>
+      <div class="idle">Shipment cleared — no re-routing required.</div>`;
+    return;
+  }
+
+  const route = ROUTES[routeMode];
+  const coords = { depot: DEPOT };
+  PHARMACIES.forEach((p) => (coords[p.id] = p));
+  const pts = [DEPOT, ...route.order.map((id) => coords[id])];
+  const dPath = pts.map((p, i) => `${i ? "L" : "M"}${p.x},${p.y}`).join(" ");
+  const stroke = routeMode === "optimized" ? "#14b8a6" : "#dc2626";
+  const dash = routeMode === "optimized" ? "" : ' stroke-dasharray="6 5"';
+
+  let svg = `<svg class="route-svg" viewBox="0 0 360 210">
+    <rect x="0" y="0" width="360" height="210" rx="10" fill="#f0fdfa"/>
+    <path d="${dPath}" fill="none" stroke="${stroke}" stroke-width="2.5"${dash}/>
+    <circle cx="${DEPOT.x}" cy="${DEPOT.y}" r="20" fill="#0d9488"/>
+    <text x="${DEPOT.x}" y="${DEPOT.y + 5}" text-anchor="middle" fill="#fff" font-size="10" font-weight="700" font-family="inherit">DEPOT</text>`;
+  for (const p of PHARMACIES) {
+    const sel = selectedPharm === p.id;
+    const fill = sel ? "#14b8a6" : "#fff";
+    const col = sel ? "#fff" : "#14b8a6";
+    svg += `<circle class="pharm-node" data-ph="${p.id}" cx="${p.x}" cy="${p.y}" r="13" fill="${fill}" stroke="${col}" stroke-width="2.5"/>`;
+    svg += `<text x="${p.x}" y="${p.y + 4}" text-anchor="middle" fill="${col}" font-size="10" font-weight="700" font-family="inherit" pointer-events="none">${p.label}</text>`;
+  }
+  svg += `</svg>`;
+
+  const toggle = `<div class="route-toggle">
+    <button class="${routeMode === "optimized" ? "on" : ""}" data-mode="optimized">Optimized</button>
+    <button class="${routeMode === "original" ? "on" : ""}" data-mode="original">Original (baseline)</button>
+  </div>`;
+
+  const metrics = `<div class="metrics">
+    <div class="metric"><div class="mv">${route.dist}</div><div class="mk">Distance</div></div>
+    <div class="metric"><div class="mv">${route.time}</div><div class="mk">Route time</div></div>
+    <div class="metric"><div class="mv">${route.cost}</div><div class="mk">Cost</div></div>
+    <div class="metric"><div class="mv">${route.viol}</div><div class="mk">Violations</div></div>
+  </div>`;
+
+  const viol = route.viol ? `<div class="viol-note">✗ ${route.violNote}</div>` : "";
+
+  let detail = "";
+  if (selectedPharm) {
+    const p = PHARMACIES.find((x) => x.id === selectedPharm);
+    const pos = route.order.indexOf(p.id) + 1;
+    detail = `<div class="pharm-detail"><span class="nm">${p.name}</span><br>Time window ${p.tw} · ${p.zone} · demand ${p.demand} doses · stop #${pos} of ${route.order.length}</div>`;
+  }
+
+  const alloc = `<div class="alloc"><span class="strong">Replacement stock allocated:</span> 240 doses of ${PRODUCTS[current.product_id].name} from Central Depot, dispatched with a cold-chain reefer.</div>`;
+
+  $("reroute").innerHTML = toggle + svg + metrics + viol + detail + alloc;
+}
+
+function renderAll() {
+  renderBanner();
+  renderTimeline();
+  renderRulePath();
+  renderRisk();
+  renderEvidence();
+  renderZonePlot();
+  renderReroute();
+}
+
+/* ================= controls → state ================= */
+function syncControls() {
+  const [tLo, tHi] = TEMP_RANGE[current.product_id];
+  $("productSelect").value = current.product_id;
+  $("stageSelect").value = current.stage;
+  $("packagingSelect").value = current.packaging;
+  $("tempRange").min = tLo; $("tempRange").max = tHi;
+  $("tempRange").value = current.excursion_temp_c;
+  $("tempNum").value = current.excursion_temp_c;
+  const dMax = Math.max(10, Math.round(2.5 * spec.allowable));
+  $("durRange").min = 0; $("durRange").max = dMax;
+  $("durRange").value = current.duration_min;
+  $("durNum").value = current.duration_min;
+  const mLo = spec.mktThreshold - 6, mHi = spec.mktThreshold + 4;
+  $("mktRange").min = mLo; $("mktRange").max = mHi;
+  $("mktRange").value = current.mkt_c;
+  $("mktNum").value = current.mkt_c;
+  $("allowableInput").value = spec.allowable;
+  $("mktThresholdInput").value = spec.mktThreshold;
+  $("retestableInput").checked = spec.retestable;
+}
+
+function updateSliderRanges() {
+  const [tLo, tHi] = TEMP_RANGE[current.product_id];
+  $("tempRange").min = tLo; $("tempRange").max = tHi;
+  $("durRange").max = Math.max(10, Math.round(2.5 * spec.allowable));
+  $("mktRange").min = spec.mktThreshold - 6;
+  $("mktRange").max = spec.mktThreshold + 4;
+}
+
+function switchProduct(pid) {
+  stopTimeline();
+  current = { product_id: pid, ...DEFAULT_EVENT[pid] };
+  spec = { ...PRODUCTS[pid] };
+  nowTime = 0;
+  syncControls();
+  renderAll();
+}
+
+function setEvent(sc) {
+  stopTimeline();
+  current = { product_id: sc.product_id, excursion_temp_c: sc.excursion_temp_c, duration_min: sc.duration_min, mkt_c: sc.mkt_c, packaging: sc.packaging, stage: sc.stage };
+  spec = { ...PRODUCTS[sc.product_id] };
+  nowTime = 0;
+  syncControls();
+  renderAll();
+  markActive(sc.id);
+}
+
+function addAudit() {
+  const d = evaluate(current, spec);
+  const dispo = DISPO[d.disposition];
+  const specName = PRODUCTS[current.product_id].name;
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${new Date().toLocaleTimeString()}</td>
+    <td>${current.stage} · ${fmt(current.excursion_temp_c)}°C / ${current.duration_min}min</td>
+    <td>${specName}</td>
+    <td><span class="tag" style="background:${dispo.bg}1a;color:${dispo.bg}">${dispo.label}</span></td>
+    <td style="color:#64748b">${d.rulePath}</td>`;
+  const body = $("auditBody");
+  body.prepend(tr);
+  while (body.children.length > 8) body.removeChild(body.lastChild);
+}
+
+/* ================= presets list ================= */
+function buildList() {
+  const wrap = $("exList");
+  wrap.innerHTML = "";
+  SCENARIOS.forEach((sc) => {
+    const specName = PRODUCTS[sc.product_id].name;
+    const d = evaluate({ ...sc }, PRODUCTS[sc.product_id]);
+    const el = document.createElement("div");
+    el.className = "ex-item";
+    el.dataset.id = sc.id;
+    el.innerHTML = `
+      <div class="top"><span class="dot" style="background:${DISPO[d.disposition].bg}"></span><span class="id">${sc.id}</span><span class="name">${specName}</span></div>
+      <div class="meta">${fmt(sc.excursion_temp_c)} °C · ${sc.duration_min} min · MKT ${fmt(sc.mkt_c)} °C · ${STAGES[sc.stage] || sc.stage}</div>`;
+    el.addEventListener("click", () => setEvent(sc));
+    wrap.appendChild(el);
+  });
+}
+function markActive(id) {
+  document.querySelectorAll(".ex-item").forEach((n) => n.classList.toggle("active", n.dataset.id === id));
+}
+
+/* ================= event wiring ================= */
+function bind() {
+  $("productSelect").addEventListener("change", (e) => switchProduct(e.target.value));
+  $("stageSelect").addEventListener("change", (e) => { current.stage = e.target.value; renderAll(); });
+  $("packagingSelect").addEventListener("change", (e) => { current.packaging = e.target.value; renderAll(); });
+
+  const link = (rangeId, numId, field, parse) => {
+    const r = $(rangeId), n = $(numId);
+    r.addEventListener("input", () => { const v = parse(r.value); current[field] = v; n.value = v; renderAll(); });
+    n.addEventListener("input", () => { const v = parse(n.value); if (v === null) return; current[field] = v; r.value = clamp(v, parseFloat(r.min), parseFloat(r.max)); renderAll(); });
+  };
+  link("tempRange", "tempNum", "excursion_temp_c", parseFloat);
+  link("durRange", "durNum", "duration_min", (v) => Math.round(parseFloat(v)));
+  link("mktRange", "mktNum", "mkt_c", parseFloat);
+
+  $("allowableInput").addEventListener("input", (e) => { const v = parseFloat(e.target.value); if (v > 0) { spec.allowable = v; updateSliderRanges(); renderAll(); } });
+  $("mktThresholdInput").addEventListener("input", (e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) { spec.mktThreshold = v; updateSliderRanges(); renderAll(); } });
+  $("retestableInput").addEventListener("change", (e) => { spec.retestable = e.target.checked; renderAll(); });
+  $("resetCfg").addEventListener("click", () => { spec = { ...PRODUCTS[current.product_id] }; syncControls(); renderAll(); });
+
+  $("randomize").addEventListener("click", () => {
+    stopTimeline();
+    const [tLo, tHi] = TEMP_RANGE[current.product_id];
+    current.excursion_temp_c = Math.round((tLo + Math.random() * (tHi - tLo)) * 10) / 10;
+    current.duration_min = Math.round(Math.random() * 2.5 * spec.allowable);
+    current.mkt_c = Math.round((spec.mktThreshold - 4 + Math.random() * 10) * 10) / 10;
+    current.packaging = Math.random() < 0.15 ? "compromised" : "intact";
+    nowTime = 0;
+    syncControls();
+    renderAll();
+    addAudit();
+    markActive(null);
+  });
+
+  $("playBtn").addEventListener("click", playTimeline);
+  $("timeScrub").addEventListener("input", (e) => {
+    const prof = genProfile(current, spec);
+    nowTime = prof.total * (parseFloat(e.target.value) / 100);
+    renderTimeline();
+  });
+
+  $("reroute").addEventListener("click", (e) => {
+    const mb = e.target.closest("[data-mode]");
+    if (mb) { routeMode = mb.dataset.mode; renderReroute(); return; }
+    const ph = e.target.closest("[data-ph]");
+    if (ph) { selectedPharm = selectedPharm === ph.dataset.ph ? null : ph.dataset.ph; renderReroute(); return; }
+  });
+
+  $("qaAsk").addEventListener("click", () => {
+    const q = $("qaInput").value.trim();
+    if (!q) return;
+    $("qaAnswer").textContent = askKG(q);
+  });
+  $("qaInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("qaAsk").click(); });
+}
+
+/* ================= KG Q&A (concept mockup) ================= */
+function askKG(q) {
+  const s = q.toLowerCase();
+  if (s.includes("mkt") || s.includes("mean kinetic")) return "Mean Kinetic Temperature (MKT) compresses a temperature–time profile into a single stability-relevant value, so a short hot spike can be compared against the product's stability threshold.";
+  if (s.includes("scrap") || s.includes("discard") || s.includes("destroy")) return "Per EU GDP 2013/C 343/01 and WHO TRS 961 Annex 9, product exceeding its stability margin must be scrapped with a documented destruction record and deviation report.";
+  if (s.includes("quarantine") || s.includes("hold")) return "Quarantine segregates the batch in labelled storage pending Quality review; release requires a documented risk assessment against the excursion data.";
+  if (s.includes("retest") || s.includes("test")) return "Retesting confirms potency and stability when an excursion is within the retestable margin; the result feeds the final disposition.";
+  if (s.includes("release")) return "Release requires the excursion to be within the acceptable safety range — MKT and duration below their thresholds — with a traceable rule path on record.";
+  if (s.includes("reroute") || s.includes("route") || s.includes("deliver") || s.includes("reship")) return "The optimiser re-routes replacement stock via VRPTW with time windows, multi-temperature zones, capacity limits and stockout priority.";
+  if (s.includes("gdp") || s.includes("ich") || s.includes("who")) return "Regulatory basis: WHO TRS 961 Annex 9 (model guidance for storage and transport), EU GDP 2013/C 343/01, and ICH stability guidelines.";
+  return "The knowledge graph links product, route, event, rule and SOP entities, so every answer is grounded in the governing regulation rather than generated from thin air.";
+}
+
+/* ================= init ================= */
+buildList();
+switchProduct("vaccine_2_8");
+bind();
+setEvent(SCENARIOS[2]); // open on a retest boundary case
+</script>
+</body>
+</html>
