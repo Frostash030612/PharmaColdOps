@@ -16,10 +16,8 @@ venv/
 .env
 .env.*
 
-# Large raw datasets (downloadable) — keep out of git; curated scenario bank is tracked
-data/raw/
+# Processed/derived artifacts stay out of git; raw datasets are tracked (team decision 2026-09-08)
 data/processed/
-*.parquet
 
 # Logs / OS
 *.log
