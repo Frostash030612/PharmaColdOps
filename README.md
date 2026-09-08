@@ -20,6 +20,19 @@ Proposal & related documents live in [`proposal/`](proposal/):
 | Knowledge graph & Q&A | `src/knowledge_graph/` | Cognitive systems |
 | API / frontend | `src/api/` | Integration |
 
+## Data layout
+
+`data/` is organised by project module, mirroring `src/` (proposal §7, §8.3):
+
+| Directory | Module | Contents |
+|---|---|---|
+| `data/ml/` | Risk prediction & root cause | Cold-chain / temperature datasets (Kaggle + Hugging Face) |
+| `data/optimisation/solomon/` | Re-routing optimiser | Solomon VRPTW instances (CVRPLIB) |
+| `data/processed/` | All modules | Preprocessed feature tables (§7.3) — generated, not committed |
+
+Download the no-login sources with `python scripts/download_data.py`; Kaggle datasets
+need a manual `kaggle.json` token (see `PROGRESS.md`).
+
 ## Quickstart
 
 ```bash

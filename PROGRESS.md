@@ -4,6 +4,41 @@
 
 ---
 
+## 2026-09-08 — data/ 目录按模块重组
+
+### 做了什么
+
+把 `data/` 从「按来源（huggingface / kaggle / cvrplib）」改为**按项目模块**组织，与 `src/` 一一对应：
+
+```
+data/
+├── ml/               # 风险预测与根因诊断模块（知识发现）—— 4 个冷链数据集
+├── optimisation/     # 配送改派模块（资源优化）—— Solomon VRPTW 算例
+└── processed/        # §7.3 预处理输出（跨模块共享），生成、不入库
+```
+
+> 注：`data/scenarios/`（规则引擎金标准场景库）为自建伪数据，不计入数据布局。
+
+### 修改文件
+
+| 文件 | 变更 |
+|---|---|
+| `scripts/download_data.py` | HF 数据集 → `data/ml/<名称>/`；Solomon → `data/optimisation/solomon/`；清单改为 `data/MANIFEST.md` |
+| `.gitignore` | `data/raw/` → `data/ml/` + `data/optimisation/`（`data/processed/` 与 `*.parquet` 保持忽略） |
+| `README.md` | 新增 Data layout 表格 |
+
+### 数据集 → 模块映射
+
+| 数据集 | 目标目录 | 模块 |
+|---|---|---|
+| Cold Chain Shipment Silent Failure（Kaggle，需 token） | `data/ml/cold-chain-silent-failure/` | 风险预测 / 故障分类 |
+| Vaccine Distribution w/ Temperature Logging（Kaggle，需 token） | `data/ml/vaccine-distribution-temperature/` | 异常检测 / MKT 模拟 |
+| Electric Sheep vaccine-cold-chain（HF） | `data/ml/electricsheepafrica__vaccine-cold-chain/` | 设施 / 路线级异常 |
+| Africa Synth Immunization Quality（HF） | `data/ml/electricsheepafrica__africa-synth-immunization-vaccine-quality-cold-chain-all/` | 数据增强 / 质量标签 |
+| Solomon VRPTW（CervEdin 镜像） | `data/optimisation/solomon/` | 改派算法基准 |
+
+---
+
 ## 2026-09-07 — 仓库骨架 + 规则引擎 v1 + 场景库扩充
 
 ### 做了什么
