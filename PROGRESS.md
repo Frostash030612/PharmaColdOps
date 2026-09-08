@@ -46,6 +46,7 @@
 - [ ] **W2-D**：`src/api/` FastAPI 骨架：`/decide`（接 A 引擎）、`/route`（接 C，先留 stub）、`/qa`（接 KG）三个路由契约定死——这是四模块集成的锚点。
 - [ ] **W3-D**：打通「异常 → 处置 → 改派」最小闭环的 API + 前端；KG 问答要么换成真查询、要么维持概念示意并在报告如实标注。
 - [ ] **W5-D**：视频脚本（demo 录屏走查）+ 报告集成章节。
+- [ ] **W4–W5·部署（D 主导，全员试）**：契约端点 + `Dockerfile` + 上云（Render/HF/静态兜底），演示前一晚全网实测——**架构基线见「前后端接口与上云」节**。
 
 ### 跨成员契约（防各做各的）
 
@@ -53,6 +54,54 @@
 2. **补发单 → 改派**：A 引擎产 `reshipment` 标志 → C 收到「补发单」生成改派路线 → D 展示。字段契约 W2 前三方定死。
 3. **风险分 ↔ 前端**：demo 现用规则启发式风险指数（确定性、同阈值同源）；B 的 ML 分只进报告不接 UI（schema 错位已论证），若最终要接 UI 需 B+D 先做 feature bridge。
 4. **git 纪律**：一功能一 commit、commit message 写清做了啥（历史里出现过 `9.8 0.4`、`重复` 这类无效消息）；**只 commit 源码/文档/数据集，`data/processed/` 与模型产物不入库**（`.gitignore` 已拦）。
+
+---
+
+## 前后端接口与上云（架构基线 · 随周更新）
+
+> 面向 W2–W5：demo 现在**纯静态**（规则引擎的 JS 忠实移植 + `real_data.js`，零后端也能跑）。这是特点也是风险——JS 逻辑与 Python 引擎是**两份实现**，接口与部署要把「何时用 Python 真实现」定清楚，别等答辩周才补。
+
+### 1. 推荐：前后端解耦 + 契约优先，同一份 demo 双模式
+
+前端不重写，加一个 `API_BASE` 配置点（config 常量 / 环境变量），三种取值切三种形态：
+
+| `API_BASE` | 形态 | 谁在算 |
+|---|---|---|
+| `''`（空） | 静态演示模式（现状，默认） | 前端 JS `evaluate()` |
+| `http://127.0.0.1:8000` | 本地联调 | 本机 FastAPI 接真 Python 模块 |
+| `https://…onrender.com` | 上云全栈 | 云端 FastAPI |
+
+事件录入表单两种模式共用，只是「判/算」换成调后端。**离线 demo 永不失效，答辩现场网络挂了也有兜底。**
+
+### 2. 四个契约端点（W2-D 前定死 schema）
+
+Pydantic 模型 = 引擎 dataclass 的序列化（`model_dump`），**不要手写两遍 JSON 映射**。字段名以现有 `Decision` 输出为准（README-zh 承诺过「JS 与 Python 引擎一致」），谁都不许再造别名。
+
+| 端点 | 输入 | 输出 | 后端实现 | 状态 |
+|---|---|---|---|---|
+| `POST /api/decide` | `ExcursionEvent` JSON | `Decision` JSON（disposition / risk / evidence / regulation） | `src/rule_engine`（现成） | 引擎已可用，只差套壳 |
+| `POST /api/route` | 补发单 → 仓库/订单 | 改派路线（车辆序列 + 时间窗） | `src/optimisation`（C） | W2-C 起，此前 stub 501 |
+| `POST /api/qa` | 自然语言问题 | 答案 + 依据节点 | `src/knowledge_graph`（D） | 此前 stub 501 |
+| `GET /api/health` | — | `{status: ok}` | — | 探活用 |
+
+建议加 `tests/test_api_contract.py`：断言 demo JS 里用到的键 ⊆ FastAPI 返回 JSON 键，防「前端改字段、后端不知道」。
+
+**诚实边界：ML 模型不进 API。** 风险分是规则启发式（确定性、同阈值同源）；真 ML 只进报告（schema 错位已论证）。好处是**后端不用打包任何模型产物**——`data/processed/` 本来 gitignored 不上云也成立，B 的活不受部署影响。
+
+### 3. 上云怎么做（分层，演示日永不裸奔）
+
+- **Level 0 · 纯静态兜底（现在就能做）**：`demo/` 推 GitHub Pages / Vercel，零后端上线。前端字段已是演示全集。
+- **Level 1 · 全栈默认路径（推荐 Render 免费 Web Service）**：
+  1. W2-D：`src/api/main.py` FastAPI + uvicorn 跑通 3 个 stub + `/api/decide` 接上引擎；
+  2. 根目录加 `Dockerfile`（`python:3.11-slim` → `pip install -r requirements.txt` → 拷 `src/` + `data/` → uvicorn 启动）；
+  3. push GitHub → Render 连仓库自动部署（数据文件都在 repo 里，demo 规模**不需要数据库**）；
+  4. 前端 `API_BASE` 指向 Render 域名，打开即全栈 demo。
+- **备选 / 学校额度**：Hugging Face Spaces（Docker，偏 ML 展示）、Azure for Students / AWS Educate（NUS 学生若可申请，配额更高）。
+- **注意**：① 免费实例闲置会休眠，再次请求冷启动几秒——**演示前先访问一次预热**；② 免费条款会变，**演示前一晚全网实测一遍**（别答辩当天第一次上云）；③ 数据全为合成/公开，无敏感信息，但 CORS 白名单要设、key 别写进前端；④ 国内网络不稳的话，本地 `uvicorn` + `localhost` 演示即可，上云只给演示日 / 新加坡现场用。
+
+### 4. 时间线归属（并入分工清单）
+
+契约定死 → W2-D 骨架 → W3 最小闭环 → W4/W5 Docker + 上云 + 录屏。D 主导联调与部署，C/A 保证 `/route` `/decide` 真实现，B 无需参与（ML 不上 API）。
 
 ---
 
