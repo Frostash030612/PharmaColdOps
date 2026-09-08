@@ -30,6 +30,7 @@ class ProductSpec:
     allowable_duration_min: int  # allowable time above the storage range
     mkt_threshold_c: float       # Mean Kinetic Temperature ceiling
     retestable: bool = True
+    freeze_sensitive: bool = False  # loses potency if frozen (WHO TRS 961 Annex 9)
 
 
 @dataclass(frozen=True)
@@ -52,4 +53,5 @@ class Decision:
     disposition: Disposition
     reshipment_required: bool
     rule_path: str
+    regulation: str
     evidence: dict

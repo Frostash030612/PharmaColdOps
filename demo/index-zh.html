@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PharmaColdOps — 温度超限处置控制台</title>
+<style>
+  :root {
+    --navy: #0f2a4a; --navy-2: #16395f; --teal: #0d9488; --teal-2: #14b8a6;
+    --ink: #1a2b3c; --muted: #64748b; --line: #e2e8f0; --bg: #f4f7fb; --card: #ffffff;
+    --release: #16a34a; --retest: #d97706; --quarantine: #ea580c; --scrap: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.5;
+  }
+
+  header {
+    background: linear-gradient(120deg, var(--navy) 0%, var(--navy-2) 60%, #1d4a74 100%);
+    color: #fff; padding: 18px 26px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  header .brand { display: flex; align-items: center; gap: 12px; }
+  header .logo {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(140deg, var(--teal-2), var(--teal));
+    display: grid; place-items: center; font-size: 22px;
+  }
+  header h1 { font-size: 20px; margin: 0; }
+  header .sub { font-size: 12px; color: #bcd0e6; margin-top: 2px; }
+  header .pills { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.22); color: #e6f0fa;
+  }
+  .pill.live { background: rgba(20,184,166,.22); border-color: rgba(45,212,191,.5); color: #99f6e4; }
+
+  main {
+    max-width: 1440px; margin: 16px auto 0; padding: 0 24px;
+    display: grid; grid-template-columns: 300px 1fr 340px; gap: 16px; align-items: start;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; box-shadow: 0 1px 2px rgba(15,42,74,.05);
+  }
+  .card h2 {
+    margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: 8px;
+  }
+  .card h2::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--teal); }
+
+  /* ---------- 左侧：场景预设 ---------- */
+  .ex-list { display: flex; flex-direction: column; gap: 8px; }
+  .ex-item {
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; transition: .13s;
+  }
+  .ex-item:hover { border-color: #bcd0e6; }
+  .ex-item.active { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(20,184,166,.12); }
+  .ex-item .top { display: flex; align-items: center; gap: 8px; }
+  .ex-item .id { font-size: 11px; color: var(--muted); font-weight: 700; }
+  .ex-item .name { font-weight: 600; flex: 1; }
+  .ex-item .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+  /* ---------- 规则配置 ---------- */
+  .cfg { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .cfg .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; margin-bottom: 8px; }
+  .cfg-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 12.5px; }
+  .cfg-row input[type=number] { width: 74px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 7px; font-size: 13px; }
+  .cfg-row input[type=checkbox] { width: 16px; height: 16px; }
+  .btn {
+    border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 7px 12px;
+    border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12.5px; transition: .15s; width: 100%;
+  }
+  .btn:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* ---------- 中间：决策沙盒 ---------- */
+  .dispo-banner { display: flex; align-items: center; gap: 14px; border-radius: 12px; padding: 16px; color: #fff; margin-bottom: 14px; }
+  .dispo-badge {
+    width: 58px; height: 58px; border-radius: 12px; background: rgba(255,255,255,.18);
+    display: grid; place-items: center; font-weight: 800; font-size: 26px; letter-spacing: .5px;
+  }
+  .dispo-banner .big { font-size: 18px; font-weight: 800; letter-spacing: .5px; }
+  .dispo-banner .why { font-size: 12.5px; opacity: .92; margin-top: 3px; }
+  .dispo-banner .reship { margin-left: auto; text-align: right; font-size: 12px; }
+  .dispo-banner .reship b { display: block; font-size: 15px; }
+
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 14px; }
+  .ctl { display: flex; flex-direction: column; gap: 4px; }
+  .ctl label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; font-weight: 700; }
+  .ctl select, .ctl input[type=number] {
+    padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; font-size: 13px; width: 100%;
+  }
+  .ctl .range-line { display: flex; align-items: center; gap: 8px; }
+  .ctl input[type=range] { flex: 1; accent-color: var(--teal); }
+  .ctl .num { width: 64px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 7px; font-size: 13px; text-align: right; }
+
+  .section-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; margin: 14px 0 6px; }
+  .rulepath {
+    background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #334155; word-break: break-word;
+  }
+  .rules-list { list-style: none; margin: 0; padding: 0; }
+  .rules-list li { padding: 7px 10px; border-radius: 8px; font-size: 12.5px; margin-bottom: 4px; color: #64748b; background: #f8fafc; }
+  .rules-list li.fired { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; font-weight: 600; }
+  .rules-list li .no { display: inline-block; width: 18px; color: #94a3b8; font-weight: 700; }
+  .rules-list li.fired .no { color: #059669; }
+
+  .zone-wrap { margin: 4px 0 2px; }
+  .zone-svg { width: 100%; height: auto; display: block; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  .plot-note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .riskbar { height: 8px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-top: 6px; }
+  .riskbar > div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f59e0b, #dc2626); }
+
+  /* ---------- 时间轴 ---------- */
+  .timeline-controls { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+  .timeline-controls input[type=range] { flex: 1; accent-color: var(--teal); }
+  .timeline-controls .btn { width: auto; padding: 6px 14px; }
+  #timeReadout { font-size: 12px; color: var(--muted); min-width: 118px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---------- 证据面板 ---------- */
+  .evidence { display: flex; flex-direction: column; gap: 6px; }
+  .ev-row {
+    display: flex; align-items: center; gap: 10px; font-size: 12.5px; padding: 7px 10px;
+    background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
+  }
+  .ev-row .k { width: 100px; color: #64748b; font-weight: 600; flex: none; }
+  .ev-row .v { flex: 1; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .ev-row .limit { color: #94a3b8; font-size: 11.5px; }
+  .chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; flex: none; }
+  .chip.ok { background: #dcfce7; color: #166534; }
+  .chip.near { background: #fef3c7; color: #92400e; }
+  .chip.breach { background: #ffedd5; color: #c2410c; }
+  .chip.severe { background: #fee2e2; color: #b91c1c; }
+  .ev-summary {
+    margin-top: 4px; font-size: 12.5px; font-weight: 600; color: #065f46;
+    background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 8px 10px;
+  }
+  .ev-reg {
+    margin-top: 4px; font-size: 11.5px; color: #475569;
+    background: #f1f5f9; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+  }
+
+  /* ---------- 右侧：配送规划 + 问答 ---------- */
+  .route-svg { width: 100%; height: auto; }
+  .route-toggle { display: flex; gap: 8px; margin-bottom: 10px; }
+  .route-toggle button {
+    flex: 1; padding: 6px 8px; border: 1px solid var(--line); background: #fff;
+    border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; transition: .13s;
+  }
+  .route-toggle button.on { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .metric { background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 8px; text-align: center; }
+  .metric .mv { font-size: 15px; font-weight: 800; }
+  .metric .mk { font-size: 10px; color: #94a3b8; letter-spacing: .4px; }
+  .viol-note { margin-top: 8px; font-size: 12px; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 10px; }
+  .pharm-detail { margin-top: 8px; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #0f766e; }
+  .pharm-detail .nm { font-weight: 700; }
+  .pharm-node { cursor: pointer; }
+  .pharm-node:hover { stroke-width: 4; }
+  .alloc { margin-top: 12px; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #0f766e; }
+  .alloc .strong { font-weight: 700; }
+  .idle { margin-top: 12px; background: #f8fafc; border: 1px dashed var(--line); border-radius: 8px; padding: 12px; text-align: center; color: var(--muted); font-size: 12.5px; }
+
+  .qa { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .qa .qline { display: flex; gap: 8px; }
+  .qa input[type=text] { flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+  .qa button { padding: 7px 12px; border: 1px solid var(--teal); background: var(--teal); color: #fff; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12.5px; }
+  .qa .answer { margin-top: 10px; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #334155; min-height: 20px; }
+
+  /* ---------- 审计 ---------- */
+  .audit { max-width: 1440px; margin: 16px auto 30px; padding: 0 24px; }
+  .audit table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .audit th, .audit td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  .audit th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+  .tag { font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+
+  footer { text-align: center; color: var(--muted); font-size: 11.5px; padding: 0 24px 30px; }
+
+  @media (max-width: 1080px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">❄</div>
+    <div>
+      <h1>PharmaColdOps</h1>
+      <div class="sub">冷链药品温度超限处置与配送重新规划</div>
+    </div>
+  </div>
+  <div class="pills">
+    <span class="pill live">● 规则引擎 v1 · 实时</span>
+    <span class="pill">WHO TRS 961 附录 9</span>
+    <span class="pill">EU GDP 2013/C 343/01</span>
+    <span class="pill">交互演示</span>
+  </div>
+</header>
+
+<main>
+  <!-- 左：场景预设 + 规则配置 -->
+  <aside class="card">
+    <h2>场景预设</h2>
+    <div class="ex-list" id="exList"></div>
+
+    <div class="cfg">
+      <div class="lbl">规则配置</div>
+      <div class="cfg-row"><span>允许超限时长</span><input type="number" id="allowableInput" step="1"></div>
+      <div class="cfg-row"><span>MKT 阈值（°C）</span><input type="number" id="mktThresholdInput" step="0.5"></div>
+      <div class="cfg-row"><span>可复验</span><input type="checkbox" id="retestableInput"></div>
+      <button class="btn" id="resetCfg">重置为产品默认值</button>
+    </div>
+  </aside>
+
+  <!-- 中：决策沙盒 -->
+  <section class="card">
+    <h2>决策沙盒</h2>
+    <div id="banner"></div>
+
+    <div class="section-label">温度回放</div>
+    <div id="timeline"></div>
+    <div class="timeline-controls">
+      <button class="btn" id="playBtn">▶ 回放</button>
+      <input type="range" id="timeScrub" min="0" max="100" value="0">
+      <span id="timeReadout"></span>
+    </div>
+
+    <div class="section-label">超限输入</div>
+    <div class="controls">
+      <div class="ctl">
+        <label>产品</label>
+        <select id="productSelect">
+          <option value="vaccine_2_8">疫苗（2–8 °C）</option>
+          <option value="frozen_m20">冷冻生物制品（−25…−15 °C）</option>
+          <option value="insulin_2_8">胰岛素（2–8 °C）</option>
+          <option value="mrna_ultracold">mRNA 疫苗（−90…−60 °C）</option>
+        </select>
+      </div>
+      <div class="ctl">
+        <label>阶段</label>
+        <select id="stageSelect">
+          <option value="transit">运输中</option>
+          <option value="warehouse">仓库</option>
+          <option value="airport_dwell">机场滞留</option>
+          <option value="last_mile">最后一公里</option>
+        </select>
+      </div>
+      <div class="ctl">
+        <label>包装</label>
+        <select id="packagingSelect">
+          <option value="intact">完好</option>
+          <option value="compromised">破损</option>
+        </select>
+      </div>
+      <div class="ctl">
+        <label>&nbsp;</label>
+        <button class="btn" id="randomize" style="height:32px">🎲 随机超限事件</button>
+      </div>
+      <div class="ctl">
+        <label>超限温度（°C）</label>
+        <div class="range-line">
+          <input type="range" id="tempRange" step="0.5">
+          <input type="number" class="num" id="tempNum" step="0.5">
+        </div>
+      </div>
+      <div class="ctl">
+        <label>时长（分钟）</label>
+        <div class="range-line">
+          <input type="range" id="durRange" step="1">
+          <input type="number" class="num" id="durNum" step="1">
+        </div>
+      </div>
+      <div class="ctl" style="grid-column: 1 / -1;">
+        <label>平均动力学温度 — MKT（°C）</label>
+        <div class="range-line">
+          <input type="range" id="mktRange" step="0.1">
+          <input type="number" class="num" id="mktNum" step="0.1">
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">决策边界图（时长 × MKT）</div>
+    <div class="zone-wrap" id="zonePlot"></div>
+    <div class="legend" id="legend"></div>
+    <div class="plot-note" id="plotNote"></div>
+
+    <div class="section-label">可审计规则路径</div>
+    <div class="rulepath" id="rulepath"></div>
+
+    <div class="section-label">规则评估（优先级顺序）</div>
+    <ul class="rules-list" id="rulesList"></ul>
+
+    <div class="section-label">ML 风险评分 <span style="color:#94a3b8;text-transform:none;letter-spacing:0">（概念）</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="riskbar" style="flex:1"><div id="riskFill" style="width:0%"></div></div>
+      <b style="font-size:13px" id="riskVal">–/100</b>
+    </div>
+    <div class="plot-note" id="causeNote"></div>
+
+    <div class="section-label">为什么这么判</div>
+    <div class="evidence" id="evidence"></div>
+  </section>
+
+  <!-- 右：配送规划 + 问答 -->
+  <aside class="card">
+    <h2>配送重新规划</h2>
+    <div id="reroute"></div>
+
+    <div class="qa">
+      <h2>合规问答 <span style="color:#94a3b8;text-transform:none;letter-spacing:0">（知识图谱 · 概念）</span></h2>
+      <div class="qline">
+        <input type="text" id="qaInput" placeholder="例如：什么是 MKT？什么时候报废？">
+        <button id="qaAsk">提问</button>
+      </div>
+      <div class="answer" id="qaAnswer">提出合规问题，查看基于法规的回答。</div>
+    </div>
+  </aside>
+</main>
+
+<section class="audit">
+  <div class="card">
+    <h2>审计追踪</h2>
+    <table>
+      <thead><tr><th>时间</th><th>场景</th><th>产品</th><th>处置</th><th>规则路径</th></tr></thead>
+      <tbody id="auditBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  PharmaColdOps · 交互演示 —— 规则引擎为实时逻辑；ML 风险评分、VRPTW 配送规划与知识图谱问答为概念示意。
+</footer>
+
+<script>
+/* ================= 配置（对应 src/rule_engine/rules_config.json） ================= */
+const PRODUCTS = {
+  vaccine_2_8:    { id: "vaccine_2_8",    name: "疫苗（2–8 °C）", min: 2, max: 8, allowable: 30, mktThreshold: 10.0, retestable: true,  freezeSensitive: true },
+  frozen_m20:     { id: "frozen_m20",     name: "冷冻生物制品（−25…−15 °C）", min: -25, max: -15, allowable: 15, mktThreshold: -12.0, retestable: false, freezeSensitive: false },
+  insulin_2_8:    { id: "insulin_2_8",    name: "胰岛素（2–8 °C）", min: 2, max: 8, allowable: 30, mktThreshold: 10.0, retestable: true,  freezeSensitive: true },
+  mrna_ultracold: { id: "mrna_ultracold", name: "mRNA 疫苗（−90…−60 °C）", min: -90, max: -60, allowable: 60, mktThreshold: -55.0, retestable: false, freezeSensitive: false },
+};
+const TEMP_RANGE = { vaccine_2_8: [-5, 35], frozen_m20: [-30, 15], insulin_2_8: [-5, 35], mrna_ultracold: [-90, 0] };
+const DEFAULT_EVENT = {
+  vaccine_2_8:    { excursion_temp_c: 10,  duration_min: 24, mkt_c: 9.5,  packaging: "intact", stage: "transit" },
+  frozen_m20:     { excursion_temp_c: -4,  duration_min: 25, mkt_c: -9.5, packaging: "intact", stage: "transit" },
+  insulin_2_8:    { excursion_temp_c: 10,  duration_min: 24, mkt_c: 9.5,  packaging: "intact", stage: "transit" },
+  mrna_ultracold: { excursion_temp_c: -40, duration_min: 70, mkt_c: -58.0, packaging: "intact", stage: "transit" },
+};
+const DISPO = {
+  release:    { label: "放行", bg: "#16a34a" },
+  retest:     { label: "复验", bg: "#d97706" },
+  quarantine: { label: "隔离", bg: "#ea580c" },
+  scrap:      { label: "报废", bg: "#dc2626" },
+};
+const STAGES = { transit: "运输中", warehouse: "仓库", airport_dwell: "机场滞留", last_mile: "最后一公里" };
+const RULES = [
+  "冻结损坏：冻敏产品在 0 °C 及以下 → 报废",
+  "超限期间包装破损 → 报废",
+  "时长 ≥ 2× 允许值，或 MKT ≥ 阈值 + 3 °C → 报废",
+  "时长 > 允许值，或 MKT > 阈值 → 隔离",
+  "可复验且接近边界（时长 ≥ 0.8× 允许值，或 MKT ≥ 阈值 − 0.5 °C）→ 复验",
+  "否则 → 放行",
+];
+const SCENARIOS = [
+  { id: "S002", product_id: "vaccine_2_8", excursion_temp_c: 6.0,  duration_min: 10, mkt_c: 5.0,  packaging: "intact",      stage: "warehouse" },
+  { id: "S008", product_id: "vaccine_2_8", excursion_temp_c: 7.5,  duration_min: 18, mkt_c: 6.9,  packaging: "intact",      stage: "transit" },
+  { id: "S013", product_id: "vaccine_2_8", excursion_temp_c: 10.0, duration_min: 24, mkt_c: 9.5,  packaging: "intact",      stage: "transit" },
+  { id: "S009", product_id: "vaccine_2_8", excursion_temp_c: 9.0,  duration_min: 25, mkt_c: 9.6,  packaging: "intact",      stage: "transit" },
+  { id: "S017", product_id: "vaccine_2_8", excursion_temp_c: 12.0, duration_min: 35, mkt_c: 11.2, packaging: "intact",      stage: "airport_dwell" },
+  { id: "S021", product_id: "vaccine_2_8", excursion_temp_c: 9.0,  duration_min: 50, mkt_c: 9.8,  packaging: "intact",      stage: "transit" },
+  { id: "S025", product_id: "vaccine_2_8", excursion_temp_c: 20.0, duration_min: 90, mkt_c: 19.0, packaging: "intact",      stage: "transit" },
+  { id: "S029", product_id: "vaccine_2_8", excursion_temp_c: 15.0, duration_min: 40, mkt_c: 13.0, packaging: "compromised", stage: "transit" },
+  { id: "S034", product_id: "frozen_m20",  excursion_temp_c: -14.0,duration_min: 5,  mkt_c: -16.0,packaging: "intact",      stage: "transit" },
+  { id: "S041", product_id: "frozen_m20",  excursion_temp_c: -4.0, duration_min: 25, mkt_c: -9.5, packaging: "intact",      stage: "transit" },
+  { id: "S047", product_id: "frozen_m20",  excursion_temp_c: 5.0,  duration_min: 15, mkt_c: -8.5, packaging: "compromised", stage: "transit" },
+  { id: "S048", product_id: "vaccine_2_8", excursion_temp_c: -5.0, duration_min: 5,  mkt_c: 4.0,  packaging: "intact",      stage: "transit" },
+  { id: "S049", product_id: "insulin_2_8", excursion_temp_c: -2.0, duration_min: 10, mkt_c: 3.0,  packaging: "intact",      stage: "warehouse" },
+  { id: "S051", product_id: "insulin_2_8", excursion_temp_c: 5.0,  duration_min: 5,  mkt_c: 4.5,  packaging: "intact",      stage: "transit" },
+  { id: "S053", product_id: "insulin_2_8", excursion_temp_c: 11.0, duration_min: 35, mkt_c: 10.8, packaging: "intact",      stage: "transit" },
+  { id: "S055", product_id: "mrna_ultracold", excursion_temp_c: -70.0, duration_min: 10, mkt_c: -75.0, packaging: "intact",  stage: "transit" },
+  { id: "S057", product_id: "mrna_ultracold", excursion_temp_c: -30.0, duration_min: 150, mkt_c: -35.0, packaging: "intact", stage: "warehouse" },
+];
+
+/* ================= 药房 / 路线数据（概念示意） ================= */
+const DEPOT = { x: 70, y: 105 };
+const PHARMACIES = [
+  { id: "A", label: "药 A", name: "药房 A · 中心", tw: "09:00–11:00", zone: "2–8 °C", demand: 60, x: 150, y: 52 },
+  { id: "B", label: "药 B", name: "药房 B · 北区", tw: "10:30–12:30", zone: "2–8 °C", demand: 40, x: 250, y: 58 },
+  { id: "C", label: "药 C", name: "药房 C · 东区", tw: "13:00–15:00", zone: "−25…−15 °C", demand: 80, x: 300, y: 120 },
+  { id: "D", label: "药 D", name: "药房 D · 南区", tw: "15:30–17:00", zone: "2–8 °C", demand: 50, x: 235, y: 175 },
+];
+const ROUTES = {
+  optimized: { order: ["A", "B", "C", "D"], dist: "84 km", time: "4.9 小时", cost: "¥7,770", viol: 0, violNote: "" },
+  original:  { order: ["A", "C", "B", "D"], dist: "92 km", time: "5.4 小时", cost: "¥8,680", viol: 1, violNote: "药房 B 错过时间窗（+40 分钟）" },
+};
+
+/* ================= 工作状态（可变） ================= */
+let spec = { ...PRODUCTS.vaccine_2_8 };
+let current = { product_id: "vaccine_2_8", ...DEFAULT_EVENT.vaccine_2_8 };
+let nowTime = 0;
+let animTimer = null;
+let routeMode = "optimized";
+let selectedPharm = null;
+
+/* ================= 工具 ================= */
+const $ = (id) => document.getElementById(id);
+function fmt(n, dec = 1) { return (Math.round(n * Math.pow(10, dec)) / Math.pow(10, dec)).toString(); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/* ================= 规则引擎（engine.py 的忠实移植） ================= */
+function evaluate(event, s) {
+  const rulePath = (disp, reason) =>
+    `${event.product_id}（${fmt(s.min)}–${fmt(s.max)} °C）在 ${fmt(event.excursion_temp_c)} °C 持续 ` +
+    `${event.duration_min} 分钟（MKT ${fmt(event.mkt_c)} °C，允许 ${s.allowable} 分钟）→ ${disp}：${reason}`;
+  const decide = (disp, reason, ruleNo, regulation) => ({
+    disposition: disp,
+    reshipment: (disp === "scrap" || disp === "quarantine"),
+    rulePath: rulePath(disp, reason),
+    ruleNo,
+    reason,
+    regulation,
+  });
+
+  if (s.freezeSensitive && event.excursion_temp_c <= 0)
+    return decide("scrap", "冻结损坏；冻敏产品暴露在冰点以下", 1,
+      "WHO TRS 961 附录 9 — 冻敏疫苗冻结即失效");
+  if (event.packaging === "compromised" && event.excursion_temp_c > s.max)
+    return decide("scrap", "超限期间包装破损", 2,
+      "EU GDP 2013/C 343/01 — 运输过程中包装完整性必须保持");
+  if (event.duration_min >= 2 * s.allowable || event.mkt_c >= s.mktThreshold + 3.0)
+    return decide("scrap", "超限严重程度超出任何可接受范围", 3,
+      "WHO TRS 961 附录 9 — 超限超出可接受稳定性余量");
+  if (event.duration_min > s.allowable || event.mkt_c > s.mktThreshold)
+    return decide("quarantine", "超出允许超限；隔离待质量评估", 4,
+      "WHO TRS 961 附录 9 / EU GDP — 超限时隔离待质量评估");
+  if (s.retestable && (event.duration_min >= 0.8 * s.allowable || event.mkt_c >= s.mktThreshold - 0.5))
+    return decide("retest", "未超限但接近阈值；复验确认", 5,
+      "EU GDP 2013/C 343/01 — 阈内超限以复验确认");
+  return decide("release", "超限在可接受安全范围内", 6,
+    "WHO TRS 961 附录 9 — 在可接受范围内");
+}
+
+/* 示意性 ML 启发式（概念示意，非真实模型） */
+function riskInfo(event, s) {
+  const exceed = Math.max(0, event.mkt_c - s.mktThreshold);
+  const durRatio = event.duration_min / s.allowable;
+  let risk = 0.05 + 0.35 * durRatio + 0.05 * exceed;
+  if (event.packaging === "compromised") risk += 0.25;
+  risk = clamp(risk, 0.03, 0.99);
+  const causes = [];
+  if (event.packaging === "compromised") causes.push("包装破损");
+  if (event.excursion_temp_c > s.max + 2) causes.push("冷藏机设定点故障");
+  if (event.stage === "airport_dwell") causes.push("滞留时间延误");
+  if (event.duration_min > s.allowable) causes.push("长时间暴露");
+  if (causes.length === 0) causes.push("轻微传感器漂移");
+  return { risk: Math.round(risk * 100), topCause: causes[0] };
+}
+
+/* ================= 渲染 ================= */
+function renderBanner() {
+  const d = evaluate(current, spec);
+  const dispo = DISPO[d.disposition];
+  $("banner").innerHTML = `
+    <div class="dispo-banner" style="background:${dispo.bg}">
+      <div class="dispo-badge">${dispo.label}</div>
+      <div>
+        <div class="big">${dispo.label}</div>
+        <div class="why">${d.reason}</div>
+      </div>
+      <div class="reship">补发<br><b>${d.reshipment ? "需要" : "不需要"}</b></div>
+    </div>`;
+}
+
+function renderRulePath() {
+  const d = evaluate(current, spec);
+  $("rulepath").textContent = d.rulePath;
+  $("rulesList").innerHTML = RULES.map((r, i) =>
+    `<li class="${i + 1 === d.ruleNo ? "fired" : ""}"><span class="no">${i + 1}</span>${r}</li>`
+  ).join("");
+}
+
+function renderRisk() {
+  const ri = riskInfo(current, spec);
+  $("riskFill").style.width = ri.risk + "%";
+  $("riskVal").textContent = ri.risk + "/100";
+  $("causeNote").textContent = "首要根因：" + ri.topCause;
+}
+
+function renderEvidence() {
+  const d = evaluate(current, spec);
+  const A = spec.allowable, T = spec.mktThreshold;
+  const rows = [];
+
+  rows.push({
+    k: "包装", v: current.packaging === "compromised" ? "破损" : "完好", limit: "",
+    level: current.packaging === "compromised" ? "breach" : "ok",
+    label: current.packaging === "compromised" ? "破损" : "正常",
+  });
+  const tempOut = current.excursion_temp_c > spec.max;
+  rows.push({
+    k: "超限温度", v: fmt(current.excursion_temp_c) + " °C", limit: "上限 " + fmt(spec.max) + " °C",
+    level: tempOut ? "breach" : "ok", label: tempOut ? "超范围" : "正常",
+  });
+  if (spec.freezeSensitive) {
+    const frozen = current.excursion_temp_c <= 0;
+    rows.push({
+      k: "冻结风险", v: fmt(current.excursion_temp_c) + " °C", limit: "冰点 0 °C",
+      level: frozen ? "severe" : "ok", label: frozen ? "已冻结" : "正常",
+    });
+  }
+  let durLevel, durLabel;
+  if (current.duration_min >= 2 * A) { durLevel = "severe"; durLabel = "严重（≥2×）"; }
+  else if (current.duration_min > A) { durLevel = "breach"; durLabel = "超出（>A）"; }
+  else if (current.duration_min >= 0.8 * A) { durLevel = "near"; durLabel = "接近（≥0.8×）"; }
+  else { durLevel = "ok"; durLabel = "正常"; }
+  rows.push({
+    k: "时长", v: current.duration_min + " 分钟", limit: "允许 " + A + " 分钟",
+    level: durLevel, label: durLabel,
+  });
+  let mktLevel, mktLabel;
+  if (current.mkt_c >= T + 3) { mktLevel = "severe"; mktLabel = "严重（≥T+3）"; }
+  else if (current.mkt_c > T) { mktLevel = "breach"; mktLabel = "超出（>T）"; }
+  else if (current.mkt_c >= T - 0.5) { mktLevel = "near"; mktLabel = "接近（≥T−0.5）"; }
+  else { mktLevel = "ok"; mktLabel = "正常"; }
+  rows.push({
+    k: "MKT", v: fmt(current.mkt_c) + " °C", limit: "阈值 " + fmt(T) + " °C",
+    level: mktLevel, label: mktLabel,
+  });
+
+  let html = rows.map((r) =>
+    `<div class="ev-row"><span class="k">${r.k}</span><span class="v">${r.v}</span><span class="limit">${r.limit}</span><span class="chip ${r.level}">${r.label}</span></div>`
+  ).join("");
+  html += `<div class="ev-summary">→ 规则 ${d.ruleNo}：${d.reason}</div>`;
+  html += `<div class="ev-reg">⚖ ${d.regulation}</div>`;
+  $("evidence").innerHTML = html;
+}
+
+/* ================= 时间轴回放 ================= */
+function genProfile(event, spec) {
+  const base = spec.min + (spec.max - spec.min) * 0.4;
+  const peak = event.excursion_temp_c;
+  const dur = event.duration_min;
+  const ramp = Math.max(6, Math.round(dur * 0.35));
+  const total = Math.max(60, dur + ramp * 2 + 20);
+  const n = 220;
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const t = total * i / n;
+    let temp;
+    if (t < ramp) temp = base + (peak - base) * (t / ramp);
+    else if (t < ramp + dur) temp = peak;
+    else if (t < ramp + dur + ramp) temp = peak + (base - peak) * ((t - ramp - dur) / ramp);
+    else temp = base;
+    const noise = Math.sin(t * 0.9 + 1.3) * 0.3 + Math.sin(t * 0.33 + 0.5) * 0.25;
+    pts.push({ t, temp: temp + noise });
+  }
+  return { pts, total, base, peak };
+}
+
+function buildCurvePaths(pts, spec) {
+  const segs = [];
+  let cur = [], curIn = null;
+  for (const p of pts) {
+    const inBand = p.temp >= spec.min && p.temp <= spec.max;
+    if (curIn === null) curIn = inBand;
+    if (inBand !== curIn) { segs.push({ inBand: curIn, pts: cur }); cur = []; curIn = inBand; }
+    cur.push(p);
+  }
+  segs.push({ inBand: curIn, pts: cur });
+  return segs;
+}
+
+function renderTimeline() {
+  const prof = genProfile(current, spec);
+  nowTime = clamp(nowTime, 0, prof.total);
+  const W = 640, H = 190, padL = 46, padR = 14, padT = 24, padB = 30;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const yMin = Math.min(spec.min, prof.base, prof.peak) - 2;
+  const yMax = Math.max(spec.max, prof.base, prof.peak) + 2;
+  const X = (t) => padL + (t / prof.total) * plotW;
+  const Y = (v) => padT + (yMax - v) / (yMax - yMin) * plotH;
+
+  // 安全区
+  let s = `<rect x="${padL}" y="${Y(spec.max).toFixed(1)}" width="${plotW}" height="${(Y(spec.min) - Y(spec.max)).toFixed(1)}" fill="#16a34a" fill-opacity="0.07"/>`;
+  s += `<line x1="${padL}" y1="${Y(spec.min).toFixed(1)}" x2="${padL + plotW}" y2="${Y(spec.min).toFixed(1)}" stroke="#16a34a" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
+  s += `<line x1="${padL}" y1="${Y(spec.max).toFixed(1)}" x2="${padL + plotW}" y2="${Y(spec.max).toFixed(1)}" stroke="#16a34a" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
+
+  // 曲线按是否越限着色
+  const segs = buildCurvePaths(prof.pts, spec);
+  let curves = "";
+  for (const seg of segs) {
+    const color = seg.inBand ? "#16a34a" : "#dc2626";
+    const dpath = seg.pts.map((p, i) => `${i ? "L" : "M"}${X(p.t).toFixed(1)},${Y(p.temp).toFixed(1)}`).join("");
+    curves += `<path d="${dpath}" fill="none" stroke="${color}" stroke-width="2.3"/>`;
+  }
+
+  // 已播放区域遮罩 + 当前光标
+  const nx = X(nowTime).toFixed(1);
+  let cursor = `<rect x="${padL}" y="${padT}" width="${(nx - padL).toFixed(1)}" height="${plotH}" fill="#0f2a4a" fill-opacity="0.03"/>`;
+  cursor += `<line x1="${nx}" y1="${padT}" x2="${nx}" y2="${padT + plotH}" stroke="#0f2a4a" stroke-width="1.6"/>`;
+
+  const idx = Math.round(nowTime / prof.total * (prof.pts.length - 1));
+  const nowTemp = prof.pts[idx].temp;
+  const anomaly = nowTemp > spec.max || nowTemp < spec.min;
+  cursor += `<circle cx="${nx}" cy="${Y(nowTemp).toFixed(1)}" r="5" fill="${anomaly ? "#dc2626" : "#0f2a4a"}"/>`;
+  let badge = "";
+  if (anomaly) {
+    badge = `<g><rect x="${W - 118}" y="4" width="106" height="20" rx="10" fill="#dc2626"/><text x="${W - 65}" y="18" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="inherit">⚠ 超限</text></g>`;
+  }
+
+  let labels = `<text x="${padL}" y="${(Y(spec.max) - 4).toFixed(1)}" font-size="10" fill="#16a34a" font-family="inherit">上限 ${fmt(spec.max, 0)}°</text>`;
+  labels += `<text x="${padL}" y="${(Y(spec.min) + 11).toFixed(1)}" font-size="10" fill="#16a34a" font-family="inherit">下限 ${fmt(spec.min, 0)}°</text>`;
+  labels += `<text x="${padL + plotW / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit">时间（分钟）</text>`;
+
+  $("timeline").innerHTML = `<svg class="zone-svg" viewBox="0 0 ${W} ${H}">${s}${curves}${cursor}${badge}${labels}</svg>`;
+
+  const scrub = $("timeScrub");
+  if (document.activeElement !== scrub) scrub.value = (nowTime / prof.total * 100).toFixed(0);
+  $("timeReadout").textContent = `t = ${nowTime.toFixed(0)} / ${prof.total.toFixed(0)} 分钟`;
+}
+
+function playTimeline() {
+  if (animTimer) { stopTimeline(); return; }
+  const start = Date.now();
+  const durMs = 3600;
+  $("playBtn").textContent = "⏸ 暂停";
+  animTimer = setInterval(() => {
+    const p = genProfile(current, spec);
+    nowTime = Math.min(p.total, p.total * ((Date.now() - start) / durMs));
+    renderTimeline();
+    if (nowTime >= p.total) stopTimeline();
+  }, 30);
+}
+function stopTimeline() {
+  if (animTimer) { clearInterval(animTimer); animTimer = null; }
+  $("playBtn").textContent = "▶ 回放";
+}
+
+/* ================= 决策边界图 ================= */
+function renderZonePlot() {
+  const A = spec.allowable, T = spec.mktThreshold;
+  const xMin = 0, xMax = 2.5 * A;
+  const yMin = T - 6, yMax = T + 4;
+  const W = 380, H = 250, padL = 46, padR = 14, padT = 14, padB = 32;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const X = (d) => padL + (d - xMin) / (xMax - xMin) * plotW;
+  const Y = (m) => padT + (yMax - m) / (yMax - yMin) * plotH;
+
+  const cols = 26, rows = 18, cw = plotW / cols, ch = plotH / rows;
+  let rects = "";
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const d = xMin + (c + 0.5) / cols * (xMax - xMin);
+      const m = yMax - (r + 0.5) / rows * (yMax - yMin);
+      const ev = { product_id: current.product_id, excursion_temp_c: spec.max, duration_min: d, mkt_c: m, packaging: "intact", stage: "transit" };
+      const disp = evaluate(ev, spec).disposition;
+      rects += `<rect x="${(padL + c * cw).toFixed(1)}" y="${(padT + r * ch).toFixed(1)}" width="${(cw + 0.6).toFixed(1)}" height="${(ch + 0.6).toFixed(1)}" fill="${DISPO[disp].bg}" fill-opacity="0.14"/>`;
+    }
+  }
+
+  const vlines = [[0.8 * A, "#cbd5e1"], [A, "#94a3b8"], [2 * A, "#64748b"]];
+  const hlines = [[T - 0.5, "#cbd5e1"], [T, "#94a3b8"], [T + 3, "#64748b"]];
+  let lines = "";
+  vlines.forEach(([x, col]) => { lines += `<line x1="${X(x).toFixed(1)}" y1="${padT}" x2="${X(x).toFixed(1)}" y2="${padT + plotH}" stroke="${col}" stroke-width="1" stroke-dasharray="4 4"/>`; });
+  hlines.forEach(([y, col]) => { lines += `<line x1="${padL}" y1="${Y(y).toFixed(1)}" x2="${padL + plotW}" y2="${Y(y).toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="4 4"/>`; });
+
+  const dFull = evaluate(current, spec);
+  const px = X(clamp(current.duration_min, xMin, xMax)).toFixed(1);
+  const py = Y(clamp(current.mkt_c, yMin, yMax)).toFixed(1);
+  const point = `<circle cx="${px}" cy="${py}" r="6.5" fill="#fff" stroke="${DISPO[dFull.disposition].bg}" stroke-width="3"/>`;
+
+  let ticks = `<text x="${padL + plotW / 2}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit">时长（分钟）</text>`;
+  ticks += `<text x="12" y="${padT + plotH / 2}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit" transform="rotate(-90 12 ${padT + plotH / 2})">MKT（°C）</text>`;
+  ticks += `<text x="${X(0)}" y="${padT + plotH + 16}" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="inherit">0</text>`;
+  ticks += `<text x="${X(A)}" y="${padT + plotH + 16}" text-anchor="middle" font-size="10" fill="#64748b" font-family="inherit">${fmt(A, 0)}</text>`;
+  ticks += `<text x="${X(2 * A)}" y="${padT + plotH + 16}" text-anchor="middle" font-size="10" fill="#64748b" font-family="inherit">${fmt(2 * A, 0)}</text>`;
+  ticks += `<text x="${padL - 6}" y="${Y(yMin) + 3}" text-anchor="end" font-size="10" fill="#94a3b8" font-family="inherit">${fmt(yMin, 0)}</text>`;
+  ticks += `<text x="${padL - 6}" y="${Y(T) + 3}" text-anchor="end" font-size="10" fill="#64748b" font-family="inherit">${fmt(T, 0)}</text>`;
+  ticks += `<text x="${padL - 6}" y="${Y(yMax) + 3}" text-anchor="end" font-size="10" fill="#64748b" font-family="inherit">${fmt(yMax, 0)}</text>`;
+
+  $("zonePlot").innerHTML = `<svg class="zone-svg" viewBox="0 0 ${W} ${H}">${rects}${lines}${point}${ticks}</svg>`;
+
+  const legendItems = ["release", "retest", "quarantine", "scrap"].filter((k) => k !== "retest" || spec.retestable);
+  $("legend").innerHTML = legendItems.map((k) => `<span><i style="background:${DISPO[k].bg}"></i>${DISPO[k].label}</span>`).join("");
+
+  const rule1 = current.packaging === "compromised" && current.excursion_temp_c > spec.max;
+  $("plotNote").textContent = rule1
+    ? "规则 1 覆盖生效：超限期间包装破损 → 报废（图中仅显示规则 2–5）。"
+    : "图中显示规则 2–5（假设包装完好）。拖动时长 / MKT 滑杆，让圆点跨越决策边界。";
+}
+
+/* ================= 配送重新规划 ================= */
+function renderReroute() {
+  const d = evaluate(current, spec);
+  if (!d.reshipment) {
+    $("reroute").innerHTML = `
+      <svg class="route-svg" viewBox="0 0 360 180">
+        <rect x="0" y="0" width="360" height="180" rx="10" fill="#f8fafc"/>
+        <circle cx="180" cy="90" r="26" fill="#e2e8f0"/>
+        <text x="180" y="95" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="inherit">无需路由</text>
+      </svg>
+      <div class="idle">货物放行 —— 无需重新配送。</div>`;
+    return;
+  }
+
+  const route = ROUTES[routeMode];
+  const coords = { depot: DEPOT };
+  PHARMACIES.forEach((p) => (coords[p.id] = p));
+  const pts = [DEPOT, ...route.order.map((id) => coords[id])];
+  const dPath = pts.map((p, i) => `${i ? "L" : "M"}${p.x},${p.y}`).join(" ");
+  const stroke = routeMode === "optimized" ? "#14b8a6" : "#dc2626";
+  const dash = routeMode === "optimized" ? "" : ' stroke-dasharray="6 5"';
+
+  let svg = `<svg class="route-svg" viewBox="0 0 360 210">
+    <rect x="0" y="0" width="360" height="210" rx="10" fill="#f0fdfa"/>
+    <path d="${dPath}" fill="none" stroke="${stroke}" stroke-width="2.5"${dash}/>
+    <circle cx="${DEPOT.x}" cy="${DEPOT.y}" r="20" fill="#0d9488"/>
+    <text x="${DEPOT.x}" y="${DEPOT.y + 5}" text-anchor="middle" fill="#fff" font-size="10" font-weight="700" font-family="inherit">仓库</text>`;
+  for (const p of PHARMACIES) {
+    const sel = selectedPharm === p.id;
+    const fill = sel ? "#14b8a6" : "#fff";
+    const col = sel ? "#fff" : "#14b8a6";
+    svg += `<circle class="pharm-node" data-ph="${p.id}" cx="${p.x}" cy="${p.y}" r="13" fill="${fill}" stroke="${col}" stroke-width="2.5"/>`;
+    svg += `<text x="${p.x}" y="${p.y + 4}" text-anchor="middle" fill="${col}" font-size="10" font-weight="700" font-family="inherit" pointer-events="none">${p.label}</text>`;
+  }
+  svg += `</svg>`;
+
+  const toggle = `<div class="route-toggle">
+    <button class="${routeMode === "optimized" ? "on" : ""}" data-mode="optimized">优化方案</button>
+    <button class="${routeMode === "original" ? "on" : ""}" data-mode="original">原始方案（基线）</button>
+  </div>`;
+
+  const metrics = `<div class="metrics">
+    <div class="metric"><div class="mv">${route.dist}</div><div class="mk">距离</div></div>
+    <div class="metric"><div class="mv">${route.time}</div><div class="mk">路径时长</div></div>
+    <div class="metric"><div class="mv">${route.cost}</div><div class="mk">成本</div></div>
+    <div class="metric"><div class="mv">${route.viol}</div><div class="mk">违规数</div></div>
+  </div>`;
+
+  const viol = route.viol ? `<div class="viol-note">✗ ${route.violNote}</div>` : "";
+
+  let detail = "";
+  if (selectedPharm) {
+    const p = PHARMACIES.find((x) => x.id === selectedPharm);
+    const pos = route.order.indexOf(p.id) + 1;
+    detail = `<div class="pharm-detail"><span class="nm">${p.name}</span><br>时间窗 ${p.tw} · ${p.zone} · 需求 ${p.demand} 剂 · 第 ${pos} / ${route.order.length} 站</div>`;
+  }
+
+  const alloc = `<div class="alloc"><span class="strong">已分配补发库存：</span>${PRODUCTS[current.product_id].name} 共 240 剂，自中央仓库发出，冷藏车配送。</div>`;
+
+  $("reroute").innerHTML = toggle + svg + metrics + viol + detail + alloc;
+}
+
+function renderAll() {
+  renderBanner();
+  renderTimeline();
+  renderRulePath();
+  renderRisk();
+  renderEvidence();
+  renderZonePlot();
+  renderReroute();
+}
+
+/* ================= 控件 → 状态 ================= */
+function syncControls() {
+  const [tLo, tHi] = TEMP_RANGE[current.product_id];
+  $("productSelect").value = current.product_id;
+  $("stageSelect").value = current.stage;
+  $("packagingSelect").value = current.packaging;
+  $("tempRange").min = tLo; $("tempRange").max = tHi;
+  $("tempRange").value = current.excursion_temp_c;
+  $("tempNum").value = current.excursion_temp_c;
+  const dMax = Math.max(10, Math.round(2.5 * spec.allowable));
+  $("durRange").min = 0; $("durRange").max = dMax;
+  $("durRange").value = current.duration_min;
+  $("durNum").value = current.duration_min;
+  const mLo = spec.mktThreshold - 6, mHi = spec.mktThreshold + 4;
+  $("mktRange").min = mLo; $("mktRange").max = mHi;
+  $("mktRange").value = current.mkt_c;
+  $("mktNum").value = current.mkt_c;
+  $("allowableInput").value = spec.allowable;
+  $("mktThresholdInput").value = spec.mktThreshold;
+  $("retestableInput").checked = spec.retestable;
+}
+
+function updateSliderRanges() {
+  const [tLo, tHi] = TEMP_RANGE[current.product_id];
+  $("tempRange").min = tLo; $("tempRange").max = tHi;
+  $("durRange").max = Math.max(10, Math.round(2.5 * spec.allowable));
+  $("mktRange").min = spec.mktThreshold - 6;
+  $("mktRange").max = spec.mktThreshold + 4;
+}
+
+function switchProduct(pid) {
+  stopTimeline();
+  current = { product_id: pid, ...DEFAULT_EVENT[pid] };
+  spec = { ...PRODUCTS[pid] };
+  nowTime = 0;
+  syncControls();
+  renderAll();
+}
+
+function setEvent(sc) {
+  stopTimeline();
+  current = { product_id: sc.product_id, excursion_temp_c: sc.excursion_temp_c, duration_min: sc.duration_min, mkt_c: sc.mkt_c, packaging: sc.packaging, stage: sc.stage };
+  spec = { ...PRODUCTS[sc.product_id] };
+  nowTime = 0;
+  syncControls();
+  renderAll();
+  markActive(sc.id);
+}
+
+function addAudit() {
+  const d = evaluate(current, spec);
+  const dispo = DISPO[d.disposition];
+  const specName = PRODUCTS[current.product_id].name;
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${new Date().toLocaleTimeString()}</td>
+    <td>${STAGES[current.stage] || current.stage} · ${fmt(current.excursion_temp_c)}°C / ${current.duration_min}分钟</td>
+    <td>${specName}</td>
+    <td><span class="tag" style="background:${dispo.bg}1a;color:${dispo.bg}">${dispo.label}</span></td>
+    <td style="color:#64748b">${d.rulePath}</td>`;
+  const body = $("auditBody");
+  body.prepend(tr);
+  while (body.children.length > 8) body.removeChild(body.lastChild);
+}
+
+/* ================= 场景预设列表 ================= */
+function buildList() {
+  const wrap = $("exList");
+  wrap.innerHTML = "";
+  SCENARIOS.forEach((sc) => {
+    const specName = PRODUCTS[sc.product_id].name;
+    const d = evaluate({ ...sc }, PRODUCTS[sc.product_id]);
+    const el = document.createElement("div");
+    el.className = "ex-item";
+    el.dataset.id = sc.id;
+    el.innerHTML = `
+      <div class="top"><span class="dot" style="background:${DISPO[d.disposition].bg}"></span><span class="id">${sc.id}</span><span class="name">${specName}</span></div>
+      <div class="meta">${fmt(sc.excursion_temp_c)} °C · ${sc.duration_min} 分钟 · MKT ${fmt(sc.mkt_c)} °C · ${STAGES[sc.stage] || sc.stage}</div>`;
+    el.addEventListener("click", () => setEvent(sc));
+    wrap.appendChild(el);
+  });
+}
+function markActive(id) {
+  document.querySelectorAll(".ex-item").forEach((n) => n.classList.toggle("active", n.dataset.id === id));
+}
+
+/* ================= 事件绑定 ================= */
+function bind() {
+  $("productSelect").addEventListener("change", (e) => switchProduct(e.target.value));
+  $("stageSelect").addEventListener("change", (e) => { current.stage = e.target.value; renderAll(); });
+  $("packagingSelect").addEventListener("change", (e) => { current.packaging = e.target.value; renderAll(); });
+
+  const link = (rangeId, numId, field, parse) => {
+    const r = $(rangeId), n = $(numId);
+    r.addEventListener("input", () => { const v = parse(r.value); current[field] = v; n.value = v; renderAll(); });
+    n.addEventListener("input", () => { const v = parse(n.value); if (v === null) return; current[field] = v; r.value = clamp(v, parseFloat(r.min), parseFloat(r.max)); renderAll(); });
+  };
+  link("tempRange", "tempNum", "excursion_temp_c", parseFloat);
+  link("durRange", "durNum", "duration_min", (v) => Math.round(parseFloat(v)));
+  link("mktRange", "mktNum", "mkt_c", parseFloat);
+
+  $("allowableInput").addEventListener("input", (e) => { const v = parseFloat(e.target.value); if (v > 0) { spec.allowable = v; updateSliderRanges(); renderAll(); } });
+  $("mktThresholdInput").addEventListener("input", (e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) { spec.mktThreshold = v; updateSliderRanges(); renderAll(); } });
+  $("retestableInput").addEventListener("change", (e) => { spec.retestable = e.target.checked; renderAll(); });
+  $("resetCfg").addEventListener("click", () => { spec = { ...PRODUCTS[current.product_id] }; syncControls(); renderAll(); });
+
+  $("randomize").addEventListener("click", () => {
+    stopTimeline();
+    const [tLo, tHi] = TEMP_RANGE[current.product_id];
+    current.excursion_temp_c = Math.round((tLo + Math.random() * (tHi - tLo)) * 10) / 10;
+    current.duration_min = Math.round(Math.random() * 2.5 * spec.allowable);
+    current.mkt_c = Math.round((spec.mktThreshold - 4 + Math.random() * 10) * 10) / 10;
+    current.packaging = Math.random() < 0.15 ? "compromised" : "intact";
+    nowTime = 0;
+    syncControls();
+    renderAll();
+    addAudit();
+    markActive(null);
+  });
+
+  $("playBtn").addEventListener("click", playTimeline);
+  $("timeScrub").addEventListener("input", (e) => {
+    const prof = genProfile(current, spec);
+    nowTime = prof.total * (parseFloat(e.target.value) / 100);
+    renderTimeline();
+  });
+
+  $("reroute").addEventListener("click", (e) => {
+    const mb = e.target.closest("[data-mode]");
+    if (mb) { routeMode = mb.dataset.mode; renderReroute(); return; }
+    const ph = e.target.closest("[data-ph]");
+    if (ph) { selectedPharm = selectedPharm === ph.dataset.ph ? null : ph.dataset.ph; renderReroute(); return; }
+  });
+
+  $("qaAsk").addEventListener("click", () => {
+    const q = $("qaInput").value.trim();
+    if (!q) return;
+    $("qaAnswer").textContent = askKG(q);
+  });
+  $("qaInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("qaAsk").click(); });
+}
+
+/* ================= 知识图谱问答（概念示意） ================= */
+function askKG(q) {
+  const s = q.toLowerCase();
+  if (s.includes("mkt") || s.includes("平均动力学")) return "平均动力学温度（MKT）把一段温度-时间曲线压缩成单个与稳定性相关的值，使一次短暂升温可对照产品的稳定性阈值来评估。";
+  if (s.includes("报废") || s.includes("销毁") || s.includes("丢弃")) return "依据 EU GDP 2013/C 343/01 与 WHO TRS 961 附录 9，超出稳定性边界的药品必须报废，并附销毁记录与偏差报告。";
+  if (s.includes("隔离") || s.includes("扣留") || s.includes("hold")) return "隔离将批次置于隔离且贴标存储，等待质量审评；放行需基于超限数据完成书面风险评估。";
+  if (s.includes("复验") || s.includes("检测") || s.includes("测试")) return "当超限处于可复验边界内时，复验确认效价与稳定性；结果作为最终处置的依据。";
+  if (s.includes("放行") || s.includes("释放")) return "放行要求超限处于可接受安全范围内——MKT 与时长均低于阈值——且留痕记录规则路径。";
+  if (s.includes("配送") || s.includes("路由") || s.includes("补发") || s.includes("路线")) return "优化器通过 VRPTW 重新规划补发库存，考虑时间窗、多温区、容量约束与断货优先级。";
+  if (s.includes("gdp") || s.includes("ich") || s.includes("who")) return "法规依据：WHO TRS 961 附录 9（存储与运输示范指南）、EU GDP 2013/C 343/01，以及 ICH 稳定性指南。";
+  return "知识图谱将产品、路线、事件、规则与 SOP 等实体关联，使每个回答都基于适用的法规，而非凭空生成。";
+}
+
+/* ================= 初始化 ================= */
+buildList();
+switchProduct("vaccine_2_8");
+bind();
+setEvent(SCENARIOS[2]); // 打开一个复验边界案例
+</script>
+</body>
+</html>

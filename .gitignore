@@ -16,11 +16,12 @@ venv/
 .env
 .env.*
 
+<<<<<<< HEAD
 # Large raw datasets (downloadable) — keep out of git; curated scenario bank is tracked
 data/ml/
 data/optimisation/
 data/processed/
-*.parquet
+
 
 # Logs / OS
 *.log

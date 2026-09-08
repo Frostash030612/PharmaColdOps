@@ -47,3 +47,38 @@ def test_release_does_not_trigger_reshipment():
     decision = engine.evaluate(event)
     assert decision.disposition.value == "release"
     assert decision.reshipment_required is False
+
+
+def test_freeze_damage_triggers_scrap():
+    engine = RuleEngine()
+    event = ExcursionEvent("F1", "vaccine_2_8", -5.0, 5, 4.0, "intact", "transit")
+    decision = engine.evaluate(event)
+    assert decision.disposition.value == "scrap"
+    assert decision.reshipment_required is True
+    assert "freeze" in decision.rule_path.lower()
+
+
+def test_frozen_product_not_freeze_sensitive():
+    engine = RuleEngine()
+    event = ExcursionEvent("F2", "frozen_m20", -30.0, 5, -28.0, "intact", "transit")
+    decision = engine.evaluate(event)
+    assert decision.disposition.value == "release"
+
+
+def test_new_products_load_and_evaluate():
+    engine = RuleEngine()
+    assert "insulin_2_8" in engine.specs
+    assert "mrna_ultracold" in engine.specs
+    insulin = engine.evaluate(ExcursionEvent("N1", "insulin_2_8", 11.0, 35, 10.8, "intact", "transit"))
+    assert insulin.disposition.value == "quarantine"
+    mrna = engine.evaluate(ExcursionEvent("N2", "mrna_ultracold", -30.0, 150, -35.0, "intact", "warehouse"))
+    assert mrna.disposition.value == "scrap"
+
+
+def test_decision_carries_regulation():
+    engine = RuleEngine()
+    event = ExcursionEvent("R1", "vaccine_2_8", 12.0, 35, 11.2, "intact", "airport_dwell")
+    decision = engine.evaluate(event)
+    assert decision.regulation
+    assert ("WHO" in decision.regulation) or ("GDP" in decision.regulation)
+    assert decision.evidence["regulation"] == decision.regulation
