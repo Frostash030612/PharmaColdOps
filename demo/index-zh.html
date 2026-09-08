@@ -296,7 +296,7 @@
     <div class="section-label">规则评估（优先级顺序）</div>
     <ul class="rules-list" id="rulesList"></ul>
 
-    <div class="section-label">ML 风险评分 <span style="color:#94a3b8;text-transform:none;letter-spacing:0">（概念）</span></div>
+    <div class="section-label">风险指数 <span style="color:#94a3b8;text-transform:none;letter-spacing:0">（规则启发式 · 确定性，非 ML 模型）</span></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="riskbar" style="flex:1"><div id="riskFill" style="width:0%"></div></div>
       <b style="font-size:13px" id="riskVal">–/100</b>
@@ -334,7 +334,7 @@
 </section>
 
 <footer>
-  PharmaColdOps · 交互演示 —— 规则引擎为实时逻辑；ML 风险评分、VRPTW 配送规划与知识图谱问答为概念示意。
+  PharmaColdOps · 交互演示 —— 规则引擎与风险指数为实时逻辑（风险指数由同一组阈值导出，确定性）；VRPTW 配送规划与知识图谱问答为概念示意。
 </footer>
 
 <script src="real_data.js"></script>
@@ -417,20 +417,38 @@ function evaluate(event, s) {
     "WHO TRS 961 附录 9 — 在可接受范围内");
 }
 
-/* 示意性 ML 启发式（概念示意，非真实模型） */
+/* 风险指数：由规则引擎同一组阈值导出的确定性严重度评分（规则启发式，非 ML 模型）。
+   分量 = 温度越出储运温带的幅度（按带宽归一）+ 超限时长/允许值 + MKT/阈值 + 包装破损；
+   冻敏产品 ≤0 °C 冻结 = 规则 1，置顶最高严重度。与处置结果同源，随滑杆实时变化。 */
 function riskInfo(event, s) {
-  const exceed = Math.max(0, event.mkt_c - s.mktThreshold);
-  const durRatio = event.duration_min / s.allowable;
-  let risk = 0.05 + 0.35 * durRatio + 0.05 * exceed;
-  if (event.packaging === "compromised") risk += 0.25;
-  risk = clamp(risk, 0.03, 0.99);
+  const band = Math.max(1e-6, s.max - s.min);
+  const frozen = s.freezeSensitive && event.excursion_temp_c <= 0;
+
+  let tScore = 0, tLabel = "带内";
+  if (frozen) { tScore = 1.6; tLabel = "冻结"; }
+  else if (event.excursion_temp_c > s.max) { tScore = Math.min(1.5, (event.excursion_temp_c - s.max) / band); tLabel = "超上限"; }
+  else if (event.excursion_temp_c < s.min && s.freezeSensitive) { tScore = Math.min(1.2, (s.min - event.excursion_temp_c) / band); tLabel = "低于下限"; }
+  // 非冻敏产品（冷冻 / mRNA）低于下限视为更安全，不计分
+
+  const dScore = Math.min(1.5, event.duration_min / s.allowable);   // 同规则 3–5 的时长判据
+  const mScore = Math.max(0, Math.min(1.5, (event.mkt_c - s.mktThreshold) / band));
+  const pBreach = event.packaging === "compromised" && event.excursion_temp_c > s.max;
+
+  let raw = 0.50 * tScore + 0.28 * dScore + 0.12 * mScore + (pBreach ? 0.10 : 0);
+  if (frozen) raw = Math.max(raw, 0.95);     // 冻结 = 规则 1，最高严重度
+  if (pBreach) raw = Math.max(raw, 0.72);    // 破损包装 = 规则 2
+
   const causes = [];
-  if (event.packaging === "compromised") causes.push("包装破损");
-  if (event.excursion_temp_c > s.max + 2) causes.push("冷藏机设定点故障");
-  if (event.stage === "airport_dwell") causes.push("滞留时间延误");
-  if (event.duration_min > s.allowable) causes.push("长时间暴露");
-  if (causes.length === 0) causes.push("轻微传感器漂移");
-  return { risk: Math.round(risk * 100), topCause: causes[0] };
+  if (frozen) causes.push("冻结损坏（≤0 °C）");
+  if (pBreach) causes.push("包装破损");
+  if (event.excursion_temp_c > s.max + band * 0.5) causes.push("制冷设定点/超温越限");
+  if (!frozen && event.duration_min > s.allowable) causes.push("超限时长超允许值");
+  if (event.mkt_c > s.mktThreshold) causes.push("MKT 超过阈值");
+  if (causes.length === 0 && (event.duration_min >= 0.8 * s.allowable || event.mkt_c >= s.mktThreshold - 0.5))
+    causes.push("接近阈值，需复验确认");
+  if (causes.length === 0) causes.push(tLabel === "带内" ? "在带内，未见异常" : "轻微温度偏离");
+
+  return { risk: clamp(Math.round(raw * 100), 3, 99), topCause: causes[0] };
 }
 
 /* ================= 渲染 ================= */

@@ -4,6 +4,199 @@
 
 ---
 
+## 四成员下一步分工（合作基线 · 随周更新）
+
+> 依据提案 §10.1 角色分工与 §10.2 周计划（W1 9/14–20 · W2 9/21–27 · W3 9/28–10/4 · W4 10/5–11 · W5 10/12–18 视频/报告 · W6 10/19–25 终稿，**10/25 截止**）。角色用 A/B/C/D 字母，与提案一致；把姓名填进下表后即可认领。完成一项在勾选框打 ☑。
+
+| 成员 | 角色（提案 §10.1） | 对应目录 | 当前已就绪 |
+|---|---|---|---|
+| A（姓名待填） | 项目负责人 · 规则/决策引擎 · 合规 · 报告 | `src/rule_engine/` | 规则引擎 v2 完成（冻结规则+法规引用+4 产品）；57 场景；7 测试 |
+| B（姓名待填） | 数据与机器学习 · 根因诊断 · 实验评估 | `src/ml/` `data/ml/` | 数据字典+审计、LR/LGBM/XGB+SHAP 与根因全实验脚本**已跑通出数** |
+| C（姓名待填） | 配送优化 · VRPTW · OR-Tools/遗传 | `src/optimisation/`（**尚不存在**） | 数据已备（solomon 实例）；demo 右栏是 JS 简化 NN+2-opt（仅示意） |
+| D（姓名待填） | 知识图谱/问答 · 后端 API · UI · 视频 | `src/knowledge_graph/` `src/api/`（**尚不存在**） | demo 前端（EN+ZH）已有：规则引擎 JS 移植 + 风险指数 + 合规问答（KG 现为概念示意） |
+
+### A —— 规则 / 决策引擎 / 报告
+
+- [ ] **提案冲刺（9/13 前）**：终版提案定稿提交；把「真 ML 骨架已出数」写进 §6/§8（引用 PROGRESS 下方数字，务必带合成数据警示句）。
+- [ ] **W1-A**：把 `src/rule_engine/rules_config.json` 的占位阈值按真实数据校一遍——demo 接真实数据后暴露「占位 allowable=30 min 把小时级超限全判报废」。产出：4 产品「阈值证据表」（来源链接到 WHO/GDP 文档级，不杜撰条款号）。阈值动 → 同步跑 `pytest`（gold 场景跟着改）。
+- [ ] **W2-A**：报告方法论初稿（§8.3 反循环评估）：gold label 应改成独立人工标注流程（谁写场景、谁核 label 要分开），写清「与 ML 训练集不共用」。
+- [ ] **W3-A**：规则↔ML 特征对齐接口设计（供 B 落地）；跨成员「补发单」字段契约与 C 对齐。
+- [ ] 全程：维护本 PROGRESS、例会分派、风险清单（提案 §11）跟踪。
+
+### B —— 数据与机器学习
+
+- [ ] **提案冲刺（9/13 前）**：§7 数据描述贴 DATA_DICTIONARY 口径（来源/行数/合成声明）；**到源页逐一核实许可证**（当前是「待核实」占位，提交前必做）。
+- [ ] **W1-B**：写 **ML task spec**——录入 schema ↔ 模型特征对齐表、vaccine-distribution 派生标签方案定死、**时间切分矛盾正面决策**（silent-failure 无时间戳 → 接受随机切分+注明，或改用带 `date` 的 vaccine-distribution 建时间序列任务补充）。
+- [ ] **W2-B**：把已跑通骨架升级成报告正式版：多折 CV 实验表、SHAP 图并进实验节、把 `data/processed/` 关键数字同步回 PROGRESS/报告。
+- [ ] **W3-B**：根因特征正当性分析（核心问题：只用前置上下文 vs 结果列的权衡、防「用结果解释结果」）+ macro-F1/top-3 正式表 + SHAP/特征重要性图。
+- [ ] 全程：每次实验交代 seed / 切分 / 阈值选择，保证可复现。
+
+### C —— 配送优化（VRPTW）—— 仓库侧还空着，任务量最大
+
+- [ ] **提案冲刺（9/13 前）**：确认 OR-Tools 可行性（装 `ortools` 出 hello-world 即可）；demo 右栏「简化启发式 ≠ 正式求解器」口径在提案/README 一致（已注）。
+- [ ] **W1-C**：建 `src/optimisation/` 包 + 输入/输出 schema 定义（**补发单 → 仓库分配 → 车辆路线**的数据契约，字段与 A/B/D 对齐）；贪心基线正式化（把 demo 的 NN+2-opt 思路搬成带时间窗/容量约束校验的 Python 实现）。
+- [ ] **W2-C**：OR-Tools / CP-SAT v1 求解器，跑通 solomon c101（有全局最优参考值可对）。
+- [ ] **W3-C**：主流程打通 + 贪心 vs CP-SAT 对比表；多温区 / 缺货优先级留 W4（可选）。
+- [ ] 产出文件固定位：`data/optimisation/`（输入已入库）→ 结果写 `data/processed/`（不入库）。
+
+### D —— 知识图谱 / 问答 / 集成 / UI
+
+- [ ] **提案冲刺（9/13 前）**：准备提案要用的 1–2 张 demo 截图/流程图；确认 demo 里合规问答的定位（KG 概念示意 or 查图真问答）在提案里口径一致。
+- [ ] **W1-D**：建 `src/knowledge_graph/`：schema v1（实体/关系：产品、规则、法规、案例/补发单）+ 数据加载脚本（从 rules_config + scenarios 导节点）。
+- [ ] **W2-D**：`src/api/` FastAPI 骨架：`/decide`（接 A 引擎）、`/route`（接 C，先留 stub）、`/qa`（接 KG）三个路由契约定死——这是四模块集成的锚点。
+- [ ] **W3-D**：打通「异常 → 处置 → 改派」最小闭环的 API + 前端；KG 问答要么换成真查询、要么维持概念示意并在报告如实标注。
+- [ ] **W5-D**：视频脚本（demo 录屏走查）+ 报告集成章节。
+
+### 跨成员契约（防各做各的）
+
+1. **异常事件 schema**：`ExcursionEvent`（产品/温度/时长/MKT/包装/环节）是全系统入口——A 已在引擎定义，C/D 不要再自造字段。
+2. **补发单 → 改派**：A 引擎产 `reshipment` 标志 → C 收到「补发单」生成改派路线 → D 展示。字段契约 W2 前三方定死。
+3. **风险分 ↔ 前端**：demo 现用规则启发式风险指数（确定性、同阈值同源）；B 的 ML 分只进报告不接 UI（schema 错位已论证），若最终要接 UI 需 B+D 先做 feature bridge。
+4. **git 纪律**：一功能一 commit、commit message 写清做了啥（历史里出现过 `9.8 0.4`、`重复` 这类无效消息）；**只 commit 源码/文档/数据集，`data/processed/` 与模型产物不入库**（`.gitignore` 已拦）。
+
+---
+
+## 2026-09-09 — ML 完全体骨架：风险全实验（LR/LGBM/XGB+SHAP）+ 根因多分类
+
+### 决策
+
+把提案 W2/W3 的「真 ML」骨架提前搭好、已跑通出数；脚本一次写对、默认超参，只读回指标行。训练本地免费，token 只花在写码（已封顶）。
+
+### 新增 `src/ml/`（正式模块目录）
+
+| 文件 | 说明 |
+|---|---|
+| `src/ml/__init__.py` | 模块标记 |
+| `src/ml/evaluate.py` | 共享评估工具：类别平衡权重、验证集选 F1 最优阈值、二分类指标、多分类 top-1/top-3/macro-F1 |
+| `scripts/train_risk_full.py` | 风险全实验：LR/LGBM/XGB（均 balanced），70/15/15 分层，阈值从验证集选（非固定 0.5），两组特征对照 + SHAP beeswarm |
+| `scripts/train_root_cause.py` | 根因多分类：vaccine-cold-chain `excursion_cause`（10 类），上下文特征，LGBM(balanced) vs 多数类 |
+
+### 风险预测结果（silent-failure，8,000 行，正类 19.7%，seed=42）
+
+| 特征集 | 模型 | thr | F1 | ROC-AUC | PR-AUC |
+|---|---|---|---|---|---|
+| interpretable | LR (balanced) | 0.55 | 0.626 | 0.891 | 0.651 |
+| interpretable | **LGBM (balanced)** | 0.35 | **0.688** | **0.925** | **0.745** |
+| interpretable | XGB (balanced) | 0.30 | 0.659 | 0.919 | 0.734 |
+| all | LGBM (balanced) | 0.45 | 0.708 | 0.926 | 0.760 |
+
+- **LGBM > LR/XGB；`all` 相对 `interpretable` 仅 +0.001 AUC** → 匿名 `feature_x1..3` 依旧无实质增益。
+- SHAP beeswarm 存到 `reports/ml/shap_risk.png`；|SHAP| top 特征：`rh_std`、`transit_days`、`door_opens`、`temp_max_c`（可解释字段主导——好故事）。
+- ⚠️ 数据无时间戳 → **非时间切分**（70/15/15 分层随机），报告须注明；数据疑似合成，指标只描述生成器。
+
+### 根因诊断结果（vaccine-cold-chain，16,192 条超限行 × 10 类）
+
+| 模型 | top-1 | top-3 | macro-F1 |
+|---|---|---|---|
+| majority-class | 0.161 | 0.284 | 0.028 |
+| LGBM (balanced) | 0.143 | **0.421** | **0.125** |
+
+- **诚实解读**：只用「前置上下文」（设备/电源/监测/疫苗属性）→ top-1 弱于多数类（balanced 权重牺牲 top-1 换 macro-F1），但 top-3 0.42 有信号。原因类更多编码在「温度/用量结果列」里——把结果列加进来会虚高且接近描述仿真构造。**这是 W3 的核心分析问题**（哪些特征可正当用于诊断、如何防「用结果解释结果」），留给 B 组员。
+
+### 复现
+
+```bash
+pip install -r requirements.txt            # 含 lightgbm xgboost shap matplotlib
+python scripts/train_risk_full.py          # → data/processed/risk_model_full_results.md
+python scripts/train_root_cause.py         # → data/processed/root_cause_results.md
+```
+
+结果 md 均在 `data/processed/`（不入库），复跑即得。
+
+### 下一步
+
+1. W3：根因特征正当性分析 + 把 SHAP 图/实验表并进报告实验节。
+2. 时间切分矛盾：或改用带 `date` 的 vaccine-distribution 另建一个时间序列任务作为补充实验。
+
+---
+
+## 2026-09-09 — demo 风险指数（规则启发式）+ ML 基线首次出数
+
+### 决策（省 token 且诚实）
+
+放弃「把 ML 模型接进 demo」——模型输入（shipment 级汇总）与 demo 录入（单条超限事件）schema 错位，接进去要先扩录入表单 + feature bridge，成本高且难自圆其说。改为两轨：
+
+1. **A｜demo 风险指数 = 确定性规则评分**（替换原「ML 风险评分（概念示意）」占位）。
+2. **B｜真 ML 基线只进报告**（训一次 LogisticRegression，数字落盘，不接 UI）。
+
+### A 做了什么（`demo/index.html` + `index-zh.html`）
+
+- `riskInfo()` 重写为**规则启发式风险指数**：分量 = 温度越出温带幅度（按带宽归一）· 超限时长/允许值 · MKT/阈值 · 包装破损；冻敏 ≤0 °C 冻结（规则 1）与破损包装（规则 2）各自置顶最低值。与规则引擎同一组阈值 → **与处置结果同源、可解释、随滑杆实时翻转**。
+- 文案从「ML 风险评分（概念）」改为「风险指数（规则启发式 · 确定性，非 ML 模型）」；脚注同步说明仅 VRPTW 与知识图谱问答仍为概念示意。
+- 函数经括号配平校验；两文件逻辑一致、文案本地化。
+
+### B 做了什么（`scripts/train_risk_model.py`）
+
+- 一次性脚本：silent-failure 8,000 行，缺失中位数填充，80/20 分层随机切分（**数据集无时间戳 → 无法时间切分，报告需注明**），StandardScaler + LogisticRegression。
+- 对比两组特征：`interpretable`（剔除匿名 `feature_x1..3`）vs `all`。
+
+**首次结果（seed=42，正类 19.7%）**
+
+| 模型 | acc | prec | rec | F1 | ROC-AUC | PR-AUC |
+|---|---|---|---|---|---|---|
+| 多数类基线 | 0.803 | 0 | 0 | 0 | 0.500 | 0.197 |
+| interpretable | 0.851 | 0.673 | 0.476 | 0.558 | **0.893** | **0.674** |
+| all（含匿名特征） | 0.851 | 0.674 | 0.467 | 0.552 | 0.893 | 0.673 |
+
+- **`all` 与 `interpretable` 几乎持平 → 匿名 `feature_x1..3` 无信息增益**，佐证「只用可解释特征讲故事」的取舍正确。
+- ⚠️ **该 Kaggle 数据集疑似合成**（DATA_DICTIONARY §1）：AUC 0.89 只在生成器上有效，**不代表真实世界的静默失效预测**——数字进报告必须带这句。
+- LightGBM/XGBoost 留给 B 组员跑正式实验表（脚本已留接口：装了 lightgbm 再跑会自动追加一行）。
+
+### 修改文件
+
+| 文件 | 说明 |
+|---|---|
+| `demo/index.html` / `index-zh.html` | `riskInfo` 重写 + 标题/脚注文案 |
+| `demo/README-zh.md` | 风险指数说明更新（非 ML 模型；离线基线数字 + 诚实警示） |
+| `scripts/train_risk_model.py` | 新增：一次性 LogisticRegression 基线 |
+| `requirements.txt` | 未动（sklearn 仅本机装了；组员装 `pip install scikit-learn`） |
+
+### 验证
+
+- 打开 `demo/index.html`：风险条随「超限温度/时长/MKT」滑杆实时变化，标签已不含「ML/概念」。
+- `python scripts/train_risk_model.py` → 结果写入 `data/processed/risk_model_results.md`（不入库）。
+
+### 下一步
+
+- task spec（录入 schema ↔ 模型特征对齐）仍建议先写，作为 W2 B 组员的工作输入。
+- 报告需要时把 AUC/PR-AUC 表 + 合成警示贴进 §7/§8 实验节。
+
+---
+
+## 2026-09-09 — ML 起步：数据字典 + 数据审计（`data/ml/`）
+
+### 做了什么
+
+1. 新增 `data/ml/DATA_DICTIONARY.md`（**人工维护的数据字典**）：6 组数据集逐一给来源/行数/粒度/字段含义/标签语义/诚实标注 + 「ML 任务 → 数据集」映射表 + 实操结论。
+2. 新增 `scripts/audit_datasets.py`（**可复现审计脚本**，纯 pandas）：对 `data/ml/` 全部 CSV/parquet 输出行数/重复/逐列缺失率·基数·数值范围、标签平衡、top 相关特征（泄漏筛查）。全量报告 → `data/processed/ml_audit_report.md`（不入库）。用法：
+   ```bash
+   .venv/Scripts/python.exe scripts/audit_datasets.py
+   ```
+3. 首个「开箱即训练」判断（写进了字典 §7）：**silent-failure（8,000×24）是唯一可直接做二分类的主数据集**；根因诊断目标在 vaccine-cold-chain 的 `excursion_cause`/`wastage_cause_primary`；vaccine-distribution 无标签，派生标签方案须先写进 task spec。
+
+### 审计发现（重要，写报告要用）
+
+- **几乎全是合成/仿真数据**（与既有结论一致）：africa-cold-chain-iot 自带 `is_synthetic` 列且 =100%；africa-synth 名称即 synth；Kaggle 两数据集形态高度规则化、**疑似合成**（silent-failure 有匿名化 `feature_x1..3`，报告需如实写）。
+- silent-failure：无重复、缺失极少（`temp_recovery_rate` 0.8% / `rh_max` 4.2%）；`silent_failure` 正类 **19.7%**（不平衡）；相关度集中在可解释字段（`transit_days` 0.45 / `temp_max_c` 0.44 / `door_opens` 0.39），**无标识符泄漏**。
+- vaccine-cold-chain 与规则引擎**同名字段**（`freeze_sensitive` / `shake_test_done` / 冻结·热超限标记）——是模块对齐的天然锚点。
+- ClarusC64 每文件仅 10 行，是它本来的大小，不可训练。
+- **许可证未逐一生成，需提交前到源页面核实并写入报告附录（字典里不杜撰）。**
+
+### 新增 / 修改文件
+
+| 文件 | 说明 |
+|---|---|
+| `data/ml/DATA_DICTIONARY.md` | 新增：数据字典 + 诚实标注 + ML 任务映射 |
+| `scripts/audit_datasets.py` | 新增：可复现审计脚本 |
+| `README.md` | data 布局表链接到 DATA_DICTIONARY.md + audit 用法 |
+
+### 下一步（B 角色的顺序建议）
+
+1. 写 **ML task spec**（target/特征命名空间/时间切分/防泄漏），把字典第 2 小节 vaccine 派生标签方案定死。
+2. 修规则引擎 W1-A 阈值前，可用 silent-failure 先出 **LogisticRegression / LightGBM 首基线**（需装 sklearn/lightgbm，正式排期 W2）。
+
+---
+
 ## 2026-09-08 — demo 接入真实数据集
 
 ### 做了什么

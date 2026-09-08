@@ -296,7 +296,7 @@
     <div class="section-label">Rule evaluation (priority order)</div>
     <ul class="rules-list" id="rulesList"></ul>
 
-    <div class="section-label">ML risk score <span style="color:#94a3b8;text-transform:none;letter-spacing:0">(concept)</span></div>
+    <div class="section-label">Risk index <span style="color:#94a3b8;text-transform:none;letter-spacing:0">(rule-derived · deterministic, not an ML model)</span></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="riskbar" style="flex:1"><div id="riskFill" style="width:0%"></div></div>
       <b style="font-size:13px" id="riskVal">–/100</b>
@@ -334,7 +334,7 @@
 </section>
 
 <footer>
-  PharmaColdOps · interactive demo — the rule engine is live; ML risk scoring, VRPTW re-routing and knowledge-graph Q&amp;A are concept mockups.
+  PharmaColdOps · interactive demo — the rule engine and risk index are live logic (the risk index is derived from the same thresholds, deterministic); VRPTW re-routing and knowledge-graph Q&amp;A are concept mockups.
 </footer>
 
 <script src="real_data.js"></script>
@@ -417,20 +417,41 @@ function evaluate(event, s) {
     "WHO TRS 961 Annex 9 — within acceptable range");
 }
 
-/* illustrative ML heuristics (concept mockup, not a real model) */
+/* Risk index: a deterministic severity score derived from the SAME thresholds as
+   the rule engine (rule-derived heuristic, NOT an ML model). Components = how far the
+   temperature is outside the storage band (normalised by band width) + duration/allowable
+   + MKT/threshold + packaging breach. Freeze damage (freeze-sensitive product ≤ 0 °C,
+   rule 1) is pinned to the top severity. Shares its inputs with the disposition; the
+   value moves live with the sliders. */
 function riskInfo(event, s) {
-  const exceed = Math.max(0, event.mkt_c - s.mktThreshold);
-  const durRatio = event.duration_min / s.allowable;
-  let risk = 0.05 + 0.35 * durRatio + 0.05 * exceed;
-  if (event.packaging === "compromised") risk += 0.25;
-  risk = clamp(risk, 0.03, 0.99);
+  const band = Math.max(1e-6, s.max - s.min);
+  const frozen = s.freezeSensitive && event.excursion_temp_c <= 0;
+
+  let tScore = 0, tLabel = "in band";
+  if (frozen) { tScore = 1.6; tLabel = "frozen"; }
+  else if (event.excursion_temp_c > s.max) { tScore = Math.min(1.5, (event.excursion_temp_c - s.max) / band); tLabel = "above max"; }
+  else if (event.excursion_temp_c < s.min && s.freezeSensitive) { tScore = Math.min(1.2, (s.min - event.excursion_temp_c) / band); tLabel = "below min"; }
+  // non-freeze-sensitive products (frozen / ultracold) tolerate below-band cold — not scored
+
+  const dScore = Math.min(1.5, event.duration_min / s.allowable);   // same duration criterion as rules 3–5
+  const mScore = Math.max(0, Math.min(1.5, (event.mkt_c - s.mktThreshold) / band));
+  const pBreach = event.packaging === "compromised" && event.excursion_temp_c > s.max;
+
+  let raw = 0.50 * tScore + 0.28 * dScore + 0.12 * mScore + (pBreach ? 0.10 : 0);
+  if (frozen) raw = Math.max(raw, 0.95);     // freeze = rule 1, top severity
+  if (pBreach) raw = Math.max(raw, 0.72);    // packaging breach = rule 2
+
   const causes = [];
-  if (event.packaging === "compromised") causes.push("Packaging breach");
-  if (event.excursion_temp_c > s.max + 2) causes.push("Reefer setpoint fault");
-  if (event.stage === "airport_dwell") causes.push("Dwell-time delay");
-  if (event.duration_min > s.allowable) causes.push("Extended exposure");
-  if (causes.length === 0) causes.push("Minor sensor drift");
-  return { risk: Math.round(risk * 100), topCause: causes[0] };
+  if (frozen) causes.push("Freeze damage (≤ 0 °C)");
+  if (pBreach) causes.push("Packaging breach");
+  if (event.excursion_temp_c > s.max + band * 0.5) causes.push("Reefer setpoint / over-temperature");
+  if (!frozen && event.duration_min > s.allowable) causes.push("Excursion duration exceeds allowable");
+  if (event.mkt_c > s.mktThreshold) causes.push("MKT above threshold");
+  if (causes.length === 0 && (event.duration_min >= 0.8 * s.allowable || event.mkt_c >= s.mktThreshold - 0.5))
+    causes.push("Near threshold — retest to confirm");
+  if (causes.length === 0) causes.push(tLabel === "in band" ? "In band, no anomaly" : "Minor temperature deviation");
+
+  return { risk: clamp(Math.round(raw * 100), 3, 99), topCause: causes[0] };
 }
 
 /* ================= rendering ================= */

@@ -26,12 +26,13 @@ Proposal & related documents live in [`proposal/`](proposal/):
 
 | Directory | Module | Contents |
 |---|---|---|
-| `data/ml/` | Risk prediction & root cause | Cold-chain / temperature datasets (Kaggle + Hugging Face) |
+| `data/ml/` | Risk prediction & root cause | Cold-chain / temperature datasets (Kaggle + Hugging Face) — **see [`data/ml/DATA_DICTIONARY.md`](data/ml/DATA_DICTIONARY.md)** |
 | `data/optimisation/solomon/` | Re-routing optimiser | Solomon VRPTW instances (CVRPLIB) |
-| `data/processed/` | All modules | Preprocessed feature tables (§7.3) — generated, not committed |
+| `data/processed/` | All modules | Preprocessed feature tables / audit reports (§7.3) — generated, not committed |
 
 Download the no-login sources with `python scripts/download_data.py`; Kaggle datasets
-need a manual `kaggle.json` token (see `PROGRESS.md`).
+need a manual `kaggle.json` token (see `PROGRESS.md`). Regenerate the ML dataset audit
+with `python scripts/audit_datasets.py` → `data/processed/ml_audit_report.md`.
 
 ## Quickstart
 
@@ -41,6 +42,17 @@ python -m venv .venv
 pip install -r requirements.txt
 pytest
 ```
+
+## ML experiments (`src/ml/`)
+
+Shared evaluation helpers live in [`src/ml/evaluate.py`](src/ml/evaluate.py). Run the full experiments:
+
+```bash
+python scripts/train_risk_full.py    # LR / LightGBM / XGBoost + SHAP on Kaggle silent-failure
+python scripts/train_root_cause.py   # 10-class excursion-cause classifier (vaccine-cold-chain)
+```
+
+Results land in `data/processed/` (gitignored); see `PROGRESS.md` for the current numbers and the honesty caveats (no timestamp → non-chronological split; datasets likely synthetic).
 
 ## Rule engine (first module — MVP)
 
