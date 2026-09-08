@@ -4,6 +4,33 @@
 
 ---
 
+## 2026-09-08 — demo 接入真实数据集
+
+### 做了什么
+
+1. 写 `scripts/export_demo_data.py`：从已下载数据集抽取真实数据，生成 `demo/real_data.js`。
+2. `demo/index.html` / `index-zh.html` 改为加载 `real_data.js`，替换原来的硬编码合成场景与药房/路线数据。
+3. 真实数据来源：
+   - **场景事件（18 个）** 来自 Kaggle `vaccine-distribution-temperature`（真实温度 / 超限时长 / 地点 / 流转环节，含真实 `discarded` 报废记录）。
+   - **配送数据** 来自 Solomon VRPTW `c101.json`（10 个客户的真实坐标 / 需求 / 时间窗）+ 最近邻 + 2-opt 简化路线求解。
+
+### 诚实说明（重要）
+
+- `mkt_c` 由单点温度读数近似（源数据无 MKT 列）；`packaging` 固定 `intact`（源数据无此字段）；`stage` 由真实 `current_hop` 映射；产品类别由温度区间推断（源数据无 `product_id`）。映射逻辑见脚本顶部注释。
+- **真实数据 + 占位阈值（allowable 30 min）→ 真实超限事件（时长 1–6 小时）几乎全部判报废，只有「在途正常」数据判放行**。这暴露了占位阈值需要按真实小时级超限重新校准（W1-A 的一部分）。
+- 配送路线求解（最近邻 + 2-opt）是简化启发式，非真实 VRPTW 求解器；单辆车 + 紧时间窗导致违规数偏高，属预期。
+
+### 修改文件
+
+| 文件 | 说明 |
+|---|---|
+| `scripts/export_demo_data.py` | 新增：真实数据 → demo JS |
+| `demo/real_data.js` | 生成：18 真实事件 + 10 Solomon 客户 + 路线 |
+| `demo/index.html` / `index-zh.html` | 加载 real_data.js，删除硬编码数据 |
+| `demo/README-zh.md` | 数据来源说明 |
+
+---
+
 ## 2026-09-08 — 规则引擎 v2：冻结规则 + 法规引用 + 4 产品
 
 ### 做了什么
