@@ -8,8 +8,14 @@ requests>=2.31
 # ML / data (next modules)
 datasets>=2.14
 pandas>=2.0
+# scikit-learn needed by scripts/train_risk_model.py (risk-prediction baseline)
+scikit-learn>=1.5
+# Full experiments (scripts/train_risk_full.py, train_root_cause.py):
+lightgbm>=4.0
+xgboost>=2.0
+shap>=0.45
+matplotlib>=3.8
 
 # Add as modules are built:
-# numpy pandas scikit-learn lightgbm xgboost shap
 # ortools networkx
 # fastapi uvicorn
