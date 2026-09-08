@@ -16,7 +16,7 @@ venv/
 .env
 .env.*
 
-# Processed/derived artifacts stay out of git; raw datasets are tracked (team decision 2026-09-08)
+# Processed/derived artifacts stay out of git; raw datasets ARE tracked (team decision 2026-09-08)
 data/processed/
 
 # Logs / OS

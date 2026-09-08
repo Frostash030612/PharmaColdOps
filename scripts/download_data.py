@@ -1,19 +1,29 @@
 #!/usr/bin/env python
-"""Download the PharmaColdOps datasets into ``data/raw/``.
+"""Download the PharmaColdOps datasets, organised by module (not by source).
+
+``data/`` is laid out by project module, mirroring ``src/``::
+
+    data/
+    ├── ml/               risk prediction & root cause (knowledge discovery)
+    ├── optimisation/     VRPTW replanning (resource optimisation)
+    └── processed/        preprocessed feature tables (§7.3, generated)
+
+(``data/scenarios/`` is the self-built synthetic gold-standard bank and is not
+part of this layout.)
 
 Downloads sources that need NO login first:
 
-  1. Hugging Face datasets (``datasets`` library)  -> ``data/raw/huggingface/<name>/``
-  2. Solomon VRPTW instances (CervEdin mirror)     -> ``data/raw/cvrplib/``
+  1. Hugging Face datasets (``datasets`` library)  -> ``data/ml/<name>/``
+  2. Solomon VRPTW instances (CervEdin mirror)     -> ``data/optimisation/solomon/``
 
 Kaggle datasets (Cold Chain Shipment Silent Failure; Vaccine Distribution with
 Temperature Logging) require a Kaggle API token and are intentionally NOT
-handled here — see PROGRESS.md for the manual steps.
+handled here — unzip them manually into ``data/ml/``; see PROGRESS.md.
 
 Usage:
     python scripts/download_data.py             # everything (no login)
     python scripts/download_data.py --hf-only   # Hugging Face only
-    python scripts/download_data.py --vrp-only  # CVRPLIB only
+    python scripts/download_data.py --vrp-only  # VRPTW (Solomon) only
 """
 from __future__ import annotations
 
@@ -22,7 +32,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
+DATA = Path(__file__).resolve().parents[1] / "data"
+ML_DIR = DATA / "ml"                         # risk prediction / anomaly detection
+VRP_DIR = DATA / "optimisation" / "solomon"  # VRPTW replanning benchmarks
 
 HF_DATASETS = [
     "electricsheepafrica/vaccine-cold-chain",
@@ -64,7 +76,7 @@ def download_hf(manifest: list[str]) -> None:
 
     for name in HF_DATASETS:
         slug = name.replace("/", "__")
-        out_dir = RAW / "huggingface" / slug
+        out_dir = ML_DIR / slug
         out_dir.mkdir(parents=True, exist_ok=True)
         try:
             files = [
@@ -99,10 +111,10 @@ def download_vrp(manifest: list[str]) -> None:
         import requests
     except ImportError:
         print("[ERROR] 'requests' not installed. Run: pip install requests")
-        manifest.append("| cvrplib | SKIP | requests not installed |")
+        manifest.append("| optimisation/solomon | SKIP | requests not installed |")
         return
 
-    out_dir = RAW / "cvrplib"
+    out_dir = VRP_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     for cls, typ, inst in SOLOMON_INSTANCES:
         url = SOLOMON_BASE_URL.format(cls=cls, typ=typ, inst=inst)
@@ -110,11 +122,11 @@ def download_vrp(manifest: list[str]) -> None:
             resp = requests.get(url, timeout=30)
             resp.raise_for_status()
             (out_dir / f"{inst}.json").write_bytes(resp.content)
-            print(f"[OK] cvrplib/{inst}")
-            manifest.append(f"| cvrplib/{inst} | OK | Solomon VRPTW (JSON) |")
+            print(f"[OK] optimisation/solomon/{inst}")
+            manifest.append(f"| optimisation/solomon/{inst} | OK | Solomon VRPTW (JSON) |")
         except Exception as exc:  # noqa: BLE001
-            print(f"[SKIP] cvrplib/{inst}: {exc}")
-            manifest.append(f"| cvrplib/{inst} | FAILED | {exc} |")
+            print(f"[SKIP] optimisation/solomon/{inst}: {exc}")
+            manifest.append(f"| optimisation/solomon/{inst} | FAILED | {exc} |")
 
 
 def main() -> int:
@@ -123,7 +135,8 @@ def main() -> int:
     ap.add_argument("--vrp-only", action="store_true")
     args = ap.parse_args()
 
-    RAW.mkdir(parents=True, exist_ok=True)
+    ML_DIR.mkdir(parents=True, exist_ok=True)
+    VRP_DIR.mkdir(parents=True, exist_ok=True)
     manifest = _manifest_header()
 
     if not args.vrp_only:
@@ -131,8 +144,8 @@ def main() -> int:
     if not args.hf_only:
         download_vrp(manifest)
 
-    (RAW / "MANIFEST.md").write_text("\n".join(manifest) + "\n", encoding="utf-8")
-    print("\nWrote manifest ->", RAW / "MANIFEST.md")
+    (DATA / "MANIFEST.md").write_text("\n".join(manifest) + "\n", encoding="utf-8")
+    print("\nWrote manifest ->", DATA / "MANIFEST.md")
     return 0
 
 
