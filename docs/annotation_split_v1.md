@@ -29,8 +29,9 @@
 
 ## 4. 交付物格式（回给 A）
 
-- 三列：`scenario_id`、`disposition`（`release`/`quarantine`/`retest`/`scrap`）、`note`（可选，写疑虑）。
-- 57 行，缺一不可；文件命名建议 `gold_label_<B|C>.csv`（可放自己本地，9/13 连同消息发 A；A 合并后入 `data/processed/`，不入库）。
+- 标注入口已就位：盲标输入 `data/scenarios/annotation/input_v1.csv`（57 行无答案列）+ 空白模板 `data/scenarios/annotation/answer_template.csv`；操作手册见该目录 `README.md`。
+- 回 A 三列：`scenario_id`、`disposition`（`release`/`quarantine`/`retest`/`scrap`）、`note`（可选，写疑虑）。
+- 57 行，缺一不可；填完另存为 `gold_label_<B|C>.csv`，**9/13 私发 A，不入库**（公共分支会让另一位标注者看到答案，独立性作废）；A 合并后入 `data/processed/` 做 kappa。
 
 ## 5. A 侧流程（9/14–9/19）
 
