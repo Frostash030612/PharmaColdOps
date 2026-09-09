@@ -63,6 +63,49 @@ export default {
     scenTmpl: "{stage} · {temp}°C / {dur}min",
   },
 
+  /* cross-session case history (GET /api/runs, backend run log) */
+  history: {
+    title: "Case history",
+    sub: "Archived by the Python backend (data/audit/runs.jsonl) — one record per closed inbound case, newest first.",
+    colCase: "Case",
+    colWhen: "Recorded",
+    colProduct: "Product",
+    colExcursion: "Excursion",
+    colDispo: "Disposition",
+    colRisk: "Risk",
+    colWhy: "Why",
+    scenTmpl: "{stage} · {temp} °C / {dur} min · MKT {mkt} °C",
+    reshipTag: "↻ reship",
+    count: "{n} archived",
+    refresh: "↻ Reload",
+    expand: "Open in full view",
+    loadHint: "Load this case into the sandbox",
+    loading: "Loading past cases…",
+    error: "Could not load case history from the backend.",
+    waiting: "Waiting for the backend connection…",
+    empty: "No archived cases yet — start one with “New inbound” and close it, and it appears here.",
+    offline: "Case history is stored with the Python backend and shown in API mode. Reopen this page with ?api=<backend> (or reconnect) to see past records.",
+  },
+
+  /* centered modal: add a new inbound case (opened from the header + button) */
+  newInbound: {
+    openTip: "New inbound — fill in the shipment case, then close & archive",
+    title: "New inbound",
+    sub: "Record this new shipment's excursion. The disposition previews live; nothing is saved until you close the case.",
+    batch: "Batch / remark (optional)",
+    batchPh: "e.g. batch 2026-0901",
+    rules: "Rule config (optional)",
+    resetSpec: "Product defaults",
+    preview: "Live preview",
+    archive: "✓ Close & archive",
+    cancel: "Cancel",
+    error: "Could not archive this case — please retry.",
+  },
+
+  modal: {
+    close: "Close",
+  },
+
   footer:
     "PharmaColdOps · interactive demo — the rule engine and risk index are live logic (the risk index is derived from the same thresholds, deterministic); VRPTW re-routing and knowledge-graph Q&A are concept mockups.",
 

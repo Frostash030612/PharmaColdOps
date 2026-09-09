@@ -12,6 +12,8 @@ the client.
 """
 from __future__ import annotations
 
+import datetime
+import json
 import logging
 import sys
 from pathlib import Path
@@ -34,6 +36,12 @@ from .schemas import EventIn, GridIn, SpecOverride  # noqa: E402
 # Loaded once; used both as the source of stock thresholds and to keep the
 # per-request override engines cheap (dict copy, no disk I/O).
 ENGINE = RuleEngine()
+
+# Append-only run history: one JSON line per *closed* inbound case
+# (/api/case_close). Live /api/decide previews are never archived. A runtime
+# artifact (gitignored via `data/audit/`), served newest-first over GET /api/runs.
+# Tests monkeypatch RUNS_FILE to a temp path so pytest never writes into the repo.
+RUNS_FILE = ROOT / "data" / "audit" / "runs.jsonl"
 
 
 def valid_product_ids() -> list:
@@ -193,13 +201,69 @@ def _audit(kind: str, ev, spec=None, decision=None) -> None:
     log.info("[audit] " + " ".join(fields))
 
 
-def decide_view(event: EventIn, override: SpecOverride | None) -> dict:
-    """One event → the full semantic decision the demo panels render."""
-    spec = resolve_spec(event.product_id, override)
-    decision = _engine_for(spec).evaluate(_as_event(
-        event.product_id, event.excursion_temp_c, event.duration_min,
-        event.mkt_c, event.packaging, event.stage, scenario_id="api"))
-    _audit("decide", event, spec, decision)
+def _new_run_id() -> str:
+    """Readable unique-ish id for one archived case (timestamp, µs resolution)."""
+    return "R" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+
+
+def _record_run(view: dict, *, started_at: str | None = None,
+                remark: str | None = None) -> dict:
+    """Append one closed case to the runs log and return the stored record.
+
+    Best-effort on disk: an OSError must never take the close down with it —
+    the caller still gets the record back (the log is advisory). Each line is
+    the full semantic decision view plus run_id / created_at / started_at
+    stamps and an optional remark.
+    """
+    now = datetime.datetime.now()
+    record = {
+        "run_id": _new_run_id(),
+        "created_at": now.isoformat(timespec="seconds"),
+        "started_at": started_at or now.isoformat(timespec="seconds"),
+        **view,
+    }
+    if remark:
+        record["remark"] = remark
+    try:
+        RUNS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with RUNS_FILE.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError:
+        log.warning("could not append run record to %s", RUNS_FILE, exc_info=True)
+    return record
+
+
+def list_runs(limit: int = 200) -> dict:
+    """Every archived decision, newest first (empty list when none recorded yet)."""
+    if not RUNS_FILE.exists():
+        return {"count": 0, "runs": []}
+    records = []
+    try:
+        with RUNS_FILE.open(encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    records.append(json.loads(line))
+    except (OSError, json.JSONDecodeError):
+        log.warning("could not read %s", RUNS_FILE, exc_info=True)
+    records.reverse()
+    return {"count": len(records), "runs": records[:limit]}
+
+
+def _event_dump(event: EventIn) -> dict:
+    """The six excursion inputs only — never leaks spec_override / case meta."""
+    return {
+        "product_id": event.product_id,
+        "excursion_temp_c": event.excursion_temp_c,
+        "duration_min": event.duration_min,
+        "mkt_c": event.mkt_c,
+        "packaging": event.packaging,
+        "stage": event.stage,
+    }
+
+
+def _decision_view(event: EventIn, spec: ProductSpec, decision) -> dict:
+    """The full semantic decision the demo panels render (codes, not wording)."""
     return {
         "disposition": decision.disposition.value,
         "rule_no": decision.rule_no,
@@ -207,11 +271,43 @@ def decide_view(event: EventIn, override: SpecOverride | None) -> dict:
         "regulation": decision.regulation,
         "reshipment_required": decision.reshipment_required,
         "rule_path": decision.rule_path,
-        "event": event.model_dump(),
+        "event": _event_dump(event),
         "spec": _spec_dict(spec),
         "evidence": classify_evidence(spec, event),
         "risk": risk_score(spec, event),
     }
+
+
+def decide_view(event: EventIn, override: SpecOverride | None) -> dict:
+    """One event → the full semantic decision the demo panels render.
+
+    A live *preview* — it is NOT archived. Only an explicit close_case() writes
+    a run record, so the history stays one line per completed inbound case.
+    """
+    spec = resolve_spec(event.product_id, override)
+    decision = _engine_for(spec).evaluate(_as_event(
+        event.product_id, event.excursion_temp_c, event.duration_min,
+        event.mkt_c, event.packaging, event.stage, scenario_id="api"))
+    _audit("decide", event, spec, decision)
+    return _decision_view(event, spec, decision)
+
+
+def close_case(event: EventIn, override: SpecOverride | None,
+               started_at: str | None = None, remark: str | None = None) -> dict:
+    """Close one inbound case: decide its current inputs and append ONE record.
+
+    The disposition is recomputed from the posted inputs (deterministic, so it
+    matches the live /api/decide preview the sandbox was showing). Appends the
+    record to RUNS_FILE and returns it with the run_id / created_at stamps the
+    front-end shows in the case history.
+    """
+    spec = resolve_spec(event.product_id, override)
+    decision = _engine_for(spec).evaluate(_as_event(
+        event.product_id, event.excursion_temp_c, event.duration_min,
+        event.mkt_c, event.packaging, event.stage, scenario_id="case_close"))
+    _audit("close", event, spec, decision)
+    return _record_run(_decision_view(event, spec, decision),
+                       started_at=started_at, remark=remark)
 
 
 def grid_view(req: GridIn) -> dict:

@@ -1,10 +1,13 @@
 <script setup>
-/* Brand row + static pills + backend-mode pill (id apiState) + SPA locale switch. */
+/* Brand row + static pills + backend-mode pill (id apiState) + new-inbound "+"
+   (header entry point for a fresh case, API mode only) + SPA locale switch. */
 import { computed } from "vue";
 import { useDecisionsStore } from "../stores/decisions.js";
+import { useOverlayStore } from "../stores/overlay.js";
 import { locale, setLocale, bundle } from "../i18n/index.js";
 
 const decisions = useDecisionsStore();
+const overlay = useOverlayStore();
 const L = computed(() => bundle(locale.value));
 
 /* Backend pill: connecting (null) → good → bad, shown only in ?api= mode. */
@@ -32,6 +35,20 @@ const apiText = computed(() =>
       <span class="pill">{{ L.header.pillEU }}</span>
       <span class="pill">{{ L.header.pillDemo }}</span>
       <span v-if="decisions.useApi" :class="apiClass">{{ apiText }}</span>
+      <button
+        v-if="decisions.useApi"
+        class="header-hist"
+        :disabled="decisions.apiUp !== true"
+        :title="L.history.expand"
+        @click="overlay.openHistory()"
+      >{{ L.history.title }}</button>
+      <button
+        v-if="decisions.useApi"
+        class="header-plus"
+        :disabled="decisions.apiUp !== true"
+        :title="L.newInbound.openTip"
+        @click="overlay.openNewInbound()"
+      >+</button>
       <div class="locale-switch">
         <button :class="{ on: locale === 'en' }" @click="setLocale('en')">EN</button>
         <button :class="{ on: locale === 'zh' }" @click="setLocale('zh')">中文</button>

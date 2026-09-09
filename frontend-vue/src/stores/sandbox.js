@@ -89,6 +89,39 @@ export const useSandboxStore = defineStore("sandbox", () => {
     activeId.value = null;
   }
 
+  /* ---- load an archived case back into the sandbox (backend run record) ----
+     The main-page flow panels (timeline / banner / boundary map / rule path /
+     evidence / risk) re-derive everything from event + spec, so restoring those
+     two is enough to show that case's whole workflow again. */
+  function restoreCase(record) {
+    stopTimeline();
+    const ev = record.event || {};
+    const sp = record.spec || {};
+    const pid = ev.product_id || current.value.product_id;
+    const base = PRODUCT_NUM[pid] || PRODUCT_NUM.vaccine_2_8;
+    current.value = {
+      product_id: pid,
+      excursion_temp_c: ev.excursion_temp_c != null ? ev.excursion_temp_c : base.max,
+      duration_min: ev.duration_min != null ? ev.duration_min : base.allowable,
+      mkt_c: ev.mkt_c != null ? ev.mkt_c : base.mktThreshold,
+      packaging: ev.packaging || "intact",
+      stage: ev.stage || "transit",
+    };
+    spec.value = {
+      ...base,
+      id: pid,
+      min: sp.storage_min_c != null ? sp.storage_min_c : base.min,
+      max: sp.storage_max_c != null ? sp.storage_max_c : base.max,
+      allowable: sp.allowable_duration_min != null ? sp.allowable_duration_min : base.allowable,
+      mktThreshold: sp.mkt_threshold_c != null ? sp.mkt_threshold_c : base.mktThreshold,
+      retestable: sp.retestable != null ? sp.retestable : base.retestable,
+      freezeSensitive: sp.freeze_sensitive != null ? sp.freeze_sensitive : base.freezeSensitive,
+    };
+    nowTime.value = 0;
+    activeId.value = null;
+    selectedPharm.value = null;
+  }
+
   /* ---- re-route panel selection ---- */
   function setRouteMode(m) { routeMode.value = m; }
   function togglePharm(id) { selectedPharm.value = selectedPharm.value === id ? null : id; }
@@ -100,7 +133,8 @@ export const useSandboxStore = defineStore("sandbox", () => {
 
   return {
     spec, current, nowTime, playing, routeMode, selectedPharm, activeId, auditRows,
-    switchProduct, applyScenario, setStage, setPackaging, setTemp, setDur, setMkt,
+    switchProduct, applyScenario, restoreCase,
+    setStage, setPackaging, setTemp, setDur, setMkt,
     setAllowable, setMktThreshold, setRetestable, resetCfg, randomize,
     toggleTimeline, stopTimeline, scrubTo,
     setRouteMode, togglePharm, pushAudit,

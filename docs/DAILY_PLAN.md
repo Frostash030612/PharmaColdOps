@@ -28,7 +28,7 @@
 ## A —— 项目负责人 · 规则引擎 · 报告
 
 ### W0 冲刺（9/9–9/13）
-- **9/9 周三**：① 在 PROGRESS 分工表填姓名认领；② 起草「标注 rubric v1」——只含书面规则细则（WHO/GDP 原则 + 阈值说明）的独立标注说明书，**不含任何代码与引擎输出**；③ 规划 57 场景的标注分包（B/C 各半）。
+- **9/9 周三**：① 在 PROGRESS 分工表填姓名认领；② ☑ 起草「标注 rubric v1」——只含书面规则细则（WHO/GDP 原则 + 阈值说明）的独立标注说明书，**不含任何代码与引擎输出**（草案已落 `docs/annotation_rubric_v1.md`，A 复核后发 B/C）；③ ☑ 规划 57 场景的标注分包（B/C 各半 → 落实为双人全量标注，见 `docs/annotation_split_v1.md`）。
 - **9/10 周四**：① 把 rubric 发给 B、C，约定 9/14 前交回；② 开始阈值核实：逐产品整理 WHO TRS 961 Annex 9 / EU GDP 2013/C 343/01 可引用的原则性约束（文档级引用，不杜撰条款号）。
 - **9/11 周五**：① 完成「4 产品阈值证据表 v1」→ 更新 `rules_config.json`（能落地的落地、不能落地的在 `_note` 写明"原则性占位"）；② 改完跑 `pytest`，受影响场景同步修正；③ 阈值若变动：写小脚本把规则导出为 frontend 的 JS 常量（保持「同源」，避免两份数字漂移，9/12 交 D 核对）。
 - **9/12 周六**：① 提案定稿：§6/§8 写入 B 的真实 ML 数字（LGBM F1 0.688 / AUC 0.925、根因 top-3 0.421）+ **合成数据警示句**；② 提案 deck（pptx）与文档同步，检查 demo→frontend 更名后的引用。
@@ -94,7 +94,7 @@
 
 ### W0 冲刺（9/9–9/13）
 - **9/9 周三**：① PROGRESS 填姓名认领；② **许可证核实启动**：到 6 个数据集源页逐条查 license（当前字典是「待核实」占位）。
-- **9/10 周四**：① 许可证核实完成 → 更新 `data/ml/DATA_DICTIONARY.md` + 报告附录草稿；② 核对字典口径与提案 §7 一致。
+- **9/10 周四**：① ☑ 许可证核实完成 → 更新 `data/ml/DATA_DICTIONARY.md` + 报告附录草稿（commit `fb9b37f`）；② 核对字典口径与提案 §7 一致。
 - **9/11 周五**：① 收到 A 的 rubric 后通读，独立标注场景 1–30（**只看 rubric，不看代码**）；② 提案 §7 数据描述贴 DATA_DICTIONARY 口径 + 合成声明句。
 - **9/12 周六**：① 提案冲刺收尾（§7 部分）；② 标注 31–45。
 - **9/13 周日**：① 提案提交；② 标注 46–57，当天把标注交 A。
@@ -159,7 +159,7 @@
 
 ### W0 冲刺（9/9–9/13）
 - **9/9 周三**：① PROGRESS 填姓名认领；② OR-Tools 可行性验证：conda `cold-chain` 里跑 OR-Tools 官方 VRPTW hello-world 出解（`ortools` 已装）。
-- **9/10 周四**：① 建 `src/optimisation/` 包骨架（`__init__.py` + `solomon_loader.py`）：读 `data/optimisation/solomon/` 6 个 JSON → 统一数据类（节点/需求/时间窗/坐标）。
+- **9/10 周四**：① ☑ 建 `src/optimisation/` 包骨架（`__init__.py` + `solomon_loader.py`）：读 `data/optimisation/solomon/` 6 个 JSON → 统一数据类（节点/需求/时间窗/坐标）。
 - **9/11 周五**：① schema 草案：C 主笔 `ReplanResult`（路线方案），`ReshipmentOrder` 属 A 引擎输出、等 A 草案再对；② 提案冲刺：§6.4 可行性结论（含 hello-world 结果）；③ **金标准标注**（收到 A 的 rubric 后）：独立标注场景 1–20，只看 rubric 不看代码。
 - **9/12 周六**：① 提案冲刺：demo 右栏「简化启发式 ≠ 正式求解器」口径与提案/README 一致（已注则核对）；② schema 按 A/D 反馈修订；③ **金标准标注**场景 21–40。
 - **9/13 周日**：① 提案提交；② 周例会；③ **金标准标注**场景 41–57，当天交 A。
@@ -224,7 +224,7 @@
 
 ### W0 冲刺（9/9–9/13）
 - **9/9 周三**：① PROGRESS 填姓名认领；② 仓库根写 `docker-compose.yml`（neo4j:5-community，密码走 `.env.example`），让队友一条命令拉起；③ 确认本机 `pharmaneo` 容器与 neo4j driver 连通。
-- **9/10 周四**：① KG schema v1 文档（实体：Product/Regulation/SOP/ExcursionEvent/Disposition/Cause/Facility/ReshipmentOrder；关系：PRODUCT_HAS_REQUIREMENT、EVENT_CAUSED_BY、EVENT_LEADS_TO_DISPOSITION、DISPOSITION_CITED_BY 等，附属性表）。
+- **9/10 周四**：① ☑ KG schema v1 文档（实体：Product/Regulation/SOP/ExcursionEvent/Disposition/Cause/Facility/ReshipmentOrder；关系：PRODUCT_HAS_REQUIREMENT、EVENT_CAUSED_BY、EVENT_LEADS_TO_DISPOSITION、DISPOSITION_CITED_BY 等，附属性表）。
 - **9/11 周五**：① 建 `src/knowledge_graph/`：`connect.py`（driver + .env）+ `schema.py`（Cypher 建约束：唯一性/索引）。
 - **9/12 周六**：① 提案冲刺：demo 截图 1–2 张 + 合规问答定位口径（真查询 vs 概念示意，与提案一致）；② 与 A 确认 KG 问答的「无证据不回答」边界；③ 接收 A 的阈值导出结果，核对 frontend JS 常量与 `rules_config.json` 同源。
 - **9/13 周日**：① 提案提交；② 周例会。

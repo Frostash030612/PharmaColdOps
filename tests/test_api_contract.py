@@ -8,8 +8,10 @@ engine call for the gold scenario bank.
 import csv
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
+from api import service
 from api.main import app
 from rule_engine.engine import RuleEngine
 from rule_engine.models import ExcursionEvent
@@ -20,6 +22,12 @@ SCENARIOS = ROOT / "data" / "scenarios" / "scenarios.csv"
 VALID = {"vaccine_2_8", "frozen_m20", "insulin_2_8", "mrna_ultracold"}
 client = TestClient(app)
 engine = RuleEngine()
+
+
+@pytest.fixture(autouse=True)
+def isolated_runs_file(tmp_path, monkeypatch):
+    """Point the runs log at a throwaway file so tests never write data/audit/."""
+    monkeypatch.setattr(service, "RUNS_FILE", tmp_path / "runs.jsonl")
 
 
 def _decide_payload(pid, temp, dur, mkt, packaging="intact", stage="transit"):
@@ -143,3 +151,51 @@ def test_decide_matches_engine_on_gold_bank():
 def test_reserved_routes_are_501():
     assert client.post("/api/route", json={}).status_code == 501
     assert client.post("/api/qa", json={}).status_code == 501
+
+
+def test_decide_is_preview_only_never_archives():
+    # Live sandbox previews must NOT grow the case history.
+    client.post("/api/decide", json=_decide_payload("vaccine_2_8", 20.0, 90, 19.0))
+    r = client.get("/api/runs")
+    assert r.status_code == 200
+    assert r.json() == {"count": 0, "runs": []}
+
+
+def test_case_close_appends_one_record_and_runs_is_newest_first():
+    close = {**_decide_payload("vaccine_2_8", 20.0, 90, 19.0), "started_at": "2026-09-09T10:00:00"}
+    r1 = client.post("/api/case_close", json=close)                       # scrap
+    assert r1.status_code == 200
+    rec = r1.json()
+    body = client.get("/api/runs").json()
+    assert body["count"] == 1
+    assert body["runs"][0]["run_id"] == rec["run_id"]
+    # archived record = decision + case stamps; event holds only the six inputs
+    assert {"run_id", "created_at", "started_at", "disposition", "rule_no",
+            "reshipment_required", "rule_path", "event", "spec", "evidence",
+            "risk"} <= set(rec)
+    assert rec["started_at"] == "2026-09-09T10:00:00"
+    assert rec["disposition"] == "scrap" and rec["rule_no"] == 3
+    assert rec["event"] == {"product_id": "vaccine_2_8", "excursion_temp_c": 20.0,
+                            "duration_min": 90, "mkt_c": 19.0,
+                            "packaging": "intact", "stage": "transit"}
+    assert "remark" not in rec
+    # a second close archives a second, newest-first line
+    client.post("/api/case_close", json=_decide_payload("vaccine_2_8", 6.0, 10, 5.0))  # release
+    body = client.get("/api/runs").json()
+    assert body["count"] == 2
+    assert body["runs"][0]["disposition"] == "release"
+    assert body["runs"][1]["disposition"] == "scrap"
+    assert body["count"] == len(body["runs"])
+
+
+def test_case_close_stores_optional_remark():
+    close = {**_decide_payload("vaccine_2_8", 6.0, 10, 5.0), "remark": "batch 2026-0901" }
+    rec = client.post("/api/case_close", json=close).json()
+    assert rec["remark"] == "batch 2026-0901"
+    assert client.get("/api/runs").json()["runs"][0]["remark"] == "batch 2026-0901"
+
+
+def test_runs_empty_when_nothing_closed_yet():
+    r = client.get("/api/runs")
+    assert r.status_code == 200
+    assert r.json() == {"count": 0, "runs": []}

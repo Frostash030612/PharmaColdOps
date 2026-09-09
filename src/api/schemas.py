@@ -37,6 +37,18 @@ class DecideIn(EventIn):
     spec_override: Optional[SpecOverride] = None
 
 
+class CaseCloseIn(DecideIn):
+    """Close an inbound case → compute + archive ONE run record.
+
+    ``/api/decide`` previews are never archived; only this explicit close writes
+    to the runs log. ``started_at`` (ISO, when the case was opened) and
+    ``remark`` are optional case metadata stored with the record.
+    """
+
+    started_at: Optional[str] = None
+    remark: Optional[str] = None
+
+
 class GridIn(BaseModel):
     """One-shot decision matrix for the duration × MKT boundary map.
 

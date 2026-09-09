@@ -105,6 +105,85 @@ Pydantic 模型 = 引擎 dataclass 的序列化（`model_dump`），**不要手�
 
 ---
 
+## 2026-09-10 — A：金标准标注 rubric v1 草案 + 57 场景分包规划（`docs/annotation_*.md`）
+
+### 做了什么
+
+- **`docs/annotation_rubric_v1.md`**（标注说明书，给 B/C）：纯文字判定说明书——类别定义（release/retest/quarantine/scrap）、4 产品规格表（储存范围/允许时长/MKT/冻敏/可否复检）、6 条按优先级的判定规则 + 快速判定表、7 个**非场景库**工作示例（含边界比较：恰好等于允许时长 → retest、不可复检产品近限 → release）。**不含代码 / rule 编号 / 引擎 reason**；阈值标版本（rules_config 2026-09-10 占位），A 核实后发 v1.1 只重标受影响场景；法规仅文档级。
+- **`docs/annotation_split_v1.md`**（分包与流程）：B、C **各独立全量标 S001–S057**（两人份交集 = 57，kappa 才可算；A 分工表「各半」措辞已按 B/C 两栏排期澄清为双人全量）；排期表（B 9/11–13 分 30/15/12 条；C 分 20/20/17 条，均 9/13 交 A）；独立性规则；回稿格式；A 侧 9/14 kappa → 9/15–16 阈值落地触发的补标子集 → 9/18 `gold_labels.csv` 替换占位 → 9/19 评估表。
+- 动机：`scenarios.csv` 占位 `gold_label` + `test_rule_engine.py` 断言引擎==gold 是反循环；改为独立人工双标注打破（提案 §8.3）。
+
+### 待办 / 交接
+
+两份均为 **A 起草草案**：A 复核判定顺序与阈值口径 → 9/10 ① 发给 B/C（rubric v1）；阈值核实（9/10–11）落地后若数值变，出 v1.1 + 受影响场景补标清单。DAILY_PLAN A 9/9 ②③ 已 ☑（① 填姓名仍待认领）。
+
+---
+
+## 2026-09-10 — B：6 份 dataset 许可证到源页逐一核实（`data/ml/DATA_DICTIONARY.md`）
+
+### 做了什么
+
+- 清掉数据字典里「许可证待核实」占位：**6 份公开 dataset 全部到源页面逐条核实** license（不据转载 / 文件头推断）。
+- 核实路径（可复现，均已记录在 §8）：
+  - **Hugging Face 4 份** → 读数据集卡 raw `README.md` 的 YAML `license:` 字段（比渲染卡片权威）：Electric Sheep Africa 三份（vaccine-cold-chain / africa-synth-immunization / africa-cold-chain-iot）→ **CC BY 4.0**；`ClarusC64/clinical-quad-coldchain…` → **MIT**。
+  - **Kaggle 2 份**（skarin / manankhanna0）→ 公开 API `GET /api/v1/datasets/view/{owner}/{slug}` 的 `licenseName` → **CC0: Public Domain**。
+- DATA_DICTIONARY 各数据集节补「许可」行；§7 结论 5 更新为「已核实」；新增 **§8 许可证逐条核实记录**（表：平台 / 作者 / license / 核实位置 / 使用义务 + 报告写作提醒），可直接搬进报告 §7 数据描述与致谢。
+- 义务提醒（写报告时用）：CC BY 4.0 ×3 需**署名 Electric Sheep Africa** 并附许可链接；MIT ×1 随分发保留版权声明；CC0 ×2 法律上免署名、建议仍标注来源。
+
+### 验证
+
+纯文档改动（单文件 diff）；核实日期 2026-09-10，报告引用此日期即可。数据本体 / 审计产物仍在 `data/processed/`（不入库），数据字典本身入库。
+
+---
+
+## 2026-09-10 — W0 前置收尾：`src/optimisation/` Solomon loader（C 侧）+ KG schema v1（D 侧）
+
+### C · 9/10 ①：optimisation 包骨架 + Solomon 统一加载器（`src/optimisation/`）
+
+- 新建 `src/optimisation/`（此前整块不存在）：`__init__.py`（M5 定位，注明 `ReplanResult` / `ReshipmentOrder` 字段契约 9/21 定、不在此自造）、`models.py`（统一数据类 `Node` / `SolomonInstance`：节点/坐标/需求/时间窗/服务时长）、`solomon_loader.py`（`load_instance` / `load_dir` 读 `data/optimisation/solomon/` 6 个 JSON，带结构校验）。
+- **关键澄清**：JSON 里的 `cost` 列实为 Solomon **服务时长**（C 类 90、R/RC 类 10、depot 0），并非成本——统一数据类如实命名 `Node.service` 并留注释，避免下游贪心 / CP-SAT 误当成本；输入侧仍校验源键。
+- 测试 `tests/test_solomon_loader.py`：6 实例全覆盖（101 节点 = depot + 100 客户、时间窗 / 需求 / 服务时长断言，缺 depot / 重复 id / 时间窗倒挂 / 负需求 → `ValueError`）。`.venv/Scripts/python.exe -m pytest -q` → **36 passed**（原 19 + 新 17）。
+- 下一步（C）：W1 贪心基线直接消费这批数据类；`ReplanResult` 输出契约 9/11 起草、9/21 终版。`c101` 文献最优 828.94 已作模块注释里的对照锚。
+
+### D · 9/10 ①：KG schema v1 文档（`docs/KG_SCHEMA_v1.md`）
+
+- 8 实体属性表 + 6 关系（`EVENT_LEADS_TO_DISPOSITION` 边属性承载决策现场 rule_no / reason / rule_path / regulation / risk）+ 典型问答路径骨架（喂 W2 `/api/qa` 模板：为何隔离 / 依据哪条法规 / 依据哪条 SOP / 最常见场景）。
+- 四条纪律写死：字段名与引擎 / API 契约同源不造别名、法规引用只到**文档级**不杜撰条款号、决策写入对齐审计 `run_id` 幂等、SOP / ReshipmentOrder（9/21 契约）/ Facility 坐标（待 C M5）一律标 `pending`。
+- 下接：9/11 `src/knowledge_graph/schema.py`（约束 / 索引落地）、9/14+ 加载脚本、W1 9/20 定稿。
+
+**DAILY_PLAN**：C、D 两栏 **9/10 ①** 已打 ☑。
+
+## 2026-09-10 — 跨会话过往记录 + 结案归档 + 弹窗 UX（`frontend-vue/`，API 模式）
+
+### 归档语义（后端决策定死，前端只管入口与文案）
+
+沙盒里的判定只是**实时预览，绝不自动入库**；只有用户显式「结案入库」才归档一条。`data/audit/runs.jsonl` 追加日志改为**每个结案的入库案例一条**（append-only，后端运行日志，已加 `.gitignore` 不入库）。
+
+| 端点 | 行为 |
+|---|---|
+| `POST /api/decide` | **仅预览**，永不写运行日志 |
+| `POST /api/case_close` | 按提交的输入用确定性引擎重算 → 追加**一条**归档记录并返回（含 `run_id`/`created_at`/`started_at`/可选 `remark` + decision/evidence/risk + `event` + `spec`） |
+| `GET /api/runs?limit=200` | 归档列表，**最新在前** |
+
+事件记录只存六个输入（产品/温度/时长/MKT/包装/环节）——不回声 `spec_override`，防止把一次性规则配置当成该单的既定事实泄漏给后续读表方。
+
+### 前端（`frontend-vue/`）交互
+
+- **标题栏两个入口（仅 API 模式）**：「过往记录」→ 居中弹窗；「+」→ 新增入库弹窗，位于「EN/中文」左边。
+- **新增入库 = 居中弹窗**（背景虚化）：表单（产品/阶段/包装/温度/时长/MKT）+ 可折叠规则配置（默认产品阈值）+ 批次/备注；**实时判定预览**（处置色带/补发/风险/根因/规则路径，与页面同源纯函数）。**结案入库前完全不碰原页面**；点结案才 `POST /api/case_close`，成功后弹窗关、整条流程灌回主页面沙盒、滚回顶部。
+- **过往记录弹窗**：全表居中、背景虚化；**点任一行 → 该记录的 `event`+`spec` 还原到主页面沙盒**（时间线/判定横幅/边界图/规则路径/风险/证据全部由 event+spec 重新推导），弹窗关、回顶部，可再编辑/回放。底部原「过往记录」区块保留，与弹窗共用同一张表。
+- 新拆 `overlay` store（同时只开一个弹窗 + 弹窗时锁 body 滚动）；`history` store 纯读归档；`sandbox.restoreCase(record)` 供两处载入共用。
+
+### 验证
+
+后端契约测试 19 条全绿；`npm run build` 通过；浏览器手测（用户）：标题栏「过往记录」/「+」开合、新增结案后主页面刷新、点历史行载入对应流程，EN/ZH × 离线/API 两模式正常（离线不显示这两个入口与归档区）。
+
+### 数据纪律
+
+`data/audit/` 已进 `.gitignore`——运行日志只在本地生成，绝不上库（`data/processed/` 纪律的延续）。
+
+---
+
 ## 2026-09-09 — 前端 Vue 化落地：`frontend-vue/`（Vue 3 + Vite，双模式保真）
 
 ### 决策

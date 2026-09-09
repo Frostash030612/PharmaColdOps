@@ -61,6 +61,49 @@ export default {
     scenTmpl: "{stage} · {temp}°C / {dur}分钟",
   },
 
+  /* 跨会话结案记录（GET /api/runs，后端运行日志） */
+  history: {
+    title: "过往记录",
+    sub: "由 Python 后端归档（data/audit/runs.jsonl）——每个结案的入库案例一条记录，最新在前。",
+    colCase: "案例",
+    colWhen: "记录时间",
+    colProduct: "产品",
+    colExcursion: "超限",
+    colDispo: "处置",
+    colRisk: "风险",
+    colWhy: "判定理由",
+    scenTmpl: "{stage} · {temp} °C / {dur} 分钟 · MKT {mkt} °C",
+    reshipTag: "↻ 补发",
+    count: "共 {n} 条",
+    refresh: "↻ 刷新",
+    expand: "放大居中查看",
+    loadHint: "载入此记录到主页面沙盒",
+    loading: "正在载入过往记录…",
+    error: "无法从后端载入过往记录。",
+    waiting: "等待后端连接…",
+    empty: "暂无归档——开一个入库案例并点「结案入库」，记录就会出现在这里。",
+    offline: "过往记录随 Python 后端保存，仅在 API 模式下显示。用 ?api=<后端> 打开本页（或重连）即可看到。",
+  },
+
+  /* 居中弹窗：新增入库（由标题栏的 ＋ 打开） */
+  newInbound: {
+    openTip: "新增入库——填写整批流程后结案归档",
+    title: "新增入库",
+    sub: "记录这批新入库药品的超限情况：下方实时预览处置；结案入库后才归档并切到主页面流程。",
+    batch: "批次 / 备注（可选）",
+    batchPh: "例如 batch 2026-0901",
+    rules: "规则配置（可选）",
+    resetSpec: "恢复产品默认",
+    preview: "判定预览",
+    archive: "✓ 结案入库",
+    cancel: "取消",
+    error: "结案失败，请重试。",
+  },
+
+  modal: {
+    close: "关闭",
+  },
+
   footer:
     "PharmaColdOps · 交互演示 —— 规则引擎与风险指数为实时逻辑（风险指数由同一组阈值导出，确定性）；VRPTW 配送规划与知识图谱问答为概念示意。",
 

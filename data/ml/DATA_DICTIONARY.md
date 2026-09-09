@@ -24,7 +24,7 @@
 | cold-chain-silent-failure (Kaggle) | 高度疑似合成（见下「泄漏/真伪筛查」） |
 | vaccine-distribution-temperature (Kaggle) | 字段形态高度规则化，疑似合成；**含真实地名**（Jharkhand/Pune/Delhi…） |
 
-> **许可**：各数据集许可证见源页面，**提交前需逐一核实并写入报告附录**（目前不杜撰）。
+> **许可（2026-09-10 已逐条核实，勿再留「待核实」）**：Kaggle 两份 **CC0（Public Domain）**；Hugging Face 三份 Electric Sheep Africa **CC BY 4.0**（引用/再分发需署名该来源）；ClarusC64 一份 **MIT**（保留版权声明）。逐条来源与报告附录草稿见 §8。
 
 ### ML 任务 → 数据集映射（提案 §6.3 / §7.1）
 
@@ -43,6 +43,7 @@
 - **文件**：`cold-chain-silent-failure/shipment-sensor-dataset.csv`
 - **规模**：8,000 × 24 · 粒度：每批货（shipment）级传感器摘要 · 无重复 · 缺失极少
 - **来源**：<https://www.kaggle.com/datasets/skarin/cold-chain-shipment-silent-failure-dataset>
+- **许可**：**CC0 — Public Domain**（Kaggle 公开 API `licenseName` 核实，2026-09-10）——公有领域，自由使用/再分发，无需署名
 - **模块**：风险预测 / 故障分类（W2 基线）
 
 | 字段 | 类型 | 角色 | 含义 |
@@ -77,6 +78,7 @@
 - **文件**：`vaccine-distribution-temperature/input_data.csv`
 - **规模**：26,674 × 13 · 粒度：batch × 小时 传感器日志 · 30 batch / 12 地点
 - **来源**：<https://www.kaggle.com/datasets/manankhanna0/vaccine-distribution-with-temperature-logging>
+- **许可**：**CC0 — Public Domain**（Kaggle 公开 API `licenseName` 核实，2026-09-10）——公有领域；报告引用仍建议标注来源（引用习惯）
 - **模块**：异常检测 / MKT 模拟；**demo 场景与 export_demo_data.py 的数据源**
 
 | 字段 | 类型 | 角色 | 含义 |
@@ -110,6 +112,7 @@
   `vaccine_coldchain_district_hospital.csv` · `vaccine_coldchain_regional_vaccine_store.csv` · `vaccine_coldchain_rural_health_post.csv`
 - **规模**：3 × 10,000 × 46 · 粒度：设施 × 月
 - **来源**：<https://huggingface.co/datasets/electricsheepafrica/vaccine-cold-chain>（仿真项目）
+- **许可**：**CC BY 4.0**（数据集卡 raw README `license: cc-by-4.0` 核实，2026-09-10）——可再分发，**需署名 Electric Sheep Africa** 并保留许可声明
 - **模块**：设施/路线级异常、**根因诊断**；含 `freeze_sensitive` / `shake_test_done` 等与规则引擎**同名字段**（天然对齐点）
 
 | 字段组 | 字段（→ 含义） |
@@ -134,6 +137,7 @@
   `vaccine_epi.csv`（`scenario=national_epi_program`）· `vaccine_outreach.csv` · `vaccine_private.csv`
 - **来源**：<https://huggingface.co/datasets/electricsheepafrica/africa-synth-immunization-vaccine-quality-cold-chain-all>
   （**名称即 *synth* —— 合成**）
+- **许可**：**CC BY 4.0**（数据集卡 raw README `license: cc-by-4.0` 核实，2026-09-10）——可再分发，**需署名 Electric Sheep Africa** 并保留许可声明
 - **模块**：质量标签 / 数据增强（`wasted` 为正类；分片间平衡度略异，见审计报告）
 
 | 字段 | 角色 | 含义 |
@@ -164,6 +168,7 @@
 - **文件**：`africa-cold-chain-iot/train-00000-of-00001.parquet`
 - **规模**：10,000 × 31 · 粒度：事件（冷链网络安全攻击）
 - **来源**：<https://huggingface.co/datasets/electricsheepafrica/africa-cold-chain-iot>
+- **许可**：**CC BY 4.0**（数据集卡 raw README `license: cc-by-4.0` 核实，2026-09-10）——可再分发，**需署名 Electric Sheep Africa** 并保留许可声明
 - **诚实标注**：**`is_synthetic` 列 = 100%**；`label` 严格平衡（5,000/5,000）、`detected` 2,034（20.3%）
 
 | 字段组 | 字段（→ 含义） |
@@ -183,6 +188,7 @@
 
 - **文件**：`train.csv` / `tester.csv`（各 **10 行 × 5**，是它**本来的大小**，非下载 bug）
 - **来源**：<https://huggingface.co/datasets/ClarusC64/clinical-quad-coldchain-temp-excursion-transit-delay-potency-loss-v0.1>
+- **许可**：**MIT**（数据集卡 raw README `license: mit` 核实，2026-09-10）——自由使用/修改/再分发，随分发**保留版权声明**
 - **字段**：`temp_excursion_duration_hr`（超限时长）· `transit_delay_hr`（运输延误）· `packaging_integrity_index` · `site_storage_variance_index` · `label_potency_loss`（效力损失，回归目标）
 - **结论**：10 行无法训练；**仅作 schema 参考**或口头提及。价值在于其字段命名与规则引擎输入几乎同构（超限时长+包装完好性 → 效力损失）。
 
@@ -194,4 +200,24 @@
 2. **根因诊断的目标在 vaccine-cold-chain 的 `excursion_cause`/`wastage_cause_primary`**，比 silent-failure 更贴近规则引擎语义（同有 `freeze_sensitive`、`shake_test_done`）。
 3. **vaccine-distribution 无标签**：派生标签方案须先写进 task spec（第 2 小节），避免各成员各自定义造成不可复现。
 4. **全合成属性要贯穿报告**：真实（地名/温度读数来自 Kaggle）与仿真（合成生成器）的边界必须在 §7 数据描述里讲清——这正是本字典与 `PROGRESS.md`「公开冷链数据多为合成」一致的地方。
-5. **许可证需在源页面逐一核实**后写入报告附录（目前不杜撰任何 license）。
+5. **许可证已在源页面逐一核实**（2026-09-10，勿再留「待核实」）：Kaggle 2× **CC0（Public Domain）**、Hugging Face Electric Sheep Africa 3× **CC BY 4.0**、ClarusC64 1× **MIT**；逐条核实记录与报告附录草稿见 §8。
+
+---
+
+## 8. 许可证逐条核实记录（2026-09-10 · 报告附录草稿）
+
+> 六份 dataset 的 license **均到源页面逐条核实**（非据转载/文件头推断）：Hugging Face 读数据集卡 raw `README.md` 的 `license:` 字段；Kaggle 读公开 API `GET https://www.kaggle.com/api/v1/datasets/view/{owner}/{slug}` 的 `licenseName`。核实日期 **2026-09-10**。
+
+| 字典 § | 数据集 | 平台 / 作者 | license | 核实位置 | 使用义务 |
+|---|---|---|---|---|---|
+| §1 | cold-chain-silent-failure | Kaggle · skarin | **CC0 · Public Domain** | Kaggle API `licenseName` | 公有领域；报告仍建议按引用习惯标注来源 |
+| §2 | vaccine-distribution-temperature | Kaggle · manankhanna0 | **CC0 · Public Domain** | Kaggle API `licenseName` | 同上 |
+| §3 | vaccine-cold-chain | HF · Electric Sheep Africa | **CC BY 4.0** | raw README YAML `license: cc-by-4.0` | 需署名 Electric Sheep Africa + 附许可链接 |
+| §4 | africa-synth-immunization… | HF · Electric Sheep Africa | **CC BY 4.0** | 同上 | 同上 |
+| §5 | africa-cold-chain-iot | HF · Electric Sheep Africa | **CC BY 4.0** | 同上 | 同上 |
+| §6 | clinical-quad-coldchain… | HF · ClarusC64 | **MIT** | raw README YAML `license: mit` | 随分发保留 MIT 版权声明 |
+
+**报告写作提醒**：
+- **CC BY 4.0**（§3–§5，作者 Electric Sheep Africa）：可商用/再分发，**有署名义务**——在报告 §7 数据描述与致谢处注明「Hugging Face · Electric Sheep Africa」，并附 <https://creativecommons.org/licenses/by/4.0/>；派生于这些数据的导出文件继续携带该署名义务。
+- **MIT**（§6，ClarusC64）：自由使用；随分发保留版权与许可声明。
+- **CC0**（§1–§2）：公有领域，法律上无需署名；建议仍标注「Kaggle · {作者}」以免出处存疑。

@@ -18,18 +18,26 @@ import EvidencePanel from "./components/EvidencePanel.vue";
 import ReroutePanel from "./components/ReroutePanel.vue";
 import QAPanel from "./components/QAPanel.vue";
 import AuditTable from "./components/AuditTable.vue";
+import HistoryPanel from "./components/HistoryPanel.vue";
+import NewInboundModal from "./components/NewInboundModal.vue";
+import HistoryModal from "./components/HistoryModal.vue";
 import { SCENARIOS } from "./data/realData.mjs";
 import { useSandboxStore } from "./stores/sandbox.js";
 import { useDecisionsStore } from "./stores/decisions.js";
+import { useHistoryStore } from "./stores/history.js";
+import { useOverlayStore } from "./stores/overlay.js";
 import { locale, bundle } from "./i18n/index.js";
 
 const sandbox = useSandboxStore();
 const decisions = useDecisionsStore();
+const history = useHistoryStore();
+const overlay = useOverlayStore();
 const L = computed(() => bundle(locale.value));
 
 onMounted(() => {
   sandbox.applyScenario(SCENARIOS[2]);   // open on R03 (retest-boundary case)
   decisions.init();                      // no-op offline; health-check + prime caches in ?api= mode
+  history.load();                        // offline → clears; ?api= → pulls /api/runs when the API is up
 });
 </script>
 
@@ -89,5 +97,15 @@ onMounted(() => {
     </div>
   </section>
 
+  <section class="audit">
+    <div class="card">
+      <HistoryPanel />
+    </div>
+  </section>
+
   <footer>{{ L.footer }}</footer>
+
+  <!-- centred modals (blurred backdrop) — only one is open at a time -->
+  <NewInboundModal v-if="overlay.newInboundOpen" />
+  <HistoryModal v-if="overlay.historyOpen" />
 </template>
