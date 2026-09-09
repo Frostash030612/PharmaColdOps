@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PharmaColdOps — Excursion Disposition Console</title>
+<title>PharmaColdOps — 温度超限处置控制台</title>
 <style>
   :root {
     --navy: #0f2a4a; --navy-2: #16395f; --teal: #0d9488; --teal-2: #14b8a6;
@@ -13,8 +13,8 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.45;
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.5;
   }
 
   header {
@@ -35,6 +35,8 @@
     background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.22); color: #e6f0fa;
   }
   .pill.live { background: rgba(20,184,166,.22); border-color: rgba(45,212,191,.5); color: #99f6e4; }
+  .pill.good { background: rgba(20,184,166,.22); border-color: rgba(45,212,191,.5); color: #99f6e4; }
+  .pill.bad  { background: rgba(220,38,38,.20); border-color: rgba(252,165,165,.5); color: #fecaca; }
 
   main {
     max-width: 1440px; margin: 16px auto 0; padding: 0 24px;
@@ -50,7 +52,7 @@
   }
   .card h2::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--teal); }
 
-  /* ---------- left: presets ---------- */
+  /* ---------- 左侧：场景预设 ---------- */
   .ex-list { display: flex; flex-direction: column; gap: 8px; }
   .ex-item {
     border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; transition: .13s;
@@ -63,7 +65,7 @@
   .ex-item .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
   .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
-  /* ---------- rule config ---------- */
+  /* ---------- 规则配置 ---------- */
   .cfg { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
   .cfg .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; margin-bottom: 8px; }
   .cfg-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 12.5px; }
@@ -75,13 +77,13 @@
   }
   .btn:hover { border-color: var(--teal); color: var(--teal); }
 
-  /* ---------- center: sandbox ---------- */
+  /* ---------- 中间：决策沙盒 ---------- */
   .dispo-banner { display: flex; align-items: center; gap: 14px; border-radius: 12px; padding: 16px; color: #fff; margin-bottom: 14px; }
   .dispo-badge {
     width: 58px; height: 58px; border-radius: 12px; background: rgba(255,255,255,.18);
-    display: grid; place-items: center; font-weight: 800; font-size: 24px; letter-spacing: .5px;
+    display: grid; place-items: center; font-weight: 800; font-size: 26px; letter-spacing: .5px;
   }
-  .dispo-banner .big { font-size: 18px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+  .dispo-banner .big { font-size: 18px; font-weight: 800; letter-spacing: .5px; }
   .dispo-banner .why { font-size: 12.5px; opacity: .92; margin-top: 3px; }
   .dispo-banner .reship { margin-left: auto; text-align: right; font-size: 12px; }
   .dispo-banner .reship b { display: block; font-size: 15px; }
@@ -117,19 +119,19 @@
   .riskbar { height: 8px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-top: 6px; }
   .riskbar > div { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f59e0b, #dc2626); }
 
-  /* ---------- timeline ---------- */
+  /* ---------- 时间轴 ---------- */
   .timeline-controls { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
   .timeline-controls input[type=range] { flex: 1; accent-color: var(--teal); }
   .timeline-controls .btn { width: auto; padding: 6px 14px; }
   #timeReadout { font-size: 12px; color: var(--muted); min-width: 118px; text-align: right; font-variant-numeric: tabular-nums; }
 
-  /* ---------- evidence ---------- */
+  /* ---------- 证据面板 ---------- */
   .evidence { display: flex; flex-direction: column; gap: 6px; }
   .ev-row {
     display: flex; align-items: center; gap: 10px; font-size: 12.5px; padding: 7px 10px;
     background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
   }
-  .ev-row .k { width: 118px; color: #64748b; font-weight: 600; flex: none; }
+  .ev-row .k { width: 100px; color: #64748b; font-weight: 600; flex: none; }
   .ev-row .v { flex: 1; font-variant-numeric: tabular-nums; font-weight: 600; }
   .ev-row .limit { color: #94a3b8; font-size: 11.5px; }
   .chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; flex: none; }
@@ -146,7 +148,7 @@
     background: #f1f5f9; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
   }
 
-  /* ---------- right: reroute + QA ---------- */
+  /* ---------- 右侧：配送规划 + 问答 ---------- */
   .route-svg { width: 100%; height: auto; }
   .route-toggle { display: flex; gap: 8px; margin-bottom: 10px; }
   .route-toggle button {
@@ -157,7 +159,7 @@
   .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
   .metric { background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 8px; text-align: center; }
   .metric .mv { font-size: 15px; font-weight: 800; }
-  .metric .mk { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: .4px; }
+  .metric .mk { font-size: 10px; color: #94a3b8; letter-spacing: .4px; }
   .viol-note { margin-top: 8px; font-size: 12px; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 10px; }
   .pharm-detail { margin-top: 8px; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #0f766e; }
   .pharm-detail .nm { font-weight: 700; }
@@ -173,7 +175,7 @@
   .qa button { padding: 7px 12px; border: 1px solid var(--teal); background: var(--teal); color: #fff; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12.5px; }
   .qa .answer { margin-top: 10px; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #334155; min-height: 20px; }
 
-  /* ---------- audit ---------- */
+  /* ---------- 审计 ---------- */
   .audit { max-width: 1440px; margin: 16px auto 30px; padding: 0 24px; }
   .audit table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   .audit th, .audit td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
@@ -192,92 +194,93 @@
     <div class="logo">❄</div>
     <div>
       <h1>PharmaColdOps</h1>
-      <div class="sub">Cold-chain temperature-excursion disposition &amp; delivery re-routing</div>
+      <div class="sub">冷链药品温度超限处置与配送重新规划</div>
     </div>
   </div>
   <div class="pills">
-    <span class="pill live">● Rule engine v1 · live</span>
-    <span class="pill">WHO TRS 961 Annex 9</span>
+    <span class="pill live">● 规则引擎 v1 · 实时</span>
+    <span class="pill">WHO TRS 961 附录 9</span>
     <span class="pill">EU GDP 2013/C 343/01</span>
-    <span class="pill">Interactive demo</span>
+    <span class="pill">交互演示</span>
+    <span class="pill" id="apiState" style="display:none"></span>
   </div>
 </header>
 
 <main>
-  <!-- LEFT: presets + config -->
+  <!-- 左：场景预设 + 规则配置 -->
   <aside class="card">
-    <h2>Scenario presets</h2>
+    <h2>场景预设</h2>
     <div class="ex-list" id="exList"></div>
 
     <div class="cfg">
-      <div class="lbl">Rule configuration</div>
-      <div class="cfg-row"><span>Allowable duration</span><input type="number" id="allowableInput" step="1"></div>
-      <div class="cfg-row"><span>MKT threshold (°C)</span><input type="number" id="mktThresholdInput" step="0.5"></div>
-      <div class="cfg-row"><span>Retestable</span><input type="checkbox" id="retestableInput"></div>
-      <button class="btn" id="resetCfg">Reset to product defaults</button>
+      <div class="lbl">规则配置</div>
+      <div class="cfg-row"><span>允许超限时长</span><input type="number" id="allowableInput" step="1"></div>
+      <div class="cfg-row"><span>MKT 阈值（°C）</span><input type="number" id="mktThresholdInput" step="0.5"></div>
+      <div class="cfg-row"><span>可复验</span><input type="checkbox" id="retestableInput"></div>
+      <button class="btn" id="resetCfg">重置为产品默认值</button>
     </div>
   </aside>
 
-  <!-- CENTER: decision sandbox -->
+  <!-- 中：决策沙盒 -->
   <section class="card">
-    <h2>Decision sandbox</h2>
+    <h2>决策沙盒</h2>
     <div id="banner"></div>
 
-    <div class="section-label">Temperature replay</div>
+    <div class="section-label">温度回放</div>
     <div id="timeline"></div>
     <div class="timeline-controls">
-      <button class="btn" id="playBtn">▶ Replay</button>
+      <button class="btn" id="playBtn">▶ 回放</button>
       <input type="range" id="timeScrub" min="0" max="100" value="0">
       <span id="timeReadout"></span>
     </div>
 
-    <div class="section-label">Excursion inputs</div>
+    <div class="section-label">超限输入</div>
     <div class="controls">
       <div class="ctl">
-        <label>Product</label>
+        <label>产品</label>
         <select id="productSelect">
-          <option value="vaccine_2_8">Vaccine (2–8 °C)</option>
-          <option value="frozen_m20">Frozen biologic (−25…−15 °C)</option>
-          <option value="insulin_2_8">Insulin (2–8 °C)</option>
-          <option value="mrna_ultracold">mRNA vaccine (−90…−60 °C)</option>
+          <option value="vaccine_2_8">疫苗（2–8 °C）</option>
+          <option value="frozen_m20">冷冻生物制品（−25…−15 °C）</option>
+          <option value="insulin_2_8">胰岛素（2–8 °C）</option>
+          <option value="mrna_ultracold">mRNA 疫苗（−90…−60 °C）</option>
         </select>
       </div>
       <div class="ctl">
-        <label>Stage</label>
+        <label>阶段</label>
         <select id="stageSelect">
-          <option value="transit">In transit</option>
-          <option value="warehouse">Warehouse</option>
-          <option value="airport_dwell">Airport dwell</option>
-          <option value="last_mile">Last mile</option>
+          <option value="transit">运输中</option>
+          <option value="warehouse">仓库</option>
+          <option value="airport_dwell">机场滞留</option>
+          <option value="last_mile">最后一公里</option>
         </select>
       </div>
       <div class="ctl">
-        <label>Packaging</label>
+        <label>包装</label>
         <select id="packagingSelect">
-          <option value="intact">Intact</option>
-          <option value="compromised">Compromised</option>
+          <option value="intact">完好</option>
+          <option value="compromised">破损</option>
         </select>
       </div>
       <div class="ctl">
         <label>&nbsp;</label>
-        <button class="btn" id="randomize" style="height:32px">🎲 Randomize excursion</button>
+        <button class="btn" id="randomize" style="height:32px">🎲 随机超限事件</button>
       </div>
       <div class="ctl">
-        <label>Excursion temp (°C)</label>
+        <label>超限温度（°C）</label>
         <div class="range-line">
           <input type="range" id="tempRange" step="0.5">
           <input type="number" class="num" id="tempNum" step="0.5">
         </div>
       </div>
       <div class="ctl">
-        <label>Duration (min)</label>
+        <label>时长（分钟）</label>
         <div class="range-line">
           <input type="range" id="durRange" step="1">
           <input type="number" class="num" id="durNum" step="1">
         </div>
       </div>
       <div class="ctl" style="grid-column: 1 / -1;">
-        <label>Mean Kinetic Temperature — MKT (°C)</label>
+        <label>平均动力学温度 — MKT（°C）</label>
         <div class="range-line">
           <input type="range" id="mktRange" step="0.1">
           <input type="number" class="num" id="mktNum" step="0.1">
@@ -285,66 +288,66 @@
       </div>
     </div>
 
-    <div class="section-label">Decision boundary map (duration × MKT)</div>
+    <div class="section-label">决策边界图（时长 × MKT）</div>
     <div class="zone-wrap" id="zonePlot"></div>
     <div class="legend" id="legend"></div>
     <div class="plot-note" id="plotNote"></div>
 
-    <div class="section-label">Auditable rule path</div>
+    <div class="section-label">可审计规则路径</div>
     <div class="rulepath" id="rulepath"></div>
 
-    <div class="section-label">Rule evaluation (priority order)</div>
+    <div class="section-label">规则评估（优先级顺序）</div>
     <ul class="rules-list" id="rulesList"></ul>
 
-    <div class="section-label">Risk index <span style="color:#94a3b8;text-transform:none;letter-spacing:0">(rule-derived · deterministic, not an ML model)</span></div>
+    <div class="section-label">风险指数 <span style="color:#94a3b8;text-transform:none;letter-spacing:0">（规则启发式 · 确定性，非 ML 模型）</span></div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="riskbar" style="flex:1"><div id="riskFill" style="width:0%"></div></div>
       <b style="font-size:13px" id="riskVal">–/100</b>
     </div>
     <div class="plot-note" id="causeNote"></div>
 
-    <div class="section-label">Why this decision</div>
+    <div class="section-label">为什么这么判</div>
     <div class="evidence" id="evidence"></div>
   </section>
 
-  <!-- RIGHT: reroute + QA -->
+  <!-- 右：配送规划 + 问答 -->
   <aside class="card">
-    <h2>Delivery re-routing</h2>
+    <h2>配送重新规划</h2>
     <div id="reroute"></div>
 
     <div class="qa">
-      <h2>Compliance Q&amp;A <span style="color:#94a3b8;text-transform:none;letter-spacing:0">(knowledge graph · concept)</span></h2>
+      <h2>合规问答 <span style="color:#94a3b8;text-transform:none;letter-spacing:0">（知识图谱 · 概念）</span></h2>
       <div class="qline">
-        <input type="text" id="qaInput" placeholder="e.g. what is MKT? when to scrap?">
-        <button id="qaAsk">Ask</button>
+        <input type="text" id="qaInput" placeholder="例如：什么是 MKT？什么时候报废？">
+        <button id="qaAsk">提问</button>
       </div>
-      <div class="answer" id="qaAnswer">Ask a regulatory question to see a grounded answer.</div>
+      <div class="answer" id="qaAnswer">提出合规问题，查看基于法规的回答。</div>
     </div>
   </aside>
 </main>
 
 <section class="audit">
   <div class="card">
-    <h2>Audit trail</h2>
+    <h2>审计追踪</h2>
     <table>
-      <thead><tr><th>Time</th><th>Scenario</th><th>Product</th><th>Disposition</th><th>Rule path</th></tr></thead>
+      <thead><tr><th>时间</th><th>场景</th><th>产品</th><th>处置</th><th>规则路径</th></tr></thead>
       <tbody id="auditBody"></tbody>
     </table>
   </div>
 </section>
 
 <footer>
-  PharmaColdOps · interactive demo — the rule engine and risk index are live logic (the risk index is derived from the same thresholds, deterministic); VRPTW re-routing and knowledge-graph Q&amp;A are concept mockups.
+  PharmaColdOps · 交互演示 —— 规则引擎与风险指数为实时逻辑（风险指数由同一组阈值导出，确定性）；VRPTW 配送规划与知识图谱问答为概念示意。
 </footer>
 
 <script src="real_data.js"></script>
 <script>
-/* ================= config (mirrors src/rule_engine/rules_config.json) ================= */
+/* ================= 配置（对应 src/rule_engine/rules_config.json） ================= */
 const PRODUCTS = {
-  vaccine_2_8:    { id: "vaccine_2_8",    name: "Vaccine (2–8 °C)", min: 2, max: 8, allowable: 30, mktThreshold: 10.0, retestable: true,  freezeSensitive: true },
-  frozen_m20:     { id: "frozen_m20",     name: "Frozen biologic (−25…−15 °C)", min: -25, max: -15, allowable: 15, mktThreshold: -12.0, retestable: false, freezeSensitive: false },
-  insulin_2_8:    { id: "insulin_2_8",    name: "Insulin (2–8 °C)", min: 2, max: 8, allowable: 30, mktThreshold: 10.0, retestable: true,  freezeSensitive: true },
-  mrna_ultracold: { id: "mrna_ultracold", name: "mRNA vaccine (−90…−60 °C)", min: -90, max: -60, allowable: 60, mktThreshold: -55.0, retestable: false, freezeSensitive: false },
+  vaccine_2_8:    { id: "vaccine_2_8",    name: "疫苗（2–8 °C）", min: 2, max: 8, allowable: 30, mktThreshold: 10.0, retestable: true,  freezeSensitive: true },
+  frozen_m20:     { id: "frozen_m20",     name: "冷冻生物制品（−25…−15 °C）", min: -25, max: -15, allowable: 15, mktThreshold: -12.0, retestable: false, freezeSensitive: false },
+  insulin_2_8:    { id: "insulin_2_8",    name: "胰岛素（2–8 °C）", min: 2, max: 8, allowable: 30, mktThreshold: 10.0, retestable: true,  freezeSensitive: true },
+  mrna_ultracold: { id: "mrna_ultracold", name: "mRNA 疫苗（−90…−60 °C）", min: -90, max: -60, allowable: 60, mktThreshold: -55.0, retestable: false, freezeSensitive: false },
 };
 const TEMP_RANGE = { vaccine_2_8: [-5, 35], frozen_m20: [-30, 15], insulin_2_8: [-5, 35], mrna_ultracold: [-90, 0] };
 const DEFAULT_EVENT = {
@@ -354,24 +357,57 @@ const DEFAULT_EVENT = {
   mrna_ultracold: { excursion_temp_c: -40, duration_min: 70, mkt_c: -58.0, packaging: "intact", stage: "transit" },
 };
 const DISPO = {
-  release:    { label: "Release",    bg: "#16a34a" },
-  retest:     { label: "Retest",     bg: "#d97706" },
-  quarantine: { label: "Quarantine", bg: "#ea580c" },
-  scrap:      { label: "Scrap",      bg: "#dc2626" },
+  release:    { label: "放行", bg: "#16a34a" },
+  retest:     { label: "复验", bg: "#d97706" },
+  quarantine: { label: "隔离", bg: "#ea580c" },
+  scrap:      { label: "报废", bg: "#dc2626" },
 };
-const STAGES = { transit: "In transit", warehouse: "Warehouse", airport_dwell: "Airport dwell", last_mile: "Last mile" };
+const STAGES = { transit: "运输中", warehouse: "仓库", airport_dwell: "机场滞留", last_mile: "最后一公里" };
 const RULES = [
-  "Freeze damage: freeze-sensitive product at or below 0 °C → scrap",
-  "Compromised packaging during an excursion → scrap",
-  "Duration ≥ 2× allowable, or MKT ≥ threshold + 3 °C → scrap",
-  "Duration > allowable, or MKT > threshold → quarantine",
-  "Retestable and near the edge (duration ≥ 0.8× allowable, or MKT ≥ threshold − 0.5 °C) → retest",
-  "Otherwise → release",
+  "冻结损坏：冻敏产品在 0 °C 及以下 → 报废",
+  "超限期间包装破损 → 报废",
+  "时长 ≥ 2× 允许值，或 MKT ≥ 阈值 + 3 °C → 报废",
+  "时长 > 允许值，或 MKT > 阈值 → 隔离",
+  "可复验且接近边界（时长 ≥ 0.8× 允许值，或 MKT ≥ 阈值 − 0.5 °C）→ 复验",
+  "否则 → 放行",
 ];
-/* SCENARIOS, DEPOT, PHARMACIES and ROUTES are loaded from real_data.js
-   (generated by scripts/export_demo_data.py from the downloaded datasets). */
+/* 本地化文案，按规则号 / 风险根因代码 / 证据等级索引。后端（启用时）只返回
+   语义代码——disposition、rule_no、risk cause_code、evidence 等级——由本表转成
+   文字。因此英文与中文文案无需进入 Python 引擎。 */
+const RULE_TEXT = {
+  1: { reason: "冻结损坏；冻敏产品暴露在冰点以下", regulation: "WHO TRS 961 附录 9 — 冻敏疫苗冻结即失效" },
+  2: { reason: "超限期间包装破损", regulation: "EU GDP 2013/C 343/01 — 运输过程中包装完整性必须保持" },
+  3: { reason: "超限严重程度超出任何可接受范围", regulation: "WHO TRS 961 附录 9 — 超限超出可接受稳定性余量" },
+  4: { reason: "超出允许超限；隔离待质量评估", regulation: "WHO TRS 961 附录 9 / EU GDP — 超限时隔离待质量评估" },
+  5: { reason: "未超限但接近阈值；复验确认", regulation: "EU GDP 2013/C 343/01 — 阈内超限以复验确认" },
+  6: { reason: "超限在可接受安全范围内", regulation: "WHO TRS 961 附录 9 — 在可接受范围内" },
+};
+const CAUSE_TEXT = {
+  frozen: "冻结损坏（≤0 °C）",
+  packaging: "包装破损",
+  overtemp: "制冷设定点/超温越限",
+  duration: "超限时长超允许值",
+  mkt: "MKT 超过阈值",
+  near: "接近阈值，需复验确认",
+  inband: "在带内，未见异常",
+  minor: "轻微温度偏离",
+};
+const EV_LBL = {
+  packaging: { ok: "正常", breach: "破损" },
+  temp:      { ok: "正常", breach: "超范围" },
+  freeze:    { ok: "正常", severe: "已冻结" },
+  duration:  { ok: "正常", near: "接近（≥0.8×）", breach: "超出（>A）", severe: "严重（≥2×）" },
+  mkt:       { ok: "正常", near: "接近（≥T−0.5）", breach: "超出（>T）", severe: "严重（≥T+3）" },
+};
+/* 后端模式：URL 加 ?api=http://host:port 即可让每个判定都经过 FastAPI 服务
+   （src/api —— 真正的 Python 规则引擎）。不加则完全离线，使用下方忠实移植的
+   JS 引擎。后端负责判定语义，本文件负责全部文案。 */
+const API_BASE = new URLSearchParams(location.search).get("api") || "";
+const USE_API = API_BASE !== "";
+/* SCENARIOS、DEPOT、PHARMACIES、ROUTES 由 real_data.js 加载
+   （由 scripts/export_demo_data.py 从已下载数据集生成）。 */
 
-/* ================= working state (mutable) ================= */
+/* ================= 工作状态（可变） ================= */
 let spec = { ...PRODUCTS.vaccine_2_8 };
 let current = { product_id: "vaccine_2_8", ...DEFAULT_EVENT.vaccine_2_8 };
 let nowTime = 0;
@@ -379,98 +415,292 @@ let animTimer = null;
 let routeMode = "optimized";
 let selectedPharm = null;
 
-/* ================= helpers ================= */
+/* ================= 工具 ================= */
 const $ = (id) => document.getElementById(id);
 function fmt(n, dec = 1) { return (Math.round(n * Math.pow(10, dec)) / Math.pow(10, dec)).toString(); }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-/* ================= rule engine (faithful port of engine.py) ================= */
+/* ================= 规则引擎（engine.py 的忠实移植） ================= */
+function pathLine(ev, s, disp, reason) {
+  return `${ev.product_id}（${fmt(s.min)}–${fmt(s.max)} °C）在 ${fmt(ev.excursion_temp_c)} °C 持续 ` +
+         `${ev.duration_min} 分钟（MKT ${fmt(ev.mkt_c)} °C，允许 ${s.allowable} 分钟）→ ${disp}：${reason}`;
+}
 function evaluate(event, s) {
-  const rulePath = (disp, reason) =>
-    `${event.product_id} (${fmt(s.min)}–${fmt(s.max)} °C) at ${fmt(event.excursion_temp_c)} °C for ` +
-    `${event.duration_min} min (MKT ${fmt(event.mkt_c)} °C, allowable ${s.allowable} min) → ${disp}: ${reason}`;
-  const decide = (disp, reason, ruleNo, regulation) => ({
-    disposition: disp,
-    reshipment: (disp === "scrap" || disp === "quarantine"),
-    rulePath: rulePath(disp, reason),
-    ruleNo,
-    reason,
-    regulation,
-  });
+  const decide = (disp, ruleNo) => {
+    const t = RULE_TEXT[ruleNo];
+    return {
+      disposition: disp,
+      reshipment: (disp === "scrap" || disp === "quarantine"),
+      rulePath: pathLine(event, s, disp, t.reason),
+      ruleNo,
+      reason: t.reason,
+      regulation: t.regulation,
+    };
+  };
 
   if (s.freezeSensitive && event.excursion_temp_c <= 0)
-    return decide("scrap", "freeze damage; freeze-sensitive product exposed below freezing point", 1,
-      "WHO TRS 961 Annex 9 — freeze-sensitive vaccines lose potency when frozen");
+    return decide("scrap", 1);
   if (event.packaging === "compromised" && event.excursion_temp_c > s.max)
-    return decide("scrap", "packaging compromised during excursion", 2,
-      "EU GDP 2013/C 343/01 — packaging integrity must be preserved during transport");
+    return decide("scrap", 2);
   if (event.duration_min >= 2 * s.allowable || event.mkt_c >= s.mktThreshold + 3.0)
-    return decide("scrap", "excursion severity beyond any acceptable margin", 3,
-      "WHO TRS 961 Annex 9 — excursion beyond acceptable stability margin");
+    return decide("scrap", 3);
   if (event.duration_min > s.allowable || event.mkt_c > s.mktThreshold)
-    return decide("quarantine", "exceeded allowable excursion; hold for quality assessment", 4,
-      "WHO TRS 961 Annex 9 / EU GDP — hold for quality assessment on excursion");
+    return decide("quarantine", 4);
   if (s.retestable && (event.duration_min >= 0.8 * s.allowable || event.mkt_c >= s.mktThreshold - 0.5))
-    return decide("retest", "within limits but near threshold; confirm by testing", 5,
-      "EU GDP 2013/C 343/01 — confirm within-threshold excursions by testing");
-  return decide("release", "excursion within acceptable safety range", 6,
-    "WHO TRS 961 Annex 9 — within acceptable range");
+    return decide("retest", 5);
+  return decide("release", 6);
 }
 
-/* Risk index: a deterministic severity score derived from the SAME thresholds as
-   the rule engine (rule-derived heuristic, NOT an ML model). Components = how far the
-   temperature is outside the storage band (normalised by band width) + duration/allowable
-   + MKT/threshold + packaging breach. Freeze damage (freeze-sensitive product ≤ 0 °C,
-   rule 1) is pinned to the top severity. Shares its inputs with the disposition; the
-   value moves live with the sliders. */
+/* 风险指数：由规则引擎同一组阈值导出的确定性严重度评分（规则启发式，非 ML 模型）。
+   分量 = 温度越出储运温带的幅度（按带宽归一）+ 超限时长/允许值 + MKT/阈值 + 包装破损；
+   冻敏产品 ≤0 °C 冻结 = 规则 1，置顶最高严重度。与处置结果同源，随滑杆实时变化。 */
 function riskInfo(event, s) {
   const band = Math.max(1e-6, s.max - s.min);
   const frozen = s.freezeSensitive && event.excursion_temp_c <= 0;
 
-  let tScore = 0, tLabel = "in band";
-  if (frozen) { tScore = 1.6; tLabel = "frozen"; }
-  else if (event.excursion_temp_c > s.max) { tScore = Math.min(1.5, (event.excursion_temp_c - s.max) / band); tLabel = "above max"; }
-  else if (event.excursion_temp_c < s.min && s.freezeSensitive) { tScore = Math.min(1.2, (s.min - event.excursion_temp_c) / band); tLabel = "below min"; }
-  // non-freeze-sensitive products (frozen / ultracold) tolerate below-band cold — not scored
+  let tScore = 0, tLabel = "带内";
+  if (frozen) { tScore = 1.6; tLabel = "冻结"; }
+  else if (event.excursion_temp_c > s.max) { tScore = Math.min(1.5, (event.excursion_temp_c - s.max) / band); tLabel = "超上限"; }
+  else if (event.excursion_temp_c < s.min && s.freezeSensitive) { tScore = Math.min(1.2, (s.min - event.excursion_temp_c) / band); tLabel = "低于下限"; }
+  // 非冻敏产品（冷冻 / mRNA）低于下限视为更安全，不计分
 
-  const dScore = Math.min(1.5, event.duration_min / s.allowable);   // same duration criterion as rules 3–5
+  const dScore = Math.min(1.5, event.duration_min / s.allowable);   // 同规则 3–5 的时长判据
   const mScore = Math.max(0, Math.min(1.5, (event.mkt_c - s.mktThreshold) / band));
   const pBreach = event.packaging === "compromised" && event.excursion_temp_c > s.max;
 
   let raw = 0.50 * tScore + 0.28 * dScore + 0.12 * mScore + (pBreach ? 0.10 : 0);
-  if (frozen) raw = Math.max(raw, 0.95);     // freeze = rule 1, top severity
-  if (pBreach) raw = Math.max(raw, 0.72);    // packaging breach = rule 2
+  if (frozen) raw = Math.max(raw, 0.95);     // 冻结 = 规则 1，最高严重度
+  if (pBreach) raw = Math.max(raw, 0.72);    // 破损包装 = 规则 2
 
   const causes = [];
-  if (frozen) causes.push("Freeze damage (≤ 0 °C)");
-  if (pBreach) causes.push("Packaging breach");
-  if (event.excursion_temp_c > s.max + band * 0.5) causes.push("Reefer setpoint / over-temperature");
-  if (!frozen && event.duration_min > s.allowable) causes.push("Excursion duration exceeds allowable");
-  if (event.mkt_c > s.mktThreshold) causes.push("MKT above threshold");
+  if (frozen) causes.push("冻结损坏（≤0 °C）");
+  if (pBreach) causes.push("包装破损");
+  if (event.excursion_temp_c > s.max + band * 0.5) causes.push("制冷设定点/超温越限");
+  if (!frozen && event.duration_min > s.allowable) causes.push("超限时长超允许值");
+  if (event.mkt_c > s.mktThreshold) causes.push("MKT 超过阈值");
   if (causes.length === 0 && (event.duration_min >= 0.8 * s.allowable || event.mkt_c >= s.mktThreshold - 0.5))
-    causes.push("Near threshold — retest to confirm");
-  if (causes.length === 0) causes.push(tLabel === "in band" ? "In band, no anomaly" : "Minor temperature deviation");
+    causes.push("接近阈值，需复验确认");
+  if (causes.length === 0) causes.push(tLabel === "带内" ? "在带内，未见异常" : "轻微温度偏离");
 
   return { risk: clamp(Math.round(raw * 100), 3, 99), topCause: causes[0] };
 }
 
-/* ================= rendering ================= */
+/* 证据等级分类器——镜像 src/api/service.py classify_evidence。
+   返回单条证据行的语义等级（ok/near/breach/severe）。 */
+function evLevel(s, c, key) {
+  const A = s.allowable, T = s.mktThreshold;
+  if (key === "packaging") return c.packaging === "compromised" ? "breach" : "ok";
+  if (key === "temp") return c.excursion_temp_c > s.max ? "breach" : "ok";
+  if (key === "freeze") return c.excursion_temp_c <= 0 ? "severe" : "ok";
+  if (key === "duration") {
+    if (c.duration_min >= 2 * A) return "severe";
+    if (c.duration_min > A) return "breach";
+    if (c.duration_min >= 0.8 * A) return "near";
+    return "ok";
+  }
+  if (key === "mkt") {
+    if (c.mkt_c >= T + 3) return "severe";
+    if (c.mkt_c > T) return "breach";
+    if (c.mkt_c >= T - 0.5) return "near";
+    return "ok";
+  }
+  return "ok";
+}
+
+/* ================= API 后端编排 ================= */
+let view = { apiUp: null, decision: null, decisionKey: null, local: null,
+             grid: null, gridKey: null, gridPending: null, presets: null };
+
+function decisionKey() {
+  return [current.product_id, current.excursion_temp_c, current.duration_min,
+          current.mkt_c, current.packaging, current.stage,
+          spec.allowable, spec.mktThreshold, spec.retestable].join("|");
+}
+function specKey() {
+  return [current.product_id, spec.allowable, spec.mktThreshold, spec.retestable].join("|");
+}
+function eventPayload() {
+  return {
+    product_id: current.product_id,
+    excursion_temp_c: current.excursion_temp_c,
+    duration_min: current.duration_min,
+    mkt_c: current.mkt_c,
+    packaging: current.packaging,
+    stage: current.stage,
+  };
+}
+function overridePayload() {
+  return {
+    allowable_duration_min: spec.allowable,
+    mkt_threshold_c: spec.mktThreshold,
+    retestable: spec.retestable,
+  };
+}
+
+function postJson(path, body) {
+  return fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+}
+function checkHealth() {
+  return fetch(API_BASE + "/api/health")
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))));
+}
+
+function renderApiStatus() {
+  const el = $("apiState");
+  if (!el) return;
+  if (!USE_API) { el.style.display = "none"; return; }
+  el.style.display = "";
+  if (view.apiUp === true) { el.className = "pill good"; el.textContent = "● API · Python 引擎"; }
+  else if (view.apiUp === false) { el.className = "pill bad"; el.textContent = "● API 不可达 · 本地兑底"; }
+  else { el.className = "pill"; el.textContent = "● API 连接中…"; }
+}
+function apiDown() {
+  if (view.apiUp !== false) { view.apiUp = false; renderApiStatus(); }
+  scheduleRecheck();
+}
+function scheduleRecheck() {
+  setTimeout(() => {
+    if (view.apiUp === true) return;
+    checkHealth()
+      .then(() => { view.apiUp = true; renderApiStatus(); syncDecision(); syncGrid(); syncPresets(); })
+      .catch(() => scheduleRecheck());
+  }, 4000);
+}
+
+/* 仅当后端判定对应的输入与当前控件仍一致时，才认为它有效（否则请求在防抖途中）。 */
+function freshServer() {
+  if (!USE_API || view.apiUp === false) return null;
+  if (view.decision && view.decisionKey === decisionKey()) return view.decision;
+  return null;
+}
+/* 把后端响应规范化为渲染器读取的形状：disposition/ruleNo 来自后端，文案取本表。 */
+function localFromServer(srv) {
+  const t = RULE_TEXT[srv.rule_no] || { reason: srv.reason, regulation: srv.regulation };
+  const sp = srv.spec, ev = srv.event;
+  const e = { product_id: ev.product_id, excursion_temp_c: ev.excursion_temp_c,
+              duration_min: ev.duration_min, mkt_c: ev.mkt_c,
+              packaging: ev.packaging, stage: ev.stage };
+  const s = { min: sp.storage_min_c, max: sp.storage_max_c, allowable: sp.allowable_duration_min,
+              mktThreshold: sp.mkt_threshold_c, retestable: sp.retestable,
+              freezeSensitive: sp.freeze_sensitive };
+  return {
+    disposition: srv.disposition,
+    reshipment: srv.reshipment_required,
+    ruleNo: srv.rule_no,
+    reason: t.reason,
+    regulation: t.regulation,
+    rulePath: pathLine(e, s, srv.disposition, t.reason),
+    risk: srv.risk.score,
+    topCause: CAUSE_TEXT[srv.risk.cause_code] || srv.risk.cause_code,
+  };
+}
+/* 面板读这两个之一：服务端判定新鲜时用服务端，否则用本地 JS 引擎（离线模式或
+   防抖请求在途的一瞬——两引擎一致，切换不可见）。 */
+function decisionFor() {
+  if (freshServer() && view.local) return view.local;
+  return evaluate(current, spec);
+}
+function riskFor() {
+  if (freshServer() && view.local) return { risk: view.local.risk, topCause: view.local.topCause };
+  return riskInfo(current, spec);
+}
+
+let decisionTimer = null;
+function maybeSync() {                       // renderAll 尾部钩子
+  if (!USE_API || view.apiUp === false) return;
+  const k = decisionKey();
+  if (view.decisionKey === k) return;
+  clearTimeout(decisionTimer);
+  decisionTimer = setTimeout(syncDecision, 80);
+}
+function syncDecision() {
+  if (!USE_API || view.apiUp === false) return;
+  const k = decisionKey();
+  postJson(API_BASE + "/api/decide", { ...eventPayload(), spec_override: overridePayload() })
+    .then((res) => {
+      view.apiUp = true;
+      view.decision = res;
+      view.decisionKey = k;
+      view.local = localFromServer(res);
+      renderApiStatus();
+      renderAll();
+    })
+    .catch(() => apiDown());
+}
+function syncGrid() {
+  if (!USE_API || view.apiUp === false) return;
+  const gk = specKey();
+  if (view.gridPending === gk) return;
+  view.gridPending = gk;
+  const A = spec.allowable, T = spec.mktThreshold;
+  const xMin = 0, xMax = 2.5 * A, yMin = T - 6, yMax = T + 4;
+  const cols = 26, rows = 18;
+  const durations = Array.from({ length: cols }, (_, c) => xMin + (c + 0.5) / cols * (xMax - xMin));
+  const mkts = Array.from({ length: rows }, (_, r) => yMax - (r + 0.5) / rows * (yMax - yMin));
+  postJson(API_BASE + "/api/grid", {
+    product_id: current.product_id,
+    excursion_temp_c: spec.max,
+    packaging: "intact",
+    stage: "transit",
+    spec_override: overridePayload(),
+    durations,
+    mkts,
+  })
+    .then((res) => {
+      view.apiUp = true;
+      view.grid = res.rows;
+      view.gridKey = gk;
+      view.gridPending = null;
+      renderApiStatus();
+      renderZonePlot();
+    })
+    .catch(() => { view.gridPending = null; apiDown(); });
+}
+function maybeSyncGrid() {
+  if (!USE_API || view.apiUp === false) return;
+  if (view.gridKey === specKey() || view.gridPending === specKey()) return;
+  syncGrid();
+}
+function syncPresets() {
+  if (!USE_API) return;
+  postJson(API_BASE + "/api/decide_batch", {
+    events: SCENARIOS.map((sc) => ({
+      product_id: sc.product_id, excursion_temp_c: sc.excursion_temp_c,
+      duration_min: sc.duration_min, mkt_c: sc.mkt_c,
+      packaging: sc.packaging || "intact", stage: sc.stage || "transit",
+    })),
+  })
+    .then((res) => {
+      view.apiUp = true;
+      view.presets = {};
+      res.decisions.forEach((d, i) => { view.presets[SCENARIOS[i].id] = d.disposition; });
+      renderApiStatus();
+      buildList();
+    })
+    .catch(() => apiDown());
+}
+
+/* ================= 渲染 ================= */
 function renderBanner() {
-  const d = evaluate(current, spec);
+  const d = decisionFor();
   const dispo = DISPO[d.disposition];
   $("banner").innerHTML = `
     <div class="dispo-banner" style="background:${dispo.bg}">
-      <div class="dispo-badge">${dispo.label.slice(0,1)}</div>
+      <div class="dispo-badge">${dispo.label}</div>
       <div>
         <div class="big">${dispo.label}</div>
         <div class="why">${d.reason}</div>
       </div>
-      <div class="reship">Reshipment<br><b>${d.reshipment ? "REQUIRED" : "Not required"}</b></div>
+      <div class="reship">补发<br><b>${d.reshipment ? "需要" : "不需要"}</b></div>
     </div>`;
 }
 
 function renderRulePath() {
-  const d = evaluate(current, spec);
+  const d = decisionFor();
   $("rulepath").textContent = d.rulePath;
   $("rulesList").innerHTML = RULES.map((r, i) =>
     `<li class="${i + 1 === d.ruleNo ? "fired" : ""}"><span class="no">${i + 1}</span>${r}</li>`
@@ -478,62 +708,53 @@ function renderRulePath() {
 }
 
 function renderRisk() {
-  const ri = riskInfo(current, spec);
+  const ri = riskFor();
   $("riskFill").style.width = ri.risk + "%";
   $("riskVal").textContent = ri.risk + "/100";
-  $("causeNote").textContent = "Top root cause: " + ri.topCause;
+  $("causeNote").textContent = "首要根因：" + ri.topCause;
 }
 
 function renderEvidence() {
-  const d = evaluate(current, spec);
-  const A = spec.allowable, T = spec.mktThreshold;
+  const d = decisionFor();
+  const srv = freshServer();
+  const s = spec, c = current;
+  const A = s.allowable, T = s.mktThreshold;
+  /* 芯片等级来自后端（当其判定为当前时）；否则（离线 / 请求在途）按相同规则本地计算。 */
+  const lvl = (key) => ((srv && srv.evidence && srv.evidence[key]) || evLevel(s, c, key));
   const rows = [];
 
   rows.push({
-    k: "Packaging", v: current.packaging, limit: "",
-    level: current.packaging === "compromised" ? "breach" : "ok",
-    label: current.packaging === "compromised" ? "BREACHED" : "OK",
+    k: "包装", v: c.packaging === "compromised" ? "破损" : "完好", limit: "",
+    level: lvl("packaging"), label: EV_LBL.packaging[lvl("packaging")],
   });
-  const tempOut = current.excursion_temp_c > spec.max;
   rows.push({
-    k: "Excursion temp", v: fmt(current.excursion_temp_c) + " °C", limit: "limit " + fmt(spec.max) + " °C",
-    level: tempOut ? "breach" : "ok", label: tempOut ? "OUT OF RANGE" : "OK",
+    k: "超限温度", v: fmt(c.excursion_temp_c) + " °C", limit: "上限 " + fmt(s.max) + " °C",
+    level: lvl("temp"), label: EV_LBL.temp[lvl("temp")],
   });
-  if (spec.freezeSensitive) {
-    const frozen = current.excursion_temp_c <= 0;
+  if (s.freezeSensitive) {
     rows.push({
-      k: "Freeze risk", v: fmt(current.excursion_temp_c) + " °C", limit: "freezing point 0 °C",
-      level: frozen ? "severe" : "ok", label: frozen ? "FROZEN" : "OK",
+      k: "冻结风险", v: fmt(c.excursion_temp_c) + " °C", limit: "冰点 0 °C",
+      level: lvl("freeze"), label: EV_LBL.freeze[lvl("freeze")],
     });
   }
-  let durLevel, durLabel;
-  if (current.duration_min >= 2 * A) { durLevel = "severe"; durLabel = "SEVERE (≥2×)"; }
-  else if (current.duration_min > A) { durLevel = "breach"; durLabel = "BREACHED (>A)"; }
-  else if (current.duration_min >= 0.8 * A) { durLevel = "near"; durLabel = "NEAR (≥0.8×)"; }
-  else { durLevel = "ok"; durLabel = "OK"; }
   rows.push({
-    k: "Duration", v: current.duration_min + " min", limit: "allowable " + A + " min",
-    level: durLevel, label: durLabel,
+    k: "时长", v: c.duration_min + " 分钟", limit: "允许 " + A + " 分钟",
+    level: lvl("duration"), label: EV_LBL.duration[lvl("duration")],
   });
-  let mktLevel, mktLabel;
-  if (current.mkt_c >= T + 3) { mktLevel = "severe"; mktLabel = "SEVERE (≥T+3)"; }
-  else if (current.mkt_c > T) { mktLevel = "breach"; mktLabel = "BREACHED (>T)"; }
-  else if (current.mkt_c >= T - 0.5) { mktLevel = "near"; mktLabel = "NEAR (≥T−0.5)"; }
-  else { mktLevel = "ok"; mktLabel = "OK"; }
   rows.push({
-    k: "MKT", v: fmt(current.mkt_c) + " °C", limit: "threshold " + fmt(T) + " °C",
-    level: mktLevel, label: mktLabel,
+    k: "MKT", v: fmt(c.mkt_c) + " °C", limit: "阈值 " + fmt(T) + " °C",
+    level: lvl("mkt"), label: EV_LBL.mkt[lvl("mkt")],
   });
 
   let html = rows.map((r) =>
     `<div class="ev-row"><span class="k">${r.k}</span><span class="v">${r.v}</span><span class="limit">${r.limit}</span><span class="chip ${r.level}">${r.label}</span></div>`
   ).join("");
-  html += `<div class="ev-summary">→ Rule ${d.ruleNo}: ${d.reason}</div>`;
+  html += `<div class="ev-summary">→ 规则 ${d.ruleNo}：${d.reason}</div>`;
   html += `<div class="ev-reg">⚖ ${d.regulation}</div>`;
   $("evidence").innerHTML = html;
 }
 
-/* ================= timeline replay ================= */
+/* ================= 时间轴回放 ================= */
 function genProfile(event, spec) {
   const base = spec.min + (spec.max - spec.min) * 0.4;
   const peak = event.excursion_temp_c;
@@ -578,12 +799,12 @@ function renderTimeline() {
   const X = (t) => padL + (t / prof.total) * plotW;
   const Y = (v) => padT + (yMax - v) / (yMax - yMin) * plotH;
 
-  // safe band
+  // 安全区
   let s = `<rect x="${padL}" y="${Y(spec.max).toFixed(1)}" width="${plotW}" height="${(Y(spec.min) - Y(spec.max)).toFixed(1)}" fill="#16a34a" fill-opacity="0.07"/>`;
   s += `<line x1="${padL}" y1="${Y(spec.min).toFixed(1)}" x2="${padL + plotW}" y2="${Y(spec.min).toFixed(1)}" stroke="#16a34a" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
   s += `<line x1="${padL}" y1="${Y(spec.max).toFixed(1)}" x2="${padL + plotW}" y2="${Y(spec.max).toFixed(1)}" stroke="#16a34a" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>`;
 
-  // curve coloured by in/out of band
+  // 曲线按是否越限着色
   const segs = buildCurvePaths(prof.pts, spec);
   let curves = "";
   for (const seg of segs) {
@@ -592,7 +813,7 @@ function renderTimeline() {
     curves += `<path d="${dpath}" fill="none" stroke="${color}" stroke-width="2.3"/>`;
   }
 
-  // elapsed shading + now cursor
+  // 已播放区域遮罩 + 当前光标
   const nx = X(nowTime).toFixed(1);
   let cursor = `<rect x="${padL}" y="${padT}" width="${(nx - padL).toFixed(1)}" height="${plotH}" fill="#0f2a4a" fill-opacity="0.03"/>`;
   cursor += `<line x1="${nx}" y1="${padT}" x2="${nx}" y2="${padT + plotH}" stroke="#0f2a4a" stroke-width="1.6"/>`;
@@ -603,25 +824,25 @@ function renderTimeline() {
   cursor += `<circle cx="${nx}" cy="${Y(nowTemp).toFixed(1)}" r="5" fill="${anomaly ? "#dc2626" : "#0f2a4a"}"/>`;
   let badge = "";
   if (anomaly) {
-    badge = `<g><rect x="${W - 152}" y="4" width="140" height="20" rx="10" fill="#dc2626"/><text x="${W - 82}" y="18" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="inherit">⚠ EXCURSION</text></g>`;
+    badge = `<g><rect x="${W - 118}" y="4" width="106" height="20" rx="10" fill="#dc2626"/><text x="${W - 65}" y="18" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="inherit">⚠ 超限</text></g>`;
   }
 
-  let labels = `<text x="${padL}" y="${(Y(spec.max) - 4).toFixed(1)}" font-size="10" fill="#16a34a" font-family="inherit">max ${fmt(spec.max, 0)}°</text>`;
-  labels += `<text x="${padL}" y="${(Y(spec.min) + 11).toFixed(1)}" font-size="10" fill="#16a34a" font-family="inherit">min ${fmt(spec.min, 0)}°</text>`;
-  labels += `<text x="${padL + plotW / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit">Time (min)</text>`;
+  let labels = `<text x="${padL}" y="${(Y(spec.max) - 4).toFixed(1)}" font-size="10" fill="#16a34a" font-family="inherit">上限 ${fmt(spec.max, 0)}°</text>`;
+  labels += `<text x="${padL}" y="${(Y(spec.min) + 11).toFixed(1)}" font-size="10" fill="#16a34a" font-family="inherit">下限 ${fmt(spec.min, 0)}°</text>`;
+  labels += `<text x="${padL + plotW / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit">时间（分钟）</text>`;
 
   $("timeline").innerHTML = `<svg class="zone-svg" viewBox="0 0 ${W} ${H}">${s}${curves}${cursor}${badge}${labels}</svg>`;
 
   const scrub = $("timeScrub");
   if (document.activeElement !== scrub) scrub.value = (nowTime / prof.total * 100).toFixed(0);
-  $("timeReadout").textContent = `t = ${nowTime.toFixed(0)} / ${prof.total.toFixed(0)} min`;
+  $("timeReadout").textContent = `t = ${nowTime.toFixed(0)} / ${prof.total.toFixed(0)} 分钟`;
 }
 
 function playTimeline() {
   if (animTimer) { stopTimeline(); return; }
   const start = Date.now();
   const durMs = 3600;
-  $("playBtn").textContent = "⏸ Pause";
+  $("playBtn").textContent = "⏸ 暂停";
   animTimer = setInterval(() => {
     const p = genProfile(current, spec);
     nowTime = Math.min(p.total, p.total * ((Date.now() - start) / durMs));
@@ -631,10 +852,10 @@ function playTimeline() {
 }
 function stopTimeline() {
   if (animTimer) { clearInterval(animTimer); animTimer = null; }
-  $("playBtn").textContent = "▶ Replay";
+  $("playBtn").textContent = "▶ 回放";
 }
 
-/* ================= decision boundary map ================= */
+/* ================= 决策边界图 ================= */
 function renderZonePlot() {
   const A = spec.allowable, T = spec.mktThreshold;
   const xMin = 0, xMax = 2.5 * A;
@@ -645,13 +866,15 @@ function renderZonePlot() {
   const Y = (m) => padT + (yMax - m) / (yMax - yMin) * plotH;
 
   const cols = 26, rows = 18, cw = plotW / cols, ch = plotH / rows;
+  /* 边界图由 spec 驱动，一次 /api/grid 响应覆盖全部 468 格；缺失或过期时回退本地评估 */
+  const srvGrid = (USE_API && view.grid && view.gridKey === specKey()) ? view.grid : null;
   let rects = "";
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const d = xMin + (c + 0.5) / cols * (xMax - xMin);
       const m = yMax - (r + 0.5) / rows * (yMax - yMin);
       const ev = { product_id: current.product_id, excursion_temp_c: spec.max, duration_min: d, mkt_c: m, packaging: "intact", stage: "transit" };
-      const disp = evaluate(ev, spec).disposition;
+      const disp = srvGrid ? srvGrid[r][c] : evaluate(ev, spec).disposition;
       rects += `<rect x="${(padL + c * cw).toFixed(1)}" y="${(padT + r * ch).toFixed(1)}" width="${(cw + 0.6).toFixed(1)}" height="${(ch + 0.6).toFixed(1)}" fill="${DISPO[disp].bg}" fill-opacity="0.14"/>`;
     }
   }
@@ -662,13 +885,13 @@ function renderZonePlot() {
   vlines.forEach(([x, col]) => { lines += `<line x1="${X(x).toFixed(1)}" y1="${padT}" x2="${X(x).toFixed(1)}" y2="${padT + plotH}" stroke="${col}" stroke-width="1" stroke-dasharray="4 4"/>`; });
   hlines.forEach(([y, col]) => { lines += `<line x1="${padL}" y1="${Y(y).toFixed(1)}" x2="${padL + plotW}" y2="${Y(y).toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="4 4"/>`; });
 
-  const dFull = evaluate(current, spec);
+  const dFull = decisionFor();
   const px = X(clamp(current.duration_min, xMin, xMax)).toFixed(1);
   const py = Y(clamp(current.mkt_c, yMin, yMax)).toFixed(1);
   const point = `<circle cx="${px}" cy="${py}" r="6.5" fill="#fff" stroke="${DISPO[dFull.disposition].bg}" stroke-width="3"/>`;
 
-  let ticks = `<text x="${padL + plotW / 2}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit">Duration (min)</text>`;
-  ticks += `<text x="12" y="${padT + plotH / 2}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit" transform="rotate(-90 12 ${padT + plotH / 2})">MKT (°C)</text>`;
+  let ticks = `<text x="${padL + plotW / 2}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit">时长（分钟）</text>`;
+  ticks += `<text x="12" y="${padT + plotH / 2}" text-anchor="middle" font-size="11" fill="#64748b" font-family="inherit" transform="rotate(-90 12 ${padT + plotH / 2})">MKT（°C）</text>`;
   ticks += `<text x="${X(0)}" y="${padT + plotH + 16}" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="inherit">0</text>`;
   ticks += `<text x="${X(A)}" y="${padT + plotH + 16}" text-anchor="middle" font-size="10" fill="#64748b" font-family="inherit">${fmt(A, 0)}</text>`;
   ticks += `<text x="${X(2 * A)}" y="${padT + plotH + 16}" text-anchor="middle" font-size="10" fill="#64748b" font-family="inherit">${fmt(2 * A, 0)}</text>`;
@@ -683,21 +906,21 @@ function renderZonePlot() {
 
   const rule1 = current.packaging === "compromised" && current.excursion_temp_c > spec.max;
   $("plotNote").textContent = rule1
-    ? "Rule 1 override active: compromised packaging during excursion → scrap (map shows rules 2–5)."
-    : "Map shows rules 2–5 (packaging intact). Drag the duration / MKT sliders to move the dot across decision boundaries.";
+    ? "规则 1 覆盖生效：超限期间包装破损 → 报废（图中仅显示规则 2–5）。"
+    : "图中显示规则 2–5（假设包装完好）。拖动时长 / MKT 滑杆，让圆点跨越决策边界。";
 }
 
-/* ================= re-routing ================= */
+/* ================= 配送重新规划 ================= */
 function renderReroute() {
-  const d = evaluate(current, spec);
+  const d = decisionFor();
   if (!d.reshipment) {
     $("reroute").innerHTML = `
       <svg class="route-svg" viewBox="0 0 360 180">
         <rect x="0" y="0" width="360" height="180" rx="10" fill="#f8fafc"/>
         <circle cx="180" cy="90" r="26" fill="#e2e8f0"/>
-        <text x="180" y="95" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="inherit">no route</text>
+        <text x="180" y="95" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="inherit">无需路由</text>
       </svg>
-      <div class="idle">Shipment cleared — no re-routing required.</div>`;
+      <div class="idle">货物放行 —— 无需重新配送。</div>`;
     return;
   }
 
@@ -713,7 +936,7 @@ function renderReroute() {
     <rect x="0" y="0" width="360" height="210" rx="10" fill="#f0fdfa"/>
     <path d="${dPath}" fill="none" stroke="${stroke}" stroke-width="2.5"${dash}/>
     <circle cx="${DEPOT.x}" cy="${DEPOT.y}" r="20" fill="#0d9488"/>
-    <text x="${DEPOT.x}" y="${DEPOT.y + 5}" text-anchor="middle" fill="#fff" font-size="10" font-weight="700" font-family="inherit">DEPOT</text>`;
+    <text x="${DEPOT.x}" y="${DEPOT.y + 5}" text-anchor="middle" fill="#fff" font-size="10" font-weight="700" font-family="inherit">仓库</text>`;
   for (const p of PHARMACIES) {
     const sel = selectedPharm === p.id;
     const fill = sel ? "#14b8a6" : "#fff";
@@ -724,15 +947,15 @@ function renderReroute() {
   svg += `</svg>`;
 
   const toggle = `<div class="route-toggle">
-    <button class="${routeMode === "optimized" ? "on" : ""}" data-mode="optimized">Optimized</button>
-    <button class="${routeMode === "original" ? "on" : ""}" data-mode="original">Original (baseline)</button>
+    <button class="${routeMode === "optimized" ? "on" : ""}" data-mode="optimized">优化方案</button>
+    <button class="${routeMode === "original" ? "on" : ""}" data-mode="original">原始方案（基线）</button>
   </div>`;
 
   const metrics = `<div class="metrics">
-    <div class="metric"><div class="mv">${route.dist}</div><div class="mk">Distance</div></div>
-    <div class="metric"><div class="mv">${route.time}</div><div class="mk">Route time</div></div>
-    <div class="metric"><div class="mv">${route.cost}</div><div class="mk">Cost</div></div>
-    <div class="metric"><div class="mv">${route.viol}</div><div class="mk">Violations</div></div>
+    <div class="metric"><div class="mv">${route.dist}</div><div class="mk">距离</div></div>
+    <div class="metric"><div class="mv">${route.time}</div><div class="mk">路径时长</div></div>
+    <div class="metric"><div class="mv">${route.cost}</div><div class="mk">成本</div></div>
+    <div class="metric"><div class="mv">${route.viol}</div><div class="mk">违规数</div></div>
   </div>`;
 
   const viol = route.viol ? `<div class="viol-note">✗ ${route.violNote}</div>` : "";
@@ -741,10 +964,10 @@ function renderReroute() {
   if (selectedPharm) {
     const p = PHARMACIES.find((x) => x.id === selectedPharm);
     const pos = route.order.indexOf(p.id) + 1;
-    detail = `<div class="pharm-detail"><span class="nm">${p.name}</span><br>Time window ${p.tw} · ${p.zone} · demand ${p.demand} doses · stop #${pos} of ${route.order.length}</div>`;
+    detail = `<div class="pharm-detail"><span class="nm">${p.name}</span><br>时间窗 ${p.tw} · ${p.zone} · 需求 ${p.demand} 剂 · 第 ${pos} / ${route.order.length} 站</div>`;
   }
 
-  const alloc = `<div class="alloc"><span class="strong">Replacement stock allocated:</span> 240 doses of ${PRODUCTS[current.product_id].name} from Central Depot, dispatched with a cold-chain reefer.</div>`;
+  const alloc = `<div class="alloc"><span class="strong">已分配补发库存：</span>${PRODUCTS[current.product_id].name} 共 240 剂，自中央仓库发出，冷藏车配送。</div>`;
 
   $("reroute").innerHTML = toggle + svg + metrics + viol + detail + alloc;
 }
@@ -757,9 +980,11 @@ function renderAll() {
   renderEvidence();
   renderZonePlot();
   renderReroute();
+  /* 后端模式下把当前输入推给服务器（防抖）；响应回来后以权威值重渲染判定面板 */
+  if (USE_API) { maybeSync(); maybeSyncGrid(); }
 }
 
-/* ================= controls → state ================= */
+/* ================= 控件 → 状态 ================= */
 function syncControls() {
   const [tLo, tHi] = TEMP_RANGE[current.product_id];
   $("productSelect").value = current.product_id;
@@ -809,13 +1034,13 @@ function setEvent(sc) {
 }
 
 function addAudit() {
-  const d = evaluate(current, spec);
+  const d = decisionFor();
   const dispo = DISPO[d.disposition];
   const specName = PRODUCTS[current.product_id].name;
   const tr = document.createElement("tr");
   tr.innerHTML = `
     <td>${new Date().toLocaleTimeString()}</td>
-    <td>${current.stage} · ${fmt(current.excursion_temp_c)}°C / ${current.duration_min}min</td>
+    <td>${STAGES[current.stage] || current.stage} · ${fmt(current.excursion_temp_c)}°C / ${current.duration_min}分钟</td>
     <td>${specName}</td>
     <td><span class="tag" style="background:${dispo.bg}1a;color:${dispo.bg}">${dispo.label}</span></td>
     <td style="color:#64748b">${d.rulePath}</td>`;
@@ -824,19 +1049,20 @@ function addAudit() {
   while (body.children.length > 8) body.removeChild(body.lastChild);
 }
 
-/* ================= presets list ================= */
+/* ================= 场景预设列表 ================= */
 function buildList() {
   const wrap = $("exList");
   wrap.innerHTML = "";
   SCENARIOS.forEach((sc) => {
     const specName = PRODUCTS[sc.product_id].name;
-    const d = evaluate({ ...sc }, PRODUCTS[sc.product_id]);
+    /* 圆点颜色在后端批量结果到达后用服务端处置；在此之前按产品默认 spec 本地计算（结果一致） */
+    const disp = (view.presets && view.presets[sc.id]) || evaluate({ ...sc }, PRODUCTS[sc.product_id]).disposition;
     const el = document.createElement("div");
     el.className = "ex-item";
     el.dataset.id = sc.id;
     el.innerHTML = `
-      <div class="top"><span class="dot" style="background:${DISPO[d.disposition].bg}"></span><span class="id">${sc.id}</span><span class="name">${specName}</span></div>
-      <div class="meta">${fmt(sc.excursion_temp_c)} °C · ${sc.duration_min} min · MKT ${fmt(sc.mkt_c)} °C · ${STAGES[sc.stage] || sc.stage}</div>`;
+      <div class="top"><span class="dot" style="background:${DISPO[disp].bg}"></span><span class="id">${sc.id}</span><span class="name">${specName}</span></div>
+      <div class="meta">${fmt(sc.excursion_temp_c)} °C · ${sc.duration_min} 分钟 · MKT ${fmt(sc.mkt_c)} °C · ${STAGES[sc.stage] || sc.stage}</div>`;
     el.addEventListener("click", () => setEvent(sc));
     wrap.appendChild(el);
   });
@@ -845,7 +1071,7 @@ function markActive(id) {
   document.querySelectorAll(".ex-item").forEach((n) => n.classList.toggle("active", n.dataset.id === id));
 }
 
-/* ================= event wiring ================= */
+/* ================= 事件绑定 ================= */
 function bind() {
   $("productSelect").addEventListener("change", (e) => switchProduct(e.target.value));
   $("stageSelect").addEventListener("change", (e) => { current.stage = e.target.value; renderAll(); });
@@ -901,24 +1127,36 @@ function bind() {
   $("qaInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("qaAsk").click(); });
 }
 
-/* ================= KG Q&A (concept mockup) ================= */
+/* ================= 知识图谱问答（概念示意） ================= */
 function askKG(q) {
   const s = q.toLowerCase();
-  if (s.includes("mkt") || s.includes("mean kinetic")) return "Mean Kinetic Temperature (MKT) compresses a temperature–time profile into a single stability-relevant value, so a short hot spike can be compared against the product's stability threshold.";
-  if (s.includes("scrap") || s.includes("discard") || s.includes("destroy")) return "Per EU GDP 2013/C 343/01 and WHO TRS 961 Annex 9, product exceeding its stability margin must be scrapped with a documented destruction record and deviation report.";
-  if (s.includes("quarantine") || s.includes("hold")) return "Quarantine segregates the batch in labelled storage pending Quality review; release requires a documented risk assessment against the excursion data.";
-  if (s.includes("retest") || s.includes("test")) return "Retesting confirms potency and stability when an excursion is within the retestable margin; the result feeds the final disposition.";
-  if (s.includes("release")) return "Release requires the excursion to be within the acceptable safety range — MKT and duration below their thresholds — with a traceable rule path on record.";
-  if (s.includes("reroute") || s.includes("route") || s.includes("deliver") || s.includes("reship")) return "The optimiser re-routes replacement stock via VRPTW with time windows, multi-temperature zones, capacity limits and stockout priority.";
-  if (s.includes("gdp") || s.includes("ich") || s.includes("who")) return "Regulatory basis: WHO TRS 961 Annex 9 (model guidance for storage and transport), EU GDP 2013/C 343/01, and ICH stability guidelines.";
-  return "The knowledge graph links product, route, event, rule and SOP entities, so every answer is grounded in the governing regulation rather than generated from thin air.";
+  if (s.includes("mkt") || s.includes("平均动力学")) return "平均动力学温度（MKT）把一段温度-时间曲线压缩成单个与稳定性相关的值，使一次短暂升温可对照产品的稳定性阈值来评估。";
+  if (s.includes("报废") || s.includes("销毁") || s.includes("丢弃")) return "依据 EU GDP 2013/C 343/01 与 WHO TRS 961 附录 9，超出稳定性边界的药品必须报废，并附销毁记录与偏差报告。";
+  if (s.includes("隔离") || s.includes("扣留") || s.includes("hold")) return "隔离将批次置于隔离且贴标存储，等待质量审评；放行需基于超限数据完成书面风险评估。";
+  if (s.includes("复验") || s.includes("检测") || s.includes("测试")) return "当超限处于可复验边界内时，复验确认效价与稳定性；结果作为最终处置的依据。";
+  if (s.includes("放行") || s.includes("释放")) return "放行要求超限处于可接受安全范围内——MKT 与时长均低于阈值——且留痕记录规则路径。";
+  if (s.includes("配送") || s.includes("路由") || s.includes("补发") || s.includes("路线")) return "优化器通过 VRPTW 重新规划补发库存，考虑时间窗、多温区、容量约束与断货优先级。";
+  if (s.includes("gdp") || s.includes("ich") || s.includes("who")) return "法规依据：WHO TRS 961 附录 9（存储与运输示范指南）、EU GDP 2013/C 343/01，以及 ICH 稳定性指南。";
+  return "知识图谱将产品、路线、事件、规则与 SOP 等实体关联，使每个回答都基于适用的法规，而非凭空生成。";
 }
 
-/* ================= init ================= */
+/* ================= 初始化 ================= */
 buildList();
 switchProduct("vaccine_2_8");
 bind();
-setEvent(SCENARIOS[2]); // open on a retest boundary case
+setEvent(SCENARIOS[2]); // 打开一个复验边界案例
+if (USE_API) {                   // 后端模式：确认 API 可用并预热缓存
+  renderApiStatus();
+  checkHealth()
+    .then(() => {
+      view.apiUp = true;
+      renderApiStatus();
+      syncDecision();
+      syncGrid();
+      syncPresets();
+    })
+    .catch(() => { apiDown(); renderApiStatus(); });
+}
 </script>
 </body>
 </html>

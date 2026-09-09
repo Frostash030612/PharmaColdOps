@@ -90,7 +90,7 @@ Pydantic 模型 = 引擎 dataclass 的序列化（`model_dump`），**不要手�
 
 ### 3. 上云怎么做（分层，演示日永不裸奔）
 
-- **Level 0 · 纯静态兜底（现在就能做）**：`demo/` 推 GitHub Pages / Vercel，零后端上线。前端字段已是演示全集。
+- **Level 0 · 纯静态兜底（现在就能做）**：`frontend/` 推 GitHub Pages / Vercel，零后端上线。前端字段已是演示全集。
 - **Level 1 · 全栈默认路径（推荐 Render 免费 Web Service）**：
   1. W2-D：`src/api/main.py` FastAPI + uvicorn 跑通 3 个 stub + `/api/decide` 接上引擎；
   2. 根目录加 `Dockerfile`（`python:3.11-slim` → `pip install -r requirements.txt` → 拷 `src/` + `data/` → uvicorn 启动）；
@@ -102,6 +102,67 @@ Pydantic 模型 = 引擎 dataclass 的序列化（`model_dump`），**不要手�
 ### 4. 时间线归属（并入分工清单）
 
 契约定死 → W2-D 骨架 → W3 最小闭环 → W4/W5 Docker + 上云 + 录屏。D 主导联调与部署，C/A 保证 `/route` `/decide` 真实现，B 无需参与（ML 不上 API）。
+
+---
+
+## 2026-09-09 — demo → frontend 更名 + audit 日志 + 团队文档合并
+
+- **目录更名**：`demo/` → `frontend/`（`git mv` 保历史）；全库 `demo/` 路径、`-d demo`、脚本默认输出路径同步改 `frontend/`；起静态页改为 `python -m http.server 5500 -d frontend`。
+- **audit 日志**：`src/api/service.py` 每次 `/api/decide`（grid/batch 亦有）在 uvicorn 控制台打印「收到什么 → 判定结果」，演示/录屏直接可见前端往返（详情见 docs/前后端… 第 6 节）。
+- **代码地图**：README 与 docs 文档顶部新增「前端 = frontend/、后端 = src/api/、判定核心 = src/rule_engine/」对照，防止组员改错目录。
+- **并入队友提交**：`docs/ARCHITECTURE.md`（M1–M7 模块分工，保留）＋ `requirements.txt` 重写（fastapi/uvicorn 已入 M7 节，与本文档互相引用）。
+
+---
+
+## 2026-09-09 — 前后端分离：FastAPI 决策服务 + demo 全后端模式（双模式）
+
+### 本轮内容（纯代码；requirements/Dockerfile/README 上云说明留下一轮）
+
+- **引擎**：`Decision` 增 `rule_no`(1–6) + `reason` 字段，`_decide` 带参存储 —— API/审计无需镜像 6 条分支（7 引擎测试仍绿）。
+- **后端新增 `src/api/`**（FastAPI + uvicorn，装进 .venv）：
+  - `POST /api/decide` → 语义 dict（disposition/rule_no/reshipment/event+spec 回声/evidence 分类/risk{score,cause_code}）；未知产品 → 422 附合法 id。
+  - `POST /api/grid` → 一次返回热力图矩阵（依赖 spec 不随滑杆变，避免逐格请求）；`POST /api/decide_batch` → 预置卡片 disposition。
+  - `POST /api/route` `/api/qa` → 501 占位（C/D 未上 HTTP）。`GET /api/health`。
+  - CORS 全开（支持 file:// 直开 demo）。**沙箱 override 随请求显式带**，服务端默认仍以 rules_config 为准（每请求 `resolve_spec` + 副本引擎，不改模块级 specs）。
+- **切分点（答辩口径）**：后端只判**语义**（disposition/rule_no/cause_code/evidence 分级）；reason/法规/cause **文案按语言在前端本地化**（`RULE_TEXT[rule_no]`/`CAUSE_TEXT[code]`/`EV_LBL` 表）——避免后端背 EN/ZH 两套语言。
+- **demo EN/ZH**：`?api=<base>` 进入「全后端」模式（决策/热力图/预置卡以后端为准，防抖 ~80ms `/api/decide`）；无 `?api` 默认离线，逐字节回落本地 JS 引擎，行为与旧版完全一致。滑杆/换产品时 `syncGrid()` 一次重拉。
+- **测试**：`tests/test_api_contract.py` 8 条（health/黄金 shape/422/override/grid/batch/API==直连引擎前 5 场景/501），与引擎测试合计全绿；`uvicorn` 实机冒烟通过。
+- **JS 自检**：`scripts/check_demo_js.py`（esprima 语法检查，无 DOM）两个 demo 均 [ok]。
+
+### 验证命令
+
+```bash
+.venv/Scripts/python.exe -m uvicorn --app-dir src api.main:app --port 8000   # 仓库根
+# 浏览器：python -m http.server 5500 -d frontend
+#   frontend/index.html            → 离线（默认，行为不变）
+#   frontend/index.html?api=http://127.0.0.1:8000   → 后端判定 + pill 状态指示
+```
+
+---
+
+## 2026-09-09 — 数据处理纪律：修正「切分前全局填充」泄漏
+
+### 问题
+
+三个训练脚本的缺失值中位数都在 **train/val/test 切分之前对全表计算**（`df = fill_median(df)` 在 `train_test_split` 前）→ 测试行的统计量（各列中位数）泄漏进了训练特征。表无时间轴，所以准确说是 **feature-distribution leakage**，不是「未来数据」穿越；但规则相同：**划分先行，全局统计只从 train 算**。
+
+### 修复（数字基本不变，消除答辩会问的泄漏点）
+
+| 文件 | 改动 |
+|---|---|
+| `src/ml/evaluate.py` | `fill_median(df, fill=None)` 支持传入常量 Series；默认仍自算，注释写明纪律 |
+| `scripts/train_risk_full.py` | 先按行索引切 70/15/15 → `fill = df.loc[itr].median()` → `fill_median(df, fill=…)` |
+| `scripts/train_root_cause.py` | 先按位置切 80/20 → `fill = X.iloc[pos_tr].median()` → 同一常量填全表再 to_numpy |
+| `scripts/train_risk_model.py` | 切 80/20 后 `fill = Xtr.median()`，`Xtr/Xte` 用同一常量填 |
+
+复跑验证：risk-model 与 risk_full 的 LR 数字与改前一致（AUC 0.891–0.893、F1 0.626），silent-failure 缺失仅 2 列 ≤4.2%，影响可忽略。
+
+### 纪律（B 的 W1-B task spec 继承，答辩口径）
+
+1. **划分先行**：任何 train/val/test 切分在所有全局统计**之前**完成。
+2. **train-only 拟合**：填充值 / 分位截断阈值 / scaler / 编码器，一律只从 train 行计算，val/test 用**同一常量**，绝不在 val/test 上重算。
+3. 现在的代码顺序即范本：`split（按行索引/位置）→ train 算 fill → 全局填 → train fit scaler → 变换 va/te`。
+4. 树模型（LGBM/XGB）原生支持 NaN 可作为将来选项，但当前缺失率低、且与 LR 共用 StandardScaler 矩阵，维持「train 中位数填充」即可，不为此分叉管道。
 
 ---
 
@@ -168,7 +229,7 @@ python scripts/train_root_cause.py         # → data/processed/root_cause_resul
 1. **A｜demo 风险指数 = 确定性规则评分**（替换原「ML 风险评分（概念示意）」占位）。
 2. **B｜真 ML 基线只进报告**（训一次 LogisticRegression，数字落盘，不接 UI）。
 
-### A 做了什么（`demo/index.html` + `index-zh.html`）
+### A 做了什么（`frontend/index.html` + `index-zh.html`）
 
 - `riskInfo()` 重写为**规则启发式风险指数**：分量 = 温度越出温带幅度（按带宽归一）· 超限时长/允许值 · MKT/阈值 · 包装破损；冻敏 ≤0 °C 冻结（规则 1）与破损包装（规则 2）各自置顶最低值。与规则引擎同一组阈值 → **与处置结果同源、可解释、随滑杆实时翻转**。
 - 文案从「ML 风险评分（概念）」改为「风险指数（规则启发式 · 确定性，非 ML 模型）」；脚注同步说明仅 VRPTW 与知识图谱问答仍为概念示意。
@@ -195,14 +256,14 @@ python scripts/train_root_cause.py         # → data/processed/root_cause_resul
 
 | 文件 | 说明 |
 |---|---|
-| `demo/index.html` / `index-zh.html` | `riskInfo` 重写 + 标题/脚注文案 |
-| `demo/README-zh.md` | 风险指数说明更新（非 ML 模型；离线基线数字 + 诚实警示） |
+| `frontend/index.html` / `index-zh.html` | `riskInfo` 重写 + 标题/脚注文案 |
+| `frontend/README-zh.md` | 风险指数说明更新（非 ML 模型；离线基线数字 + 诚实警示） |
 | `scripts/train_risk_model.py` | 新增：一次性 LogisticRegression 基线 |
 | `requirements.txt` | 未动（sklearn 仅本机装了；组员装 `pip install scikit-learn`） |
 
 ### 验证
 
-- 打开 `demo/index.html`：风险条随「超限温度/时长/MKT」滑杆实时变化，标签已不含「ML/概念」。
+- 打开 `frontend/index.html`：风险条随「超限温度/时长/MKT」滑杆实时变化，标签已不含「ML/概念」。
 - `python scripts/train_risk_model.py` → 结果写入 `data/processed/risk_model_results.md`（不入库）。
 
 ### 下一步
@@ -250,8 +311,8 @@ python scripts/train_root_cause.py         # → data/processed/root_cause_resul
 
 ### 做了什么
 
-1. 写 `scripts/export_demo_data.py`：从已下载数据集抽取真实数据，生成 `demo/real_data.js`。
-2. `demo/index.html` / `index-zh.html` 改为加载 `real_data.js`，替换原来的硬编码合成场景与药房/路线数据。
+1. 写 `scripts/export_demo_data.py`：从已下载数据集抽取真实数据，生成 `frontend/real_data.js`。
+2. `frontend/index.html` / `index-zh.html` 改为加载 `real_data.js`，替换原来的硬编码合成场景与药房/路线数据。
 3. 真实数据来源：
    - **场景事件（18 个）** 来自 Kaggle `vaccine-distribution-temperature`（真实温度 / 超限时长 / 地点 / 流转环节，含真实 `discarded` 报废记录）。
    - **配送数据** 来自 Solomon VRPTW `c101.json`（10 个客户的真实坐标 / 需求 / 时间窗）+ 最近邻 + 2-opt 简化路线求解。
@@ -267,9 +328,9 @@ python scripts/train_root_cause.py         # → data/processed/root_cause_resul
 | 文件 | 说明 |
 |---|---|
 | `scripts/export_demo_data.py` | 新增：真实数据 → demo JS |
-| `demo/real_data.js` | 生成：18 真实事件 + 10 Solomon 客户 + 路线 |
-| `demo/index.html` / `index-zh.html` | 加载 real_data.js，删除硬编码数据 |
-| `demo/README-zh.md` | 数据来源说明 |
+| `frontend/real_data.js` | 生成：18 真实事件 + 10 Solomon 客户 + 路线 |
+| `frontend/index.html` / `index-zh.html` | 加载 real_data.js，删除硬编码数据 |
+| `frontend/README-zh.md` | 数据来源说明 |
 
 ---
 
@@ -282,7 +343,7 @@ python scripts/train_root_cause.py         # → data/processed/root_cause_resul
 3. **产品 2 → 4**：新增 `insulin_2_8`（胰岛素 2–8°C，冻敏、可复验）与 `mrna_ultracold`（mRNA −90…−60°C，非冻敏、不可复验）；现有 `vaccine_2_8` 标为冻敏。
 4. **场景库 47 → 57**：新增冻结场景、冻敏 vs 非冻敏对照、胰岛素 4 类处置全覆盖、mRNA 3 类处置。
 5. **测试 3 → 7**：新增冻结触发报废、冷冻品不触发冻结规则、新产品加载、法规字段存在性 4 个测试。
-6. **演示前端同步**（`demo/index.html` + `index-zh.html`）：4 产品可选、6 条规则、冻结规则移植、证据面板加「冻结风险」行 +「法规依据」行。
+6. **演示前端同步**（`frontend/index.html` + `index-zh.html`）：4 产品可选、6 条规则、冻结规则移植、证据面板加「冻结风险」行 +「法规依据」行。
 
 ### 新增 / 修改文件
 
@@ -293,7 +354,7 @@ python scripts/train_root_cause.py         # → data/processed/root_cause_resul
 | `src/rule_engine/rules_config.json` | 2 → 4 产品，`freeze_sensitive` 标志，更新 `_note` |
 | `data/scenarios/scenarios.csv` | 47 → 57 条 |
 | `tests/test_rule_engine.py` | 3 → 7 个测试 |
-| `demo/index.html` / `demo/index-zh.html` | 前端同步（4 产品、冻结规则、法规展示） |
+| `frontend/index.html` / `frontend/index-zh.html` | 前端同步（4 产品、冻结规则、法规展示） |
 
 ### 如何验证
 

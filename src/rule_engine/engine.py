@@ -45,6 +45,7 @@ class RuleEngine:
                 event,
                 "freeze damage; freeze-sensitive product exposed below freezing point",
                 "WHO TRS 961 Annex 9 — freeze-sensitive vaccines lose potency when frozen",
+                rule_no=1,
             )
 
         # 2. Compromised packaging during an excursion is unacceptable.
@@ -55,6 +56,7 @@ class RuleEngine:
                 event,
                 "packaging compromised during excursion",
                 "EU GDP 2013/C 343/01 — packaging integrity must be preserved during transport",
+                rule_no=2,
             )
 
         # 3. Severe excursion (≫ allowable, or MKT well above threshold) → scrap.
@@ -65,6 +67,7 @@ class RuleEngine:
                 event,
                 "excursion severity beyond any acceptable margin",
                 "WHO TRS 961 Annex 9 — excursion beyond acceptable stability margin",
+                rule_no=3,
             )
 
         # 4. Exceeds allowable duration or MKT threshold → quarantine + assess.
@@ -75,6 +78,7 @@ class RuleEngine:
                 event,
                 "exceeded allowable excursion; hold for quality assessment",
                 "WHO TRS 961 Annex 9 / EU GDP — hold for quality assessment on excursion",
+                rule_no=4,
             )
 
         # 5. Within allowable but near the edge → retest to confirm.
@@ -88,6 +92,7 @@ class RuleEngine:
                 event,
                 "within limits but near threshold; confirm by testing",
                 "EU GDP 2013/C 343/01 — confirm within-threshold excursions by testing",
+                rule_no=5,
             )
 
         # 6. Otherwise the excursion is negligible.
@@ -97,6 +102,7 @@ class RuleEngine:
             event,
             "excursion within acceptable safety range",
             "WHO TRS 961 Annex 9 — within acceptable range",
+            rule_no=6,
         )
 
     def _decide(
@@ -106,6 +112,7 @@ class RuleEngine:
         event: ExcursionEvent,
         reason: str,
         regulation: str,
+        rule_no: int,
     ) -> Decision:
         rule_path = (
             f"{spec.product_id} ({spec.storage_min_c:g}–{spec.storage_max_c:g} °C) "
@@ -118,6 +125,8 @@ class RuleEngine:
             disposition=disposition,
             reshipment_required=reshipment,
             rule_path=rule_path,
+            rule_no=rule_no,
+            reason=reason,
             regulation=regulation,
             evidence={
                 "product_id": spec.product_id,

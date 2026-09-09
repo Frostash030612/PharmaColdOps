@@ -1,0 +1,145 @@
+"""HTTP contract tests for the FastAPI decision service (src/api).
+
+These pin the wire format the demo front-end consumes: semantic decision
+fields + localized-by-code risk/evidence, plus grid/batch shapes and the
+spec-override sandbox. Parity checks assert API responses equal a direct
+engine call for the gold scenario bank.
+"""
+import csv
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from api.main import app
+from rule_engine.engine import RuleEngine
+from rule_engine.models import ExcursionEvent
+
+ROOT = Path(__file__).resolve().parents[1]
+SCENARIOS = ROOT / "data" / "scenarios" / "scenarios.csv"
+
+VALID = {"vaccine_2_8", "frozen_m20", "insulin_2_8", "mrna_ultracold"}
+client = TestClient(app)
+engine = RuleEngine()
+
+
+def _decide_payload(pid, temp, dur, mkt, packaging="intact", stage="transit"):
+    return {
+        "product_id": pid,
+        "excursion_temp_c": temp,
+        "duration_min": dur,
+        "mkt_c": mkt,
+        "packaging": packaging,
+        "stage": stage,
+    }
+
+
+def test_health():
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["module"] == "rule_engine"
+    assert VALID.issubset(set(body["products"]))
+
+
+def test_decide_scrap_gold_shape():
+    r = client.post("/api/decide", json=_decide_payload("vaccine_2_8", 20.0, 90, 19.0))
+    assert r.status_code == 200
+    d = r.json()
+    assert d["disposition"] == "scrap"
+    assert d["reshipment_required"] is True
+    assert 1 <= d["rule_no"] <= 6
+    assert d["reason"]
+    assert d["regulation"]
+    assert d["event"]["product_id"] == "vaccine_2_8"
+    # evidence chip levels mirror renderEvidence
+    ev = d["evidence"]
+    assert ev["packaging"] == "ok"
+    assert ev["temp"] == "breach"
+    assert ev["freeze"] == "ok"
+    assert ev["duration"] == "severe"      # 90 >= 2*30
+    assert ev["mkt"] == "severe"           # 19 >= 10+3
+    risk = d["risk"]
+    assert isinstance(risk["score"], int) and 3 <= risk["score"] <= 99
+    assert risk["cause_code"] in {"frozen", "packaging", "overtemp",
+                                  "duration", "mkt", "near", "inband", "minor"}
+
+
+def test_decide_unknown_product_is_422():
+    r = client.post("/api/decide", json=_decide_payload("not_a_product", 10.0, 5, 9.0))
+    assert r.status_code == 422
+    assert "unknown product_id" in r.json()["detail"]
+
+
+def test_decide_sandbox_override_honoured():
+    # stock thresholds → retest (mkt 9.5 == threshold − 0.5); relaxed + non-retestable → release
+    payload = _decide_payload("vaccine_2_8", 10.0, 20, 9.5)
+    stock = client.post("/api/decide", json=payload).json()
+    assert stock["disposition"] == "retest"
+    payload["spec_override"] = {"allowable_duration_min": 60,
+                                "mkt_threshold_c": 12.0, "retestable": False}
+    relaxed = client.post("/api/decide", json=payload).json()
+    assert relaxed["disposition"] == "release"
+    assert relaxed["spec"]["allowable_duration_min"] == 60
+
+
+def test_grid_shape_and_values():
+    durations = [5.0, 60.0, 75.0]       # ascending x-axis mid-points
+    mkts = [13.0, 10.0, 9.0]            # descending, top row first
+    r = client.post("/api/grid", json={
+        "product_id": "vaccine_2_8",
+        "excursion_temp_c": 8.0,          # spec.max — matches the UI's cell events
+        "packaging": "intact",
+        "stage": "transit",
+        "durations": durations,
+        "mkts": mkts,
+    })
+    assert r.status_code == 200
+    rows = r.json()["rows"]
+    assert len(rows) == 3
+    for row in rows:
+        assert len(row) == 3
+        for disp in row:
+            assert disp in {"release", "retest", "quarantine", "scrap"}
+    # top row (MKT 13.0 = threshold + 3) → scrap everywhere (rule 3)
+    assert rows[0] == ["scrap", "scrap", "scrap"]
+
+
+def test_batch_returns_one_trimmed_decision_per_event():
+    events = [
+        _decide_payload("vaccine_2_8", 20.0, 90, 19.0),
+        _decide_payload("vaccine_2_8", 6.0, 10, 5.0),
+        _decide_payload("frozen_m20", -30.0, 5, -28.0),
+    ]
+    r = client.post("/api/decide_batch", json={"events": events})
+    assert r.status_code == 200
+    decisions = r.json()["decisions"]
+    assert len(decisions) == 3
+    assert [d["disposition"] for d in decisions] == ["scrap", "release", "release"]
+    assert all({"disposition", "rule_no", "reshipment_required"} <= set(d.keys())
+               for d in decisions)
+
+
+def test_decide_matches_engine_on_gold_bank():
+    with SCENARIOS.open(newline="", encoding="utf-8") as f:
+        for row in list(csv.DictReader(f))[:5]:
+            api = client.post("/api/decide", json=_decide_payload(
+                row["product_id"], float(row["excursion_temp_c"]), int(row["duration_min"]),
+                float(row["mkt_c"]), row["packaging"], row["stage"])).json()
+            direct = engine.evaluate(ExcursionEvent(
+                scenario_id=row["scenario_id"],
+                product_id=row["product_id"],
+                excursion_temp_c=float(row["excursion_temp_c"]),
+                duration_min=int(row["duration_min"]),
+                mkt_c=float(row["mkt_c"]),
+                packaging=row["packaging"],
+                stage=row["stage"],
+            ))
+            assert api["disposition"] == direct.disposition.value, row["scenario_id"]
+            assert api["rule_no"] == direct.rule_no, row["scenario_id"]
+            assert api["reshipment_required"] == direct.reshipment_required
+
+
+def test_reserved_routes_are_501():
+    assert client.post("/api/route", json={}).status_code == 501
+    assert client.post("/api/qa", json={}).status_code == 501

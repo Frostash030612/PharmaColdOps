@@ -2,7 +2,7 @@
 """Export REAL downloaded data into the demo's JS data blocks.
 
 Reads the datasets under ``data/`` and emits a self-contained JS snippet
-(``demo/real_data.js``) that ``demo/index.html`` / ``demo/index-zh.html`` load:
+(``frontend/real_data.js``) that ``frontend/index.html`` / ``frontend/index-zh.html`` load:
 
   * ``SCENARIOS``  — real temperature-excursion events (from the
     Kaggle ``vaccine-distribution-with-temperature-logging`` dataset), mapped
@@ -21,7 +21,7 @@ Honesty notes (also printed in the generated file):
   * Product class is inferred from the temperature band (the source has no
     ``product_id``).
 
-Usage:  python scripts/export_demo_data.py [--out demo/real_data.js]
+Usage:  python scripts/export_demo_data.py [--out frontend/real_data.js]
 """
 from __future__ import annotations
 
@@ -314,7 +314,7 @@ def render() -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(ROOT / "demo" / "real_data.js"))
+    ap.add_argument("--out", default=str(ROOT / "frontend" / "real_data.js"))
     args = ap.parse_args()
     js = render()
     Path(args.out).write_text(js + "\n", encoding="utf-8")

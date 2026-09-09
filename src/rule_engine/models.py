@@ -48,10 +48,17 @@ class ExcursionEvent:
 
 @dataclass(frozen=True)
 class Decision:
-    """The engine's output for one excursion event."""
+    """The engine's output for one excursion event.
+
+    ``rule_no`` (1-6) and ``reason`` are kept alongside the human-readable
+    ``rule_path`` so callers (API responses, audit logs) can summarise / localise
+    a decision without re-deriving which branch fired.
+    """
 
     disposition: Disposition
     reshipment_required: bool
     rule_path: str
+    rule_no: int
+    reason: str
     regulation: str
     evidence: dict

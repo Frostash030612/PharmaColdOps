@@ -20,6 +20,28 @@ Proposal & related documents live in [`proposal/`](proposal/):
 | Knowledge graph & Q&A | `src/knowledge_graph/` | Cognitive systems |
 | API / frontend | `src/api/` | Integration |
 
+## Web demo — front-end ↔ back-end
+
+The demo has two modes. Open `frontend/index.html` offline (self-contained JS fallback), or add
+`?api=http://127.0.0.1:8000` to route **all** decisions through the FastAPI backend
+(`src/api/`) running the real Python rule engine. The backend decides *semantics*; each locale
+front-end maps them to wording locally.
+
+```bash
+.venv/Scripts/python.exe -m uvicorn --app-dir src api.main:app --port 8000   # terminal 1
+python -m http.server 5500 -d frontend                                        # terminal 2
+# http://127.0.0.1:5500/index.html?api=http://127.0.0.1:8000
+```
+
+**Where the code lives**
+
+- 🖥️ **Front-end** — edit only [`frontend/`](frontend/): `index.html` (EN), `index-zh.html` (ZH), `real_data.js` (data).
+- 🌐 **Back-end service** — [`src/api/`](src/api/): FastAPI + Uvicorn routes.
+- 🧠 **Decision core** (what the back-end calls) — [`src/rule_engine/`](src/rule_engine/); behaviour is driven by [`rules_config.json`](src/rule_engine/rules_config.json).
+- 🔗 **Contract tests** — [`tests/test_api_contract.py`](tests/test_api_contract.py): change `front-end ↔ back-end` fields together with this file.
+
+Full stack + how-to-connect notes for the team: [docs/前后端技术栈与连接说明.md](docs/前后端技术栈与连接说明.md)（中文）.
+
 ## Data layout
 
 `data/` is organised by project module, mirroring `src/` (proposal §7, §8.3):

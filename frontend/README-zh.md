@@ -3,6 +3,8 @@
 > 这是一个**离线**演示前端（`index.html` 英文 / `index-zh.html` 中文 + 数据文件 `real_data.js`），用浏览器直接打开即可，无需联网。
 > 场景与配送数据来自**真实下载的数据集**（Kaggle 疫苗温度日志 + Solomon VRPTW），由 `scripts/export_demo_data.py` 生成 `real_data.js`。
 > 核心规则引擎是 Python 版 `src/rule_engine/engine.py` 的忠实 JS 移植，**你在界面上做的每一步判断结果都和真实引擎一致**。
+>
+> 📡 **前后端分离版（2026-09-09 起）**：URL 加 `?api=http://127.0.0.1:8000` 即切换到「全后端」模式——判定、热力图、预置卡全部由 FastAPI 后端（`src/api/`，跑真 Python 规则引擎）算，后端不可达时自动兑底回本页。技术栈与连接说明见 [docs/前后端技术栈与连接说明.md](../docs/前后端技术栈与连接说明.md)。
 
 ---
 
