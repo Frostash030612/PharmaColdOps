@@ -22,20 +22,36 @@ Proposal & related documents live in [`proposal/`](proposal/):
 
 ## Web demo — front-end ↔ back-end
 
-The demo has two modes. Open `frontend/index.html` offline (self-contained JS fallback), or add
-`?api=http://127.0.0.1:8000` to route **all** decisions through the FastAPI backend
-(`src/api/`) running the real Python rule engine. The backend decides *semantics*; each locale
-front-end maps them to wording locally.
+Two front-end trees share one dual-mode behaviour (`?api=` → FastAPI backend; offline → built-in JS
+engine, byte-identical results). New work goes in **`frontend-vue/`** (Vue 3 + Vite); the older
+zero-dependency **`frontend/`** stays available untouched.
+
+**Vue app (`frontend-vue/`, recommended)** — needs Node.js LTS (see below):
 
 ```bash
-.venv/Scripts/python.exe -m uvicorn --app-dir src api.main:app --port 8000   # terminal 1
-python -m http.server 5500 -d frontend                                        # terminal 2
+cd frontend-vue
+npm install
+npm run dev                    # http://localhost:5173          (offline)
+# http://localhost:5173/?api=http://127.0.0.1:8000               (backend mode)
+```
+
+**Zero-build app (`frontend/`, switch-over still pending)**:
+
+```bash
+python -m http.server 5500 -d frontend
 # http://127.0.0.1:5500/index.html?api=http://127.0.0.1:8000
+```
+
+Backend (terminal 1, either case):
+
+```bash
+.venv/Scripts/python.exe -m uvicorn --app-dir src api.main:app --port 8000
 ```
 
 **Where the code lives**
 
-- 🖥️ **Front-end** — edit only [`frontend/`](frontend/): `index.html` (EN), `index-zh.html` (ZH), `real_data.js` (data).
+- 🖥️ **Front-end (Vue)** — [`frontend-vue/`](frontend-vue/): Vue 3 + Vite SFCs (plain JS), `src/components/`, `src/stores/`, `src/lib/`, `src/i18n/`; data is the generated `src/data/realData.mjs`.
+- 🖥️ **Front-end (zero-build legacy)** — [`frontend/`](frontend/): `index.html` (EN), `index-zh.html` (ZH), `real_data.js` (data). Usable until the demo switches over.
 - 🌐 **Back-end service** — [`src/api/`](src/api/): FastAPI + Uvicorn routes.
 - 🧠 **Decision core** (what the back-end calls) — [`src/rule_engine/`](src/rule_engine/); behaviour is driven by [`rules_config.json`](src/rule_engine/rules_config.json).
 - 🔗 **Contract tests** — [`tests/test_api_contract.py`](tests/test_api_contract.py): change `front-end ↔ back-end` fields together with this file.
@@ -58,11 +74,22 @@ with `python scripts/audit_datasets.py` → `data/processed/ml_audit_report.md`.
 
 ## Quickstart
 
+Python side:
+
 ```bash
 python -m venv .venv
 # activate the venv, then:
 pip install -r requirements.txt
 pytest
+```
+
+Vue front-end (`frontend-vue/`) additionally needs **Node.js LTS** (`node -v`; Windows:
+`winget install --id OpenJS.NodeJS.LTS -e`). Regenerate both demo data files together
+(one run, two outputs — they cannot drift):
+
+```bash
+.venv/Scripts/python.exe scripts/export_demo_data.py \
+  --out frontend/real_data.js --out-esm frontend-vue/src/data/realData.mjs
 ```
 
 ## ML experiments (`src/ml/`)

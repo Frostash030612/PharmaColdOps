@@ -105,6 +105,39 @@ Pydantic 模型 = 引擎 dataclass 的序列化（`model_dump`），**不要手�
 
 ---
 
+## 2026-09-09 — 前端 Vue 化落地：`frontend-vue/`（Vue 3 + Vite，双模式保真）
+
+### 决策
+
+需求方明确「前端目前需求要 vue 做」。方案：**新建顶层 `frontend-vue/` = Vue 3 + Vite 完整 SFC 工程（纯 JavaScript，不用 TS）**；旧 `frontend/` 两个自包含静态页**原样保留并行、继续可用**，直到日后 demo 切换（README/docs 已标「切换前仍可用」）。双模式语义原样迁移：有 `?api=` → FastAPI 真引擎；无 → 内置 JS 引擎兜底；两模式与 vanilla 逐字节一致。
+
+### 共同前置（谁要跑 Vue 谁先装，非可选）
+
+- **Node.js LTS**（本机 winget per-user 装 v24.19.0）：`node -v` / `npm -v` 验证。Vite 硬前提，无 node 跑不了 dev/build。
+- 永不提交 `frontend-vue/node_modules/`、`frontend-vue/dist/`（根 `.gitignore` 已追两条；frontend-vue/.gitignore 亦有）。
+
+### 工程形态
+
+| 项 | 内容 |
+|---|---|
+| 栈 | Vue 3 `<script setup>` SFC + Vite 8（`base:'./'` → dist 任意静态托管可跑）+ Pinia 双 store（`sandbox`/`decisions`）|
+| i18n | 轻量自研模块（**不用 vue-i18n**）：`en.js`/`zh.js` 平行字典 + `t(key,{param})`；语种默认 `navigator.language`，Header EN/中文开关存 `localStorage` |
+| 地图 | **双层**：离线手写 360×210 SVG 兜底 + 联网时升级 Leaflet——仅当节点带 `loc`(lng/lat) 激活；今日数据全 `loc:null` → 恒 SVG、零网络 |
+| 纯逻辑 | `frontend-vue/src/lib/*` 为框架无关 ES 模块（不 import Vue/i18n），收 `L` 措辞包 → EN/ZH 同源，可单测、可与 vanilla 对比 |
+| 数据 | `scripts/export_demo_data.py` 加 **`--out-esm`**（增量，默认输出字节不变）：单次运行同源双出 `frontend/real_data.js` + `frontend-vue/src/data/realData.mjs`（后者仅多 `export const` 与节点 `loc: null`，防双源漂移）|
+
+### 未动的（范围纪律）
+
+后端 `src/api/`、`src/rule_engine/`、Python 测试、两个 vanilla 文件**本轮未改**；既有代码唯一改动是 `export_demo_data.py` 的增量 `--out-esm`。`frontend/real_data.js` diff 为空。契约测试 15 条全绿；`check_demo_js.py` 对 vanilla 仍 [ok]。
+
+### 验证
+
+- 纯函数 parity（Node 冒烟 24 项）：金场景 scrap/rule3/risk99、冻结→scrap/rule1、rule_path 打 code 非 label（两种语种）、override 翻转、SVG 尺寸、zone 格 26×18、QA 关键词等，离线 = 后端语义。
+- EN/ZH SSR 启动冒烟全过（各面板双语渲染）；`npm run build` 后 `dist` 静态伺服 200。
+- 浏览器手测（用户做）：见 `docs/前后端技术栈与连接说明.md` §11——api pill 连接中→已连接→不可达→≤4s 自动重连、只拖滑杆不重发 grid、Leaflet 待 `loc` 出现才激活、EN/ZH × 离线/API 与 vanilla 并排对照。
+
+---
+
 ## 2026-09-09 — demo → frontend 更名 + audit 日志 + 团队文档合并
 
 - **目录更名**：`demo/` → `frontend/`（`git mv` 保历史）；全库 `demo/` 路径、`-d demo`、脚本默认输出路径同步改 `frontend/`；起静态页改为 `python -m http.server 5500 -d frontend`。
