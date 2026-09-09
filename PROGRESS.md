@@ -105,6 +105,23 @@ Pydantic 模型 = 引擎 dataclass 的序列化（`model_dump`），**不要手�
 
 ---
 
+## 2026-09-10 — B：6 份 dataset 许可证到源页逐一核实（`data/ml/DATA_DICTIONARY.md`）
+
+### 做了什么
+
+- 清掉数据字典里「许可证待核实」占位：**6 份公开 dataset 全部到源页面逐条核实** license（不据转载 / 文件头推断）。
+- 核实路径（可复现，均已记录在 §8）：
+  - **Hugging Face 4 份** → 读数据集卡 raw `README.md` 的 YAML `license:` 字段（比渲染卡片权威）：Electric Sheep Africa 三份（vaccine-cold-chain / africa-synth-immunization / africa-cold-chain-iot）→ **CC BY 4.0**；`ClarusC64/clinical-quad-coldchain…` → **MIT**。
+  - **Kaggle 2 份**（skarin / manankhanna0）→ 公开 API `GET /api/v1/datasets/view/{owner}/{slug}` 的 `licenseName` → **CC0: Public Domain**。
+- DATA_DICTIONARY 各数据集节补「许可」行；§7 结论 5 更新为「已核实」；新增 **§8 许可证逐条核实记录**（表：平台 / 作者 / license / 核实位置 / 使用义务 + 报告写作提醒），可直接搬进报告 §7 数据描述与致谢。
+- 义务提醒（写报告时用）：CC BY 4.0 ×3 需**署名 Electric Sheep Africa** 并附许可链接；MIT ×1 随分发保留版权声明；CC0 ×2 法律上免署名、建议仍标注来源。
+
+### 验证
+
+纯文档改动（单文件 diff）；核实日期 2026-09-10，报告引用此日期即可。数据本体 / 审计产物仍在 `data/processed/`（不入库），数据字典本身入库。
+
+---
+
 ## 2026-09-10 — W0 前置收尾：`src/optimisation/` Solomon loader（C 侧）+ KG schema v1（D 侧）
 
 ### C · 9/10 ①：optimisation 包骨架 + Solomon 统一加载器（`src/optimisation/`）
