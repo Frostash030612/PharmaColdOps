@@ -105,6 +105,20 @@ Pydantic 模型 = 引擎 dataclass 的序列化（`model_dump`），**不要手�
 
 ---
 
+## 2026-09-10 — A：金标准标注 rubric v1 草案 + 57 场景分包规划（`docs/annotation_*.md`）
+
+### 做了什么
+
+- **`docs/annotation_rubric_v1.md`**（标注说明书，给 B/C）：纯文字判定说明书——类别定义（release/retest/quarantine/scrap）、4 产品规格表（储存范围/允许时长/MKT/冻敏/可否复检）、6 条按优先级的判定规则 + 快速判定表、7 个**非场景库**工作示例（含边界比较：恰好等于允许时长 → retest、不可复检产品近限 → release）。**不含代码 / rule 编号 / 引擎 reason**；阈值标版本（rules_config 2026-09-10 占位），A 核实后发 v1.1 只重标受影响场景；法规仅文档级。
+- **`docs/annotation_split_v1.md`**（分包与流程）：B、C **各独立全量标 S001–S057**（两人份交集 = 57，kappa 才可算；A 分工表「各半」措辞已按 B/C 两栏排期澄清为双人全量）；排期表（B 9/11–13 分 30/15/12 条；C 分 20/20/17 条，均 9/13 交 A）；独立性规则；回稿格式；A 侧 9/14 kappa → 9/15–16 阈值落地触发的补标子集 → 9/18 `gold_labels.csv` 替换占位 → 9/19 评估表。
+- 动机：`scenarios.csv` 占位 `gold_label` + `test_rule_engine.py` 断言引擎==gold 是反循环；改为独立人工双标注打破（提案 §8.3）。
+
+### 待办 / 交接
+
+两份均为 **A 起草草案**：A 复核判定顺序与阈值口径 → 9/10 ① 发给 B/C（rubric v1）；阈值核实（9/10–11）落地后若数值变，出 v1.1 + 受影响场景补标清单。DAILY_PLAN A 9/9 ②③ 已 ☑（① 填姓名仍待认领）。
+
+---
+
 ## 2026-09-10 — B：6 份 dataset 许可证到源页逐一核实（`data/ml/DATA_DICTIONARY.md`）
 
 ### 做了什么
