@@ -57,6 +57,7 @@ Backend (terminal 1, either case):
 - 🔗 **Contract tests** — [`tests/test_api_contract.py`](tests/test_api_contract.py): change `front-end ↔ back-end` fields together with this file.
 
 Full stack + how-to-connect notes for the team: [docs/前后端技术栈与连接说明.md](docs/前后端技术栈与连接说明.md)（中文）.
+Knowledge-graph entity/relation model draft: [docs/KG_SCHEMA_v1.md](docs/KG_SCHEMA_v1.md).
 
 ## Data layout
 
