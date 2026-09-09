@@ -26,3 +26,7 @@ Thumbs.db
 
 # Claude Code local config
 .claude/
+
+# Node / Vite (frontend-vue) — dependency & build output stay out of git
+frontend-vue/node_modules/
+frontend-vue/dist/
