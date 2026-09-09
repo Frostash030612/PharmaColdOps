@@ -46,6 +46,13 @@ export function checkHealth(base) {
     .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))));
 }
 
+/* Backend run archive: newest-first list of every completed /api/decide
+   (GET /api/runs, backed by the append-only data/audit/runs.jsonl). */
+export function fetchRuns(base, limit = 200) {
+  return fetch(base + "/api/runs?limit=" + limit)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))));
+}
+
 /* Normalise a backend decision into the render shape: disposition/ruleNo from
    the server, wording from the local tables (mirrors the demo's
    localFromServer). */

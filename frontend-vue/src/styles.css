@@ -44,6 +44,29 @@ header .pills { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; ali
 }
 .locale-switch button.on { background: rgba(20,184,166,.35); color: #fff; }
 
+/* header history button: pill entry point that opens the centered past-cases view */
+.header-hist {
+  font: inherit; font-size: 11px; font-weight: 600; white-space: nowrap;
+  color: #e6f0fa; background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.3); border-radius: 999px;
+  padding: 4px 11px; cursor: pointer; transition: .13s;
+}
+.header-hist:hover:not(:disabled) {
+  color: #99f6e4; border-color: rgba(45,212,191,.5); background: rgba(20,184,166,.18);
+}
+.header-hist:disabled { opacity: .45; cursor: default; }
+
+/* header "+": round accent entry point for a new inbound case */
+.header-plus {
+  width: 25px; height: 25px; border-radius: 50%; padding: 0;
+  border: 1px solid rgba(255,255,255,.4);
+  background: linear-gradient(140deg, var(--teal-2), var(--teal));
+  color: #fff; font-size: 17px; line-height: 1; font-weight: 700;
+  display: grid; place-items: center; cursor: pointer; transition: transform .12s;
+}
+.header-plus:hover:not(:disabled) { transform: scale(1.08); }
+.header-plus:disabled { opacity: .45; cursor: default; }
+
 main {
   max-width: 1440px; margin: 16px auto 0; padding: 0 24px;
   display: grid; grid-template-columns: 300px 1fr 340px; gap: 16px; align-items: start;
@@ -193,6 +216,92 @@ html[lang="zh"] .ev-row .k { width: 100px; }
 .audit th, .audit td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
 .audit th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
 .tag { font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+
+/* ---------- history (cross-session past cases, GET /api/runs) ---------- */
+.audit .mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; color: var(--muted); font-size: 11.5px; }
+.audit th.num, .audit td.num { text-align: right; }
+.hist-count {
+  font-size: 11px; font-weight: 700; color: var(--teal);
+  background: rgba(20,184,166,.12); padding: 1px 9px; border-radius: 999px;
+}
+.hist-buttons { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.hist-refresh {
+  font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+  color: var(--muted); background: #f8fafc; border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 10px;
+}
+.hist-refresh:hover:not(:disabled) { color: var(--teal); border-color: var(--teal-2); }
+.hist-refresh:disabled { opacity: .55; cursor: default; }
+.hist-note { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.hist-reship {
+  margin-left: 6px; font-size: 10.5px; font-weight: 700; color: var(--teal);
+  border: 1px solid rgba(20,184,166,.35); border-radius: 999px; padding: 1px 6px;
+}
+.hist-risk { font-weight: 700; }
+.hist-why { color: #334155; }
+
+/* history table — standalone class (.htable) so the same table renders inside
+   the page (.audit section) and inside the centered modal alike */
+.htable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.htable th, .htable td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+.htable th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
+.htable th.num, .htable td.num { text-align: right; }
+.htable .mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; color: var(--muted); font-size: 11.5px; }
+.htable tbody tr.hist-row { cursor: pointer; }
+.htable tbody tr.hist-row:hover td { background: #f0fdfa; }
+
+/* ---------- centered modals (blurred backdrop highlights one panel) ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(8, 20, 32, .45); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.modal-panel {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(8, 20, 32, .35);
+  width: min(1000px, 100%); max-height: 92vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-panel.wide { width: min(1240px, 100%); }
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px 20px 10px; }
+.modal-title { font-size: 16px; font-weight: 800; letter-spacing: .2px; }
+.modal-sub { font-size: 12px; color: var(--muted); margin-top: 3px; max-width: 780px; }
+.hm-tools { display: inline-flex; align-items: center; gap: 8px; flex: none; }
+.modal-x {
+  width: 26px; height: 26px; border-radius: 50%; padding: 0 0 1px;
+  border: 1px solid var(--line); background: #fff; color: var(--muted);
+  font-size: 16px; line-height: 1; cursor: pointer; display: grid; place-items: center;
+}
+.modal-x:hover:not(:disabled) { color: var(--teal); border-color: var(--teal-2); }
+.modal-x:disabled { opacity: .5; cursor: default; }
+.modal-body { overflow: auto; padding: 4px 20px 16px; }
+.modal-error { margin: 10px 0 0; color: var(--scrap); font-weight: 600; font-size: 12.5px; }
+
+/* new-inbound modal: form + live preview */
+.ni-body .controls { margin-bottom: 4px; }
+.ni-toggle {
+  border: 0; background: none; font: inherit; font-size: 12px; font-weight: 700;
+  color: var(--teal); cursor: pointer; padding: 4px 0; margin: 2px 0 4px;
+}
+.ni-toggle:hover { color: var(--teal-2); }
+.ni-cfg { border-top: 0; padding-top: 2px; }
+.ni-preview { margin-top: 10px; }
+.ni-preview .section-label { margin-top: 0; }
+.ni-riskline { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--muted); margin: 10px 0 6px; }
+.ni-riskline .risk-score { font-weight: 800; }
+.ni-riskline .risk-cause { white-space: nowrap; }
+.ni-riskline .risk-rule { margin-left: auto; font-weight: 700; color: #334155; }
+.modal-foot {
+  display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;
+  border-top: 1px solid var(--line); padding: 14px 20px; background: #fbfdff;
+}
+.ni-batch { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 4px; }
+.ni-batch label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; font-weight: 700; }
+.ni-batch input { padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; width: 100%; }
+.ni-actions { display: flex; gap: 8px; }
+.modal-primary { border-color: var(--teal); background: var(--teal); color: #fff; }
+.modal-primary:hover:not(:disabled) { background: var(--teal-2); border-color: var(--teal-2); color: #fff; }
+.modal-primary:disabled { opacity: .6; cursor: default; }
 
 footer { text-align: center; color: var(--muted); font-size: 11.5px; padding: 0 24px 30px; }
 
