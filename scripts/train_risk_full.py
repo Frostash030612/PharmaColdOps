@@ -44,7 +44,7 @@ ANON = ["feature_x1", "feature_x2", "feature_x3"]
 # --------------------------------------------------------------------------- #
 # data
 # --------------------------------------------------------------------------- #
-df = fill_median(pd.read_csv(CSV).drop(columns=["shipment_id"]))
+df = pd.read_csv(CSV).drop(columns=["shipment_id"])
 y = df[TARGET].to_numpy()
 interp = [c for c in df.columns if c != TARGET and c not in ANON]
 feature_sets = [("interpretable", interp), ("all", [c for c in df.columns if c != TARGET])]
@@ -58,6 +58,10 @@ itr, iva = train_test_split(itr, test_size=0.1765,
                             stratify=y[itr], random_state=SEED)  # 0.15 of the 0.85
 ytr, yva, yte = y[itr], y[iva], y[ite]
 sw = balanced_weights(ytr)
+
+# median-fill with TRAIN-only constants: fitting medians on the whole table
+# would leak test rows' statistics into the features (split already done above)
+df = fill_median(df, fill=df.loc[itr].median())
 
 
 def build_models():

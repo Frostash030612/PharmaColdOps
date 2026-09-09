@@ -62,13 +62,16 @@ def main() -> int:
     classes = np.unique(y_raw)
     y = np.array([np.where(classes == v)[0][0] for v in y_raw])
     # categorical context -> codes; numeric context kept as numbers
-    cat_codes = df[CAT].astype("category").apply(
-        lambda s: s.cat.codes if isinstance(s.dtype, pd.CategoricalDtype) else s)
-    X = pd.concat([cat_codes, df[NUM].apply(pd.to_numeric, errors="coerce")], axis=1)
-    X = fill_median(X).to_numpy(dtype=float)
+    cat_codes = df[CAT].astype("category").apply(lambda s: s.cat.codes)
+    X = pd.concat([cat_codes, df[NUM].apply(pd.to_numeric, errors="coerce")],
+                  axis=1).reset_index(drop=True)
 
-    Xtr, Xte, ytr, yte = train_test_split(
-        X, y, test_size=0.2, stratify=y, random_state=SEED)
+    # split on row positions first, then median-fill with TRAIN-only constants
+    # (fitting fill values on the full frame leaks test rows into the features)
+    pos_tr, pos_te = train_test_split(
+        np.arange(len(X)), test_size=0.2, stratify=y, random_state=SEED)
+    X = fill_median(X, fill=X.iloc[pos_tr].median()).to_numpy(dtype=float)
+    Xtr, Xte, ytr, yte = X[pos_tr], X[pos_te], y[pos_tr], y[pos_te]
     sw = balanced_weights(ytr)
 
     # baseline: always predict the majority class

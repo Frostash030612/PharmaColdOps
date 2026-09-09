@@ -68,8 +68,6 @@ def metrics(y_true, y_score):
 def main() -> int:
     df = pd.read_csv(CSV)
     df = df.drop(columns=[c for c in DROP if c in df])
-    # small missingness on two columns → median fill
-    df = df.apply(lambda s: s.fillna(s.median()) if s.isna().any() else s)
 
     y = df[TARGET].to_numpy()
     base = [c for c in df.columns if c != TARGET]
@@ -77,6 +75,10 @@ def main() -> int:
 
     Xtr, Xte, ytr, yte = train_test_split(
         df[base], y, test_size=0.2, stratify=y, random_state=RNG)
+    # median-fill with TRAIN-only constants — fitting on the whole table would
+    # leak test rows' statistics into the features (see PROGRESS 数据处理纪律)
+    fill = Xtr.median()
+    Xtr, Xte = Xtr.fillna(fill), Xte.fillna(fill)
     ytr_p, yte_p = ytr.mean(), yte.mean()
     model = LogisticRegression(max_iter=2000, random_state=RNG)
 

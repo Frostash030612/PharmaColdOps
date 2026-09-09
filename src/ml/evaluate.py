@@ -15,9 +15,19 @@ from sklearn.metrics import (accuracy_score, average_precision_score,
 SEED = 42
 
 
-def fill_median(df):
-    """Median-fill the (small) missingness in a frame, column by column."""
-    return df.apply(lambda s: s.fillna(s.median()) if s.isna().any() else s)
+def fill_median(df, fill=None):
+    """Median-fill the (small) missingness in a frame, column by column.
+
+    ``fill`` (optional): per-column constants (a Series of medians). Fit it on
+    the TRAIN split only — ``fill = train.median()`` — and pass the *same*
+    Series when filling validation/test rows. Recomputing medians per split
+    would leak test-set statistics into the features (feature-distribution
+    leakage); with no time axis in these datasets it is not "future" leakage,
+    but the rule is the same: split first, fit fill values on train only.
+    """
+    if fill is None:
+        fill = df.median()
+    return df.fillna(fill)
 
 
 def balanced_weights(y):
