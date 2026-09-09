@@ -19,6 +19,9 @@ venv/
 # Processed/derived artifacts stay out of git; raw datasets ARE tracked (team decision 2026-09-08)
 data/processed/
 
+# Runtime run-history log written by the decision API (data/audit/runs.jsonl)
+data/audit/
+
 # Logs / OS
 *.log
 .DS_Store
