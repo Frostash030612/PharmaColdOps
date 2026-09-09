@@ -159,7 +159,7 @@
 
 ### W0 冲刺（9/9–9/13）
 - **9/9 周三**：① PROGRESS 填姓名认领；② OR-Tools 可行性验证：conda `cold-chain` 里跑 OR-Tools 官方 VRPTW hello-world 出解（`ortools` 已装）。
-- **9/10 周四**：① 建 `src/optimisation/` 包骨架（`__init__.py` + `solomon_loader.py`）：读 `data/optimisation/solomon/` 6 个 JSON → 统一数据类（节点/需求/时间窗/坐标）。
+- **9/10 周四**：① ☑ 建 `src/optimisation/` 包骨架（`__init__.py` + `solomon_loader.py`）：读 `data/optimisation/solomon/` 6 个 JSON → 统一数据类（节点/需求/时间窗/坐标）。
 - **9/11 周五**：① schema 草案：C 主笔 `ReplanResult`（路线方案），`ReshipmentOrder` 属 A 引擎输出、等 A 草案再对；② 提案冲刺：§6.4 可行性结论（含 hello-world 结果）；③ **金标准标注**（收到 A 的 rubric 后）：独立标注场景 1–20，只看 rubric 不看代码。
 - **9/12 周六**：① 提案冲刺：demo 右栏「简化启发式 ≠ 正式求解器」口径与提案/README 一致（已注则核对）；② schema 按 A/D 反馈修订；③ **金标准标注**场景 21–40。
 - **9/13 周日**：① 提案提交；② 周例会；③ **金标准标注**场景 41–57，当天交 A。
@@ -224,7 +224,7 @@
 
 ### W0 冲刺（9/9–9/13）
 - **9/9 周三**：① PROGRESS 填姓名认领；② 仓库根写 `docker-compose.yml`（neo4j:5-community，密码走 `.env.example`），让队友一条命令拉起；③ 确认本机 `pharmaneo` 容器与 neo4j driver 连通。
-- **9/10 周四**：① KG schema v1 文档（实体：Product/Regulation/SOP/ExcursionEvent/Disposition/Cause/Facility/ReshipmentOrder；关系：PRODUCT_HAS_REQUIREMENT、EVENT_CAUSED_BY、EVENT_LEADS_TO_DISPOSITION、DISPOSITION_CITED_BY 等，附属性表）。
+- **9/10 周四**：① ☑ KG schema v1 文档（实体：Product/Regulation/SOP/ExcursionEvent/Disposition/Cause/Facility/ReshipmentOrder；关系：PRODUCT_HAS_REQUIREMENT、EVENT_CAUSED_BY、EVENT_LEADS_TO_DISPOSITION、DISPOSITION_CITED_BY 等，附属性表）。
 - **9/11 周五**：① 建 `src/knowledge_graph/`：`connect.py`（driver + .env）+ `schema.py`（Cypher 建约束：唯一性/索引）。
 - **9/12 周六**：① 提案冲刺：demo 截图 1–2 张 + 合规问答定位口径（真查询 vs 概念示意，与提案一致）；② 与 A 确认 KG 问答的「无证据不回答」边界；③ 接收 A 的阈值导出结果，核对 frontend JS 常量与 `rules_config.json` 同源。
 - **9/13 周日**：① 提案提交；② 周例会。

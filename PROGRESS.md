@@ -105,6 +105,23 @@ Pydantic 模型 = 引擎 dataclass 的序列化（`model_dump`），**不要手�
 
 ---
 
+## 2026-09-10 — W0 前置收尾：`src/optimisation/` Solomon loader（C 侧）+ KG schema v1（D 侧）
+
+### C · 9/10 ①：optimisation 包骨架 + Solomon 统一加载器（`src/optimisation/`）
+
+- 新建 `src/optimisation/`（此前整块不存在）：`__init__.py`（M5 定位，注明 `ReplanResult` / `ReshipmentOrder` 字段契约 9/21 定、不在此自造）、`models.py`（统一数据类 `Node` / `SolomonInstance`：节点/坐标/需求/时间窗/服务时长）、`solomon_loader.py`（`load_instance` / `load_dir` 读 `data/optimisation/solomon/` 6 个 JSON，带结构校验）。
+- **关键澄清**：JSON 里的 `cost` 列实为 Solomon **服务时长**（C 类 90、R/RC 类 10、depot 0），并非成本——统一数据类如实命名 `Node.service` 并留注释，避免下游贪心 / CP-SAT 误当成本；输入侧仍校验源键。
+- 测试 `tests/test_solomon_loader.py`：6 实例全覆盖（101 节点 = depot + 100 客户、时间窗 / 需求 / 服务时长断言，缺 depot / 重复 id / 时间窗倒挂 / 负需求 → `ValueError`）。`.venv/Scripts/python.exe -m pytest -q` → **36 passed**（原 19 + 新 17）。
+- 下一步（C）：W1 贪心基线直接消费这批数据类；`ReplanResult` 输出契约 9/11 起草、9/21 终版。`c101` 文献最优 828.94 已作模块注释里的对照锚。
+
+### D · 9/10 ①：KG schema v1 文档（`docs/KG_SCHEMA_v1.md`）
+
+- 8 实体属性表 + 6 关系（`EVENT_LEADS_TO_DISPOSITION` 边属性承载决策现场 rule_no / reason / rule_path / regulation / risk）+ 典型问答路径骨架（喂 W2 `/api/qa` 模板：为何隔离 / 依据哪条法规 / 依据哪条 SOP / 最常见场景）。
+- 四条纪律写死：字段名与引擎 / API 契约同源不造别名、法规引用只到**文档级**不杜撰条款号、决策写入对齐审计 `run_id` 幂等、SOP / ReshipmentOrder（9/21 契约）/ Facility 坐标（待 C M5）一律标 `pending`。
+- 下接：9/11 `src/knowledge_graph/schema.py`（约束 / 索引落地）、9/14+ 加载脚本、W1 9/20 定稿。
+
+**DAILY_PLAN**：C、D 两栏 **9/10 ①** 已打 ☑。
+
 ## 2026-09-10 — 跨会话过往记录 + 结案归档 + 弹窗 UX（`frontend-vue/`，API 模式）
 
 ### 归档语义（后端决策定死，前端只管入口与文案）
