@@ -1,21 +1,40 @@
-# Rule-engine v1 has no third-party dependencies.
-pytest>=8.0
+# PharmaColdOps 依赖清单（环境: conda cold-chain, Python 3.12）
+# 注: macOS 上 lightgbm/xgboost 请用 conda-forge 安装（pip wheel 缺 OpenMP 运行时会加载失败）:
+#   conda install -c conda-forge lightgbm xgboost
 
-# Data download (scripts/download_data.py)
-huggingface_hub>=0.23
-requests>=2.31
+# M1/M2 数据与检测
+pandas>=3.0
+numpy>=2.5
+scipy>=1.18
+pyarrow>=25.0
 
-# ML / data (next modules)
-datasets>=2.14
-pandas>=2.0
-# scikit-learn needed by scripts/train_risk_model.py (risk-prediction baseline)
-scikit-learn>=1.5
-# Full experiments (scripts/train_risk_full.py, train_root_cause.py):
-lightgbm>=4.0
-xgboost>=2.0
-shap>=0.45
-matplotlib>=3.8
+# M4 风险预测 / 根因诊断
+scikit-learn>=1.9
+lightgbm>=4.7
+xgboost>=3.4
+shap>=0.52
+imbalanced-learn>=0.14
+matplotlib>=3.10
+seaborn>=0.13
 
-# Add as modules are built:
-# ortools networkx
-# fastapi uvicorn
+# M5 配送优化
+ortools>=9.15
+osmnx>=2.1
+networkx>=3.6
+deap>=1.4
+folium>=0.20
+
+# M6 知识图谱 / 问答
+neo4j>=6.3
+
+# M7 API / 前端
+fastapi>=0.141
+uvicorn>=0.52
+jinja2>=3.1
+
+# 通用工具
+pytest>=9.1
+requests>=2.34
+huggingface_hub>=1.30
+python-dotenv>=1.1
+jupyterlab>=4.5
