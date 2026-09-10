@@ -66,3 +66,85 @@ class SolomonInstance:
     def horizon_end(self) -> int:
         """Latest end of the whole planning horizon (depot latest)."""
         return self.depot.latest
+
+
+@dataclass(frozen=True)
+class RouteStop:
+    """Scheduled visit to one customer on a vehicle route."""
+
+    node_id: int
+    arrival: float
+    service_start: float
+    departure: float
+    demand: int
+    cumulative_load: int
+    late_by: float = 0.0
+
+
+@dataclass(frozen=True)
+class VehicleRoute:
+    """One depot-to-depot route with its auditable schedule."""
+
+    vehicle_id: int
+    customer_ids: tuple[int, ...]
+    stops: tuple[RouteStop, ...]
+    total_load: int
+    total_distance: float
+    duration: float
+    time_window_violations: int
+    capacity_violation_units: int
+    depot_return_violation: bool
+
+    @property
+    def feasible(self) -> bool:
+        return (
+            self.time_window_violations == 0
+            and self.capacity_violation_units == 0
+            and not self.depot_return_violation
+        )
+
+
+@dataclass(frozen=True)
+class ReplanMetrics:
+    """Comparable metrics shared by greedy and later exact solvers."""
+
+    total_distance: float
+    total_duration: float
+    vehicles_used: int
+    served_customers: int
+    on_time_customers: int
+    on_time_rate: float
+    time_window_violations: int
+    capacity_violations: int
+    depot_return_violations: int
+    vehicle_limit_violations: int
+    unserved_customer_ids: tuple[int, ...]
+
+    @property
+    def violation_count(self) -> int:
+        return (
+            self.time_window_violations
+            + self.capacity_violations
+            + self.depot_return_violations
+            + self.vehicle_limit_violations
+            + len(self.unserved_customer_ids)
+        )
+
+
+@dataclass(frozen=True)
+class ReplanResult:
+    """C-owned draft output contract for one routing run.
+
+    This deliberately contains routing outputs only.  The A-owned
+    ``ReshipmentOrder`` input fields remain pending until the cross-member
+    contract is finalised.
+    """
+
+    instance: str
+    algorithm: str
+    routes: tuple[VehicleRoute, ...]
+    metrics: ReplanMetrics
+
+    @property
+    def feasible(self) -> bool:
+        return self.metrics.violation_count == 0
