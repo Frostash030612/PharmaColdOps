@@ -116,3 +116,16 @@ def test_real_network():
         assert result.metrics.served_customers + len(result.metrics.unserved_customer_ids) == instance.n_customers
         # Wide-window demonstration is intentionally feasible, unlike arbitrary input.
         assert result.feasible
+
+
+@pytest.mark.parametrize('solver', [solve_greedy, solve_ortools])
+def test_matrix_time_blocks_infeasible_customer(tmp_path, network, solver):
+    # Customer 1's earliest possible arrival is slightly beyond its deadline.
+    # Rounded-down solver time or zero x/y fallback would incorrectly serve it.
+    network['nodes'][1].update(earliest_min=0, latest_min=1)
+    network['matrix']['duration_s'][0][1] = 60.0006
+    instance, leg = load(tmp_path, network)
+    kwargs = {'time_limit_seconds': 1} if solver is solve_ortools else {}
+    result = solver(instance, leg_fn=leg, **kwargs)
+    assert not result.feasible
+    assert 1 in result.metrics.unserved_customer_ids

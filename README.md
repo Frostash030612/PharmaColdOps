@@ -113,6 +113,16 @@ A temperature excursion in → a disposition decision out.
 - Thresholds: `src/rule_engine/rules_config.json` — **placeholders** to be replaced with product-specific WHO/GDP/ICH stability data
 - Evaluation: `data/scenarios/scenarios.csv` is the gold-standard scenario bank (proposal §8.3); `tests/test_rule_engine.py` asserts the engine matches the gold labels
 
+## Singapore road-network input (M5)
+
+C's solvers now accept a directed `(distance, travel_time)` callback. Solomon
+remains the default; Singapore uses cached road matrices in km/min. Build once
+with `python scripts/build_singapore_network.py` (OSMnx + internet), then solve
+and export fully offline with `python scripts/export_singapore_routes.py`.
+The real network must be generated before running the export command.
+See [network assumptions and reproduction](docs/singapore_network_assumptions.md)
+for facilities, simulated orders, data attribution and environment details.
+
 ## Team
 
 4 members — roles and responsibilities in proposal §10.
