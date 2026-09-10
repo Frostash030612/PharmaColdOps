@@ -98,4 +98,17 @@ GeoJSON 使用 `[longitude, latitude]`，设施表使用 `lat` / `lon`，D 的 `
 
 本次 OR-Tools 距离减少约 6.19%。合计路线时长是各车辆工作时长之和，不是整个车队完成配送的钟表耗时；限时搜索结果可能随运行环境变化。
 PyPI / Nominatim 可用；已通过文件下载方式解决 Overpass 限流造成的缺口，无需再让用户手动补地图。
-此交付为 C 的真实路网算例与离线数据，D 的 API/Leaflet 页面接线不在本次范围内。
+Vue 前端现已在右侧配送改派面板接入预计算路线，支持方案切换与站点排程查看。`/api/route` 仍未接入，温度和处置变化不重新求解路线。
+
+## 前端演示数据
+
+`frontend-vue/src/data/singaporeRoutes.json` 是由同一导出脚本生成的小型数据包，包含两方案的道路折线、排程与指标，不加载全岛原始图。
+更新网络后运行一次：
+
+```bash
+.venv/bin/python scripts/export_singapore_routes.py --time-limit 10 --frontend-out frontend-vue/src/data/singaporeRoutes.json
+```
+
+Vue 右侧“配送重新规划”默认展示该算例，即使当前无需补发仍可浏览，并显示对应提示。
+底图使用 OSM 公共瓦片；底图网络失败仍保留本地道路折线、设施点和排程。
+旧 `frontend/` 静态页面保持原样，本次接线在推荐的 `frontend-vue/`。
