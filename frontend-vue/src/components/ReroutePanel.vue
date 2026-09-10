@@ -1,76 +1,91 @@
 <script setup>
-/* Delivery re-routing (#reroute). Cleared/idle state, else route toggle +
-   map (SVG layer by default; Leaflet once every node carries `loc`) + metrics
-   + violation note + pharmacy detail + replacement allocation. The SVG map's
-   clickable circles bubble to the wrapper exactly as the vanilla #reroute
-   delegated click did. */
 import { computed, ref } from "vue";
-import { useSandboxStore } from "../stores/sandbox.js";
 import { useDecisionsStore } from "../stores/decisions.js";
-import { DEPOT, PHARMACIES, ROUTES } from "../data/realData.mjs";
-import {
-  rerouteIdleHtml, routeMapSvg, routeToggleHtml,
-  routeMetricsHtml, routeViolHtml, pharmDetailHtml, allocHtml,
-} from "../lib/routeSvg.js";
-import { routeNodesWithLoc } from "../lib/routeGeo.js";
+import data from "../data/singaporeRoutes.json";
 import LeafletMap from "./LeafletMap.vue";
 import { locale, bundle } from "../i18n/index.js";
 
-const sandbox = useSandboxStore();
 const decisions = useDecisionsStore();
-const L = computed(() => bundle(locale.value));
-
-const decision = computed(() => decisions.decisionFor);
-const route = computed(() => ROUTES[sandbox.routeMode]);
-
-/* Leaflet only when every node on the live route has finite lng/lat AND we are
-   online; a tile error flips the session back to the SVG map. */
-const liveNodes = computed(() => routeNodesWithLoc(DEPOT, PHARMACIES, route.value));
-const leafletOn = computed(() =>
-  liveNodes.value !== null && typeof navigator !== "undefined" && navigator.onLine !== false
-);
-const tileFallback = ref(false);
-
-const idleHtml = computed(() => rerouteIdleHtml(L.value));
-const toggleHtml = computed(() => routeToggleHtml(sandbox.routeMode, L.value));
-const mapSvg = computed(() =>
-  routeMapSvg(DEPOT, PHARMACIES, route.value, sandbox.routeMode,
-              sandbox.selectedPharm, L.value)
-);
-const metricsViolHtml = computed(() =>
-  routeMetricsHtml(route.value, L.value) + routeViolHtml(route.value)
-);
-const detailHtml = computed(() =>
-  pharmDetailHtml(sandbox.selectedPharm, route.value, PHARMACIES, L.value)
-);
-const allocHtmlText = computed(() => {
-  const name = L.value.products[sandbox.current.product_id] || sandbox.current.product_id;
-  return allocHtml(name, L.value);
+const text = computed(() => bundle(locale.value).singapore);
+const mode = ref("ortools");
+const selectedId = ref(null);
+const plan = computed(() => data.plans[mode.value]);
+const colors = ["#0d9488", "#7c3aed", "#d97706"];
+const color = (index) => colors[index % colors.length];
+const names = Object.fromEntries(data.nodes.map(n => [n.node_id, n.name]));
+const saving = computed(() => 100 * (1 - plan.value.metrics.total_distance / data.plans.greedy.metrics.total_distance));
+const selected = computed(() => {
+  if (selectedId.value === null) return null;
+  const node = data.nodes.find(n => n.node_id === selectedId.value);
+  for (const route of plan.value.routes) {
+    const index = route.stops.findIndex(s => s.node_id === selectedId.value);
+    if (index >= 0) return { node, stop: route.stops[index], index: index + 1, vehicle: route.vehicle_id };
+  }
+  return { node };
 });
-
-/* delegated click, as in the vanilla bind() on #reroute */
-function onRouteClick(e) {
-  const mb = e.target.closest("[data-mode]");
-  if (mb) { sandbox.setRouteMode(mb.dataset.mode); return; }
-  const ph = e.target.closest("[data-ph]");
-  if (ph) sandbox.togglePharm(ph.dataset.ph);
+function clock(minutes) {
+  const total = Math.round(minutes);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
-function onSelectPharm(id) { sandbox.togglePharm(id); }
 </script>
 
 <template>
-  <div v-if="decision.reshipment" class="route-area" @click="onRouteClick">
-    <div v-html="toggleHtml"></div>
-    <LeafletMap
-      v-if="leafletOn && !tileFallback"
-      :depot="DEPOT" :pharmacies="PHARMACIES" :route="route"
-      :mode="sandbox.routeMode" :selected-pharm="sandbox.selectedPharm"
-      @select="onSelectPharm" @tileerror="tileFallback = true"
-    />
-    <div v-else v-html="mapSvg"></div>
-    <div v-html="metricsViolHtml"></div>
-    <div v-html="detailHtml"></div>
-    <div v-html="allocHtmlText"></div>
+  <div class="sg-routing">
+    <strong>{{ text.title }}</strong>
+    <p class="sg-note">{{ text.note }}</p>
+    <div class="route-toggle" role="group" :aria-label="text.title">
+      <button v-for="key in ['greedy', 'ortools']" :key="key" :class="{ on: mode === key }"
+        :aria-pressed="mode === key" @click="mode = key">{{ text[key] }}</button>
+    </div>
+    <LeafletMap :nodes="data.nodes" :plan="plan" :selected-id="selectedId" :text="text" @select="selectedId = $event" />
+    <div class="sg-metrics">
+      <div><b>{{ plan.metrics.total_distance.toFixed(2) }}</b><span>{{ text.distance }} · {{ text.km }}</span></div>
+      <div><b>{{ plan.metrics.vehicles_used }}</b><span>{{ text.vehicles }}</span></div>
+      <div><b>{{ plan.metrics.served_customers }}/{{ data.nodes.length - 1 }}</b><span>{{ text.served }}</span></div>
+      <div><b>{{ plan.metrics.time_window_violations + plan.metrics.capacity_violations + plan.metrics.depot_return_violations + plan.metrics.vehicle_limit_violations }}</b><span>{{ text.violations }}</span></div>
+    </div>
+    <p v-if="mode === 'ortools'" class="sg-saving">{{ text.savings }} {{ saving.toFixed(2) }}%</p>
+    <div v-for="(route, index) in plan.routes" :key="route.vehicle_id" class="sg-vehicle">
+      <b :style="{ color: color(index) }">● {{ text.vehicle }} {{ route.vehicle_id }}</b>
+      <span>{{ route.total_distance.toFixed(2) }} {{ text.km }}</span>
+      <div class="sg-stops">
+        <button :class="{ selected: selectedId === 0 }" @click="selectedId = 0">{{ text.depot }}</button>
+        <button v-for="(id, i) in route.customer_ids" :key="id" :title="names[id]" :aria-label="`${text.stop} ${i + 1}: ${names[id]}`"
+          :class="{ selected: selectedId === id }" @click="selectedId = id">{{ i + 1 }} · {{ data.nodes[id].facility_id.replace(/^H-/, '') }}</button>
+        <span>→ {{ text.depot }}</span>
+      </div>
+    </div>
+    <div class="sg-detail" aria-live="polite">
+      <template v-if="selected">
+        <b>{{ selected.node.name }}</b>
+        <template v-if="selected.stop">
+          <div>{{ text.vehicle }} {{ selected.vehicle }} · {{ text.stop }} {{ selected.index }}</div>
+          <div>{{ text.arrival }} {{ clock(selected.stop.arrival) }} · {{ text.service }} {{ clock(selected.stop.service_start) }}</div>
+          <div>{{ text.demand }} {{ selected.node.demand }} {{ text.units }} · {{ text.window }} {{ clock(selected.node.earliest_min) }}–{{ clock(selected.node.latest_min) }}</div>
+        </template>
+        <div v-else>{{ text.noStop }} · {{ clock(selected.node.earliest_min) }}–{{ clock(selected.node.latest_min) }}</div>
+      </template>
+      <span v-else>{{ text.select }}</span>
+    </div>
+    <p class="sg-note">{{ decisions.decisionFor.reshipment ? text.active : text.idle }}</p>
+    <p class="sg-disclaimer">{{ text.assumption }}</p>
   </div>
-  <div v-else v-html="idleHtml"></div>
 </template>
+
+<style scoped>
+.sg-routing { min-width: 0; font-size: 12px; }
+.sg-note { color: #64748b; line-height: 1.5; margin: 7px 0 10px; }
+.sg-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; margin-top: 10px; }
+.sg-metrics > div { padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+.sg-metrics b { display: block; font-size: 18px; color: #0f172a; }
+.sg-metrics span { color: #64748b; font-size: 11px; }
+.sg-saving { color: #0f766e; font-weight: 600; }
+.sg-vehicle { border-top: 1px solid #e2e8f0; padding: 10px 0; }
+.sg-vehicle > span { float: right; color: #64748b; }
+.sg-stops { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; margin-top: 7px; }
+.sg-stops button { border: 1px solid #cbd5e1; background: white; padding: 4px 6px; border-radius: 5px; color: #475569; cursor: pointer; font-size: 10px; }
+.sg-stops button.selected { color: #0f766e; border-color: #0d9488; background: #f0fdfa; }
+.sg-detail { background: #f8fafc; border-radius: 8px; padding: 10px; line-height: 1.7; color: #475569; }
+.sg-detail b { color: #0f172a; overflow-wrap: anywhere; }
+.sg-disclaimer { margin-bottom: 0; padding-top: 9px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 11px; line-height: 1.6; }
+</style>

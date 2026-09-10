@@ -3,6 +3,34 @@
    translated stage/evidence values, minutes unit, narrower timeline badge …). */
 
 export default {
+  singapore: {
+  "title": "新加坡配送网络",
+  "note": "预计算演示 · 1 个仓库 / 10 个配送点",
+  "assumption": "需求量、车辆容量与时间窗为模拟值；修改温度或处置不会重算路线。",
+  "active": "当前处置建议补发，可参考下方固定算例。",
+  "idle": "当前处置无需补发；下方仍可浏览配送演示。",
+  "greedy": "贪心方案",
+  "ortools": "优化方案",
+  "distance": "总距离",
+  "vehicles": "车辆",
+  "served": "覆盖站点",
+  "violations": "违规数",
+  "vehicle": "车辆",
+  "depot": "仓库",
+  "stop": "站次",
+  "arrival": "到达",
+  "service": "开始服务",
+  "demand": "需求",
+  "window": "时间窗",
+  "select": "点击地图或下方站点查看排程",
+  "tiles": "底图暂不可用，真实道路路线仍可查看。",
+  "mapLabel": "新加坡真实道路配送地图",
+  "reset": "查看全路线",
+  "savings": "相对贪心减少",
+  "units": "单位",
+  "noStop": "仓库出发 / 返回",
+  "km": "公里"
+},
   header: {
     sub: "冷链药品温度超限处置与配送重新规划",
     pillLive: "● 规则引擎 v1 · 实时",
@@ -105,7 +133,7 @@ export default {
   },
 
   footer:
-    "PharmaColdOps · 交互演示 —— 规则引擎与风险指数为实时逻辑（风险指数由同一组阈值导出，确定性）；VRPTW 配送规划与知识图谱问答为概念示意。",
+    "PharmaColdOps · 交互演示 —— 规则引擎与风险指数为实时逻辑（风险指数由同一组阈值导出，确定性）；配送地图使用真实新加坡道路与预计算方案（订单为模拟数据）；知识图谱问答为概念示意。",
 
   /* --- structural sentence templates (interpolated by pure libs / components) --- */
   templates: {

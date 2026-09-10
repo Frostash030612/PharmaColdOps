@@ -4,6 +4,34 @@
    audit.scenTmpl, timeline.badge, packagingVal, durUnit …), never code branches. */
 
 export default {
+  singapore: {
+  "title": "Singapore delivery network",
+  "note": "Precomputed demo · 1 depot / 10 delivery sites",
+  "assumption": "Demand, capacity and time windows are simulated. Temperature or disposition changes do not recalculate routes.",
+  "active": "This disposition recommends reshipment. The fixed example below is available for reference.",
+  "idle": "No reshipment needed for this disposition. You can still explore the delivery demo.",
+  "greedy": "Greedy",
+  "ortools": "Optimized",
+  "distance": "Distance",
+  "vehicles": "Vehicles",
+  "served": "Planned stops",
+  "violations": "Violations",
+  "vehicle": "Vehicle",
+  "depot": "Depot",
+  "stop": "Stop",
+  "arrival": "Arrival",
+  "service": "Service starts",
+  "demand": "Demand",
+  "window": "Time window",
+  "select": "Select a map marker or a stop below to inspect its schedule",
+  "tiles": "Basemap unavailable. Actual road routes remain visible.",
+  "mapLabel": "Singapore road delivery map",
+  "reset": "Fit all routes",
+  "savings": "Less distance than greedy",
+  "units": "units",
+  "noStop": "Depot departure / return",
+  "km": "km"
+},
   header: {
     sub: "Cold-chain temperature-excursion disposition & delivery re-routing",
     pillLive: "● Rule engine v1 · live",
@@ -107,7 +135,7 @@ export default {
   },
 
   footer:
-    "PharmaColdOps · interactive demo — the rule engine and risk index are live logic (the risk index is derived from the same thresholds, deterministic); VRPTW re-routing and knowledge-graph Q&A are concept mockups.",
+    "PharmaColdOps · interactive demo — the rule engine and risk index are live logic (the risk index is derived from the same thresholds, deterministic); delivery maps use real Singapore roads and precomputed routes with simulated orders; knowledge-graph Q&A is a concept mockup.",
 
   /* --- structural sentence templates (interpolated by pure libs / components) --- */
   templates: {
