@@ -6,7 +6,7 @@ export const PRODUCT_NUM = {
   vaccine_2_8:    { id: "vaccine_2_8",    min: 2,  max: 8,  allowable: 30, mktThreshold: 10.0,  retestable: true,  freezeSensitive: true },
   frozen_m20:     { id: "frozen_m20",     min: -25, max: -15, allowable: 15, mktThreshold: -12.0, retestable: false, freezeSensitive: false },
   insulin_2_8:    { id: "insulin_2_8",    min: 2,  max: 8,  allowable: 30, mktThreshold: 10.0,  retestable: true,  freezeSensitive: true },
-  mrna_ultracold: { id: "mrna_ultracold", min: -90, max: -60, allowable: 60, mktThreshold: -55.0, retestable: false, freezeSensitive: false },
+  mrna_ultracold: { id: "mrna_ultracold", min: -80, max: -60, allowable: 60, mktThreshold: -55.0, retestable: false, freezeSensitive: false },
 };
 
 export const PRODUCT_IDS = ["vaccine_2_8", "frozen_m20", "insulin_2_8", "mrna_ultracold"];
