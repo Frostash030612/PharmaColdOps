@@ -1,24 +1,35 @@
 """OR-Tools Routing solver for the capacity-constrained Solomon VRPTW."""
 from __future__ import annotations
 
-from .models import ReplanResult, SolomonInstance
-from .routing import build_result, euclidean, evaluate_route
+import math
 
-SCALE = 100
+from .models import ReplanResult, SolomonInstance
+from .routing import LegFn, build_result, euclidean_leg, evaluate_route
 
 
 def solve_ortools(
     instance: SolomonInstance,
     *,
     time_limit_seconds: int = 10,
+    leg_fn: LegFn = euclidean_leg,
+    distance_scale: int = 1000,
+    time_scale: int = 1000,
 ) -> ReplanResult:
-    """Solve one instance with hard capacity and time-window constraints."""
+    """Solve with hard capacity/windows and a distance objective.
+
+    Scales are independent: for km/min inputs defaults resolve 1m/0.06s.
+    Travel time rounds upward; returned schedules use original precision.
+    Guided local search is time-bounded, not an optimality certificate.
+    """
     if time_limit_seconds < 1:
         raise ValueError("time_limit_seconds must be >= 1")
     try:
         from ortools.constraint_solver import pywrapcp, routing_enums_pb2
     except ImportError as exc:  # pragma: no cover - environment guard
         raise RuntimeError("OR-Tools is required: pip install ortools") from exc
+
+    if any(type(s) is not int or s < 1 for s in (distance_scale, time_scale)):
+        raise ValueError("distance_scale and time_scale must be positive")
 
     nodes = instance.nodes
     manager = pywrapcp.RoutingIndexManager(
@@ -29,7 +40,8 @@ def solve_ortools(
     def distance(from_index: int, to_index: int) -> int:
         a = nodes[manager.IndexToNode(from_index)]
         b = nodes[manager.IndexToNode(to_index)]
-        return round(euclidean(a, b) * SCALE)
+        d, _ = leg_fn(a, b)
+        return round(d * distance_scale)
 
     distance_index = routing.RegisterTransitCallback(distance)
     routing.SetArcCostEvaluatorOfAllVehicles(distance_index)
@@ -48,10 +60,13 @@ def solve_ortools(
 
     def elapsed(from_index: int, to_index: int) -> int:
         node = nodes[manager.IndexToNode(from_index)]
-        return distance(from_index, to_index) + node.service * SCALE
+        target = nodes[manager.IndexToNode(to_index)]
+        _, minutes = leg_fn(node, target)
+        # Round travel upward: integer feasibility must not hide lateness.
+        return math.ceil(minutes * time_scale) + node.service * time_scale
 
     elapsed_index = routing.RegisterTransitCallback(elapsed)
-    horizon = instance.horizon_end * SCALE
+    horizon = instance.horizon_end * time_scale
     routing.AddDimension(
         elapsed_index,
         horizon,
@@ -65,15 +80,15 @@ def solve_ortools(
             continue
         index = manager.NodeToIndex(node_index)
         time_dimension.CumulVar(index).SetRange(
-            node.earliest * SCALE, node.latest * SCALE
+            node.earliest * time_scale, node.latest * time_scale
         )
     depot = instance.depot
     for vehicle_id in range(instance.vehicle_nr):
         time_dimension.CumulVar(routing.Start(vehicle_id)).SetRange(
-            depot.earliest * SCALE, depot.latest * SCALE
+            depot.earliest * time_scale, depot.latest * time_scale
         )
         time_dimension.CumulVar(routing.End(vehicle_id)).SetRange(
-            depot.earliest * SCALE, depot.latest * SCALE
+            depot.earliest * time_scale, depot.latest * time_scale
         )
         routing.AddVariableMinimizedByFinalizer(
             time_dimension.CumulVar(routing.Start(vehicle_id))
@@ -105,6 +120,6 @@ def solve_ortools(
             index = solution.Value(routing.NextVar(index))
         if customer_ids:
             routes.append(evaluate_route(
-                instance, customer_ids, vehicle_id=vehicle_id + 1
+                instance, customer_ids, vehicle_id=vehicle_id + 1, leg_fn=leg_fn
             ))
     return build_result(instance, "ortools-routing", routes)

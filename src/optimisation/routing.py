@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 from .models import (
     Node,
@@ -21,11 +21,21 @@ def euclidean(a: Node, b: Node) -> float:
     return math.hypot(a.x - b.x, a.y - b.y)
 
 
+LegFn = Callable[[Node, Node], tuple[float, float]]
+
+
+def euclidean_leg(a: Node, b: Node) -> tuple[float, float]:
+    """Default Solomon leg: distance equals travel time."""
+    d = euclidean(a, b)
+    return d, d
+
+
 def evaluate_route(
     instance: SolomonInstance,
     customer_ids: Iterable[int],
     *,
     vehicle_id: int = 1,
+    leg_fn: LegFn = euclidean_leg,
 ) -> VehicleRoute:
     """Build the schedule for one depot-to-depot customer sequence.
 
@@ -54,9 +64,9 @@ def evaluate_route(
 
     for node_id in ids:
         node = by_id[node_id]
-        leg = euclidean(current, node)
+        leg, travel_time = leg_fn(current, node)
         distance += leg
-        arrival = departure + leg
+        arrival = departure + travel_time
         service_start = max(arrival, float(node.earliest))
         late_by = max(0.0, service_start - node.latest)
         departure = service_start + node.service
@@ -72,9 +82,9 @@ def evaluate_route(
         ))
         current = node
 
-    return_leg = euclidean(current, depot)
+    return_leg, return_travel_time = leg_fn(current, depot)
     distance += return_leg
-    return_time = departure + return_leg
+    return_time = departure + return_travel_time
     return VehicleRoute(
         vehicle_id=vehicle_id,
         customer_ids=ids,

@@ -70,10 +70,10 @@ def main() -> int:
     print(f"\n[wrote {greedy_path}]")
 
     if args.with_ortools:
-        exact = [solve_ortools(
+        optimized = [solve_ortools(
             available[label], time_limit_seconds=args.time_limit
         ) for label in labels]
-        comparison = [item for pair in zip(greedy, exact) for item in pair]
+        comparison = [item for pair in zip(greedy, optimized) for item in pair]
         compare_path = out_dir / "routing_comparison.md"
         compare_path.write_text("\n".join([
             "# Greedy vs OR-Tools VRPTW",
@@ -84,7 +84,7 @@ def main() -> int:
             *_table(comparison),
             "",
         ]), encoding="utf-8")
-        print("\n".join(["", *_table(exact)]))
+        print("\n".join(["", *_table(optimized)]))
         print(f"\n[wrote {compare_path}]")
     return 0
 

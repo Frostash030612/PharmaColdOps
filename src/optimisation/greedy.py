@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from .models import ReplanResult, SolomonInstance, VehicleRoute
-from .routing import build_result, euclidean, evaluate_route
+from .routing import LegFn, build_result, euclidean_leg, evaluate_route
 
 
 def _best_feasible_insertion(
@@ -10,9 +10,10 @@ def _best_feasible_insertion(
     current_ids: tuple[int, ...],
     unassigned: set[int],
     vehicle_id: int,
+    leg_fn: LegFn,
 ) -> VehicleRoute | None:
     """Return the minimum-distance feasible one-customer insertion."""
-    current = evaluate_route(instance, current_ids, vehicle_id=vehicle_id)
+    current = evaluate_route(instance, current_ids, vehicle_id=vehicle_id, leg_fn=leg_fn)
     by_id = {node.node_id: node for node in instance.nodes}
     best: tuple[tuple[float, float, int, int, int], VehicleRoute] | None = None
 
@@ -23,12 +24,12 @@ def _best_feasible_insertion(
                 current_ids[:position] + (customer_id,) + current_ids[position:]
             )
             candidate = evaluate_route(
-                instance, candidate_ids, vehicle_id=vehicle_id
+                instance, candidate_ids, vehicle_id=vehicle_id, leg_fn=leg_fn
             )
             if not candidate.feasible:
                 continue
             predecessor_id = 0 if position == 0 else current_ids[position - 1]
-            nearest_leg = euclidean(by_id[predecessor_id], customer)
+            nearest_leg, _ = leg_fn(by_id[predecessor_id], customer)
             added_distance = candidate.total_distance - current.total_distance
             key = (
                 round(added_distance, 12),
@@ -42,7 +43,7 @@ def _best_feasible_insertion(
     return None if best is None else best[1]
 
 
-def solve_greedy(instance: SolomonInstance) -> ReplanResult:
+def solve_greedy(instance: SolomonInstance, *, leg_fn: LegFn = euclidean_leg) -> ReplanResult:
     """Construct feasible routes with nearest-distance time-window insertion.
 
     One vehicle is filled at a time.  Every proposed insertion is scheduled
@@ -58,7 +59,7 @@ def solve_greedy(instance: SolomonInstance) -> ReplanResult:
         route: VehicleRoute | None = None
         while unassigned:
             candidate = _best_feasible_insertion(
-                instance, ids, unassigned, vehicle_id
+                instance, ids, unassigned, vehicle_id, leg_fn
             )
             if candidate is None:
                 break

@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "instance": "SINGAPORE_DEMO",
+  "vehicle_nr": 3,
+  "capacity": 200,
+  "assumptions": "Demonstration only: depot assignment, 3 vehicles, capacity 200 units, each hospital demand 30 units, 09:00–17:00 service windows, 15-minute service, depot 08:00–18:00. No commercial relationship or actual shipment data implied.",
+  "nodes": [
+    {
+      "facility_id": "W-KN-PIONEER",
+      "name": "Kuehne+Nagel Singapore Logistics Hub",
+      "query": "10 Pioneer Crescent, Singapore",
+      "role": "depot",
+      "source_url": "https://home.kuehne-nagel.com/locations?query=singapore%2F1000",
+      "demand": 0,
+      "earliest_min": 480,
+      "latest_min": 1080,
+      "service_min": 0
+    },
+    {
+      "facility_id": "H-NHCS",
+      "name": "National Heart Centre Singapore",
+      "query": "National Heart Centre Singapore, 5 Hospital Drive, Singapore",
+      "role": "customer",
+      "source_url": "https://www.nhcs.com.sg/patient-services/contact-us",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15
+    },
+    {
+      "facility_id": "H-NUH",
+      "name": "National University Hospital",
+      "query": "National University Hospital, Singapore",
+      "role": "customer",
+      "source_url": "https://www.sgdi.gov.sg/other-organisations/hospitals",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15
+    },
+    {
+      "facility_id": "H-KKH",
+      "name": "KK Women’s and Children’s Hospital",
+      "query": "KK Women’s and Children’s Hospital, Singapore",
+      "role": "customer",
+      "source_url": "https://www.sgdi.gov.sg/other-organisations/hospitals",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15
+    },
+    {
+      "facility_id": "H-TTSH",
+      "name": "Tan Tock Seng Hospital",
+      "query": "Tan Tock Seng Hospital, Singapore",
+      "role": "customer",
+      "source_url": "https://www.sgdi.gov.sg/other-organisations/hospitals",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15
+    },
+    {
+      "facility_id": "H-CGH",
+      "name": "Changi General Hospital",
+      "query": "Changi General Hospital, Singapore",
+      "role": "customer",
+      "source_url": "https://www.sgdi.gov.sg/other-organisations/hospitals",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15
+    },
+    {
+      "facility_id": "H-SKH",
+      "name": "Sengkang General Hospital",
+      "query": "Sengkang General Hospital, Singapore",
+      "role": "customer",
+      "source_url": "https://www.sgdi.gov.sg/other-organisations/hospitals",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15
+    },
+    {
+      "facility_id": "H-NTFGH",
+      "name": "Ng Teng Fong General Hospital",
+      "query": "Ng Teng Fong General Hospital, Singapore",
+      "role": "customer",
+      "source_url": "https://www.sgdi.gov.sg/other-organisations/hospitals",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15
+    },
+    {
+      "facility_id": "H-AH",
+      "name": "Alexandra Hospital",
+      "query": "Alexandra Hospital, Singapore",
+      "role": "customer",
+      "source_url": "https://www.sgdi.gov.sg/other-organisations/hospitals",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15
+    },
+    {
+      "facility_id": "H-KTPH",
+      "name": "Khoo Teck Puat Hospital",
+      "query": "Khoo Teck Puat Hospital, Singapore",
+      "role": "customer",
+      "source_url": "https://www.sgdi.gov.sg/other-organisations/hospitals",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15
+    },
+    {
+      "facility_id": "H-WH",
+      "name": "Woodlands Health",
+      "query": "Woodlands Health, Singapore",
+      "role": "customer",
+      "source_url": "https://www.sgdi.gov.sg/other-organisations/hospitals",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15
+    }
+  ]
+}
