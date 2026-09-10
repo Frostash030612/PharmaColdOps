@@ -129,3 +129,21 @@ def test_matrix_time_blocks_infeasible_customer(tmp_path, network, solver):
     result = solver(instance, leg_fn=leg, **kwargs)
     assert not result.feasible
     assert 1 in result.metrics.unserved_customer_ids
+
+
+def test_local_extract_filters_non_drive_ways_and_preserves_oneway(tmp_path):
+    from optimisation.osm_extract import filter_drive_xml
+    import xml.etree.ElementTree as ET
+    source = tmp_path / 'source.osm'
+    source.write_text('''<osm version="0.6">
+      <node id="1" lat="1.3" lon="103.8"/>
+      <node id="2" lat="1.31" lon="103.81"/>
+      <node id="3" lat="1.32" lon="103.82"/>
+      <way id="10"><nd ref="1"/><nd ref="2"/><tag k="highway" v="residential"/><tag k="oneway" v="yes"/></way>
+      <way id="11"><nd ref="2"/><nd ref="3"/><tag k="highway" v="cycleway"/></way>
+    </osm>''')
+    target = tmp_path / 'drive.osm'
+    assert filter_drive_xml(source, target) == {'drive_ways': 1, 'drive_nodes': 2}
+    root = ET.parse(target).getroot()
+    assert {n.attrib['id'] for n in root.findall('node')} == {'1', '2'}
+    assert root.find("way/tag[@k='oneway']").attrib['v'] == 'yes'

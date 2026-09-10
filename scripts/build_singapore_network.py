@@ -58,6 +58,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--facilities', type=Path, default=ROOT / 'data/optimisation/singapore/facilities.json')
     parser.add_argument('--out', type=Path, default=ROOT / 'data/optimisation/singapore/network.json')
+    parser.add_argument('--osm-file', type=Path, help='Local .osm or .osm.gz extract; avoids Overpass')
+    parser.add_argument('--source-url', default='https://download.bbbike.org/osm/bbbike/Singapore/Singapore.osm.gz')
     parser.add_argument('--overpass-url', default='https://overpass-api.de/api')
     parser.add_argument('--cache-dir', type=Path, default=ROOT / 'data/processed/singapore_cache')
     args = parser.parse_args()
@@ -72,18 +74,39 @@ def main():
     ox.settings.overpass_url = args.overpass_url
     ox.settings.max_query_area_size = 500_000_000
     ox.settings.http_user_agent = 'PharmaColdOps academic road-network build (OSMnx)'
-    graph_path = args.cache_dir / 'singapore_drive.graphml'
+    extract_sha = None
+    if args.osm_file:
+        with args.osm_file.open('rb') as source:
+            extract_sha = hashlib.file_digest(source, 'sha256').hexdigest()
+    graph_path = args.cache_dir / (f'singapore_drive_{extract_sha[:12]}.graphml' if extract_sha else 'singapore_drive.graphml')
     if graph_path.exists():
         print('Loading cached drive graph', flush=True)
         graph = ox.io.load_graphml(graph_path)
     else:
-        print('Downloading Singapore drive graph (may take several minutes)', flush=True)
-        graph = ox.graph.graph_from_place('Singapore', network_type='drive')
+        if args.osm_file:
+            from optimisation.osm_extract import filter_drive_xml
+            filtered = args.cache_dir / f'drive_{extract_sha[:12]}.osm'
+            print('Filtering local OSM extract', flush=True)
+            print(filter_drive_xml(args.osm_file, filtered), flush=True)
+            graph = ox.graph.graph_from_xml(filtered, simplify=False, retain_all=True)
+            boundary = ox.geocoder.geocode_to_gdf('Singapore').geometry.iloc[0]
+            graph = ox.truncate.truncate_graph_polygon(graph, boundary)
+            graph = ox.truncate.largest_component(graph, strongly=False)
+            graph = ox.simplification.simplify_graph(graph)
+        else:
+            print('Downloading Singapore drive graph (may take several minutes)', flush=True)
+            graph = ox.graph.graph_from_place('Singapore', network_type='drive')
         graph = ox.routing.add_edge_speeds(graph, fallback=30)
         graph = ox.routing.add_edge_travel_times(graph)
         graph.graph['built_at_utc'] = datetime.now(timezone.utc).isoformat()
         ox.io.save_graphml(graph, graph_path)
-    print(f'Graph: {len(graph.nodes)} nodes, {len(graph.edges)} edges', flush=True)
+    # A nearest node on an isolated one-way spur can be entered but not left.
+    # Choose facilities on the mutually reachable core, before snapping, so a
+    # depot-to-customer-to-depot route is possible without inventing any edge.
+    weak_nodes, weak_edges = len(graph.nodes), len(graph.edges)
+    graph = ox.truncate.largest_component(graph, strongly=True)
+    print(f'Routing core: {len(graph.nodes)} nodes, {len(graph.edges)} edges '
+          f'(from {weak_nodes}/{weak_edges} weak-component nodes/edges)', flush=True)
     nodes = []
     import time
     for idx, facility in enumerate(config['nodes']):
@@ -114,16 +137,19 @@ def main():
     matrix, geometry = matrix_from_graph(graph, nodes)
     output = {**config, 'schema_version': 1, 'nodes': nodes, 'matrix': matrix,
               'leg_geometry': geometry, 'generated_at': datetime.now(timezone.utc).isoformat(),
-              'provenance': {'source': 'OpenStreetMap via OSMnx / Overpass / Nominatim',
+              'provenance': {'source': 'OpenStreetMap extract via OSMnx / Nominatim' if extract_sha else 'OpenStreetMap via OSMnx / Overpass / Nominatim',
+                'source_url': args.source_url if extract_sha else args.overpass_url,
+                'extract_sha256': extract_sha,
                 'attribution': '© OpenStreetMap contributors',
                 'license_url': 'https://www.openstreetmap.org/copyright',
                 'osmnx_version': ox.__version__, 'path_weight': 'travel_time',
                 'graph_built_at': graph.graph.get('built_at_utc'),
                 'graph_nodes': len(graph.nodes), 'graph_edges': len(graph.edges),
+                'weak_component_nodes': weak_nodes, 'weak_component_edges': weak_edges,
                 'facilities_sha256': hashlib.sha256(config_bytes).hexdigest(),
                 'speed_fallback_kph': 30,
                 'travel_time_model': 'free-flow speed estimates, not live traffic',
-                'scope': 'OSM drive graph, largest weak component; not all private roads or truck restrictions'}}
+                'scope': 'OSM drive graph clipped to Singapore, facilities snapped to largest strongly connected component; not all private roads or truck restrictions'}}
     validate_network(output, str(args.out))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     temporary = args.out.with_suffix('.tmp')

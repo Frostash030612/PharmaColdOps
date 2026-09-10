@@ -116,10 +116,12 @@ A temperature excursion in → a disposition decision out.
 ## Singapore road-network input (M5)
 
 C's solvers now accept a directed `(distance, travel_time)` callback. Solomon
-remains the default; Singapore uses cached road matrices in km/min. Build once
-with `python scripts/build_singapore_network.py` (OSMnx + internet), then solve
-and export fully offline with `python scripts/export_singapore_routes.py`.
-The real network must be generated before running the export command.
+remains the default; Singapore uses cached road matrices in km/min. The committed
+`data/optimisation/singapore/network.json` contains real OSM matrices and road
+geometry for 1 depot + 10 healthcare facilities. Solve and export fully offline
+with `python scripts/export_singapore_routes.py`. Rebuild with
+`python scripts/build_singapore_network.py --osm-file path/to/Singapore.osm.gz`
+(OSMnx; public extract download avoids Overpass throttling).
 See [network assumptions and reproduction](docs/singapore_network_assumptions.md)
 for facilities, simulated orders, data attribution and environment details.
 
