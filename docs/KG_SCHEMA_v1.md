@@ -9,7 +9,7 @@
 1. **字段名同源、禁自造别名**：`ExcursionEvent` / 决策字段一律用 A 已定字段（引擎 `models.py`、`POST /api/case_close` 记录）；跨成员字段变更必须先改契约文档再改代码。
 2. **引用只到文档级**：`Regulation` 节点只存文档级引用（WHO TRS 961 Annex 9 · EU GDP 2013/C 343/01），**不杜撰条款号**；条款级证据由 A 的「阈值证据表」（9/11）核实后同步，届时再补 `evidence_url` 之类属性。
 3. **决策写入对齐审计 run**：每次结案（`case_close`）写一条 KG 决策链，节点主键 = `run_id`，幂等防重（对应 W2 9/24「每次判定写入 KG」）。
-4. **占位必须标状态**：凡字段尚未定稿的实体（SOP、ReshipmentOrder、Facility 坐标），属性表里写清 `pending` 与定稿日期，不"先填了再说"。
+4. **占位必须标状态**：凡字段尚未定稿的实体（如 ReshipmentOrder 字段），属性表里写清 `pending` 与定稿日期，不"先填了再说"。
 
 ## 1. 实体总览（8）
 
@@ -21,24 +21,30 @@
 | `ExcursionEvent` | 一次结案的温控偏差事件 | `run_id` | `POST /api/case_close` 记录（D 实现的 API） | 可加载 |
 | `Disposition` | 处置结果概念（4 类） | `disposition` | `models.Disposition`（A） | 可加载 |
 | `Cause` | 决策侧主因代码 | `cause_code` | API `risk_score` 输出（D 实现） | 可加载 |
-| `Facility` | 冷库 / 药房 / 医院节点 | `facility_id` | demo `realData`（depot/pharmacies）；坐标待 C M5 | 半占位（无坐标） |
+| `Facility` | 冷库 / 医院节点 | `facility_id` | C M5 新加坡路由表（`network.json`，OSMnx/Nominatim 地理编码） | 可加载（2026-09-11） |
 | `ReshipmentOrder` | 补发单 | `order_id` | 触发侧=引擎 `reshipment_required`；**字段 9/21 契约** | **占位** |
 
 ## 2. 实体属性表
 
-### `Product` — 产品与稳定性规格（来源：`rules_config.json`，A 定义）
+### `Product` — 产品与稳定性规格（来源：`rules_config.json`，A 定义；出处属性逐字来自其 `_sources`）
 
 | property | type | 说明 |
 |---|---|---|
 | `product_id` | string | PK。当前 4 值：`vaccine_2_8` / `frozen_m20` / `insulin_2_8` / `mrna_ultracold` |
-| `storage_min_c` | float | 存储下限（当前为占位，A W1 校实） |
-| `storage_max_c` | float | 存储上限 |
-| `allowable_duration_min` | int | 允许超限时长 |
-| `mkt_threshold_c` | float | MKT 阈值 |
-| `retestable` | bool | 可否复检 |
+| `storage_min_c` | float | 存储下限（有真实来源：WHO TRS 961 Annex 9 / FDA 说明书 / Pfizer EUA） |
+| `storage_max_c` | float | 存储上限（同上） |
+| `allowable_duration_min` | int | 允许超限时长（原则锚定默认值，量级为工程取值，无公开逐产品数字） |
+| `mkt_threshold_c` | float | MKT 阈值（原则锚定默认值，同上） |
+| `retestable` | bool | 可否复检（设计假设，胰岛素一项存疑已注明） |
 | `freeze_sensitive` | bool | 是否冻敏（WHO TRS 961 Annex 9） |
+| `category` | string | 产品类别原型说明（逐字来自 `_sources[pid].category`） |
+| `storage_source` | string | 储存范围出处（逐字来自 `_sources[pid].storage_range`） |
+| `freeze_source` | string | 冻敏性出处（逐字来自 `_sources[pid].freeze_sensitive`） |
+| `threshold_note` | string | 两阈值出处说明（逐字来自 `_sources[pid]`） |
+| `design_notes` | string | 其余设计假设（如胰岛素 `retestable`，JSON 串） |
+| `source_urls` | list[string] | 引用 URL（`_sources[pid].refs`） |
 
-> 数值改动的唯一入口是 `rules_config.json`；KG/前端/测试都不得另存一份阈值（同源原则，A 9/11 校实时同步导出）。
+> 数值与出处的唯一入口是 `rules_config.json`；KG/前端/测试都不得另存一份阈值（同源原则）。出处属性由 `build_graph.py` 从 `_sources` 逐字载入，不在此文件起草。
 
 ### `Regulation` — 合规文档（来源：引擎 `regulation` 字符串去重，A 提供）
 
@@ -51,16 +57,17 @@
 
 初始节点仅两篇；每条处置边上另存引擎**逐条**的 `regulation` 句（见 §3 `EVENT_LEADS_TO_DISPOSITION`），供审计原样回放。
 
-### `SOP` — 操作标准（v1 占位）
+### `SOP` — 操作标准（2026-09-11 起真实来源：公共程序性指引，文档级）
 
 | property | type | 说明 |
 |---|---|---|
-| `sop_id` | string | PK（草案：如 `SOP-<stage>-<context>`） |
-| `context` | string | 覆盖环节（`transit` / `airport_dwell` / `warehouse` 等，词表与 `stage` 对齐） |
-| `governing_reg` | string | 依据文档 `reg_id` |
-| `status` | string | v1 = `PLACEHOLDER` |
+| `sop_id` | string | PK：`SOP-GDP-001`（温度偏移响应）/ `SOP-GDP-002`（冻结处置 shake test）/ `SOP-GDP-003`（偏差记录与 CAPA） |
+| `title` | string | 程序名 |
+| `summary` | string | 步骤摘要——逐字取自出处文档（CDC 温度偏移清单 / WHO shake test / EU GDP），**不杜撰步骤** |
+| `source_url` | string | 主要出处 URL |
+| `verified` | string | 核对说明（核对日期 + 出处） |
 
-> 表结构为 D 起草占位（引擎无 SOP 契约字段），9/16 只从 WHO/EU GDP **文档级**原则抽节点，请 A/C 评审词表。
+> 边界（记录于 ARCHITECTURE.md §6）：真实企业**内部** SOP 为专有文件、公开不可得；本图 SOP 取自**公共程序性指引**，只到文档级。备选方案 B（未采用）：删 SOP 节点类型、功能并入 Regulation，QA 按「无证据不回答」答「该环节 SOP 未录入」。
 
 ### `ExcursionEvent` — 结案事件（来源：`POST /api/case_close` 的 `event` 块，A 定义字段）
 
@@ -93,13 +100,22 @@
 
 > 注意：与 B 的 M4 根因 `excursion_cause`（11 类）是**两套口径**——本表走决策 API 的确定性 `cause_code`（可解释、进 UI）；ML 根因只进报告。两套词表的跨映射属 B 的「规则 ↔ ML 特征接口」（9/15 起草 · 9/17 A 会签），KG 不先行合并。
 
-### `Facility` — 设施节点（坐标待 C M5）
+### `Facility` — 设施节点（来源：C 的新加坡路由表 `data/optimisation/singapore/network.json`）
 
 | property | type | 说明 |
 |---|---|---|
-| `facility_id` | string | PK（demo `realData`：`DEPOT` + `PHARMACIES[*].id`） |
-| `role` | string | `depot` / `pharmacy` / `polyclinic`（词表随 C 设施表 9/23 核对） |
-| `loc_lat` / `loc_lng` | float | v1 = 空，待 C OSMnx 新加坡坐标（9/23–24）入网 |
+| `facility_id` | string | PK，与 C M5 路由表**逐字同源**（`W-KN-PIONEER`、`H-NUH`…），禁自造别名 |
+| `name` | string | 设施名（C 设施表，逐字） |
+| `role` | string | C 词表：`depot` / `customer`（逐字，不重命名） |
+| `type` | string | 由 C `role` 派生：depot→`Warehouse`，customer→`Hospital`（v1 客户全是公立医院） |
+| `lat` / `lon` | float | **真实地理编码坐标**（OSMnx/Nominatim，OSM 新加坡路网抽取，`network.json` 2026-09-10） |
+| `address` | string | 检索地址（C 的 `query` 字段，逐字） |
+| `geocoded` | string | 地理编码解析地址（C 的 `geocoder_display_name`） |
+| `source_url` | string | 设施出处 URL（sgdi.gov.sg / nhcs.com.sg / kuehne-nagel.com） |
+| `verified` | string | 出处说明（network.json 生成时间 + OSM 抽取 sha256 + © OpenStreetMap contributors） |
+
+> 版本变更（2026-09-11）：v1 原为 D 手写近似坐标（`W-TUAS`/`W-JURONG`/`W-CHANGI`、`P-OUTRAM`、`PH-*` 等，无出处）；现整体替换为 C 于 2026-09-10 交付的新加坡路由表（比原计划 9/23–24 提前），KG 的 Shipment 起运点与 ReshipmentOrder 目的地从此与 M5 求解器节点完全一致。药房/综合诊所暂不在 C v1 表内（起步规模 = 1 仓库 + 10 医院，20–50 节点为后续扩展目标），待 C 扩充设施表后经同一地理编码管线入图，不手填。
+> 字段映射注意（C `singapore_network_assumptions.md`）：GeoJSON 用 `[longitude, latitude]`，设施表用 `lat` / `lon`；前端 Leaflet 渲染时按 C 约定适配。
 
 ### `ReshipmentOrder` — 补发单（v1 仅锚，字段待定）
 
@@ -142,7 +158,7 @@
 1. **Requirement 是否独立成实体**：v1 采纳「`Product` 属性承载 spec + `PRODUCT_HAS_REQUIREMENT` 边锚到施加文档」；若问答需要「某产品允许超限时长多少」这类单点查询，再考虑拆 `Requirement` 节点（9/20 前定）。
 2. **条款级引用**：本 schema 禁存；A 阈值证据表 9/11 出来后同步补 `Regulation` 的证据属性。
 3. **ReshipmentOrder 全字段**：9/21 A+C 终版后补属性表（D 评审）。
-4. **Facility 坐标 & role↔stage 词表**：待 C 设施表（9/23–24）与词表对齐后填。
+4. **Facility 坐标 & role↔stage 词表**：✅ 坐标已解决（C `network.json` 2026-09-10，比计划提前）；role↔stage 词表对齐待 C 扩充设施表（药房/诊所等）时进行。
 5. **SOP 属性表**为 D 起草占位，请 A/C 评审用词（避免与规则引擎/补发单字段撞名）。
 
 ---

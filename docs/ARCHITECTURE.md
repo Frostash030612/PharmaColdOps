@@ -188,3 +188,20 @@ route = ox.shortest_path(G, orig_node, dest_node, weight="travel_time")  # 真�
 | W2 | M4 LightGBM/XGBoost 基线 + SHAP（B）；M5 接补发订单 + CP-SAT v1（C）；M5 新加坡 OSMnx 路网矩阵（C）；M6 数据加载（D） | W2 |
 | W3 | 端到端集成 v1：一次温度异常 → 处置建议 + 改派路线 | W3 |
 | W4–W6 | GA 对比、多温区约束、KG 问答 v1、UI、视频、报告 | W4–W6 |
+
+---
+
+## 6. M6 知识图谱 SOP 节点来源决策（2026-09-11，供审查）
+
+**问题**：`SOP`（标准操作规程）节点最初为 D 起草占位、无出处，却出现在每条决策审计链的证据里（`Decision -[:FOLLOWS]-> SOP`），等于审计报告引用"不存在的文件"。
+
+**两条路（2026-09-11 评估）**：
+
+- **A（已采用）：用公共程序性指引重建 SOP 节点（文档级）**。真实企业**内部** SOP 属专有文件、公开不可得；但公共程序性指引真实存在且可逐字引用：
+  - `SOP-GDP-001` 温度偏移响应 ← [CDC Temperature Excursion Checklist](https://stacks.cdc.gov/view/cdc/142711/cdc_142711_DS1.pdf)（May 2014）+ EU GDP 9.2；
+  - `SOP-GDP-002` 冻结处置（shake test）← [WHO shake test 验证文献](https://pmc.ncbi.nlm.nih.gov/articles/PMC2908964/)（475 瓶 × 8 类疫苗）+ WHO TRS 961 Annex 9 §6.9；
+  - `SOP-GDP-003` 偏差记录与 CAPA ← EU GDP 1.2（官方 PDF 已核对）+ CDC 清单记录项。
+  - 规范与 `Regulation` 节点一致：每个节点带 `source_url` + `verified`，步骤只到文档级、不杜撰。
+- **B（备选，未采用）：删 SOP 节点类型**，功能并入 `Regulation`，删除 `FOLLOWS` 边；QA 对「依据哪条 SOP」按 schema「无证据不回答」答「该环节 SOP 未录入」。零编造风险，代价是审计链少一层操作细节。
+
+**结论**：采用 A。若日后审查认为 SOP 层价值不足或出处维护成本过高，可按 B 回退——回退只动 `build_graph.py` 的 `SOPS` / `SOP_IMPLEMENTS` / `RULE_TO_SOPS` 与 schema 的 SOP 节，不影响主链。

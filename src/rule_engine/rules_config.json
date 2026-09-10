@@ -37,15 +37,15 @@
       "freeze_sensitive": false
     }
   ],
-  "_note": "MVP 阈值（4 个产品类别原型，非真实品牌）。诚实边界：储存范围与冻敏性有真实公开来源（见 _sources）；allowable_duration_min 与 mkt_threshold_c 为原则性占位值——公开领域不存在逐产品精确数字，任何'带来源'的填充都是编造，需供应商稳定性数据/注册资料替换后方可投产。冻结规则（freeze_sensitive + temp <= 0 C -> scrap）依据 WHO TRS 961 Annex 9 §6.9（冻敏产品须防低于 0 C）。mrna_ultracold 已按 Pfizer-BioNTech 真实超低温档修正为 -80~-60 C（原 -90 无来源）；其厂商多级稳定性窗口（解冻后 2-8 C 最长 1 个月、-20 C 2 周、室温数小时，FDA 2021-05）未在当前单阈值模型内表达，后续应升级为 stability_tiers。",
+  "_note": "MVP 阈值（4 个产品类别原型，非真实品牌）。字段级真实性：(1) storage_min_c / storage_max_c / freeze_sensitive 有真实公开来源（WHO TRS 961 Annex 9、FDA 说明书、Pfizer EUA）；(2) allowable_duration_min / mkt_threshold_c 无公开逐产品精确数字，本文件为其设定「原则锚定默认值」——阈值实现的是可引用的国际原则，量级为保守工程取值（非任何文件刊载的精确数字，亦不声称有逐产品来源）。原则依据：mkt_threshold_c = 标签上限 + 容差，依据 USP〈1079〉MKT 定义（MKT 为时间加权均值，短暂尖峰被阻尼）与 WHO TRS 961 Annex 9 / EU GDP 2013/C 343/01「产品须维持在标签范围内、超范围需评估」；allowable_duration_min = 保守短时值，依据 WHO TRS 961 Annex 9 §6.2（偏移时长由稳定性数据决定、偏移须短促并评估）与 EU GDP 2013/C 343/01 §9.2（偏移须上报评估）。冻结规则（freeze_sensitive && temp <= 0 C -> scrap）依据 WHO TRS 961 Annex 9 §6.9。mrna_ultracold 已按 Pfizer-BioNTech 真实超低温档修正为 -80~-60 C（原 -90 无来源）；其厂商多级稳定性窗口（解冻后 2-8 C ≤1 个月、-20 C ≤2 周、室温数小时，FDA 2021-05）未在当前单阈值模型内表达，后续应升级为 stability_tiers。投产前应以上述原则为准、用供应商稳定性数据替换量级。",
   "_sources": {
-    "scope": "4 个产品类别原型。字段级真实性：storage_min_c / storage_max_c / freeze_sensitive 有公开来源；allowable_duration_min / mkt_threshold_c / retestable 为原则性占位或设计假设。",
+    "scope": "4 个产品类别原型。字段级真实性：storage_min_c / storage_max_c / freeze_sensitive 有公开来源；allowable_duration_min / mkt_threshold_c 为原则锚定的保守默认值（原则有来源、量级为工程取值）；retestable 为设计假设。",
     "vaccine_2_8": {
       "category": "2-8 C 冷藏、含铝佐剂疫苗（如 DTaP、乙肝、HPV）",
       "storage_range": "WHO：铝佐剂疫苗全程冷链 +2~+8 C，勿冻结（WHO TRS 961 Annex 9 / WHO 免疫实践）",
       "freeze_sensitive": "true —— 冻结致佐剂-抗原解离、效力不可逆丧失（WHO shake test）",
-      "allowable_duration_min": "占位：无公开逐产品数字",
-      "mkt_threshold_c": "占位：无公开逐产品数字",
+      "allowable_duration_min": "原则锚定默认值 30 min：WHO TRS 961 Annex 9 §6.2 / EU GDP 9.2「偏移须短促并评估」；量级为保守工程取值，无公开逐产品数字",
+      "mkt_threshold_c": "原则锚定默认值 10.0 C（=标签上限 8 + 2 容差）：USP〈1079〉MKT 定义 + WHO/GDP「维持在标签范围内」；容差量为工程取值",
       "refs": [
         "https://cdn.who.int/media/docs/default-source/medicines/norms-and-standards/guidelines/inspections/trs961-annex9-modelguidanceforstoragetransport.pdf",
         "https://www.sciencedirect.com/science/article/abs/pii/S0264410X18313896"
@@ -55,9 +55,9 @@
       "category": "2-8 C 冷藏胰岛素（未开封）",
       "storage_range": "FDA 说明书：未开封 2-8 C 冷藏（Levemir / glargine / lispro / Merilog）",
       "freeze_sensitive": "true —— FDA：勿冻结、冻结即弃用",
-      "allowable_duration_min": "占位：无公开逐产品数字",
-      "mkt_threshold_c": "占位：无公开逐产品数字",
-      "retestable": "设计假设：现实中胰岛素不做实验室'复检'，此字段存疑（保留 true 以维持与 rubric/场景一致）",
+      "allowable_duration_min": "原则锚定默认值 30 min：同 vaccine_2_8；现实胰岛素热稳定性更耐（FDA：开封后室温可用至 28 天），30 min 为运输偏移下的保守取值",
+      "mkt_threshold_c": "原则锚定默认值 10.0 C（=标签上限 8 + 2 容差）：USP〈1079〉MKT + WHO/GDP「维持在标签范围内」",
+      "retestable": "设计假设：现实中胰岛素不做实验室「复检」，此字段存疑（保留 true 以维持与 rubric/场景一致）",
       "refs": [
         "https://www.accessdata.fda.gov/drugsatfda_docs/label/2022/021536s060lbl.pdf",
         "https://www.accessdata.fda.gov/drugsatfda_docs/label/2025/761325Orig1s000lbl.pdf"
@@ -65,18 +65,18 @@
     },
     "frozen_m20": {
       "category": "-25~-15 C 冷冻储存类别原型（无单一对应药品名）",
-      "storage_range": "冷链'frozen'档；未确认特定 WHO 逐产品带",
-      "freeze_sensitive": "false —— 已冷冻产品不属'冻敏'",
-      "allowable_duration_min": "占位",
-      "mkt_threshold_c": "占位",
+      "storage_range": "冷链「frozen」档；USP〈1079〉freezer 档为 -25~-10 C（本项目取 -25~-15 为保守子区间）",
+      "freeze_sensitive": "false —— 已冷冻产品不属「冻敏」",
+      "allowable_duration_min": "原则锚定默认值 15 min：同「偏移须短促并评估」原则；无公开逐产品数字",
+      "mkt_threshold_c": "原则锚定默认值 -12.0 C（=标签上限 -15 + 3 容差）：USP〈1079〉MKT + WHO/GDP「维持在标签范围内」",
       "refs": []
     },
     "mrna_ultracold": {
       "category": "mRNA 疫苗（对应 Pfizer-BioNTech 超低温档）",
       "storage_range": "Pfizer-BioNTech 超低温 -80~-60 C（FDA EUA）",
-      "freeze_sensitive": "false —— 超低温/冷冻储存，非'冻敏'",
-      "allowable_duration_min": "占位：单阈值近似；真实为多级窗口（2-8 C ≤1 月、-20 C ≤2 周、解冻室温数小时）",
-      "mkt_threshold_c": "占位",
+      "freeze_sensitive": "false —— 超低温/冷冻储存，非「冻敏」",
+      "allowable_duration_min": "原则锚定默认值 60 min：单阈值近似；真实为多级窗口（2-8 C ≤1 月、-20 C ≤2 周、解冻后室温数小时，FDA 2021-05），后续应升级为 stability_tiers",
+      "mkt_threshold_c": "原则锚定默认值 -55.0 C（=标签上限 -60 + 5 容差）：MKT 对超低温档意义有限，取保守容差",
       "refs": [
         "https://www.fda.gov/media/144413/download",
         "http://content.govdelivery.com/accounts/IACIO/bulletins/2da52d5"

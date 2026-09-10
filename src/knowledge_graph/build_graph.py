@@ -3,13 +3,20 @@
 Sources, per docs/ARCHITECTURE.md M6:
 
 - products / thresholds : ``src/rule_engine/rules_config.json``
-- regulation & SOP nodes: WHO TRS 961 Annex 9, EU GDP 2013/C 343/01,
+- regulation nodes: WHO TRS 961 Annex 9, EU GDP 2013/C 343/01,
   ICH Q1A(R2), HSA GDP Guidance Notes (Singapore). Clause numbers and
   summaries were checked against the official PDFs on 2026-09-10 (each
   Regulation node carries ``source_url`` + ``verified``); ICH clause-level
   wording remains A's W1 verification task.
-- facilities           : Singapore cold-chain warehouses, public hospitals,
-  polyclinics and pharmacies (OSM coordinate approximations)
+- SOP nodes: public procedural guidance at DOCUMENT level — CDC Temperature
+  Excursion Checklist (May 2014), WHO shake-test validation study,
+  EU GDP 1.2 / 9.2. Company-internal SOPs are proprietary and are NOT used
+  (decision recorded in docs/ARCHITECTURE.md §6, 2026-09-11).
+- facilities           : C's Singapore routing table (M5) —
+  ``data/optimisation/singapore/network.json`` node list (1 cold-chain depot
+  + 10 public hospitals), loaded verbatim with geocoded coordinates,
+  addresses and per-node ``source_url``; ``type`` is derived from C's
+  ``role`` (v1 customers are all public hospitals)
 - events & decisions   : ``data/scenarios/scenarios.csv`` run through the real
   RuleEngine, so every Decision node mirrors an auditable engine output
   (rule_no, reason, regulation) and the engine's reshipment flag becomes a
@@ -124,21 +131,31 @@ REGULATIONS = [
     },
 ]
 
+# Public procedural guidance at DOCUMENT level. Company-internal SOPs are
+# proprietary and publicly unavailable, so none of these are invented
+# procedures: every step is quoted from the cited source (same provenance
+# discipline as REGULATIONS above). Decision record: ARCHITECTURE.md §6.
 SOPS = [
     {
         "sop_id": "SOP-GDP-001",
-        "title": "Temperature deviation handling & release assessment",
-        "summary": "Assess excursion severity, decide hold / test / release, document the justification.",
+        "title": "Temperature excursion response",
+        "summary": "On out-of-range temperature: check power/unit causes (utility, breakers, door seal, monitor placement) and record all temperatures; label exposed vaccines 'Do NOT Use' and set them apart under appropriate conditions; move vaccines to an alternate storage unit (refrigerated first) after checking its temperature; document the action taken and results; contact the immunization program and the manufacturer; return vaccines determined usable only when the storage unit is stable; dispose of compromised stock per distributor/manufacturer and state medical-waste rules.",
+        "source_url": "https://stacks.cdc.gov/view/cdc/142711/cdc_142711_DS1.pdf",
+        "verified": "2026-09-11 CDC Temperature Excursion Checklist (May 2014), steps quoted from the official PDF; EU GDP 2013/C 343/01 §9.2 requires a procedure for investigating and handling excursions (verified 2026-09-10)",
     },
     {
         "sop_id": "SOP-GDP-002",
-        "title": "Freeze-exposure discard",
-        "summary": "Discard freeze-sensitive product exposed below the freezing point; record as waste with root cause.",
+        "title": "Freeze-exposure handling (WHO shake test)",
+        "summary": "Protect freeze-sensitive products from temperatures below 0 °C (WHO TRS 961 Annex 9 §6.9). On suspected freezing of an aluminum-adjuvanted vaccine: shake a suspect test vial and a deliberately frozen control vial of the same batch for 10–15 seconds and compare sedimentation side by side; similar or faster sedimentation indicates freeze damage and the batch must be discarded (WHO shake test, validated on 475 vials across 8 freeze-sensitive vaccine types).",
+        "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2908964/",
+        "verified": "2026-09-11 WHO shake-test validation study (PMC2908964) + WHO TRS 961 Annex 9 §6.9 official PDF (verified 2026-09-10)",
     },
     {
         "sop_id": "SOP-GDP-003",
-        "title": "Deviation logging & audit trail",
-        "summary": "Log every deviation, decision and citation so the audit chain stays traceable.",
+        "title": "Deviation documentation & CAPA",
+        "summary": "Document every deviation (temperatures, duration, storage unit, affected inventory) and the actions taken; investigate the deviation and take corrective and preventive actions (CAPA) in line with quality risk management; complete final documentation including prevention measures and the final disposition of affected stock.",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
+        "verified": "2026-09-10 EU GDP 2013/C 343/01 Chapter 1.2 official OJ PDF (deviations documented & investigated, CAPA per quality risk management); documentation items per CDC excursion checklist (May 2014)",
     },
 ]
 
@@ -156,19 +173,44 @@ PRODUCT_RULES = {
     "freeze_sensitive": ["R-WHO-TRS961-FREEZE"],
 }
 
-FACILITIES = [
-    {"facility_id": "W-TUAS", "name": "Tuas Cold Chain Hub", "type": "Warehouse", "lat": 1.320, "lon": 103.650},
-    {"facility_id": "W-JURONG", "name": "Jurong Logistics Terminal", "type": "Warehouse", "lat": 1.330, "lon": 103.720},
-    {"facility_id": "W-CHANGI", "name": "Changi Airfreight Cold Zone", "type": "Warehouse", "lat": 1.360, "lon": 103.990},
-    {"facility_id": "H-SGH", "name": "Singapore General Hospital", "type": "Hospital", "lat": 1.2807, "lon": 103.8343},
-    {"facility_id": "H-NUH", "name": "National University Hospital", "type": "Hospital", "lat": 1.2938, "lon": 103.7838},
-    {"facility_id": "H-KKH", "name": "KK Women's and Children's Hospital", "type": "Hospital", "lat": 1.3094, "lon": 103.8492},
-    {"facility_id": "H-TTSH", "name": "Tan Tock Seng Hospital", "type": "Hospital", "lat": 1.3197, "lon": 103.8465},
-    {"facility_id": "H-CGH", "name": "Changi General Hospital", "type": "Hospital", "lat": 1.3404, "lon": 103.9498},
-    {"facility_id": "P-OUTRAM", "name": "SingHealth Polyclinic (Outram)", "type": "Polyclinic", "lat": 1.2789, "lon": 103.8398},
-    {"facility_id": "PH-GUARDIAN", "name": "Guardian Pharmacy (Raffles City)", "type": "Pharmacy", "lat": 1.2940, "lon": 103.8533},
-    {"facility_id": "PH-UNITY", "name": "Unity Pharmacy (Toa Payoh HDB Hub)", "type": "Pharmacy", "lat": 1.3340, "lon": 103.8500},
-]
+# Facilities come from C's Singapore routing table (M5) — the same
+# ``network.json`` the solver consumes — so the KG can never drift from the
+# routing layer: every ReshipmentOrder destination resolves to a Facility
+# node that exists in both. Names, addresses and coordinates are C's
+# geocoded output (OSMnx/Nominatim over a real OSM Singapore extract;
+# per-node ``source_url`` is C's facilities.json citation). ``type`` is
+# derived from C's ``role`` for the warehouse/site split used below
+# (C's v1 customers are all public hospitals).
+NETWORK_PATH = REPO_ROOT / "data" / "optimisation" / "singapore" / "network.json"
+
+
+def _facilities_from_network() -> list[dict]:
+    with open(NETWORK_PATH, encoding="utf-8") as f:
+        net = json.load(f)
+    prov = net.get("provenance", {})
+    sha = prov.get("extract_sha256", "")[:12]
+    generated = net.get("generated_at", "")[:10]
+    rows = []
+    for n in net["nodes"]:
+        rows.append({
+            "facility_id": n["facility_id"],
+            "name": n["name"],
+            "role": n["role"],
+            "type": "Warehouse" if n["role"] == "depot" else "Hospital",
+            "lat": n["lat"],
+            "lon": n["lon"],
+            "address": n.get("query", ""),
+            "geocoded": n.get("geocoder_display_name", ""),
+            "source_url": n.get("source_url", ""),
+            "verified": (
+                f"network.json {generated}: OSMnx/Nominatim geocoding over OSM Singapore extract "
+                f"(sha256 {sha}…), © OpenStreetMap contributors"
+            ),
+        })
+    return rows
+
+
+FACILITIES = _facilities_from_network()
 
 # Class names = B's root-cause benchmark labels (ES vaccine-cold-chain,
 # ``excursion_cause``); keep them verbatim so M4 attribution can be written
@@ -237,7 +279,8 @@ def load_static(driver) -> None:
     driver.execute_query(
         """
         UNWIND $rows AS s
-        CREATE (n:SOP {sop_id: s.sop_id, title: s.title, summary: s.summary})
+        CREATE (n:SOP {sop_id: s.sop_id, title: s.title, summary: s.summary,
+                       source_url: s.source_url, verified: s.verified})
         """,
         parameters_={"rows": SOPS},
     )
@@ -255,7 +298,9 @@ def load_static(driver) -> None:
         """
         UNWIND $rows AS f
         CREATE (n:Facility {facility_id: f.facility_id, name: f.name,
-                            type: f.type, lat: f.lat, lon: f.lon})
+                            role: f.role, type: f.type, lat: f.lat, lon: f.lon,
+                            address: f.address, geocoded: f.geocoded,
+                            source_url: f.source_url, verified: f.verified})
         """,
         parameters_={"rows": FACILITIES},
     )
@@ -270,12 +315,24 @@ def load_static(driver) -> None:
     )
 
     # Products straight from the engine's own threshold source, so the graph
-    # can never drift from rules_config.json.
+    # can never drift from rules_config.json. Per-field provenance (_sources)
+    # is loaded verbatim onto each node: real citations where they exist
+    # (storage range / freeze sensitivity) and honest "principle-anchored
+    # default" notes where no public per-product number exists (allowable
+    # duration / MKT threshold). Nothing below is authored in this file —
+    # build_graph only mirrors rules_config.json.
     raw = json.loads(
         (REPO_ROOT / "src" / "rule_engine" / "rules_config.json").read_text(encoding="utf-8")
     )
+    srcs = raw.get("_sources", {})
+    _PROVENANCE_KEYS = (
+        "category", "refs", "storage_range", "freeze_sensitive",
+        "allowable_duration_min", "mkt_threshold_c",
+    )
     products = []
     for p in raw["products"]:
+        src = srcs.get(p["product_id"], {})
+        extra = {k: v for k, v in src.items() if k not in _PROVENANCE_KEYS}
         products.append(
             {
                 "product_id": p["product_id"],
@@ -285,6 +342,15 @@ def load_static(driver) -> None:
                 "mkt_threshold_c": p["mkt_threshold_c"],
                 "retestable": p["retestable"],
                 "freeze_sensitive": p["freeze_sensitive"],
+                "category": src.get("category", ""),
+                "storage_source": src.get("storage_range", ""),
+                "freeze_source": src.get("freeze_sensitive", ""),
+                "threshold_note": (
+                    "allowable_duration_min: " + src.get("allowable_duration_min", "")
+                    + " | mkt_threshold_c: " + src.get("mkt_threshold_c", "")
+                ),
+                "design_notes": json.dumps(extra, ensure_ascii=False) if extra else "",
+                "source_urls": src.get("refs", []),
                 "rule_ids": PRODUCT_RULES["common"]
                 + (PRODUCT_RULES["freeze_sensitive"] if p["freeze_sensitive"] else []),
             }
@@ -296,7 +362,10 @@ def load_static(driver) -> None:
                            storage_max_c: p.storage_max_c,
                            allowable_duration_min: p.allowable_duration_min,
                            mkt_threshold_c: p.mkt_threshold_c,
-                           retestable: p.retestable, freeze_sensitive: p.freeze_sensitive})
+                           retestable: p.retestable, freeze_sensitive: p.freeze_sensitive,
+                           category: p.category, storage_source: p.storage_source,
+                           freeze_source: p.freeze_source, threshold_note: p.threshold_note,
+                           design_notes: p.design_notes, source_urls: p.source_urls})
         FOREACH (rid IN p.rule_ids |
             MERGE (r:Regulation {clause_id: rid})
             MERGE (n)-[:REGULATED_BY]->(r))
