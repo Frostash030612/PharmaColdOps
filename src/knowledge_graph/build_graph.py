@@ -4,7 +4,10 @@ Sources, per docs/ARCHITECTURE.md M6:
 
 - products / thresholds : ``src/rule_engine/rules_config.json``
 - regulation & SOP nodes: WHO TRS 961 Annex 9, EU GDP 2013/C 343/01,
-  ICH Q1A(R2), PIC/S PI 041-1 (adopted by Singapore HSA)
+  ICH Q1A(R2), HSA GDP Guidance Notes (Singapore). Clause numbers and
+  summaries were checked against the official PDFs on 2026-09-10 (each
+  Regulation node carries ``source_url`` + ``verified``); ICH clause-level
+  wording remains A's W1 verification task.
 - facilities           : Singapore cold-chain warehouses, public hospitals,
   polyclinics and pharmacies (OSM coordinate approximations)
 - events & decisions   : ``data/scenarios/scenarios.csv`` run through the real
@@ -51,29 +54,64 @@ REGULATIONS = [
         "clause_id": "R-WHO-TRS961-FREEZE",
         "title": "WHO TRS 961 Annex 9",
         "issuer": "World Health Organization",
-        "clause": "Freeze damage of vaccines",
-        "summary": "Freeze-sensitive vaccines lose potency when frozen; exposure at or below the freezing point requires discard.",
+        "clause": "§6.9 Shipping container packing — freeze protection",
+        "summary": "Pack containers so freeze-sensitive products are protected against temperatures below 0 °C when frozen packs are used.",
+        "source_url": "https://cdn.who.int/media/docs/default-source/medicines/norms-and-standards/guidelines/inspections/trs961-annex9-modelguidanceforstoragetransport.pdf",
+        "verified": "2026-09-10 official PDF, verbatim match (§6.9)",
     },
     {
         "clause_id": "R-WHO-TRS961-EXCURSION",
         "title": "WHO TRS 961 Annex 9",
         "issuer": "World Health Organization",
-        "clause": "Allowable temperature excursion and MKT limits",
-        "summary": "Excursions beyond the product stability margin (duration or MKT) require hold and quality assessment.",
+        "clause": "§6.2 Product stability profiles",
+        "summary": "Excursions above/below the manufacturer's labelled storage range must not adversely affect product quality; product stability data must demonstrate the acceptable excursion time during transport.",
+        "source_url": "https://cdn.who.int/media/docs/default-source/medicines/norms-and-standards/guidelines/inspections/trs961-annex9-modelguidanceforstoragetransport.pdf",
+        "verified": "2026-09-10 official PDF, verbatim match (§6.2)",
+    },
+    {
+        "clause_id": "R-EU-GDP-1.2",
+        "title": "EU GDP 2013/C 343/01",
+        "issuer": "European Commission",
+        "clause": "Chapter 1.2 — Quality system (deviations & CAPA)",
+        "summary": "Deviations from established procedures must be documented and investigated; corrective and preventive actions (CAPA) are taken in line with quality risk management.",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
+        "verified": "2026-09-10 official OJ PDF, verbatim match (1.2)",
+    },
+    {
+        "clause_id": "R-EU-GDP-3.2.1",
+        "title": "EU GDP 2013/C 343/01",
+        "issuer": "European Commission",
+        "clause": "Chapter 3.2.1 — Temperature and environment control",
+        "summary": "Storage environment (temperature, light, humidity) must be controlled; temperature mapping before use, monitors placed at the points of greatest fluctuation, re-mapping after significant changes.",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
+        "verified": "2026-09-10 official OJ PDF, verbatim match (3.2.1)",
+    },
+    {
+        "clause_id": "R-EU-GDP-9.2",
+        "title": "EU GDP 2013/C 343/01",
+        "issuer": "European Commission",
+        "clause": "Chapter 9.2 — Transportation (excursion reporting)",
+        "summary": "Storage conditions must be maintained in transit; a temperature excursion or product damage during transportation must be reported to distributor and recipient, with a procedure for investigating and handling it.",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
+        "verified": "2026-09-10 official OJ PDF, verbatim match (9.2)",
     },
     {
         "clause_id": "R-EU-GDP-9.4",
         "title": "EU GDP 2013/C 343/01",
         "issuer": "European Commission",
-        "clause": "Chapter 9.4 — transport deviation handling",
-        "summary": "Temperature deviations during transport must be recorded and assessed; the batch is held until the quality impact is resolved.",
+        "clause": "Chapter 9.4 — Products requiring special conditions",
+        "summary": "Temperature-sensitive products must be transported using qualified equipment (thermal packaging, temperature-controlled containers or vehicles) so correct transport conditions are maintained.",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
+        "verified": "2026-09-10 official OJ PDF, verbatim match (9.4)",
     },
     {
-        "clause_id": "R-EU-GDP-3.2.2",
-        "title": "EU GDP 2013/C 343/01",
-        "issuer": "European Commission",
-        "clause": "Chapter 3.2.2 — storage temperature deviations",
-        "summary": "Storage and transport must keep products within labelled conditions; deviations trigger investigation and disposition.",
+        "clause_id": "R-HSA-GDP",
+        "title": "HSA Guidance Notes on Good Distribution Practice (rev. 15 Dec 2023)",
+        "issuer": "Singapore HSA",
+        "clause": "GDP standard for therapeutic products",
+        "summary": "Singapore's mandatory GDP standard for importers and wholesalers of therapeutic products, aligning storage, transport and temperature-control requirements.",
+        "source_url": "https://www.hsa.gov.sg/therapeutic-products/manufacturing-import-wholesale/licence-to-manufacturer-import-or-wholesale/gmp-gdp/",
+        "verified": "document title/source confirmed 2026-09-10; clause-level wording pending A's W1 check",
     },
     {
         "clause_id": "R-ICH-Q1A",
@@ -81,13 +119,8 @@ REGULATIONS = [
         "issuer": "ICH",
         "clause": "Stability testing of new drug substances and products",
         "summary": "Basis for product-specific stability data (storage range, allowable excursion duration, MKT ceiling).",
-    },
-    {
-        "clause_id": "R-PICS-PI041",
-        "title": "PIC/S PI 041-1",
-        "issuer": "PIC/S (adopted by Singapore HSA)",
-        "clause": "Good distribution practices for medicinal products",
-        "summary": "GDP reference adopted in Singapore; aligns storage, transport and deviation-management requirements.",
+        "source_url": "https://database.ich.org/sites/default/files/Q1A%28R2%29%20Guideline.pdf",
+        "verified": "pending A's W1 clause-level check",
     },
 ]
 
@@ -110,16 +143,16 @@ SOPS = [
 ]
 
 SOP_IMPLEMENTS = {
-    "SOP-GDP-001": ["R-EU-GDP-9.4", "R-EU-GDP-3.2.2", "R-WHO-TRS961-EXCURSION"],
+    "SOP-GDP-001": ["R-EU-GDP-1.2", "R-EU-GDP-9.2", "R-WHO-TRS961-EXCURSION"],
     "SOP-GDP-002": ["R-WHO-TRS961-FREEZE"],
-    "SOP-GDP-003": ["R-EU-GDP-9.4", "R-PICS-PI041"],
+    "SOP-GDP-003": ["R-EU-GDP-1.2", "R-HSA-GDP"],
 }
 
 # All products are subject to the general excursion / storage rules; the
 # freeze clause only binds freeze-sensitive ones. Thresholds themselves are
 # stability data per ICH Q1A(R2).
 PRODUCT_RULES = {
-    "common": ["R-WHO-TRS961-EXCURSION", "R-EU-GDP-3.2.2", "R-ICH-Q1A"],
+    "common": ["R-WHO-TRS961-EXCURSION", "R-EU-GDP-3.2.1", "R-EU-GDP-9.2", "R-EU-GDP-9.4", "R-ICH-Q1A"],
     "freeze_sensitive": ["R-WHO-TRS961-FREEZE"],
 }
 
@@ -160,10 +193,10 @@ ROOT_CAUSES = [
 # in lockstep with engine.py.
 RULE_TO_REGULATIONS = {
     1: ["R-WHO-TRS961-FREEZE"],
-    2: ["R-EU-GDP-9.4"],
+    2: ["R-EU-GDP-9.2"],
     3: ["R-WHO-TRS961-EXCURSION"],
-    4: ["R-WHO-TRS961-EXCURSION", "R-EU-GDP-9.4"],
-    5: ["R-EU-GDP-9.4"],
+    4: ["R-WHO-TRS961-EXCURSION", "R-EU-GDP-1.2"],
+    5: ["R-EU-GDP-1.2"],
     6: ["R-WHO-TRS961-EXCURSION"],
 }
 RULE_TO_SOPS = {
@@ -196,7 +229,8 @@ def load_static(driver) -> None:
         """
         UNWIND $rows AS r
         CREATE (n:Regulation {clause_id: r.clause_id, title: r.title,
-                              issuer: r.issuer, clause: r.clause, summary: r.summary})
+                              issuer: r.issuer, clause: r.clause, summary: r.summary,
+                              source_url: r.source_url, verified: r.verified})
         """,
         parameters_={"rows": REGULATIONS},
     )
