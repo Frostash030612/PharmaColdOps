@@ -1,0 +1,28 @@
+# One-command Neo4j for the PharmaColdOps knowledge graph (M6).
+#
+# Usage:
+#   cp .env.example .env      # optional — defaults already match below
+#   docker compose up -d
+#   http://localhost:7474     # Neo4j Browser (neo4j / password from .env)
+#   neo4j://localhost:7687    # Bolt — KG loader / writer / QA / schema talk here
+#
+# Same image, ports and auth as the dev container `pharmaneo`, so a graph
+# built on any teammate's machine is interchangeable. If `pharmaneo` is
+# already running from a plain `docker run`, stop it first (`docker rm -f
+# pharmaneo`) or drop the container_name below.
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: pharmaneo
+    ports:
+      - "7474:7474"   # Neo4j Browser
+      - "7687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:-pharmacoldops}"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
