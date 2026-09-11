@@ -225,8 +225,8 @@
 ### W0 冲刺（9/9–9/13）
 - **9/9 周三**：① PROGRESS 填姓名认领；② 仓库根写 `docker-compose.yml`（neo4j:5-community，密码走 `.env.example`），让队友一条命令拉起；③ 确认本机 `pharmaneo` 容器与 neo4j driver 连通。
 - **9/10 周四**：① ☑ KG schema v1 文档（实体：Product/Regulation/SOP/ExcursionEvent/Disposition/Cause/Facility/ReshipmentOrder；关系：PRODUCT_HAS_REQUIREMENT、EVENT_CAUSED_BY、EVENT_LEADS_TO_DISPOSITION、DISPOSITION_CITED_BY 等，附属性表）。
-- **9/11 周五**：① 建 `src/knowledge_graph/`：`connect.py`（driver + .env）+ `schema.py`（Cypher 建约束：唯一性/索引）。
-- **9/12 周六**：① 提案冲刺：demo 截图 1–2 张 + 合规问答定位口径（真查询 vs 概念示意，与提案一致）；② 与 A 确认 KG 问答的「无证据不回答」边界；③ 接收 A 的阈值导出结果，核对 frontend JS 常量与 `rules_config.json` 同源。
+- **9/11 周五**：① ☑ `connect.py`（连接工厂：NEO4J_* 环境变量 / .env / pharmaneo 默认，build/writer/qa/schema 统一走它）+ `schema.py`（10 唯一约束 + 3 索引，幂等 `IF NOT EXISTS`，build 重建前自动 ensure）；② ☑ **提前完成（原 9/24 ①）**：case_close→KG writer（`writer.py` 幂等 MERGE，已接入 `close_case`）+ `qa.py` 查询切 `run_id` 形态 + `test_kg_writer.py`；③ ☑ Facility 路网边（`CONNECTS` 55 条全带 OSMnx 路线几何，来自 C `network.json` 矩阵/leg_geometry）+ Product→SOP 静态边（`FOLLOWS_PROCEDURE`，映射推导，待 A/C 评审）+ `test_kg_edges.py`；④ ☑ writer 预留 facility 边分支（`EVENT_OCCURRED_AT`/`RESHIPS_TO`，字段名占位：`event.facility_id` / `destination_facility_id`，待 A 9/12 会议 / C 9/21 契约定稿后自动生效）。
+- **9/12 周六**：① ☑ 提案冲刺：demo 截图 2 张（`proposal/figures/demo-rule-engine-en.png` 决策沙盒 + `demo-route-qa-en.png` 路线/问答）+ 合规问答定位口径写入提案 §6.5（实体清单对齐 KG_SCHEMA v1、真查询 vs 概念示意、无证据不回答，EN/ZH 同步，两图已引用）；② 「无证据不回答」边界文案已写入提案风险表（"查无证据时明确回答『无记录』"）——**待与 A 确认**；③ ☑ A 的 `rules_config v1.0` 与 3 处前端常量（`frontend/index.html`、`index-zh.html`、`frontend-vue/src/data/products.js`）核对一致，新增 `test_frontend_threshold_parity.py` 锁定同源；④ ☑ 补 9/9 遗留：仓库根 `docker-compose.yml` + `.env.example`（与 `pharmaneo` 同配置，`docker compose config` 验证通过）。
 - **9/13 周日**：① 提案提交；② 周例会。
 
 ### W1（9/14–9/20）— KG 建库
@@ -242,7 +242,7 @@
 - **9/21 周一**：① 问答评估集 20 条（覆盖 5 类问题：为何隔离/依据/根因/统计/边界）；② 评估脚本（准确率/证据覆盖率/无证据不回答率）。
 - **9/22 周二**：① `/api/qa` 按评估结果修模板与查询；② 指标 v1。
 - **9/23 周三**：① 前端问答框接 `/api/qa`（双模式切换：离线给固定 FAQ，在线走后端）；② 联调。
-- **9/24 周四**：① 决策链集成：`/api/decide` 的每次判定写入 KG（事件节点 + 决策链），幂等防重；② 前端解释界面显示依据节点。
+- **9/24 周四**：① ~~决策链集成：每次判定写入 KG~~ ☑ **已于 9/11 提前完成**（写入口按 schema 纪律 3 调整为 `close_case` 结案写入，与 runs.jsonl 审计同源；`/api/decide` 预览不归档）；② 前端解释界面显示依据节点。
 - **9/25 周五**：① API 契约测试补齐（`/api/route` 501 → 联调位、`/api/qa` 真实现）；② CORS/审计日志走查。
 - **9/26 周六**：① 前端路线可视化占位（Leaflet 静态演示数据）验证样式；② 审计报告视图 v1。
 - **9/27 周日**：① 周例会；② PROGRESS 更新。

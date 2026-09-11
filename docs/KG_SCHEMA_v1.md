@@ -7,22 +7,25 @@
 ## 0. 四条建模纪律（与全系统契约一致）
 
 1. **字段名同源、禁自造别名**：`ExcursionEvent` / 决策字段一律用 A 已定字段（引擎 `models.py`、`POST /api/case_close` 记录）；跨成员字段变更必须先改契约文档再改代码。
-2. **引用只到文档级**：`Regulation` 节点只存文档级引用（WHO TRS 961 Annex 9 · EU GDP 2013/C 343/01），**不杜撰条款号**；条款级证据由 A 的「阈值证据表」（9/11）核实后同步，届时再补 `evidence_url` 之类属性。
+2. **引用必须可核实**：`Regulation` 节点的条款号与摘要已于 2026-09-10 对照官方 PDF 逐条核对（每节点带 `source_url` + `verified`，**不杜撰条款号**）；A 的「阈值证据表」（9/11）核实后同步 `evidence_url` 属性。
 3. **决策写入对齐审计 run**：每次结案（`case_close`）写一条 KG 决策链，节点主键 = `run_id`，幂等防重（对应 W2 9/24「每次判定写入 KG」）。
 4. **占位必须标状态**：凡字段尚未定稿的实体（如 ReshipmentOrder 字段），属性表里写清 `pending` 与定稿日期，不"先填了再说"。
 
-## 1. 实体总览（8）
+## 1. 实体总览（9）
 
 | Label | 现实对应 | 主键 | 来源 | v1 状态 |
 |---|---|---|---|---|
 | `Product` | 4 款温度敏感产品 | `product_id` | `rules_config.json`（A） | 可加载 |
-| `Regulation` | 合规文档（文档级） | `reg_id` | 引擎 `regulation` 字符串（A） | 可加载 |
-| `SOP` | 操作标准流程 | `sop_id` | D 起草占位 → 9/16 从文档级原则抽 | **占位** |
-| `ExcursionEvent` | 一次结案的温控偏差事件 | `run_id` | `POST /api/case_close` 记录（D 实现的 API） | 可加载 |
-| `Disposition` | 处置结果概念（4 类） | `disposition` | `models.Disposition`（A） | 可加载 |
-| `Cause` | 决策侧主因代码 | `cause_code` | API `risk_score` 输出（D 实现） | 可加载 |
+| `Regulation` | 合规文档（条款级 id 已对官方 PDF 核实） | `clause_id` | 引擎 `regulation` 字符串（A），build 8 条（WHO/EU GDP/ICH/HSA） | 可加载 |
+| `SOP` | 操作标准流程 | `sop_id` | 公共程序性指引，文档级（CDC 温度偏移清单 / WHO shake test / EU GDP，2026-09-11 落地，原 9/16 计划提前） | 可加载（2026-09-11 真实来源替换占位） |
+| `ExcursionEvent` | 一次结案的温控偏差事件 | `run_id` | `POST /api/case_close` 记录（D 实现的 API） | **case_close 写入已接**（writer，2026-09-11 提前实现，幂等 MERGE） |
+| `Disposition` | 处置结果概念（4 类） | `disposition` | `models.Disposition`（A） | **case_close 写入已接**（2026-09-11 提前实现） |
+| `Cause` | 决策侧主因代码 | `cause_code` | API `risk_score` 输出（D 实现） | **运行时写入**：随 case_close 经 writer MERGE（2026-09-11） |
 | `Facility` | 冷库 / 医院节点 | `facility_id` | C M5 新加坡路由表（`network.json`，OSMnx/Nominatim 地理编码） | 可加载（2026-09-11） |
-| `ReshipmentOrder` | 补发单 | `order_id` | 触发侧=引擎 `reshipment_required`；**字段 9/21 契约** | **占位** |
+| `Shipment` | 一次发运（载体：产品 × 起讫设施） | `shipment_id` | **真实发运记录**：Kaggle Cold Chain Shipment Silent Failure Dataset（CC0）8,000 条（`SHP*`，带 `dataset` 属性，无设施/产品边——zone 为匿名编码）；真实事件的发运随 `case_close` 写入（9/24） | 可加载（审计链依赖） |
+| `ReshipmentOrder` | 补发单 | `order_id` | 触发侧=引擎 `reshipment_required`；**字段 9/21 契约** | **case_close 写入已接**（仅 `reshipment_required=True` 时创建，2026-09-11 提前实现） |
+
+> **2026-09-11 变更：场景预载移除。** `data/scenarios/scenarios.csv` 为 AI 起草的前端演示数据（57 行），此前由 build 脚本连同真实引擎判定一并写入图（`SHIP-*` / 场景事件 / 决策 / 补发单）。现全部移出图谱——虚构数据不得作为证据出现。scenarios.csv 仍留在磁盘上作为 M3 标注评估工件（proposal §8.3 双人标注），只是不入 Neo4j。运行时链（ExcursionEvent / Disposition / Cause / ReshipmentOrder）此后仅经真实 `case_close` 逐案写入——writer 已于 **2026-09-11 提前实现并接入 `close_case`**（原计划 W2 9/24，见 `src/knowledge_graph/writer.py`）：映射复用 `RULE_TO_REGULATIONS` / `RULE_TO_SOPS`，`Cause` 取 API `risk.cause_code`（确定性口径；`RULE_TO_CAUSE` 属 B 的 M4 根因映射，KG 不先行合并）。
 
 ## 2. 实体属性表
 
@@ -46,16 +49,19 @@
 
 > 数值与出处的唯一入口是 `rules_config.json`；KG/前端/测试都不得另存一份阈值（同源原则）。出处属性由 `build_graph.py` 从 `_sources` 逐字载入，不在此文件起草。
 
-### `Regulation` — 合规文档（来源：引擎 `regulation` 字符串去重，A 提供）
+### `Regulation` — 合规文档（来源：build_graph 8 条，条款号/摘要 2026-09-10 对官方 PDF 逐条核对）
 
 | property | type | 说明 |
 |---|---|---|
-| `reg_id` | string | PK，文档级稳定 id，如 `WHO_TRS_961_ANNEX9`、`EU_GDP_2013_C343_01` |
-| `title` | string | 与引擎 `regulation` 句同源的标题/原则句 |
-| `issuer` | string | `WHO` / `EU` |
-| `cite_level` | string | 固定 `document`（**禁止** clause 级杜撰） |
+| `clause_id` | string | PK，如 `R-WHO-TRS961-FREEZE`、`R-EU-GDP-9.2`（与 build_graph 同源） |
+| `title` | string | 文档标题 |
+| `issuer` | string | `WHO` / `EU` / `ICH` / `HSA` |
+| `clause` | string | 条款内容（已核对官方 PDF） |
+| `summary` | string | 条款摘要 |
+| `source_url` | string | 官方 PDF 出处 |
+| `verified` | string | 核对说明（核对日期 + 出处） |
 
-初始节点仅两篇；每条处置边上另存引擎**逐条**的 `regulation` 句（见 §3 `EVENT_LEADS_TO_DISPOSITION`），供审计原样回放。
+每条处置边上另存引擎**逐条**的 `regulation` 句（见 §3 `EVENT_LEADS_TO_DISPOSITION`），供审计原样回放。
 
 ### `SOP` — 操作标准（2026-09-11 起真实来源：公共程序性指引，文档级）
 
@@ -80,6 +86,7 @@
 | `mkt_c` | float | MKT |
 | `packaging` | string | `intact` / `compromised` |
 | `stage` | string | 环节（词表见 §2 SOP 注） |
+| `facility_id` | string | **可选（占位，待 A 契约）**：事件发生设施，词表 = C `facility_id`；缺省不连 `EVENT_OCCURRED_AT` |
 | `created_at` | datetime | 结案时间（写库键：同一 `run_id` 后写覆盖 = 幂等） |
 
 ### `Disposition` — 处置概念节点（来源：`models.Disposition`，A 定义）
@@ -122,20 +129,25 @@
 | property | type | 说明 |
 |---|---|---|
 | `order_id` | string | PK |
+| `destination_facility_id` | string | **占位（待 C 9/21 契约）**：补发目的地；writer 已预留读取（`record.destination_facility_id` 或 `event.destination_facility_id`） |
 | 其余 | — | **待 A+C 契约 9/21 终版（D 评审）**——本 v1 不自行造字段；触发侧信息（`run_id` / `disposition` / 产品）暂由关系承担 |
 
 ## 3. 关系
 
-核心四条（DAILY_PLAN 指定）+ 两条主链补强（标 ✚），本 schema 只定**方向与语义**；Cypher 方向与索引明日在 `schema.py` 落地。
+核心四条（DAILY_PLAN 指定）+ 主链补强（标 ✚，现 6 条），本 schema 只定**方向与语义**；Cypher 方向与索引已在 `schema.py` 落地（D 9/11 ①，2026-09-11）。
 
 | 关系 | 方向 | 基数 | 含义 | 例 |
 |---|---|---|---|---|
-| `PRODUCT_HAS_REQUIREMENT` | `(:Product)-[r]->(:Regulation\|SOP)` | Product 1—N 文档 | 产品的稳定/操作要求由哪篇文档施加 | `vaccine_2_8` → `WHO_TRS_961_ANNEX9`（冻敏原则） |
+| `REGULATED_BY` | `(:Product)-[r]->(:Regulation)` | Product 1—N Regulation | 产品的稳定要求由哪篇法规施加（build_graph 实际实现名，原计划名 `PRODUCT_HAS_REQUIREMENT`） | `vaccine_2_8` → `R-WHO-TRS961-FREEZE`（冻敏原则） |
 | `EVENT_CAUSED_BY` | `(:ExcursionEvent)-[]->(:Cause)` | Event N—1 Cause | 本次事件主因 | 冻结事件 → `frozen` |
 | `EVENT_LEADS_TO_DISPOSITION` | `(:ExcursionEvent)-[d]->(:Disposition)` | Event N—1 Disposition | **决策链实例**：边属性存现场（见下） | `run_id=…` → `quarantine` |
 | `DISPOSITION_CITED_BY` | `(:Disposition)<-[:CITES]-(:Regulation)` | 反向语义=处置被文档引用 | 某处置类别依据哪篇文档 | `quarantine` ← `WHO TRS 961 / EU GDP（hold for assessment）` |
-| ✚ `EVENT_OCCURRED_AT` | `(:ExcursionEvent)-[]->(:Facility)` | Event N—1 Facility | 事件发生在哪个设施（stage 词 → facility.role） | `warehouse` 事件 → 对应 depot |
+| ✚ `EVENT_OCCURRED_AT` | `(:ExcursionEvent)-[]->(:Facility)` | Event N—1 Facility | 事件发生在哪个设施（stage 词 → facility.role）；writer 已预留：`event.facility_id` 可选字段（A 契约未加前恒空） | `warehouse` 事件 → 对应 depot |
 | ✚ `TRIGGERS_RESHIPMENT` | `(:ExcursionEvent)-[]->(:ReshipmentOrder)` | Event 0—1 Order | 判定需补发 → 生成补发单（M3→M5 锚点） | `scrap`/`quarantine` 事件 → 补发单 |
+| ✚ `RESHIPS_TO` | `(:ReshipmentOrder)-[]->(:Facility)` | Order 0—1 Facility | 补发单目的地（**占位，待 C 9/21 契约定语义**；writer 已预留 `destination_facility_id`） | `RO-…` → `H-NUH` |
+| ✚ `FOLLOWS` | `(:ExcursionEvent)-[]->(:SOP)` | Event N—M SOP | 本次结案依循的操作流程（由 `rule_no` 经 `RULE_TO_SOPS` 映射；2026-09-11 随 writer 落地，**待 A/C 评审**；实现与 §4 问答路径均用 `FOLLOWS`，2026-09-12 命名对齐） | `run_id=…` → `SOP-GDP-001` |
+| ✚ `CONNECTS` | `(:Facility)-[r]-(:Facility)` | Facility 全对全 55 条（无向） | 真实路网最短路径（C `network.json` 矩阵 + 逐对路线几何）：`distance_m` / `duration_s` / `geometry`（JSON 字符串，`[lon,lat]` GeoJSON 序——Neo4j 不支持嵌套列表故序列化）/ `source`；与 M5 求解器同一份矩阵 | `W-KN-PIONEER` ↔ `H-NUH` 13.0 km |
+| ✚ `FOLLOWS_PROCEDURE` | `(:Product)-[]->(:SOP)` | Product 1—N SOP | 产品处置所依循的 SOP（由 产品条款 → `RULE_TO_REGULATIONS` → `RULE_TO_SOPS` 推导，与运行时 writer 同表；**待 A/C 评审**） | `vaccine_2_8` → `SOP-GDP-001/002/003` |
 
 `EVENT_LEADS_TO_DISPOSITION` **边属性**（决策现场，审计可回放、可本地化渲染）：`rule_no`(int 1–6) · `reason`(引擎句) · `rule_path`(引擎整句) · `regulation`(引擎逐条句) · `reshipment_required`(bool) · `risk_score`(int) · `cause_code`(→`Cause`) · `decided_at`(datetime)。
 
@@ -145,12 +157,13 @@
 |---|---|
 | 为何隔离/报废 | `(e:ExcursionEvent{run_id})-[d:EVENT_LEADS_TO_DISPOSITION]->(dis:Disposition)` → 返回 `dis.disposition + d.reason + d.rule_path` |
 | 依据哪条法规 | 上一条后 `(dis)<-[:CITES]-(reg:Regulation)` 或走 `d.regulation` 句 → 返回 `reg` 节点 |
-| 依据哪条 SOP | `(p:Product{product_id})-[PRODUCT_HAS_REQUIREMENT]->(sop:SOP{context: e.stage})` → 无节点则答「该环节 SOP 未录入」，**无证据不回答** |
+| 依据哪条 SOP | `(e:ExcursionEvent{run_id})-[:FOLLOWS]->(sop:SOP)`（writer 由 `rule_no` 映射） → 无节点则答「该环节 SOP 未录入」，**无证据不回答** |
 | 该原因最常见场景 | `(c:Cause)<-[:EVENT_CAUSED_BY]-(e)` 聚合 `e.stage / e.product_id` 分布 |
 
-## 5. 约束/索引计划（衔接 9/11 `schema.py`）
+## 5. 约束/索引（✅ 已由 `schema.py` 落地，2026-09-11）
 
-- 唯一约束：`Product.product_id` · `ExcursionEvent.run_id` · `Cause.cause_code` · `Disposition.disposition` · `Regulation.reg_id` · `Facility.facility_id` · `SOP.sop_id`。
+- 幂等 `IF NOT EXISTS`；`build_graph` 每次重建前自动 `ensure_constraints`。
+- 唯一约束：`Product.product_id` · `ExcursionEvent.run_id` · `Cause.cause_code` · `Disposition.disposition` · `Regulation.clause_id` · `Facility.facility_id` · `SOP.sop_id` · `ReshipmentOrder.order_id` · `Shipment.shipment_id` · `RootCause.cause_id`（后两者不在 9 实体 schema 内，但图内存在，约束保证运行时 writer 的 MERGE 安全）。
 - 索引：`ExcursionEvent.product_id` / `stage` / `created_at`（问答聚合与「按产品查历史」用）。
 
 ## 6. 未决项（W1 定稿前评审）
@@ -163,3 +176,8 @@
 
 ---
 变更记录：9/10 初稿 v1（D）· 基线：ARCHITECTURE M6 / 前后端契约 / A 引擎 `models.py` + `rules_config.json` + `service.py risk_score`。
+· 2026-09-11：case_close→KG writer 提前实现（原 W2 9/24）并接入 `close_case`；qa.py 查询切 `run_id` + 边属性形态；`Regulation` 主键统一为 `clause_id`（对齐 build_graph 实际实现）；§3 关系对齐实现（`REGULATED_BY`）并增 `EVENT_FOLLOWS_SOP`（待 A/C 评审）。
+· 2026-09-11（同日）：Facility 层补 C 路网边——`CONNECTS` 55 条（C 的 `leg_geometry` 实际含全部 55 对真实路线几何，非仅 depot 辐射 10 条）；`FOLLOWS_PROCEDURE`（Product→SOP 静态推导，待 A/C 评审）。
+· 2026-09-11（同日）：writer 预留 facility 边分支（`EVENT_OCCURRED_AT` / `RESHIPS_TO`）——字段名为占位（`event.facility_id` / `destination_facility_id`），A 9/12 / C 9/21 契约到位后自动生效；qa 审计链顺带读出事件设施。
+· 2026-09-11（同日）：9/11 ① 完成——`connect.py`（连接工厂，build/writer/qa/schema 统一走它）+ `schema.py`（§5 约束/索引落地）；发现 9/9 计划的仓库根 `docker-compose.yml`/`.env.example` 缺失，已记入 DAILY_PLAN 9/12 ④。
+· 2026-09-12：SOP 节点换真实文档级来源（a8a531f：CDC 清单 / WHO shake test / EU GDP，步骤逐字引用出处）、Facility 整体改用 C `network.json`（虚构坐标设施移除）、新增 RootCause 11 类（B 词表）；§1 SOP 行与 §3 `FOLLOWS` 命名对齐实现；9/12 ④ 补齐 `docker-compose.yml` + `.env.example`。
