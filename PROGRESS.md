@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-09-11 — 前端包管理器统一为 pnpm（`frontend-vue/`）
+
+- 起因：`frontend-vue/` 同时存在 `package-lock.json`（npm）与 `pnpm-lock.yaml`（pnpm）两个 lockfile。依赖全是 `^` 范围，两种包管理器解析出的版本树可能不同，症状是「我这跑得起来你那跑不起来」。团队决定**全面转 pnpm**。
+- 删除 npm 的 `package-lock.json`。**`pnpm-lock.yaml` 是唯一 lockfile**，它锁死了依赖树里每一个包的精确版本，因此不同 pnpm 版本装出的依赖完全一致。
+- 文档同步：`README.md` 快速开始、`docs/前后端技术栈与连接说明.md` §11.1/§11.2 改为 `corepack enable pnpm` + `pnpm install/dev/build`，并写明「请勿再跑 `npm install`」。`PROGRESS.md` 里的历史 `npm run build` 记录是当时事实，保留不改。
+- **未采用 `packageManager` 字段钉版本**：实测（pnpm 12.3.4）加上该字段后，pnpm 会把 lockfile 从单文档改写成多文档新格式（文档 1 = `packageManagerDependencies` + 全平台 `@pnpm/exe`，文档 2 = 原依赖树），684 → 785 行；且 `.npmrc` 的 `manage-package-manager-versions=false` 挡不住。为不扰动 Wang 建立的原 lockfile、避免旧版 pnpm 读不了新格式，决定不加。依赖版本已由 lockfile 锁死，收益有限。
+- 验证（本机）：无 `packageManager` 字段时，`pnpm install --frozen-lockfile` 与普通 `pnpm install` **都不会改写** `pnpm-lock.yaml`（装前装后 sha256 一致）；`pnpm build` 产物 contenthash 与 npm 构建**逐字节相同**（`index-C55tIITg.css` / `index-XzHbBlTt.js`）——换包管理器零输出差异。
+- 注意：`frontend/`（零依赖 vanilla 版）不受影响；无 Node 时仍可照跑。没装 corepack 的环境先 `corepack enable pnpm`，不必 `npm i -g pnpm`。
+
+---
+
 ## 2026-09-10 — Vue 配送面板接入真实新加坡预计算路线
 
 - 右侧配送改派面板接入 Leaflet 真实道路 GeoJSON、仓库及 10 个配送点；不同车辆使用不同颜色。
