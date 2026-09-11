@@ -16,41 +16,55 @@ Sources, per docs/ARCHITECTURE.md M6:
   ``data/optimisation/singapore/network.json`` node list (1 cold-chain depot
   + 10 public hospitals), loaded verbatim with geocoded coordinates,
   addresses and per-node ``source_url``; ``type`` is derived from C's
-  ``role`` (v1 customers are all public hospitals)
-- events & decisions   : ``data/scenarios/scenarios.csv`` run through the real
-  RuleEngine, so every Decision node mirrors an auditable engine output
-  (rule_no, reason, regulation) and the engine's reshipment flag becomes a
-  ReshipmentOrder node (M5's input contract)
+  ``role`` (v1 customers are all public hospitals). The same file's 11×11
+  OSMnx shortest-path matrix becomes undirected ``CONNECTS`` edges
+  (distance/duration + real route geometry per pair) for the frontend to
+  draw.
+- real shipments       : the only shipment-level dataset in the project —
+  Kaggle "Cold Chain Shipment Silent Failure Dataset" (CC0), ~8,000 records
+  (``shipment_id``, transit/temp/rh stats, door opens, package/volume,
+  anonymised ``carrier_id`` + ``origin_zone``/``dest_zone`` codes). Loaded
+  verbatim with NO Facility/Product edges: zone codes do not map onto C's
+  Singapore facility vocabulary and linking them would fabricate geography.
+  B's data dictionary flags the dataset as suspected synthetic (highly
+  regularised fields) — recorded in each node's ``verified``.
+- events & decisions   : runtime chain (ExcursionEvent/Disposition/Cause/
+  ReshipmentOrder) is written per real ``case_close`` run by
+  ``knowledge_graph/writer.py`` (implemented early 2026-09-11, originally
+  scheduled W2 9/24), not pre-loaded. ``data/scenarios/scenarios.csv`` is
+  an M3 evaluation artifact (AI-drafted, being double-annotated) and is
+  deliberately NOT loaded into the graph (2026-09-11: no fabricated nodes)
 - root causes          : the 11 real ``excursion_cause`` classes from B's
-  root-cause benchmark (ES vaccine-cold-chain). Scenario→cause edges are
-  illustrative until B's model attributes causes to live events (W3).
+  root-cause benchmark (ES vaccine-cold-chain). The runtime ``Cause`` label
+  (API ``cause_code`` vocabulary) is a separate one and is written per
+  ``case_close`` by the writer, not pre-loaded here.
 
 Usage (cold-chain env, ``pharmaneo`` container running, from the repo root)::
 
     python -m src.knowledge_graph.build_graph
 
 The script rebuilds the graph from scratch on every run (project dev
-database only). Connection defaults: ``NEO4J_URI`` / ``NEO4J_USER`` /
-``NEO4J_PASSWORD`` environment variables.
+database only). Connections come from ``knowledge_graph.connect``
+(``NEO4J_*`` env vars / ``.env`` / ``pharmaneo`` defaults); schema
+constraints from ``knowledge_graph.schema`` are ensured first.
 """
 from __future__ import annotations
 
 import csv
 import json
-import os
 from pathlib import Path
 
-from neo4j import GraphDatabase
-
-from src.rule_engine.engine import RuleEngine
-from src.rule_engine.models import Disposition, ExcursionEvent
+from .connect import get_driver
+from .schema import ensure_constraints
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCENARIOS_PATH = REPO_ROOT / "data" / "scenarios" / "scenarios.csv"
-
-URI = os.environ.get("NEO4J_URI", "neo4j://localhost:7687")
-USER = os.environ.get("NEO4J_USER", "neo4j")
-PASSWORD = os.environ.get("NEO4J_PASSWORD", "pharmacoldops")
+SHIPMENTS_PATH = (
+    REPO_ROOT / "data" / "ml" / "cold-chain-silent-failure" / "shipment-sensor-dataset.csv"
+)
+SHIPMENTS_SOURCE_URL = (
+    "https://www.kaggle.com/datasets/skarin/cold-chain-shipment-silent-failure-dataset"
+)
+NETWORK_PATH = REPO_ROOT / "data" / "optimisation" / "singapore" / "network.json"
 
 # ---------------------------------------------------------------------------
 # Static domain content
@@ -181,7 +195,6 @@ PRODUCT_RULES = {
 # per-node ``source_url`` is C's facilities.json citation). ``type`` is
 # derived from C's ``role`` for the warehouse/site split used below
 # (C's v1 customers are all public hospitals).
-NETWORK_PATH = REPO_ROOT / "data" / "optimisation" / "singapore" / "network.json"
 
 
 def _facilities_from_network() -> list[dict]:
@@ -232,7 +245,11 @@ ROOT_CAUSES = [
 # Engine rule_no -> regulations cited / SOP followed / illustrative root
 # cause (real class names; only adverse dispositions get a cause — retest /
 # release have no anomaly to explain). Kept in one place so the graph stays
-# in lockstep with engine.py.
+# in lockstep with engine.py. Consumed by the per-case case_close writer
+# (knowledge_graph/writer.py, implemented early 2026-09-11, originally
+# W2 9/24); scenario pre-load removed 2026-09-11. RULE_TO_CAUSE (B's M4
+# class names) is NOT used by the writer — runtime ``Cause`` nodes take the
+# API's deterministic ``risk.cause_code``.
 RULE_TO_REGULATIONS = {
     1: ["R-WHO-TRS961-FREEZE"],
     2: ["R-EU-GDP-9.2"],
@@ -262,6 +279,124 @@ RULE_TO_CAUSE = {
 # ---------------------------------------------------------------------------
 # Loading
 # ---------------------------------------------------------------------------
+
+def _num_or_none(v: str):
+    """CSV cells come as strings; keep genuinely empty cells as None."""
+    v = (v or "").strip()
+    try:
+        return float(v)
+    except ValueError:
+        return None
+
+
+def load_real_shipments(driver) -> None:
+    """Load real shipment-level records from the Kaggle silent-failure dataset.
+
+    No edges are created: ``origin_zone`` / ``dest_zone`` / ``carrier_id``
+    are anonymised codes that do not map onto C's Singapore facility
+    vocabulary (zones 0-5, carriers 0-11); linking them would fabricate
+    geography. The ``dataset`` property + ``SHP*`` id prefix keep these
+    records distinguishable from any future case shipments written at
+    runtime.
+    """
+    with open(SHIPMENTS_PATH, encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    shipments = []
+    for r in rows:
+        shipments.append({
+            "shipment_id": r["shipment_id"],
+            "transit_days": _num_or_none(r["transit_days"]),
+            "door_opens": _num_or_none(r["door_opens"]),
+            "temp_mean_c": _num_or_none(r["temp_mean_c"]),
+            "temp_max_c": _num_or_none(r["temp_max_c"]),
+            "temp_min_c": _num_or_none(r["temp_min_c"]),
+            "temp_std_c": _num_or_none(r["temp_std_c"]),
+            "temp_recovery_rate": _num_or_none(r["temp_recovery_rate"]),
+            "rh_mean": _num_or_none(r["rh_mean"]),
+            "rh_std": _num_or_none(r["rh_std"]),
+            "rh_max": _num_or_none(r["rh_max"]),
+            "package_type": r["package_type"],
+            "product_volume_l": _num_or_none(r["product_volume_l"]),
+            "fill_ratio": _num_or_none(r["fill_ratio"]),
+            "carrier_id": r["carrier_id"],
+            "origin_zone": r["origin_zone"],
+            "dest_zone": r["dest_zone"],
+            "leg_count": _num_or_none(r["leg_count"]),
+            "sensor_gap_hours": _num_or_none(r["sensor_gap_hours"]),
+            "vibration_index": _num_or_none(r["vibration_index"]),
+            "silent_failure": r["silent_failure"].strip() in ("1", "True", "true"),
+        })
+    driver.execute_query(
+        """
+        UNWIND $rows AS s
+        CREATE (n:Shipment {shipment_id: s.shipment_id, transit_days: s.transit_days,
+                            door_opens: s.door_opens, temp_mean_c: s.temp_mean_c,
+                            temp_max_c: s.temp_max_c, temp_min_c: s.temp_min_c,
+                            temp_std_c: s.temp_std_c, temp_recovery_rate: s.temp_recovery_rate,
+                            rh_mean: s.rh_mean, rh_std: s.rh_std, rh_max: s.rh_max,
+                            package_type: s.package_type, product_volume_l: s.product_volume_l,
+                            fill_ratio: s.fill_ratio, carrier_id: s.carrier_id,
+                            origin_zone: s.origin_zone, dest_zone: s.dest_zone,
+                            leg_count: s.leg_count, sensor_gap_hours: s.sensor_gap_hours,
+                            vibration_index: s.vibration_index, silent_failure: s.silent_failure,
+                            dataset: 'kaggle-cold-chain-silent-failure',
+                            source_url: $src, verified: $verified})
+        """,
+        parameters_={
+            "rows": shipments,
+            "src": SHIPMENTS_SOURCE_URL,
+            "verified": (
+                "Kaggle Cold Chain Shipment Silent Failure Dataset (CC0), ~8,000 shipment-level "
+                "records loaded verbatim 2026-09-11; B data dictionary flags highly regularised "
+                "fields (suspected synthetic); zone/carrier codes anonymised"
+            ),
+        },
+    )
+    print(f"loaded {len(shipments)} real shipments")
+
+
+def load_facility_links(driver) -> None:
+    """Facility ↔ Facility road links from C's Singapore network (M5).
+
+    The 11×11 OSMnx shortest-path matrix in ``network.json`` becomes
+    undirected ``CONNECTS`` edges (``distance_m`` / ``duration_s``) — every
+    pair also carries its real route geometry (``geometry`` as a
+    JSON-encoded string of ``[lon, lat]`` GeoJSON-order coordinate pairs —
+    Neo4j cannot store nested lists as properties; per C's assumptions
+    note), so the frontend can draw the exact road path the M5 solver
+    used. Every value mirrors network.json verbatim — nothing is computed
+    or rounded here.
+    """
+    net = json.loads(NETWORK_PATH.read_text(encoding="utf-8"))
+    nodes = net["nodes"]
+    dist = net["matrix"]["distance_m"]
+    dur = net["matrix"]["duration_s"]
+    legs = net["leg_geometry"]
+    id_by_node = {n["node_id"]: n["facility_id"] for n in nodes}
+    rows = []
+    for i in range(len(nodes)):
+        for j in range(i + 1, len(nodes)):
+            key = f"{i}:{j}"
+            rows.append({
+                "a": id_by_node[i],
+                "b": id_by_node[j],
+                "distance_m": dist[i][j],
+                "duration_s": dur[i][j],
+                "geometry": json.dumps(legs.get(key, [])),
+            })
+    driver.execute_query(
+        """
+        UNWIND $rows AS row
+        MATCH (a:Facility {facility_id: row.a})
+        MATCH (b:Facility {facility_id: row.b})
+        MERGE (a)-[r:CONNECTS]-(b)
+        SET r.distance_m = row.distance_m, r.duration_s = row.duration_s,
+            r.geometry = row.geometry, r.source = 'osmnx-shortest-path-2026-09-10'
+        """,
+        parameters_={"rows": rows},
+    )
+    print(f"loaded {len(rows)} facility links (all with route geometry)")
+
 
 def load_static(driver) -> None:
     """Regulations, SOPs, products, facilities, root causes + their links."""
@@ -309,7 +444,7 @@ def load_static(driver) -> None:
         UNWIND $rows AS c
         CREATE (n:RootCause {cause_id: c.cause_id,
                              description: c.description,
-                             note: 'class name verbatim from B root-cause benchmark (ES excursion_cause); scenario edges illustrative until M4 attribution (W3)'})
+                             note: 'class name verbatim from B root-cause benchmark (ES excursion_cause); runtime Cause (API cause_code) is a separate vocabulary written per case_close'})
         """,
         parameters_={"rows": ROOT_CAUSES},
     )
@@ -373,130 +508,63 @@ def load_static(driver) -> None:
         parameters_={"rows": products},
     )
 
+    # Product → SOP (FOLLOWS_PROCEDURE): derived through the SAME maps the
+    # runtime writer uses — a product's governing clauses (rule_ids) appear
+    # in rules (RULE_TO_REGULATIONS), those rules follow SOPs
+    # (RULE_TO_SOPS). No new data is authored here; static and runtime
+    # edges therefore can never disagree.
+    clause_to_rules: dict = {}
+    for rule_no, clause_ids in RULE_TO_REGULATIONS.items():
+        for cid in clause_ids:
+            clause_to_rules.setdefault(cid, set()).add(rule_no)
+    product_sops = []
+    for p in products:
+        rules = set().union(*(clause_to_rules.get(cid, set()) for cid in p["rule_ids"]))
+        sops = sorted({sid for r in rules for sid in RULE_TO_SOPS.get(r, [])})
+        product_sops.append({"product_id": p["product_id"], "sop_ids": sops})
+    driver.execute_query(
+        """
+        UNWIND $rows AS row
+        MATCH (p:Product {product_id: row.product_id})
+        FOREACH (sid IN row.sop_ids |
+            MERGE (s:SOP {sop_id: sid})
+            MERGE (p)-[:FOLLOWS_PROCEDURE]->(s))
+        """,
+        parameters_={"rows": product_sops},
+    )
 
-def load_scenarios(driver) -> None:
-    """Run every scenario through the real engine and write the decision chain."""
-    engine = RuleEngine()
-    warehouses = [f["facility_id"] for f in FACILITIES if f["type"] == "Warehouse"]
-    sites = [f["facility_id"] for f in FACILITIES if f["type"] != "Warehouse"]
 
-    with open(SCENARIOS_PATH, encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-
-    for i, row in enumerate(rows):
-        event = ExcursionEvent(
-            scenario_id=row["scenario_id"],
-            product_id=row["product_id"],
-            excursion_temp_c=float(row["excursion_temp_c"]),
-            duration_min=int(row["duration_min"]),
-            mkt_c=float(row["mkt_c"]),
-            packaging=row["packaging"],
-            stage=row["stage"],
-        )
-        decision = engine.evaluate(event)
-        reg_ids = RULE_TO_REGULATIONS[decision.rule_no]
-        # Only adverse dispositions violate a clause; release/retest merely
-        # cite the governing text.
-        violates = reg_ids if decision.disposition in (Disposition.SCRAP, Disposition.QUARANTINE) else []
-        cause_id = RULE_TO_CAUSE[decision.rule_no]
-
-        origin = warehouses[i % len(warehouses)]
-        dest = sites[i % len(sites)]
-        driver.execute_query(
-            """
-            MERGE (s:Shipment {shipment_id: $shipment_id})
-            SET s.stage = $stage
-            MERGE (o:Facility {facility_id: $origin})
-            MERGE (d:Facility {facility_id: $dest})
-            MERGE (p:Product {product_id: $product_id})
-            MERGE (s)-[:DEPARTS_FROM]->(o)
-            MERGE (s)-[:DELIVERS_TO]->(d)
-            MERGE (s)-[:CARRIES]->(p)
-            CREATE (e:ExcursionEvent {scenario_id: $scenario_id, product_id: $product_id,
-                                      excursion_temp_c: $temp, duration_min: $dur,
-                                      mkt_c: $mkt, packaging: $packaging, stage: $stage,
-                                      gold_label: $gold})
-            CREATE (e)-[:OCCURRED_ON]->(s)
-            CREATE (dec:Decision {scenario_id: $scenario_id, disposition: $disp,
-                                  reshipment_required: $reship, rule_no: $rule_no,
-                                  reason: $reason, regulation: $regulation,
-                                  rule_path: $rule_path})
-            CREATE (dec)-[:RESOLVES]->(e)
-            FOREACH (rid IN $reg_ids |
-                MERGE (r:Regulation {clause_id: rid})
-                MERGE (dec)-[:CITES]->(r))
-            FOREACH (rid IN $violates |
-                MERGE (r:Regulation {clause_id: rid})
-                MERGE (e)-[:VIOLATES]->(r))
-            FOREACH (sid IN $sop_ids |
-                MERGE (sp:SOP {sop_id: sid})
-                MERGE (dec)-[:FOLLOWS]->(sp))
-            """,
-            parameters_={
-                "shipment_id": f"SHIP-{row['scenario_id']}",
-                "stage": row["stage"],
-                "origin": origin,
-                "dest": dest,
-                "product_id": row["product_id"],
-                "scenario_id": row["scenario_id"],
-                "temp": event.excursion_temp_c,
-                "dur": event.duration_min,
-                "mkt": event.mkt_c,
-                "packaging": event.packaging,
-                "gold": row["gold_label"],
-                "disp": decision.disposition.value,
-                "reship": decision.reshipment_required,
-                "rule_no": decision.rule_no,
-                "reason": decision.reason,
-                "regulation": decision.regulation,
-                "rule_path": decision.rule_path,
-                "reg_ids": reg_ids,
-                "violates": violates,
-                "sop_ids": RULE_TO_SOPS[decision.rule_no],
-            },
-        )
-        if cause_id:
-            driver.execute_query(
-                """
-                MATCH (e:ExcursionEvent {scenario_id: $scenario_id})
-                MERGE (c:RootCause {cause_id: $cause_id})
-                MERGE (c)-[:CAUSED]->(e)
-                """,
-                parameters_={"scenario_id": row["scenario_id"], "cause_id": cause_id},
-            )
-        if decision.reshipment_required:
-            driver.execute_query(
-                """
-                MATCH (dec:Decision {scenario_id: $scenario_id})
-                MATCH (d:Facility {facility_id: $dest})
-                CREATE (ro:ReshipmentOrder {order_id: $order_id, product_id: $product_id,
-                                            destination: $dest})
-                CREATE (dec)-[:TRIGGERS]->(ro)
-                CREATE (ro)-[:DELIVERS_TO]->(d)
-                """,
-                parameters_={
-                    "scenario_id": row["scenario_id"],
-                    "order_id": f"RO-{row['scenario_id']}",
-                    "product_id": row["product_id"],
-                    "dest": dest,
-                },
-            )
-    print(f"loaded {len(rows)} scenarios")
+# NOTE (2026-09-11): the scenario pre-load (57 AI-drafted rows from
+# data/scenarios/scenarios.csv) has been REMOVED from the graph — those are
+# fabricated events made for an early frontend demo and must not appear as
+# evidence. scenarios.csv stays on disk as M3's annotation/evaluation
+# artifact (proposal §8.3, being double-annotated), it is just not loaded
+# into Neo4j. The runtime chain (ExcursionEvent/Disposition/Cause/
+# ReshipmentOrder) enters the graph per real ``case_close`` run via
+# knowledge_graph/writer.py (implemented early 2026-09-11, originally
+# W2 9/24), which uses RULE_TO_REGULATIONS / RULE_TO_SOPS below.
 
 
 def main() -> None:
-    driver = GraphDatabase.driver(URI, auth=(USER, PASSWORD))
+    driver = get_driver()
     try:
-        driver.verify_connectivity()
+        ensure_constraints(driver)
         load_static(driver)
-        load_scenarios(driver)
+        load_facility_links(driver)
+        load_real_shipments(driver)
         counts = driver.execute_query(
             """
             MATCH (n) RETURN labels(n) AS label, count(n) AS n
             ORDER BY label
             """
         ).records
+        edge_counts = driver.execute_query(
+            """
+            MATCH ()-[r]->() RETURN type(r) AS t, count(r) AS n ORDER BY t
+            """
+        ).records
         print("node counts:", {r["label"][0]: r["n"] for r in counts})
+        print("edge counts:", {r["t"]: r["n"] for r in edge_counts})
     finally:
         driver.close()
 
