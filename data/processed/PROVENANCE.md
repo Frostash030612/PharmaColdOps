@@ -145,7 +145,19 @@
    比对 `disposition` / `gold_label` 列与 7 份原始作答的完整序列，无命中。
 3. **`answer_template.csv` 必须全空**（57 行、已填 0 行）。
 
-校验脚本见 `_build_to_repo.py`（工作脚本，不入库）。
+校验脚本：**`scripts/check_provenance.py`**（已入库，可复跑）。
+
+```bash
+python scripts/check_provenance.py                      # §2 指纹 + 上述 1、3 项
+python scripts/check_provenance.py --private-package <标注包目录>   # 追加 §1 指纹 + 第 2 项
+python scripts/check_provenance.py --selftest           # 先自证校验器会失败
+```
+
+> 📌 第 2 项比原来**加严了**：原口径只查「整列复现」，会漏掉「贴了半段」——
+> 而半段足以让同一批标注者重测时认出答案。现在同时要求非 CSV 入库件里
+> **不得出现 >= 8 条连续作答**（实测最长 1 条，阈值离实测很远）。
+> 该检查**只施加于非 CSV 文件**：CSV 入库件本就合法持有 gold 列，而 gold 是
+> 双方答案的合并——两人一致的连续段落必然与两人各自的序列重合，查了就是假警报。
 
 > ⚠️ **第一版校验器有 bug**：它按**格式**识别作答文件
 > （`^S0\d\d,(release|retest|…)`），而 `gold_labels.csv` 与 `answer_template.csv`

@@ -124,7 +124,9 @@ A temperature excursion in → a disposition decision out.
   [`docs/annotation_findings_v1.md`](docs/annotation_findings_v1.md); statistics and file fingerprints:
   [`data/processed/agreement_stats.md`](data/processed/agreement_stats.md),
   [`data/processed/PROVENANCE.md`](data/processed/PROVENANCE.md). Re-run the 9/19 engine evaluation with
-  `python scripts/evaluate_engine.py --engine <outputs.csv> --private-package <annotation package>`.
+  `python scripts/evaluate_engine.py --engine <outputs.csv> --private-package <annotation package>`;
+  verify the delivered files against their recorded fingerprints (and re-run the leak checks) with
+  `python scripts/check_provenance.py --private-package <annotation package>`.
 
 ## Singapore road-network input (M5)
 
