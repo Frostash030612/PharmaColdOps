@@ -142,9 +142,17 @@ Reshipment and re-routing are modelled as a Vehicle Routing Problem with Time Wi
 
 **Figure 4 — Cold-chain knowledge graph**
 
-Knowledge-graph entities include: product, temperature requirement, stability parameter, transport order, vehicle, route, warehouse, temperature event, anomaly cause, disposition recommendation, regulatory clause, SOP and historical case.
+Knowledge-graph entities (schema v1, 2026-09-10): product, regulation clause, SOP, excursion event, disposition, cause, facility, shipment and reshipment order. Static nodes are loaded only from verifiable sources — WHO / EU GDP / ICH / HSA documents (regulations, clause-level verified), CDC and WHO procedural guidance (SOPs, document level), the engine's `rules_config.json` (products and thresholds), C's Singapore routing table (facilities), B's root-cause benchmark classes, and the Kaggle cold-chain silent-failure dataset (~8,000 real shipment records). AI-drafted demo scenarios are deliberately not loaded into the graph. The runtime chain (excursion event → disposition → cause → reshipment order) is written per real case_close run by the API.
 
-The graph may be built with Neo4j or NetworkX. The Q&A system generates answers primarily from rules, knowledge-graph queries and the decision chain. If a large language model is introduced, it is used only for natural-language polishing and is not allowed to generate unverified compliance conclusions.
+The graph is built with Neo4j (Community, local container; unique constraints on every primary key). The Q&A system generates answers exclusively from rules, knowledge-graph queries and the decision chain; when no matching evidence exists, it answers "no record" rather than guessing. The proposal demo shows the Q&A interface as a concept mockup; the delivered version (W2) runs real queries. If a large language model is introduced, it is used only for natural-language polishing and is not allowed to generate unverified compliance conclusions.
+
+![Demo — decision sandbox](figures/demo-rule-engine-en.png)
+
+**Demo (2026-09-12) — decision sandbox:** temperature excursion → live rule-engine disposition (scrap), decision path, cited rule and risk index.
+
+![Demo — route visualisation & Q&amp;A concept mockup](figures/demo-route-qa-en.png)
+
+**Demo (2026-09-12) — route visualisation & Q&amp;A:** Singapore road-network re-routing (M5) and the Q&amp;A panel as a concept mockup (real Cypher answers arrive in W2).
 
 ### 6.6 System architecture
 
@@ -318,7 +326,7 @@ This separates rule correctness (human rubric vs. engine) from data-driven corre
 | Risk-prediction dataset is small | Use tabular models, cross-validation and data augmentation; complement with the 26,674-row and 30,000-row datasets |
 | Disposition rules are domain-complex | Limit to 1–2 product categories and build a small rule set from public WHO / GDP / ICH rules |
 | Route-optimisation problem too large | Start with a greedy baseline, then gradually introduce OR-Tools / genetic algorithm; control the node count |
-| Q&A may produce unverified conclusions | Answers generated only from rules, knowledge graph and decision chain; LLM used only for language polishing |
+| Q&A may produce unverified conclusions | Answers generated only from rules, knowledge graph and decision chain; LLM used only for language polishing; when no evidence exists the system answers "no record" |
 | Scope creep prevents completion | Define the MVP boundary clearly; use module interfaces and weekly integration |
 | Kaggle download / login restrictions | Use Hugging Face sources, CVRPLIB and synthetic data as alternatives |
 | Data copyright or usage restrictions | Research-only use; comply with each platform's licence and cite sources in the report |
