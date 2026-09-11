@@ -16,6 +16,8 @@
 - `.gitignore`：`data/processed/` 由 `data/processed/` 改为 `data/processed/*` 并加两条否定规则——用 `/` 排除目录本身时 git 不会进入该目录，`!` 否定**不生效**。
 - 顺带修正 `PROVENANCE.md` 一处指纹错误：`annotation_findings_v1.md` 原记 `67ca06f977ccbbd5`，实际（包内/暂存/仓库三处字节一致）为 `6a3be07b2f1a67d1`，原值对不上任何现存文件。
 - 影响面：`src/knowledge_graph/qa.py` 的 `match_gold` 从此报**真实**一致率（原先恒为 100%，因为 gold 就是引擎输出）。D 侧无需改代码，也无已提交的 KG 产物需要重建。
+- **决策（团队，2026-09-12）**：**κ 按 0.6434 报出**（Landis & Koch 属 substantial 0.61–0.80），**不为此修订 rubric 重测**；gold 中的 3 条 `quarantine`（S034 / S035 / S052，均 `arbitration` + 规范缺口——两人一致判 quarantine 而 rubric 推 `release`/`retest`）**保留**。留档理由：`κ ≤ po` 恒成立，而 `po = 0.7719 < 0.80`，故 0.80 在这批数据上**数学上不可达**（需 ≤ 7 条分歧，实为 13 条）。已写入 `agreement_stats.md` §1。
+- 提交：`7d3c207`（16 文件；7 份逐人作答按红线未入库，只留指纹于 `PROVENANCE.md` §1）。
 - 验证：全量 **85 passed**。
 
 ---
