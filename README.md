@@ -26,12 +26,15 @@ Two front-end trees share one dual-mode behaviour (`?api=` → FastAPI backend; 
 engine, byte-identical results). New work goes in **`frontend-vue/`** (Vue 3 + Vite); the older
 zero-dependency **`frontend/`** stays available untouched.
 
-**Vue app (`frontend-vue/`, recommended)** — needs Node.js LTS (see below):
+**Vue app (`frontend-vue/`, recommended)** — needs Node.js LTS (see below). Uses **pnpm**;
+with Node ≥ 16.9 run `corepack enable pnpm` once (no global install needed) and install from the
+committed `pnpm-lock.yaml`:
 
 ```bash
 cd frontend-vue
-npm install
-npm run dev                    # http://localhost:5173          (offline)
+corepack enable pnpm    # one-off
+pnpm install
+pnpm dev                       # http://localhost:5173          (offline)
 # http://localhost:5173/?api=http://127.0.0.1:8000               (backend mode)
 ```
 
