@@ -18,7 +18,11 @@ venv/
 !.env.example
 
 # Processed/derived artifacts stay out of git; raw datasets ARE tracked (team decision 2026-09-08)
-data/processed/
+# 用 /* 而非 / 排除目录本身——否则下面的 ! 否定规则不生效（git 不会进入被排除的目录）。
+data/processed/*
+# 例外：这两份是标注交付件，不是可重生成的中间产物（2026-09-12）。
+!data/processed/agreement_stats.md
+!data/processed/PROVENANCE.md
 
 # Runtime run-history log written by the decision API (data/audit/runs.jsonl)
 data/audit/

@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-09-12 — 金标准落地：57 场景 gold 换成独立双人标注（反循环闭合）
+
+- 起因：`data/scenarios/scenarios.csv` 的 `gold_label` 一直是**引擎自己的输出**（占位），而 `tests/test_rule_engine.py` 断言「引擎 == gold」——等于让引擎给自己判卷，正是提案 §8.3 要打破的反循环。
+- 做法：B、C 各自**盲标全部 57 条**（互不讨论），A 仲裁，产出 `data/scenarios/gold_labels.csv`，带 `decision_source` / `disagreement_type` / 已脱敏 `note` 三列。**18 条与 rubric v1 字面不符**：13 条「两人答案完全相同、且都与 rubric 不符」（规范缺口，责任在说明书）+ 5 条阈值政策分歧。
+- **已用新 gold 替换 `scenarios.csv` 的 `gold_label` 列**（18 条变化）。复核过除该列外逐字节未动，无 BOM + CRLF 保持不变。
+- **`tests/test_rule_engine.py` 不再断言 engine == gold**，改为四件事：① 未登记的偏离必须为零；② 冻结 18 条 `(引擎值, gold 值, 类别)`；③ 冻结清单须与 `gold_labels.csv` 的分类逐条对齐；④ 把 39/57 这个结论数字本身钉住。**做了扰动测试**：改未冻结条目、改冻结条目、改凭证分类——三者都会失败并指名道姓。
+- 统计：B↔C 一致 44/57，**κ = 0.6434（低于 0.80 目标）**；引擎（忠实实现 rubric）vs gold = **39/57 = 68.4%**。见 `data/processed/agreement_stats.md`。**这个数字低不是失败，是这套设计要测出来的东西。**
+- 入库落点与暂存清单（`_MANIFEST.md`，平铺在仓库根）不同，改为：`gold_labels.csv` → `data/scenarios/`（设计文档写的就是这个路径）、`evaluate_engine.py` → `scripts/`、四个探测工作台 → `data/scenarios/annotation/probes/`。逐条理由见 `data/processed/PROVENANCE.md` §2。
+- `evaluate_engine.py` 入库时改了两处：路径基准由 `HERE` 改为 `ROOT`；B、C 作答改为 `--private-package` 显式传入。那两份文件按红线**永不入库**，原写法会让脚本在仓库里**必然跑不动**，与 `agreement_stats.md` 写的「可复跑」矛盾。
+- `.gitignore`：`data/processed/` 由 `data/processed/` 改为 `data/processed/*` 并加两条否定规则——用 `/` 排除目录本身时 git 不会进入该目录，`!` 否定**不生效**。
+- 顺带修正 `PROVENANCE.md` 一处指纹错误：`annotation_findings_v1.md` 原记 `67ca06f977ccbbd5`，实际（包内/暂存/仓库三处字节一致）为 `6a3be07b2f1a67d1`，原值对不上任何现存文件。
+- 影响面：`src/knowledge_graph/qa.py` 的 `match_gold` 从此报**真实**一致率（原先恒为 100%，因为 gold 就是引擎输出）。D 侧无需改代码，也无已提交的 KG 产物需要重建。
+- 验证：全量 **85 passed**。
+
+---
+
 ## 2026-09-11 — 前端包管理器统一为 pnpm（`frontend-vue/`）
 
 - 起因：`frontend-vue/` 同时存在 `package-lock.json`（npm）与 `pnpm-lock.yaml`（pnpm）两个 lockfile。依赖全是 `^` 范围，两种包管理器解析出的版本树可能不同，症状是「我这跑得起来你那跑不起来」。团队决定**全面转 pnpm**。

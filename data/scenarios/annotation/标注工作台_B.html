@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>金标准标注工作台 · B</title>
+<style>
+  :root{
+    --bg:#12141a; --panel:#1a1d26; --panel-2:#222633; --line:#2e3342;
+    --fg:#e8eaf0; --dim:#9aa1b4; --dimmer:#6b7285;
+    --release:#3fb950; --retest:#58a6ff; --quarantine:#d29922; --scrap:#f85149;
+    --accent:#7c8cff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    font-size:15px; line-height:1.5;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+
+  /* ---------- header ---------- */
+  header{
+    display:flex; align-items:center; gap:18px;
+    padding:10px 20px; border-bottom:1px solid var(--line);
+    background:var(--panel); flex:0 0 auto;
+  }
+  header h1{font-size:14px; font-weight:600; margin:0; letter-spacing:.02em; white-space:nowrap;}
+  header h1 .tag{
+    background:var(--accent); color:#0b0d12; border-radius:4px;
+    padding:1px 7px; margin-left:6px; font-size:12px; font-weight:700;
+  }
+  .spacer{flex:1;}
+  .bar{width:200px; height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden;}
+  .bar > i{display:block; height:100%; width:0; background:var(--accent); transition:width .15s;}
+  .count{font-variant-numeric:tabular-nums; color:var(--dim); font-size:13px;}
+  .count b{color:var(--fg); font-size:15px;}
+  header button{
+    background:var(--panel-2); color:var(--fg); border:1px solid var(--line);
+    border-radius:6px; padding:5px 11px; font-size:13px; cursor:pointer; font-family:inherit;
+  }
+  header button:hover{background:#2a2f3d; border-color:#3d4457;}
+
+  /* ---------- main ---------- */
+  main{flex:1; display:flex; gap:0; min-height:0;}
+  .left{
+    flex:1; padding:26px 30px; display:flex; flex-direction:column;
+    justify-content:center; min-width:0;
+  }
+  .sid{
+    font-size:13px; color:var(--dimmer); letter-spacing:.14em;
+    font-variant-numeric:tabular-nums; margin-bottom:2px;
+  }
+  .sid .day{
+    letter-spacing:0; margin-left:10px; padding:1px 7px; border-radius:4px;
+    background:var(--panel-2); color:var(--dim); font-size:11px;
+  }
+  .product{font-size:26px; font-weight:600; margin:0 0 18px; letter-spacing:-.01em;}
+  .product .sub{font-size:14px; color:var(--dim); font-weight:400; margin-left:10px;}
+
+  .fields{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; max-width:620px;}
+  .field{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding:12px 14px;
+  }
+  .field .k{font-size:11px; color:var(--dimmer); letter-spacing:.06em; text-transform:uppercase; margin-bottom:5px;}
+  .field .v{font-size:21px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-.01em;}
+  .field .v small{font-size:13px; font-weight:400; color:var(--dim); margin-left:3px;}
+  .field.bad{border-color:#5c2b2b;}
+  .field.bad .v{color:#ff9b93;}
+
+  /* ---------- threshold panel ---------- */
+  aside{
+    flex:0 0 340px; border-left:1px solid var(--line); background:var(--panel);
+    padding:22px 20px; overflow-y:auto;
+  }
+  aside h2{
+    font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--dimmer); margin:0 0 14px; font-weight:600;
+  }
+  aside h2 + h2{margin-top:26px;}
+  .tt{width:100%; border-collapse:collapse; font-size:13px;}
+  .tt td{padding:6px 0; border-bottom:1px solid var(--line);}
+  .tt td:first-child{color:var(--dim);}
+  .tt td:last-child{text-align:right; font-variant-numeric:tabular-nums; font-weight:600;}
+  .tt tr:last-child td{border-bottom:none;}
+  .flag{
+    display:inline-block; margin-top:14px; padding:5px 10px; border-radius:6px;
+    font-size:12px; font-weight:600;
+  }
+  .flag.on{background:#3a2a12; color:#f0c674; border:1px solid #5c4520;}
+  .flag.off{background:var(--panel-2); color:var(--dimmer); border:1px solid var(--line);}
+  .hint{font-size:12px; color:var(--dimmer); margin-top:10px; line-height:1.6;}
+
+  /* ---------- footer ---------- */
+  footer{
+    flex:0 0 auto; border-top:1px solid var(--line); background:var(--panel);
+    padding:14px 20px 16px;
+  }
+  .row1{display:flex; gap:10px; align-items:stretch;}
+  .disp{
+    flex:1; border:1px solid var(--line); background:var(--panel-2); color:var(--fg);
+    border-radius:9px; padding:13px 8px; cursor:pointer; font-family:inherit;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    transition:background .1s, border-color .1s, transform .06s;
+  }
+  .disp:hover{background:#2a2f3d;}
+  .disp:active{transform:translateY(1px);}
+  .disp .zh{font-size:15px; font-weight:600;}
+  .disp .en{font-size:11px; color:var(--dimmer); letter-spacing:.05em;}
+  .disp .key{
+    position:relative; top:-1px; font-size:10px; color:var(--dimmer);
+    border:1px solid var(--line); border-radius:3px; padding:0 4px; margin-left:6px;
+  }
+  .disp[data-d="release"]:hover{border-color:var(--release);}
+  .disp[data-d="retest"]:hover{border-color:var(--retest);}
+  .disp[data-d="quarantine"]:hover{border-color:var(--quarantine);}
+  .disp[data-d="scrap"]:hover{border-color:var(--scrap);}
+  .disp.sel[data-d="release"]{background:#12301a; border-color:var(--release);}
+  .disp.sel[data-d="release"] .zh{color:var(--release);}
+  .disp.sel[data-d="retest"]{background:#122539; border-color:var(--retest);}
+  .disp.sel[data-d="retest"] .zh{color:var(--retest);}
+  .disp.sel[data-d="quarantine"]{background:#332708; border-color:var(--quarantine);}
+  .disp.sel[data-d="quarantine"] .zh{color:var(--quarantine);}
+  .disp.sel[data-d="scrap"]{background:#3a1416; border-color:var(--scrap);}
+  .disp.sel[data-d="scrap"] .zh{color:var(--scrap);}
+
+  .row2{display:flex; gap:10px; align-items:center; margin-top:11px;}
+  .row2 input{
+    flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--fg);
+    border-radius:7px; padding:9px 12px; font-size:13px; font-family:inherit; min-width:0;
+  }
+  .row2 input:focus{outline:none; border-color:var(--accent);}
+  .row2 input::placeholder{color:var(--dimmer);}
+  .row2 button{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--fg);
+    border-radius:7px; padding:9px 14px; cursor:pointer; font-family:inherit; font-size:13px;
+  }
+  .row2 button:hover:not(:disabled){background:#2a2f3d;}
+  .row2 button:disabled{opacity:.35; cursor:default;}
+
+  /* ---------- grid overlay ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(8,9,13,.9); backdrop-filter:blur(3px);
+    display:none; padding:40px; overflow-y:auto; z-index:20;
+  }
+  .overlay.on{display:block;}
+  .overlay .inner{max-width:1000px; margin:0 auto;}
+  .overlay h3{margin:0 0 4px; font-size:17px;}
+  .overlay p{margin:0 0 20px; color:var(--dim); font-size:13px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:7px;}
+  .cell{
+    border:1px solid var(--line); border-radius:7px; padding:7px 4px; text-align:center;
+    background:var(--panel); cursor:pointer; font-size:12px; font-variant-numeric:tabular-nums;
+  }
+  .cell:hover{border-color:var(--accent);}
+  .cell .n{color:var(--dim); font-size:11px;}
+  .cell .d{font-weight:700; font-size:10px; letter-spacing:.02em; margin-top:2px;}
+  .cell.empty .d{color:var(--dimmer); font-weight:400;}
+  .cell[data-d="release"]{background:#12301a; border-color:#1f5c2c;}
+  .cell[data-d="release"] .d{color:var(--release);}
+  .cell[data-d="retest"]{background:#122539; border-color:#1d4a76;}
+  .cell[data-d="retest"] .d{color:var(--retest);}
+  .cell[data-d="quarantine"]{background:#332708; border-color:#6b5312;}
+  .cell[data-d="quarantine"] .d{color:var(--quarantine);}
+  .cell[data-d="scrap"]{background:#3a1416; border-color:#75262a;}
+  .cell[data-d="scrap"] .d{color:var(--scrap);}
+  .cell.cur{outline:2px solid var(--accent); outline-offset:1px;}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin-bottom:18px; font-size:12px; color:var(--dim);}
+  .legend span{display:flex; align-items:center; gap:6px;}
+  .dot{width:9px; height:9px; border-radius:2px; display:inline-block;}
+
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(80px);
+    background:var(--panel-2); border:1px solid var(--line); border-radius:9px;
+    padding:11px 20px; font-size:13px; opacity:0; transition:all .22s; z-index:40;
+    box-shadow:0 8px 28px rgba(0,0,0,.5); max-width:70vw;
+  }
+  .toast.on{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.err{border-color:#75262a; background:#2a1113;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>金标准标注工作台<span class="tag">B</span></h1>
+  <div class="count"><b id="done">0</b> / 57</div>
+  <div class="bar"><i id="barfill"></i></div>
+  <div class="spacer"></div>
+  <button id="btn-grid">总览 / 校对</button>
+  <button id="btn-export">导出 gold_label_B.csv</button>
+  <button id="btn-reset">清空重来</button>
+</header>
+
+<main>
+  <section class="left">
+    <div class="sid">场景 <span id="sid">S001</span><span class="day" id="day"></span></div>
+    <h2 class="product" id="product"></h2>
+    <div class="fields">
+      <div class="field"><div class="k">记录温度 excursion_temp</div><div class="v" id="f-temp"></div></div>
+      <div class="field"><div class="k">超限时长 duration</div><div class="v" id="f-dur"></div></div>
+      <div class="field"><div class="k">平均动力学温度 MKT</div><div class="v" id="f-mkt"></div></div>
+      <div class="field" id="f-pack-field"><div class="k">包装完整性 packaging</div><div class="v" id="f-pack"></div></div>
+    </div>
+  </section>
+
+  <aside>
+    <h2>产品阈值（rubric v1 §3）</h2>
+    <table class="tt">
+      <tr><td>标签储存范围</td><td id="t-range"></td></tr>
+      <tr><td>允许超限时长</td><td id="t-dur"></td></tr>
+      <tr><td>2× 时长 → 报废线</td><td id="t-durscrap"></td></tr>
+      <tr><td>MKT 上限</td><td id="t-mkt"></td></tr>
+      <tr><td>MKT+3 → 报废线</td><td id="t-mktscrap"></td></tr>
+      <tr><td>复检档 · 0.8× 时长</td><td id="t-08"></td></tr>
+      <tr><td>复检档 · MKT−0.5</td><td id="t-mkt05"></td></tr>
+    </table>
+    <div class="flag" id="t-freeze"></div>
+    <div class="flag" id="t-retest"></div>
+    <div class="hint">
+      判定链见 rubric §4，按优先级从上到下、命中即停。<br>
+      数字直接比较，不四舍五入；第 4 条是<b>严格大于</b>。
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <div class="row1">
+    <button class="disp" data-d="release"><span class="zh">放行<span class="key">1</span></span><span class="en">release</span></button>
+    <button class="disp" data-d="retest"><span class="zh">复检<span class="key">2</span></span><span class="en">retest</span></button>
+    <button class="disp" data-d="quarantine"><span class="zh">隔离<span class="key">3</span></span><span class="en">quarantine</span></button>
+    <button class="disp" data-d="scrap"><span class="zh">报废<span class="key">4</span></span><span class="en">scrap</span></button>
+  </div>
+  <div class="row2">
+    <input id="note" type="text" placeholder="note（可选）—— 哪条规则让你犹豫，写一句">
+    <button id="btn-prev">← 上一条</button>
+    <button id="btn-next">下一条 →</button>
+    <button id="btn-clear">清空本条</button>
+  </div>
+</footer>
+
+<div class="overlay" id="overlay">
+  <div class="inner">
+    <h3>总览 / 校对</h3>
+    <p>点任意格子跳到该场景。灰底 = 还没标。</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--release)"></i>release 放行</span>
+      <span><i class="dot" style="background:var(--retest)"></i>retest 复检</span>
+      <span><i class="dot" style="background:var(--quarantine)"></i>quarantine 隔离</span>
+      <span><i class="dot" style="background:var(--scrap)"></i>scrap 报废</span>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   数据：input_v1.csv 原样内嵌（57 行，无答案列）
+   ============================================================ */
+const SCENARIOS = [
+["S001","vaccine_2_8",5.0,5,4.5,"intact","transit"],
+["S002","vaccine_2_8",6.0,10,5.0,"intact","warehouse"],
+["S003","vaccine_2_8",7.0,15,6.5,"intact","transit"],
+["S004","vaccine_2_8",8.0,5,7.0,"intact","airport_dwell"],
+["S005","vaccine_2_8",4.0,20,4.2,"intact","transit"],
+["S006","vaccine_2_8",6.5,12,5.8,"intact","transit"],
+["S007","vaccine_2_8",5.5,8,5.0,"intact","warehouse"],
+["S008","vaccine_2_8",7.5,18,6.9,"intact","transit"],
+["S009","vaccine_2_8",9.0,25,9.6,"intact","transit"],
+["S010","vaccine_2_8",10.0,28,9.8,"intact","warehouse"],
+["S011","vaccine_2_8",9.5,30,9.7,"intact","airport_dwell"],
+["S012","vaccine_2_8",8.5,20,9.6,"intact","transit"],
+["S013","vaccine_2_8",10.0,24,9.5,"intact","transit"],
+["S014","vaccine_2_8",9.8,26,9.9,"intact","warehouse"],
+["S015","vaccine_2_8",9.0,29,9.6,"intact","transit"],
+["S016","vaccine_2_8",10.0,10,9.5,"intact","airport_dwell"],
+["S017","vaccine_2_8",12.0,35,11.2,"intact","airport_dwell"],
+["S018","vaccine_2_8",13.0,40,12.0,"intact","transit"],
+["S019","vaccine_2_8",11.0,45,10.8,"intact","warehouse"],
+["S020","vaccine_2_8",10.5,31,10.3,"intact","transit"],
+["S021","vaccine_2_8",9.0,50,9.8,"intact","transit"],
+["S022","vaccine_2_8",14.0,20,12.5,"intact","airport_dwell"],
+["S023","vaccine_2_8",12.5,38,11.8,"intact","warehouse"],
+["S024","vaccine_2_8",11.5,33,10.9,"intact","transit"],
+["S025","vaccine_2_8",20.0,90,19.0,"intact","transit"],
+["S026","vaccine_2_8",25.0,60,22.0,"intact","warehouse"],
+["S027","vaccine_2_8",18.0,120,17.5,"intact","airport_dwell"],
+["S028","vaccine_2_8",12.0,50,13.0,"intact","transit"],
+["S029","vaccine_2_8",15.0,40,13.0,"compromised","transit"],
+["S030","vaccine_2_8",22.0,75,20.0,"intact","transit"],
+["S031","vaccine_2_8",30.0,100,28.0,"intact","warehouse"],
+["S032","vaccine_2_8",16.0,45,14.5,"intact","transit"],
+["S033","vaccine_2_8",9.0,65,9.0,"intact","airport_dwell"],
+["S034","frozen_m20",-14.0,5,-16.0,"intact","transit"],
+["S035","frozen_m20",-13.0,8,-15.0,"intact","warehouse"],
+["S036","frozen_m20",-15.0,10,-15.5,"intact","transit"],
+["S037","frozen_m20",-16.0,12,-16.0,"intact","airport_dwell"],
+["S038","frozen_m20",-5.0,20,-10.0,"intact","transit"],
+["S039","frozen_m20",-8.0,16,-11.0,"intact","warehouse"],
+["S040","frozen_m20",-10.0,10,-10.5,"intact","airport_dwell"],
+["S041","frozen_m20",-4.0,25,-9.5,"intact","transit"],
+["S042","frozen_m20",-6.0,18,-10.8,"intact","transit"],
+["S043","frozen_m20",0.0,35,-3.0,"intact","transit"],
+["S044","frozen_m20",-5.0,30,-9.0,"intact","warehouse"],
+["S045","frozen_m20",-2.0,40,-5.0,"intact","airport_dwell"],
+["S046","frozen_m20",-7.0,20,-9.0,"intact","transit"],
+["S047","frozen_m20",5.0,15,-8.5,"compromised","transit"],
+["S048","vaccine_2_8",-5.0,5,4.0,"intact","transit"],
+["S049","insulin_2_8",-2.0,10,3.0,"intact","warehouse"],
+["S050","frozen_m20",-30.0,5,-28.0,"intact","transit"],
+["S051","insulin_2_8",5.0,5,4.5,"intact","transit"],
+["S052","insulin_2_8",9.5,25,9.6,"intact","transit"],
+["S053","insulin_2_8",11.0,35,10.8,"intact","transit"],
+["S054","insulin_2_8",20.0,90,19.0,"intact","transit"],
+["S055","mrna_ultracold",-70.0,10,-75.0,"intact","transit"],
+["S056","mrna_ultracold",-40.0,70,-70.0,"intact","transit"],
+["S057","mrna_ultracold",-30.0,150,-35.0,"intact","warehouse"]
+];
+
+/* rubric v1 §3 产品规格表 */
+const PRODUCTS = {
+  vaccine_2_8:   {label:"vaccine_2_8", sub:"2–8 冷藏疫苗", lo:2,   hi:8,   durMax:30, durScrap:60,  mktMax:10,  mktScrap:13,  freezeSensitive:true,  retest:true},
+  insulin_2_8:   {label:"insulin_2_8", sub:"2–8 胰岛素",   lo:2,   hi:8,   durMax:30, durScrap:60,  mktMax:10,  mktScrap:13,  freezeSensitive:true,  retest:true},
+  frozen_m20:    {label:"frozen_m20",  sub:"−25 – −15 冷冻", lo:-25, hi:-15, durMax:15, durScrap:30,  mktMax:-12, mktScrap:-9,  freezeSensitive:false, retest:false},
+  mrna_ultracold:{label:"mrna_ultracold", sub:"−80 – −60 超低温", lo:-80, hi:-60, durMax:60, durScrap:120, mktMax:-55, mktScrap:-52, freezeSensitive:false, retest:false}
+};
+
+/* 排期：annotation_split_v1.md §2 */
+function dayOf(idx){
+  if(idx < 30) return "9/11 批次";
+  if(idx < 45) return "9/12 批次";
+  return "9/13 批次";
+}
+
+const DISP_ZH = {release:"放行", retest:"复检", quarantine:"隔离", scrap:"报废"};
+const VALID   = Object.keys(DISP_ZH);
+const STORE_KEY = "goldLabelB_rubricV1";
+
+/* ============================================================
+   状态
+   ============================================================ */
+let answers = {};   // { S001: {disposition, note} }
+let cur = 0;
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) answers = JSON.parse(raw) || {};
+  }catch(e){ answers = {}; }
+}
+function save(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(answers)); }
+  catch(e){ toast("本地保存失败（浏览器禁用了 localStorage）——记得随时导出", true); }
+}
+
+/* ============================================================
+   渲染
+   ============================================================ */
+const $ = id => document.getElementById(id);
+
+function fmtTemp(t){ return (t > 0 ? "+" : "") + t.toFixed(1); }
+
+function render(){
+  const [sid, pid, temp, dur, mkt, pack, stage] = SCENARIOS[cur];
+  const p = PRODUCTS[pid];
+  const a = answers[sid] || {};
+
+  $("sid").textContent = sid;
+  $("day").textContent = dayOf(cur);
+  $("product").innerHTML = p.label + '<span class="sub">' + p.sub + ' · 环节 ' + stage + '</span>';
+
+  $("f-temp").innerHTML = fmtTemp(temp) + '<small>°C</small>';
+  $("f-dur").innerHTML  = dur + '<small>min</small>';
+  $("f-mkt").innerHTML  = fmtTemp(mkt) + '<small>°C</small>';
+
+  const packEl = $("f-pack");
+  packEl.innerHTML = pack === "intact" ? 'intact <small>完好</small>' : 'compromised <small>破损</small>';
+  $("f-pack-field").classList.toggle("bad", pack === "compromised");
+
+  // 阈值面板（只给数字，不给结论）
+  $("t-range").textContent     = p.lo + " – " + p.hi + " °C";
+  $("t-dur").textContent       = "≤ " + p.durMax + " min";
+  $("t-durscrap").textContent  = "≥ " + p.durScrap + " min";
+  $("t-mkt").textContent       = "≤ " + p.mktMax + " °C";
+  $("t-mktscrap").textContent  = "≥ " + p.mktScrap + " °C";
+
+  const el08 = $("t-08"), elM05 = $("t-mkt05"), elRe = $("t-retest");
+  if(p.retest){
+    el08.textContent  = "≥ " + (0.8 * p.durMax) + " min";
+    elM05.textContent = "≥ " + (p.mktMax - 0.5).toFixed(1) + " °C";
+    el08.style.color = elM05.style.color = "";
+    elRe.className = "flag off";
+    elRe.textContent = "本产品允许复检 → 有第 5 档";
+  }else{
+    el08.textContent = "—";
+    elM05.textContent = "—";
+    el08.style.color = elM05.style.color = "var(--dimmer)";
+    elRe.className = "flag on";
+    elRe.textContent = "本产品不可复检 → 无第 5 档";
+  }
+
+  const ef = $("t-freeze");
+  if(p.freezeSensitive){
+    ef.className = "flag on";
+    ef.textContent = "冻敏产品：≤ 0 °C 触发第 1 条";
+  }else{
+    ef.className = "flag off";
+    ef.textContent = "非冻敏：零下不触发冻结报废";
+  }
+
+  // 选择态
+  document.querySelectorAll(".disp").forEach(b => {
+    b.classList.toggle("sel", b.dataset.d === a.disposition);
+  });
+  $("note").value = a.note || "";
+
+  $("btn-prev").disabled = cur === 0;
+  $("btn-next").disabled = cur === SCENARIOS.length - 1;
+
+  const done = Object.values(answers).filter(x => VALID.includes(x.disposition)).length;
+  $("done").textContent = done;
+  $("barfill").style.width = (done / SCENARIOS.length * 100) + "%";
+}
+
+/* ============================================================
+   操作
+   ============================================================ */
+function setDisp(d){
+  const sid = SCENARIOS[cur][0];
+  answers[sid] = answers[sid] || {};
+  answers[sid].disposition = d;
+  save(); render();
+  // 标完自动跳下一条（末条除外）
+  if(cur < SCENARIOS.length - 1){
+    setTimeout(() => { cur++; render(); }, 130);
+  }
+}
+function setNote(v){
+  const sid = SCENARIOS[cur][0];
+  answers[sid] = answers[sid] || {};
+  answers[sid].note = v;
+  save(); updateCountOnly();
+}
+function updateCountOnly(){
+  const done = Object.values(answers).filter(x => VALID.includes(x.disposition)).length;
+  $("done").textContent = done;
+  $("barfill").style.width = (done / SCENARIOS.length * 100) + "%";
+}
+function go(n){
+  cur = Math.max(0, Math.min(SCENARIOS.length - 1, n));
+  render();
+}
+function clearCur(){
+  const sid = SCENARIOS[cur][0];
+  delete answers[sid];
+  save(); render();
+}
+
+/* ============================================================
+   导出
+   ============================================================ */
+function csvCell(s){
+  s = (s == null ? "" : String(s));
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+
+function exportCSV(){
+  const missing = SCENARIOS.filter(([sid]) => {
+    const a = answers[sid];
+    return !a || !VALID.includes(a.disposition);
+  });
+
+  if(missing.length){
+    const names = missing.map(m => m[0]);
+    const head = names.slice(0, 12).join("、");
+    const more = names.length > 12 ? " 等 " + names.length + " 条" : "";
+    toast("还有 " + missing.length + " 条没标：" + head + more + "。补完再导出。", true);
+    return;
+  }
+
+  const lines = ["scenario_id,disposition,note"];
+  for(const [sid] of SCENARIOS){
+    const a = answers[sid];
+    lines.push([sid, a.disposition, a.note || ""].map(csvCell).join(","));
+  }
+  const csv = lines.join("\n") + "\n";
+
+  const blob = new Blob(["﻿" + csv], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "gold_label_B.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  const noted = Object.values(answers).filter(x => (x.note || "").trim()).length;
+  toast("已导出 gold_label_B.csv —— 57 行全填完，其中 " + noted + " 条带 note。记得私发 A，别 push。");
+}
+
+/* ============================================================
+   总览
+   ============================================================ */
+function buildGrid(){
+  const g = $("grid");
+  g.innerHTML = "";
+  SCENARIOS.forEach(([sid], i) => {
+    const a = answers[sid] || {};
+    const ok = VALID.includes(a.disposition);
+    const cell = document.createElement("div");
+    cell.className = "cell " + (ok ? "" : "empty") + (i === cur ? " cur" : "");
+    if(ok) cell.dataset.d = a.disposition;
+    cell.innerHTML = '<div class="n">' + sid + '</div><div class="d">' +
+                     (ok ? DISP_ZH[a.disposition] : "—") + '</div>';
+    cell.onclick = () => { go(i); $("overlay").classList.remove("on"); };
+    g.appendChild(cell);
+  });
+}
+
+/* ============================================================
+   toast
+   ============================================================ */
+let toastTimer;
+function toast(msg, isErr){
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast on" + (isErr ? " err" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = "toast" + (isErr ? " err" : ""), isErr ? 5200 : 3600);
+}
+
+/* ============================================================
+   事件绑定
+   ============================================================ */
+document.querySelectorAll(".disp").forEach(b => {
+  b.onclick = () => setDisp(b.dataset.d);
+});
+$("note").oninput = e => setNote(e.target.value);
+$("btn-prev").onclick = () => go(cur - 1);
+$("btn-next").onclick = () => go(cur + 1);
+$("btn-clear").onclick = clearCur;
+$("btn-export").onclick = exportCSV;
+$("btn-grid").onclick = () => { buildGrid(); $("overlay").classList.add("on"); };
+$("overlay").onclick = e => { if(e.target === $("overlay")) $("overlay").classList.remove("on"); };
+
+$("btn-reset").onclick = () => {
+  if(!confirm("清空全部 57 条标注？此操作不可撤销。")) return;
+  answers = {}; save(); cur = 0; render();
+  toast("已清空。");
+};
+
+document.addEventListener("keydown", e => {
+  if(e.target.tagName === "INPUT" && e.key !== "Escape") {
+    if(e.key === "Enter"){ e.target.blur(); }
+    return;
+  }
+  if($("overlay").classList.contains("on")){
+    if(e.key === "Escape") $("overlay").classList.remove("on");
+    return;
+  }
+  const map = {"1":"release","2":"retest","3":"quarantine","4":"scrap"};
+  if(map[e.key]){ e.preventDefault(); setDisp(map[e.key]); }
+  else if(e.key === "ArrowLeft"){ e.preventDefault(); go(cur - 1); }
+  else if(e.key === "ArrowRight"){ e.preventDefault(); go(cur + 1); }
+  else if(e.key === "n" || e.key === "N"){ e.preventDefault(); $("note").focus(); }
+});
+
+/* ============================================================
+   启动
+   ============================================================ */
+load();
+render();
+</script>
+</body>
+</html>

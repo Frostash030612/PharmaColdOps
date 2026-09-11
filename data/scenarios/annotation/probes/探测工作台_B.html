@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>判定口径核对 · B</title>
+<style>
+  :root{
+    --bg:#12141a; --panel:#1a1d26; --panel-2:#222633; --line:#2e3342;
+    --fg:#e8eaf0; --dim:#9aa1b4; --dimmer:#6b7285;
+    --release:#3fb950; --retest:#58a6ff; --quarantine:#d29922; --scrap:#f85149;
+    --accent:#7c8cff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    font-size:14px; line-height:1.5; display:flex; flex-direction:column; overflow:hidden;}
+
+  header{display:flex; align-items:center; gap:18px; padding:10px 20px;
+    border-bottom:1px solid var(--line); background:var(--panel); flex:0 0 auto;}
+  header h1{font-size:14px; font-weight:600; margin:0; white-space:nowrap;}
+  header h1 .tag{background:var(--accent); color:#0b0d12; border-radius:4px;
+    padding:1px 7px; margin-left:6px; font-size:12px; font-weight:700;}
+  .spacer{flex:1;}
+  .bar{width:180px; height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden;}
+  .bar > i{display:block; height:100%; width:0; background:var(--accent); transition:width .15s;}
+  .count{font-variant-numeric:tabular-nums; color:var(--dim); font-size:13px;}
+  .count b{color:var(--fg); font-size:15px;}
+  header button{background:var(--panel-2); color:var(--fg); border:1px solid var(--line);
+    border-radius:6px; padding:5px 11px; font-size:13px; cursor:pointer; font-family:inherit;}
+  header button:hover{background:#2a2f3d; border-color:#3d4457;}
+
+  .banner{padding:11px 20px; background:#161a24; border-bottom:1px solid var(--line);
+    color:var(--dim); font-size:12.5px; line-height:1.75; flex:0 0 auto;}
+  .banner b{color:var(--fg);}
+
+  .tabs{display:flex; gap:6px; padding:9px 20px; border-bottom:1px solid var(--line);
+    background:var(--panel); flex:0 0 auto; flex-wrap:wrap;}
+  .tabs button{background:transparent; border:1px solid var(--line); color:var(--dim);
+    border-radius:999px; padding:4px 13px; font-size:12.5px; cursor:pointer; font-family:inherit;}
+  .tabs button:hover{color:var(--fg); border-color:#3d4457;}
+  .tabs button.on{background:var(--accent); border-color:var(--accent); color:#0b0d12; font-weight:600;}
+  .tabs button .n{opacity:.65; margin-left:5px; font-variant-numeric:tabular-nums;}
+
+  main{flex:1; overflow-y:auto; padding:14px 20px 40px; min-height:0;}
+
+  .item{background:var(--panel); border:1px solid var(--line); border-left-width:3px;
+    border-left-color:var(--line); border-radius:9px; padding:11px 14px; margin-bottom:9px;}
+  .item.answered{border-left-color:var(--release); background:#161a22;}
+  .item.q{border-left-color:var(--accent);}
+
+  .ihead{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .sid{font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:.03em;}
+  .prod{font-family:ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--accent);}
+  .facts{color:var(--dim); font-size:12.5px; font-variant-numeric:tabular-nums;}
+  .req{color:var(--dimmer); font-size:12px; margin-top:6px;
+    font-variant-numeric:tabular-nums; font-family:ui-monospace,Consolas,monospace;}
+  .req b{color:var(--dim); font-weight:600;}
+  .verdict{font-size:12px; color:var(--dimmer); margin-left:auto;}
+  .verdict b{color:var(--fg);}
+
+  .decide{display:flex; gap:7px; margin-top:9px; align-items:center; flex-wrap:wrap;}
+  .decide .lbl{font-size:11px; color:var(--dimmer); letter-spacing:.08em;
+    text-transform:uppercase; margin-right:3px;}
+  .decide button{border:1px solid var(--line); background:var(--panel-2); color:var(--fg);
+    border-radius:7px; padding:6px 15px; cursor:pointer; font-family:inherit; font-size:13px;
+    font-weight:600;}
+  .decide button:hover{background:#2a2f3d;}
+  .decide button[data-d="release"]:hover{border-color:var(--release);}
+  .decide button[data-d="retest"]:hover{border-color:var(--retest);}
+  .decide button[data-d="quarantine"]:hover{border-color:var(--quarantine);}
+  .decide button[data-d="scrap"]:hover{border-color:var(--scrap);}
+  .decide button.sel[data-d="release"]{background:#12301a; border-color:var(--release); color:var(--release);}
+  .decide button.sel[data-d="retest"]{background:#122539; border-color:var(--retest); color:var(--retest);}
+  .decide button.sel[data-d="quarantine"]{background:#332708; border-color:var(--quarantine); color:var(--quarantine);}
+  .decide button.sel[data-d="scrap"]{background:#3a1416; border-color:var(--scrap); color:var(--scrap);}
+
+  .meta{display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap;}
+  .meta select, .meta input, .meta textarea{background:var(--panel-2); border:1px solid var(--line);
+    color:var(--fg); border-radius:6px; padding:5px 9px; font-size:12.5px; font-family:inherit;}
+  .meta select{min-width:190px;}
+  .meta input{flex:1; min-width:180px;}
+  .meta textarea{flex:1; min-width:180px; resize:vertical; min-height:52px;}
+  .meta select:focus, .meta input:focus, .meta textarea:focus{outline:none; border-color:var(--accent);}
+  .meta input::placeholder, .meta textarea::placeholder{color:var(--dimmer);}
+  .meta .need{border-color:#75262a;}
+  .qtext{margin-top:4px; font-size:13.5px; color:var(--fg); line-height:1.7;}
+
+  .empty{color:var(--dimmer); text-align:center; padding:60px 0; font-size:14px;}
+
+  .toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(80px);
+    background:var(--panel-2); border:1px solid var(--line); border-radius:9px;
+    padding:11px 20px; font-size:13px; opacity:0; transition:all .22s; z-index:40;
+    box-shadow:0 8px 28px rgba(0,0,0,.5); max-width:76vw; line-height:1.6;}
+  .toast.on{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.err{border-color:#75262a; background:#2a1113;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>判定口径核对<span class="tag">B</span></h1>
+  <div class="count">已答 <b id="done">0</b> / <span id="need">0</span></div>
+  <div class="bar"><i id="barfill"></i></div>
+  <div class="spacer"></div>
+  <button id="btn-export">导出作答 CSV</button>
+  <button id="btn-reset">清空作答</button>
+</header>
+
+<div class="banner">本次为判定口径核对，共 <b>17 条场景</b> + <b>1 道问答题</b>。<br>每条给出产品名与该产品的 <b>需求温度范围</b>（即该产品应当保持在的区间）。场景中的各项指标为 <b>独立给定值</b>，请直接按给定值判断，不需要考虑它们之间的推算关系。<br>本页 <b>不显示</b> 任何判定阈值或参考判定 —— 请完全按你自己的判定标准作答。<br>请独立完成，<b>提交前不要与另一位标注者讨论</b>。</div>
+
+<div class="tabs" id="tabs">
+  <button data-f="todo" class="on">未答<span class="n" id="n-todo"></span></button>
+  <button data-f="done">已答<span class="n" id="n-done"></span></button>
+  <button data-f="all">全部<span class="n" id="n-all"></span></button>
+</div>
+
+<main id="list"></main>
+<div class="toast" id="toast"></div>
+
+<script>
+const DATA = {"items": [{"pid": "frozen_m20", "temp": -20.0, "dur": 12.0, "mkt": -14.0, "pack": "intact", "stage": "warehouse", "id": "P01"}, {"pid": "vaccine_2_8", "temp": 6.0, "dur": 20.0, "mkt": 6.0, "pack": "intact", "stage": "transit", "id": "P02"}, {"pid": "frozen_m20", "temp": -14.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P03"}, {"pid": "frozen_m20", "temp": -28.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P04"}, {"pid": "frozen_m20", "temp": -12.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P05"}, {"pid": "frozen_m20", "temp": -18.0, "dur": 20.0, "mkt": -14.0, "pack": "intact", "stage": "transit", "id": "P06"}, {"pid": "mrna_ultracold", "temp": -65.0, "dur": 90.0, "mkt": -60.0, "pack": "intact", "stage": "transit", "id": "P07"}, {"pid": "frozen_m20", "temp": -22.0, "dur": 5.0, "mkt": -11.0, "pack": "intact", "stage": "transit", "id": "P08"}, {"pid": "frozen_m20", "temp": -10.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P09"}, {"pid": "frozen_m20", "temp": -5.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P10"}, {"pid": "frozen_m20", "temp": -25.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P11"}, {"pid": "frozen_m20", "temp": -15.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P12"}, {"pid": "frozen_m20", "temp": -30.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P13"}, {"pid": "frozen_m20", "temp": -16.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P14"}, {"pid": "frozen_m20", "temp": 0.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P15"}, {"pid": "frozen_m20", "temp": -20.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P16"}, {"pid": "frozen_m20", "temp": -35.0, "dur": 5.0, "mkt": -18.0, "pack": "intact", "stage": "transit", "id": "P17"}], "q": {"id": "Q01", "text": "现在系统有四档处置：放行 / 复检 / 隔离 / 报废。如果只能保留三档，你会去掉哪一档？请说明理由。", "opts": ["去掉「放行」", "去掉「复检」", "去掉「隔离」", "去掉「报废」", "四档都要保留"]}, "prods": {"vaccine_2_8": {"lo": 2, "hi": 8}, "insulin_2_8": {"lo": 2, "hi": 8}, "frozen_m20": {"lo": -25, "hi": -15}, "mrna_ultracold": {"lo": -80, "hi": -60}}};
+const ITEMS = DATA.items, Q = DATA.q, PROD = DATA.prods;
+const VALID = ["release","retest","quarantine","scrap"];
+const ZH = {release:"放行", retest:"复检", quarantine:"隔离", scrap:"报废"};
+const STORE = "probeB_rubricV1";
+
+let ans = {};       // { P01:{d,why}, Q01:{d,why} }
+let filter = "todo";
+
+function load(){ try{ ans = JSON.parse(localStorage.getItem(STORE)) || {}; }catch(e){ ans = {}; } }
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(ans)); }catch(e){} }
+
+const isDone  = x => !!(ans[x.id] && VALID.includes(ans[x.id].d));
+const qDone   = () => !!(ans[Q.id] && ans[Q.id].d && (ans[Q.id].why||"").trim());
+// 判 release 之外必须写理由 —— §5.4 的教训是 note 全空，理由只能靠事后探测重建
+const needWhy = x => isDone(x) && ans[x.id].d !== "release" && !(ans[x.id].why||"").trim();
+const ready   = x => isDone(x) && !needWhy(x);
+
+function fmtTemp(t){ return (t>0?"+":"") + t.toFixed(1) + "°C"; }
+function fmtMkt(m){ return "MKT " + (m>0?"+":"") + m.toFixed(1); }
+// 只给「产品需求温度」——产品事实，不泄露任何判定政策
+function fmtN(v){ return (v>0?"+":"") + (Number.isInteger(v) ? String(v) : v.toFixed(1)); }
+function reqText(pid){
+  const p = PROD[pid];
+  if(!p) return "";
+  return "需求温度 <b>" + fmtN(p.lo) + " ~ " + fmtN(p.hi) + " °C</b>";
+}
+
+function render(){
+  const list = document.getElementById("list");
+  let rows = ITEMS.slice();
+  if(filter === "todo")      rows = rows.filter(x => !ready(x));
+  else if(filter === "done") rows = rows.filter(x => ready(x));
+
+  const showQ = (filter !== "done") || qDone();
+  if(!rows.length && !showQ){ list.innerHTML = '<div class="empty">这一类没有条目</div>'; return; }
+
+  list.innerHTML = "";
+  for(const x of rows){
+    const a = ans[x.id] || {};
+    const el = document.createElement("div");
+    el.className = "item" + (ready(x) ? " answered" : "");
+    el.dataset.id = x.id;
+    el.innerHTML =
+      '<div class="ihead"><span class="sid">' + x.id + '</span>' +
+        '<span class="prod">' + x.pid + '</span>' +
+        '<span class="facts">' + fmtTemp(x.temp) + ' · ' + x.dur + ' min · ' +
+          fmtMkt(x.mkt) + ' · ' + x.pack + ' · ' + x.stage + '</span>' +
+        '<span class="verdict">' + (isDone(x) ? '已选 <b>' + ZH[a.d] + '</b>' : '') + '</span>' +
+      '</div>' +
+      '<div class="req">' + reqText(x.pid) + '</div>' +
+      '<div class="decide"><span class="lbl">判定</span>' +
+        VALID.map(d => '<button data-d="' + d + '"' + (a.d === d ? ' class="sel"' : '') + '>' +
+          ZH[d] + '</button>').join("") +
+      '</div>' +
+      '<div class="meta">' +
+        '<input class="why" type="text" placeholder="' +
+          (a.d && a.d !== "release" ? "为什么判「" + ZH[a.d] + "」？（必填）"
+                                    : "备注（判「放行」之外必填）") + '" value="' + esc(a.why) + '">' +
+      '</div>';
+
+    el.querySelectorAll(".decide button").forEach(b =>
+      b.onclick = () => setD(x.id, b.dataset.d));
+    const w = el.querySelector(".why");
+    w.oninput = e => setMeta(x.id, "why", e.target.value);
+    list.appendChild(el);
+  }
+
+  if(showQ){
+    const a = ans[Q.id] || {};
+    const el = document.createElement("div");
+    el.className = "item q" + (qDone() ? " answered" : "");
+    el.dataset.id = Q.id;
+    el.innerHTML =
+      '<div class="ihead"><span class="sid">' + Q.id + '</span>' +
+        '<span class="prod">问答题</span>' +
+        '<span class="verdict">' + (qDone() ? '<b>已答</b>' : '') + '</span></div>' +
+      '<div class="qtext">' + Q.text + '</div>' +
+      '<div class="meta" style="margin-top:9px">' +
+        '<select class="tier"><option value="">— 选择 —</option>' +
+          Q.opts.map(o => '<option' + (a.d === o ? ' selected' : '') + '>' + o + '</option>').join("") +
+        '</select>' +
+      '</div>' +
+      '<div class="meta">' +
+        '<textarea class="why2" placeholder="理由（必填）">' + esc(a.why) + '</textarea>' +
+      '</div>';
+    el.querySelector(".tier").onchange = e => setD(Q.id, e.target.value);
+    el.querySelector(".why2").oninput = e => setMeta(Q.id, "why", e.target.value);
+    list.appendChild(el);
+  }
+
+  updateCounts();
+}
+
+function setD(id, d){
+  ans[id] = ans[id] || {};
+  ans[id].d = d;
+  save();
+  // 判「放行」则清掉理由要求，局部刷新即可，避免输入焦点丢失
+  const el = document.querySelector('.item[data-id="' + id + '"]');
+  if(el){
+    el.querySelectorAll(".decide button").forEach(b => b.classList.toggle("sel", b.dataset.d === d));
+    const vd = el.querySelector(".verdict");
+    if(vd) vd.innerHTML = '已选 <b>' + ZH[d] + '</b>';
+    if(id === Q.id && vd) vd.innerHTML = '<b>已答</b>';
+    const w = el.querySelector(".why");
+    if(w) w.placeholder = (d !== "release") ? "为什么判「" + ZH[d] + "」？（必填）"
+                                            : "备注（判「放行」之外必填）";
+  }
+  updateCounts();
+}
+
+function setMeta(id, k, v){
+  ans[id] = ans[id] || {};
+  ans[id][k] = v;
+  save();
+}
+
+function updateCounts(){
+  const n = ITEMS.filter(ready).length;
+  document.getElementById("done").textContent = n;
+  document.getElementById("need").textContent = ITEMS.length;
+  document.getElementById("barfill").style.width = (n / ITEMS.length * 100) + "%";
+  document.getElementById("n-todo").textContent = ITEMS.filter(x => !ready(x)).length;
+  document.getElementById("n-done").textContent = n;
+  document.getElementById("n-all").textContent = ITEMS.length;
+}
+
+document.getElementById("tabs").onclick = e => {
+  const b = e.target.closest("button[data-f]");
+  if(!b) return;
+  filter = b.dataset.f;
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
+  render();
+};
+
+/* ---------- 导出 ---------- */
+function csvCell(s){
+  s = (s == null ? "" : String(s));
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+document.getElementById("btn-export").onclick = () => {
+  const noAns = ITEMS.filter(x => !isDone(x));
+  if(noAns.length){
+    toast("还有 " + noAns.length + " 条未判定：" + noAns.map(x => x.id).join("、") +
+          "。全部判定后才能导出。", true);
+    return;
+  }
+  const noWhy = ITEMS.filter(needWhy);
+  if(noWhy.length){
+    toast("以下条目判的不是「放行」，必须写明理由：" + noWhy.map(x => x.id).join("、"), true);
+    return;
+  }
+  if(!qDone()){
+    toast("问答题 " + Q.id + " 还没答完（选项 + 理由都要填）。", true);
+    return;
+  }
+
+  const lines = ["probe_id,kind,product_id,excursion_temp_c,duration_min,mkt_c,"
+               + "packaging,stage,disposition,note"];
+  const q = ans[Q.id];
+  const out = ITEMS.slice().sort((a,b) => a.id < b.id ? -1 : 1);
+  for(const x of out){
+    const a = ans[x.id];
+    lines.push([x.id, "scenario", x.pid, x.temp.toFixed(1), x.dur.toFixed(0),
+                x.mkt.toFixed(1), x.pack, x.stage, a.d, a.why || ""].map(csvCell).join(","));
+  }
+  lines.push([Q.id, "question", "", "", "", "", "", "", q.d, q.why]
+             .map(csvCell).join(","));
+
+  const blob = new Blob(["﻿" + lines.join("\n") + "\n"], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a2 = document.createElement("a");
+  a2.href = url; a2.download = "探测作答_B.csv";
+  document.body.appendChild(a2); a2.click(); a2.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  toast("已导出 探测作答_B.csv —— " + ITEMS.length + " 条场景 + 1 道问答题。"
+        + "请把文件交回给 A，不要与另一位标注者交换。");
+};
+
+document.getElementById("btn-reset").onclick = () => {
+  if(!confirm("清空全部作答？此操作不可撤销。")) return;
+  ans = {}; save(); render(); toast("已清空。");
+};
+
+let tt;
+function toast(msg, err){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast on" + (err ? " err" : "");
+  clearTimeout(tt);
+  tt = setTimeout(() => t.className = "toast" + (err ? " err" : ""), err ? 6000 : 4200);
+}
+
+load(); render();
+</script>
+</body>
+</html>

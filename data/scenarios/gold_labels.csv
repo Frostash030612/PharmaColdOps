@@ -1,0 +1,58 @@
+﻿scenario_id,gold_label,decision_source,disagreement_type,note
+S001,release,both_agree,,
+S002,release,both_agree,,
+S003,release,both_agree,,
+S004,release,both_agree,,
+S005,release,both_agree,,
+S006,release,both_agree,,
+S007,release,both_agree,,
+S008,release,both_agree,,
+S009,retest,both_agree,,
+S010,retest,arbitration,规则理解歧义,两人判读不同；按 rubric 第 5 条取 retest
+S011,retest,arbitration,规则理解歧义,两人判读不同；按 rubric 第 5 条取 retest
+S012,retest,both_agree,,
+S013,retest,arbitration,规则理解歧义,两人判读不同；按 rubric 第 5 条取 retest
+S014,retest,arbitration,规则理解歧义,两人判读不同；按 rubric 第 5 条取 retest
+S015,retest,arbitration,规则理解歧义,两人判读不同；按 rubric 第 5 条取 retest
+S016,retest,arbitration,规则理解歧义,两人判读不同；按 rubric 第 5 条取 retest
+S017,scrap,arbitration,阈值政策分歧,采信严判 scrap；该条时长越限，属「越限即报废」档。两人在 9/11 盲测复述题中各自独立确认该档直接报废
+S018,scrap,arbitration,阈值政策分歧,采信严判 scrap；该条时长越限，属「越限即报废」档。两人在 9/11 盲测复述题中各自独立确认该档直接报废
+S019,scrap,arbitration,规范缺口,两人一致判读 scrap；覆盖 rubric 第 4 条的 quarantine
+S020,scrap,arbitration,规范缺口,两人一致判读 scrap；覆盖 rubric 第 4 条的 quarantine
+S021,scrap,arbitration,规范缺口,两人一致判读 scrap；覆盖 rubric 第 4 条的 quarantine
+S022,scrap,arbitration,规范缺口,两人一致判读 scrap；覆盖 rubric 第 4 条的 quarantine
+S023,scrap,arbitration,规范缺口,两人一致判读 scrap；覆盖 rubric 第 4 条的 quarantine
+S024,scrap,arbitration,规范缺口,两人一致判读 scrap；覆盖 rubric 第 4 条的 quarantine
+S025,scrap,both_agree,,
+S026,scrap,both_agree,,
+S027,scrap,both_agree,,
+S028,scrap,both_agree,,
+S029,scrap,both_agree,,
+S030,scrap,both_agree,,
+S031,scrap,both_agree,,
+S032,scrap,both_agree,,
+S033,scrap,both_agree,,
+S034,quarantine,arbitration,规范缺口,两人一致判读 quarantine；覆盖 rubric 第 6 条的 release
+S035,quarantine,arbitration,规范缺口,两人一致判读 quarantine；覆盖 rubric 第 6 条的 release
+S036,release,arbitration,规则理解歧义,两人判读不同；按 rubric 第 6 条取 release
+S037,release,arbitration,规则理解歧义,两人判读不同；按 rubric 第 6 条取 release
+S038,scrap,arbitration,阈值政策分歧,采信严判 scrap；该条时长越限，属「越限即报废」档。两人在盲测复述题中均确认该档直接报废
+S039,scrap,arbitration,阈值政策分歧,采信严判 scrap；该条越限（16 > 15 min），属「越限即报废」档。两人在盲测复述题中均确认该档直接报废
+S040,scrap,arbitration,阈值政策分歧,采信严判 scrap；该条越限（MKT −10.5 > −12），属「越限即报废」档。两人在盲测复述题中均确认该档直接报废
+S041,scrap,arbitration,规范缺口,两人一致判读 scrap；覆盖 rubric 第 4 条的 quarantine
+S042,scrap,arbitration,规范缺口,两人一致判读 scrap；覆盖 rubric 第 4 条的 quarantine
+S043,scrap,both_agree,,
+S044,scrap,both_agree,,
+S045,scrap,both_agree,,
+S046,scrap,both_agree,,
+S047,scrap,both_agree,,
+S048,scrap,both_agree,,
+S049,scrap,both_agree,,
+S050,release,both_agree,,
+S051,release,both_agree,,
+S052,quarantine,arbitration,规范缺口,两人一致判读 quarantine；覆盖 rubric 第 5 条的 retest
+S053,scrap,arbitration,规范缺口,两人一致判读 scrap；覆盖 rubric 第 4 条的 quarantine
+S054,scrap,both_agree,,
+S055,release,both_agree,,
+S056,scrap,arbitration,规范缺口,两人一致判读 scrap；覆盖 rubric 第 4 条的 quarantine
+S057,scrap,both_agree,,

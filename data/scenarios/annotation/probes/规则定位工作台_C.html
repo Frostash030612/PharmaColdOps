@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>规则定位核对 · C</title>
+<style>
+  :root{
+    --bg:#12141a; --panel:#1a1d26; --panel-2:#222633; --line:#2e3342;
+    --fg:#e8eaf0; --dim:#9aa1b4; --dimmer:#6b7285;
+    --release:#3fb950; --retest:#58a6ff; --quarantine:#d29922; --scrap:#f85149;
+    --accent:#7c8cff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    font-size:14px; line-height:1.5; display:flex; flex-direction:column; overflow:hidden;}
+  header{display:flex; align-items:center; gap:18px; padding:10px 20px;
+    border-bottom:1px solid var(--line); background:var(--panel); flex:0 0 auto;}
+  header h1{font-size:14px; font-weight:600; margin:0; white-space:nowrap;}
+  header h1 .tag{background:var(--accent); color:#0b0d12; border-radius:4px;
+    padding:1px 7px; margin-left:6px; font-size:12px; font-weight:700;}
+  .spacer{flex:1;}
+  .bar{width:180px; height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden;}
+  .bar > i{display:block; height:100%; width:0; background:var(--accent); transition:width .15s;}
+  .count{font-variant-numeric:tabular-nums; color:var(--dim); font-size:13px;}
+  .count b{color:var(--fg); font-size:15px;}
+  header button{background:var(--panel-2); color:var(--fg); border:1px solid var(--line);
+    border-radius:6px; padding:5px 11px; font-size:13px; cursor:pointer; font-family:inherit;}
+  header button:hover{background:#2a2f3d; border-color:#3d4457;}
+  .banner{padding:11px 20px; background:#161a24; border-bottom:1px solid var(--line);
+    color:var(--dim); font-size:12.5px; line-height:1.85; flex:0 0 auto;}
+  .banner b{color:var(--fg);}
+  /* 规则与规格常驻面板 —— 这不是提示，是题面的一部分 */
+  .ref{flex:0 0 auto; background:#151922; border-bottom:1px solid var(--line);
+    max-height:46vh; overflow-y:auto;}
+  .ref summary{padding:8px 20px; cursor:pointer; color:var(--dim); font-size:12.5px;
+    user-select:none; position:sticky; top:0; background:#151922; z-index:2;}
+  .ref summary b{color:var(--fg);}
+  .ref .body{padding:0 20px 14px;}
+  .ref h3{font-size:12px; color:var(--dim); margin:12px 0 6px; letter-spacing:.06em;
+    text-transform:uppercase; font-weight:600;}
+  table.spec{border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums;}
+  table.spec th,table.spec td{border:1px solid var(--line); padding:3px 9px; text-align:center;
+    white-space:nowrap;}
+  table.spec th{background:var(--panel-2); color:var(--dim); font-weight:600;}
+  table.spec td:first-child{font-family:ui-monospace,Consolas,monospace; color:var(--accent);}
+  ol.rules{margin:0; padding-left:22px; font-size:12.5px; line-height:1.9; color:var(--dim);}
+  ol.rules b{color:var(--fg);}
+  ol.rules code{background:var(--panel-2); padding:1px 5px; border-radius:4px;
+    font-size:11.5px; color:#c9d1d9;}
+  .note-line{font-size:12px; color:var(--dimmer); line-height:1.8; margin-top:8px;}
+  .tabs{display:flex; gap:6px; padding:9px 20px; border-bottom:1px solid var(--line);
+    background:var(--panel); flex:0 0 auto; flex-wrap:wrap;}
+  .tabs button{background:transparent; border:1px solid var(--line); color:var(--dim);
+    border-radius:999px; padding:4px 13px; font-size:12.5px; cursor:pointer; font-family:inherit;}
+  .tabs button:hover{color:var(--fg); border-color:#3d4457;}
+  .tabs button.on{background:var(--accent); border-color:var(--accent); color:#0b0d12; font-weight:600;}
+  main{flex:1; overflow-y:auto; padding:14px 20px 40px; min-height:0;}
+  .item{background:var(--panel); border:1px solid var(--line); border-left-width:3px;
+    border-left-color:var(--line); border-radius:9px; padding:11px 14px; margin-bottom:9px;}
+  .item.answered{border-left-color:var(--release); background:#161a22;}
+  .ihead{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .sid{font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:.03em;}
+  .prod{font-family:ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--accent);}
+  .facts{color:var(--dim); font-size:12.5px; font-variant-numeric:tabular-nums;}
+  .verdict{font-size:12px; color:var(--dimmer); margin-left:auto;}
+  .verdict b{color:var(--fg);}
+  .ask{display:flex; gap:7px; margin-top:10px; align-items:center; flex-wrap:wrap;}
+  .ask .lbl{font-size:11px; color:var(--dimmer); letter-spacing:.08em;
+    min-width:96px; text-transform:uppercase;}
+  .ask button{border:1px solid var(--line); background:var(--panel-2); color:var(--fg);
+    border-radius:6px; padding:4px 11px; font-size:12.5px; cursor:pointer; font-family:inherit;}
+  .ask button:hover{background:#2a2f3d; border-color:#3d4457;}
+  .ask button.sel{background:var(--accent); border-color:var(--accent); color:#0b0d12; font-weight:600;}
+  .ask.rules button.sel{background:#2d3550; border-color:var(--accent); color:#c7cfff;}
+  .ask button[data-d="release"].sel{background:#12301a; border-color:var(--release); color:var(--release);}
+  .ask button[data-d="retest"].sel{background:#122539; border-color:var(--retest); color:var(--retest);}
+  .ask button[data-d="quarantine"].sel{background:#332708; border-color:var(--quarantine); color:var(--quarantine);}
+  .ask button[data-d="scrap"].sel{background:#3a1416; border-color:var(--scrap); color:var(--scrap);}
+  .meta{margin-top:8px;}
+  .why{width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--fg);
+    border-radius:6px; padding:5px 9px; font-size:12.5px; font-family:inherit;}
+  .why:focus{outline:none; border-color:var(--accent);}
+  .why.warn{border-color:var(--quarantine);}
+  .empty{color:var(--dimmer); text-align:center; padding:36px; font-size:13px;}
+  .toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(12px);
+    background:var(--panel-2); border:1px solid var(--line); color:var(--fg);
+    padding:9px 16px; border-radius:8px; font-size:12.5px; opacity:0; pointer-events:none;
+    transition:opacity .18s, transform .18s; max-width:78vw; line-height:1.6;}
+  .toast.on{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.err{border-color:var(--scrap); color:#ffd7d5;}
+</style>
+</head>
+<body>
+<header>
+  <h1>规则定位核对<span class="tag">C</span></h1>
+  <div class="count">已答 <b id="done">0</b> / <span id="need">0</span></div>
+  <div class="bar"><i id="barfill"></i></div>
+  <div class="spacer"></div>
+  <button id="btn-export">导出作答 CSV</button>
+  <button id="btn-reset">清空作答</button>
+</header>
+
+<div class="banner">本次为<b>规则定位核对</b>，共 <b>21 条场景</b>。每条场景请回答两个问题：<br>&nbsp;&nbsp;<b>①</b> 按页面上方 <b>§4 六条规则</b>，这条命中的是<b>第几条</b>？<br>&nbsp;&nbsp;<b>②</b> 你<b>实际会判</b>什么档？<br>两个答案<b>可以不同</b> —— 如果你判的档与所选规则推出的档不一样，请在理由里说明<b>为什么</b>。这一条很重要，请务必写。<br>§4 是<b>按优先级从上到下、命中即停</b>，请从第 1 条开始逐条比。<br>请独立完成，<b>提交前不要与另一位标注者讨论</b>。</div>
+
+<details class="ref" open>
+  <summary>📖 <b>§3 产品规格表</b> 与 <b>§4 判定规则</b>（常驻，随时可查）</summary>
+  <div class="body">
+    <h3>§3 产品规格表</h3>
+    <table class="spec" id="spectab"></table>
+    <div class="note-line">
+      附注：<b>冻敏</b> = 该产品一结冰（≤ 0 °C）就失去效力。`vaccine_2_8`、`insulin_2_8` 冻敏；
+      `frozen_m20`、`mrna_ultracold` 本身储存在零下、<b>不是</b>冻敏产品，
+      零度以下温度对它们按 §4 的时长/MKT 规则判，<b>不触发冻结报废</b>。
+      数字<b>按给定值直接比较，不要四舍五入</b>。
+    </div>
+    <h3>§4 判定规则（按优先级从上到下，命中即停）</h3>
+    <ol class="rules" id="ruletab"></ol>
+  </div>
+</details>
+
+<div class="tabs">
+  <button data-f="todo" class="on">未答</button>
+  <button data-f="done">已答</button>
+  <button data-f="all">全部</button>
+</div>
+
+<main id="list"></main>
+<div class="toast" id="toast"></div>
+
+<script>
+const DATA = {"items": [{"id": "R01", "pid": "vaccine_2_8", "temp": 20.0, "dur": 90, "mkt": 19.0, "pack": "intact", "stage": "transit"}, {"id": "R02", "pid": "frozen_m20", "temp": -7.0, "dur": 20, "mkt": -9.0, "pack": "intact", "stage": "transit"}, {"id": "R03", "pid": "vaccine_2_8", "temp": 15.0, "dur": 40, "mkt": 13.0, "pack": "compromised", "stage": "transit"}, {"id": "R04", "pid": "frozen_m20", "temp": -15.0, "dur": 10, "mkt": -15.5, "pack": "intact", "stage": "transit"}, {"id": "R05", "pid": "frozen_m20", "temp": 0.0, "dur": 35, "mkt": -3.0, "pack": "intact", "stage": "transit"}, {"id": "R06", "pid": "frozen_m20", "temp": -5.0, "dur": 20, "mkt": -10.0, "pack": "intact", "stage": "transit"}, {"id": "R07", "pid": "frozen_m20", "temp": -8.0, "dur": 16, "mkt": -11.0, "pack": "intact", "stage": "warehouse"}, {"id": "R08", "pid": "vaccine_2_8", "temp": 9.0, "dur": 25, "mkt": 9.6, "pack": "intact", "stage": "transit"}, {"id": "R09", "pid": "frozen_m20", "temp": -6.0, "dur": 18, "mkt": -10.8, "pack": "intact", "stage": "transit"}, {"id": "R10", "pid": "frozen_m20", "temp": -5.0, "dur": 30, "mkt": -9.0, "pack": "intact", "stage": "warehouse"}, {"id": "R11", "pid": "frozen_m20", "temp": -4.0, "dur": 25, "mkt": -9.5, "pack": "intact", "stage": "transit"}, {"id": "R12", "pid": "frozen_m20", "temp": -30.0, "dur": 5, "mkt": -28.0, "pack": "intact", "stage": "transit"}, {"id": "R13", "pid": "frozen_m20", "temp": -2.0, "dur": 40, "mkt": -5.0, "pack": "intact", "stage": "airport_dwell"}, {"id": "R14", "pid": "vaccine_2_8", "temp": 12.0, "dur": 35, "mkt": 11.2, "pack": "intact", "stage": "airport_dwell"}, {"id": "R15", "pid": "vaccine_2_8", "temp": -5.0, "dur": 5, "mkt": 4.0, "pack": "intact", "stage": "transit"}, {"id": "R16", "pid": "vaccine_2_8", "temp": 5.0, "dur": 5, "mkt": 4.5, "pack": "intact", "stage": "transit"}, {"id": "R17", "pid": "frozen_m20", "temp": -14.0, "dur": 5, "mkt": -16.0, "pack": "intact", "stage": "transit"}, {"id": "R18", "pid": "frozen_m20", "temp": -16.0, "dur": 12, "mkt": -16.0, "pack": "intact", "stage": "airport_dwell"}, {"id": "R19", "pid": "frozen_m20", "temp": -10.0, "dur": 10, "mkt": -10.5, "pack": "intact", "stage": "airport_dwell"}, {"id": "R20", "pid": "frozen_m20", "temp": 5.0, "dur": 15, "mkt": -8.5, "pack": "compromised", "stage": "transit"}, {"id": "R21", "pid": "frozen_m20", "temp": -13.0, "dur": 8, "mkt": -15.0, "pack": "intact", "stage": "warehouse"}]}, RULES = [{"n": 1, "name": "冻结报废", "text": "产品冻敏 <b>且</b> <code>excursion_temp_c ≤ 0 °C</code> → <b>报废</b>"}, {"n": 2, "name": "包装破损", "text": "<code>packaging = compromised</code> <b>且</b> 温度高于产品标签上限 → <b>报废</b>"}, {"n": 3, "name": "严重超限", "text": "<code>duration_min ≥</code> 表中「2 倍报废」列，<b>或</b> <code>mkt_c ≥</code> 表中「MKT+3 报废」列 → <b>报废</b>"}, {"n": 4, "name": "超过限值", "text": "未命中第 3 条，且 <code>duration_min &gt;</code> 允许超限时长，<b>或</b> <code>mkt_c &gt;</code> MKT 上限 → <b>隔离</b>（严格大于，恰好等于不算）"}, {"n": 5, "name": "接近限值", "text": "未命中第 4 条，且该产品<b>允许复检</b>，且 <code>duration_min ≥ 0.8 ×</code> 允许超限时长，<b>或</b> <code>mkt_c ≥</code> MKT 上限 − 0.5 → <b>复检</b>"}, {"n": 6, "name": "其余", "text": "以上都不命中 → <b>放行</b>"}], SPEC = [["vaccine_2_8", "2 – 8", "30", "60", "10", "13", "是", "是"], ["insulin_2_8", "2 – 8", "30", "60", "10", "13", "是", "是"], ["frozen_m20", "−25 – −15", "15", "30", "−12", "−9", "否", "否"], ["mrna_ultracold", "−80 – −60", "60", "120", "−55", "−52", "否", "否"]];
+const ITEMS = DATA.items;
+const VALID = ["release","retest","quarantine","scrap"];
+const ZH = {release:"放行", retest:"复检", quarantine:"隔离", scrap:"报废"};
+const STORE = "ruleprobeC_v1";
+
+let ans = {}, filter = "todo";
+
+function load(){ try{ ans = JSON.parse(localStorage.getItem(STORE)) || {}; }catch(e){ ans = {}; } }
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(ans)); }catch(e){} }
+
+const hasR   = x => !!(ans[x.id] && ans[x.id].r);
+const isDone = x => hasR(x) && !!(ans[x.id] && VALID.includes(ans[x.id].d));
+// 非放行必写理由；选了「都不适用」也必写 —— 六条是穷尽的，选它等于说规则有洞，得说清
+const needWhy = x => isDone(x) &&
+  ((ans[x.id].d !== "release" && !(ans[x.id].why||"").trim()) ||
+   (ans[x.id].r === "none" && !(ans[x.id].why||"").trim()));
+
+function fmtT(t){ return (t>0?"+":"") + t.toFixed(1) + "°C"; }
+function fmtM(m){ return "MKT " + (m>0?"+":"") + m.toFixed(1); }
+
+function refTables(){
+  document.getElementById("spectab").innerHTML =
+    "<tr><th>产品</th><th>标签储存范围 (°C)</th><th>允许超限时长 (min)</th>" +
+    "<th>2 倍 → 报废 (min)</th><th>MKT 上限 (°C)</th><th>MKT+3 → 报废 (°C)</th>" +
+    "<th>冻敏？</th><th>允许复检？</th></tr>" +
+    SPEC.map(r => "<tr>" + r.map(c => "<td>" + c + "</td>").join("") + "</tr>").join("");
+  document.getElementById("ruletab").innerHTML =
+    RULES.map(r => "<li><b>" + r.name + "</b>　" + r.text + "</li>").join("");
+}
+
+function render(){
+  const list = document.getElementById("list");
+  let rows = ITEMS.slice();
+  if(filter === "todo")      rows = rows.filter(x => !isDone(x));
+  else if(filter === "done") rows = rows.filter(x => isDone(x));
+  if(!rows.length){ list.innerHTML = '<div class="empty">这一类没有条目</div>'; return; }
+
+  list.innerHTML = "";
+  for(const x of rows){
+    const a = ans[x.id] || {};
+    const el = document.createElement("div");
+    el.className = "item" + (isDone(x) ? " answered" : "");
+    el.dataset.id = x.id;
+    el.innerHTML =
+      '<div class="ihead"><span class="sid">' + x.id + '</span>' +
+        '<span class="prod">' + x.pid + '</span>' +
+        '<span class="facts">' + fmtT(x.temp) + ' · ' + x.dur + ' min · ' +
+          fmtM(x.mkt) + ' · ' + x.pack + ' · ' + x.stage + '</span>' +
+        '<span class="verdict">' + (isDone(x)
+            ? '规则 ' + (a.r === "none" ? '—' : a.r) + ' → <b>' + ZH[a.d] + '</b>' : '') +
+        '</span>' +
+      '</div>' +
+      '<div class="ask rules"><span class="lbl">① 命中第几条</span>' +
+        RULES.map(r => '<button data-r="R' + r.n + '"' +
+          (a.r === "R" + r.n ? ' class="sel"' : '') + '>' + r.n + '. ' + r.name + '</button>').join("") +
+        '<button data-r="none"' + (a.r === "none" ? ' class="sel"' : '') + '>都不适用</button>' +
+      '</div>' +
+      '<div class="ask"><span class="lbl">② 你判什么</span>' +
+        VALID.map(d => '<button data-d="' + d + '"' + (a.d === d ? ' class="sel"' : '') + '>' +
+          ZH[d] + '</button>').join("") +
+      '</div>' +
+      '<div class="meta"><input class="why' + (needWhy(x) ? ' warn' : '') + '" type="text" placeholder="' +
+        (needWhy(x) ? '必填：' : '') +
+        '理由（若 ② 与 ① 推出的档不同，请说明为什么）"></div>';
+
+    el.querySelectorAll(".ask.rules button").forEach(b =>
+      b.onclick = () => pick(x.id, "r", b.dataset.r));
+    el.querySelectorAll(".ask:not(.rules) button").forEach(b =>
+      b.onclick = () => pick(x.id, "d", b.dataset.d));
+    const inp = el.querySelector(".why");
+    inp.value = a.why || "";
+    inp.oninput = () => { setWhy(x.id, inp.value); inp.classList.toggle("warn", needWhy(x)); };
+    list.appendChild(el);
+  }
+  const d = ITEMS.filter(isDone).length;
+  document.getElementById("done").textContent = d;
+  document.getElementById("need").textContent = ITEMS.length;
+  document.getElementById("barfill").style.width = (d / ITEMS.length * 100) + "%";
+}
+
+function pick(id, k, v){
+  ans[id] = ans[id] || {};
+  ans[id][k] = v;
+  save(); render();
+  const x = ITEMS.find(i => i.id === id);
+  if(isDone(x)) list.scrollTop = list.scrollTop;   // 保持位置，不自动跳
+}
+function setWhy(id, v){ ans[id] = ans[id] || {}; ans[id].why = v; save(); }
+
+function csvCell(s){
+  s = (s === undefined || s === null) ? "" : String(s);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+
+document.getElementById("btn-export").onclick = () => {
+  const noR = ITEMS.filter(x => !hasR(x));
+  if(noR.length){ toast("还有 " + noR.length + " 条没选「命中第几条」：" +
+    noR.map(x => x.id).join("、") + "。", true); return; }
+  const noD = ITEMS.filter(x => !isDone(x));
+  if(noD.length){ toast("还有 " + noD.length + " 条没选「你判什么」：" +
+    noD.map(x => x.id).join("、") + "。", true); return; }
+  const noWhy = ITEMS.filter(needWhy);
+  if(noWhy.length){ toast("以下条目必须写理由：" + noWhy.map(x => x.id).join("、"), true); return; }
+
+  const lines = ["rule_probe_id,product_id,excursion_temp_c,duration_min,mkt_c,"
+               + "packaging,stage,rule_hit,disposition,note"];
+  for(const x of ITEMS){
+    const a = ans[x.id];
+    lines.push([x.id, x.pid, x.temp.toFixed(1), x.dur, x.mkt.toFixed(1),
+                x.pack, x.stage, a.r, a.d, a.why || ""].map(csvCell).join(","));
+  }
+  const blob = new Blob(["﻿" + lines.join("\n") + "\n"], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a2 = document.createElement("a");
+  a2.href = url; a2.download = "规则定位作答_C.csv";
+  document.body.appendChild(a2); a2.click(); a2.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast("已导出 规则定位作答_C.csv —— " + ITEMS.length + " 条。"
+        + "请交回给 A，不要与另一位标注者交换。");
+};
+
+document.getElementById("btn-reset").onclick = () => {
+  if(!confirm("清空全部作答？此操作不可撤销。")) return;
+  ans = {}; save(); render(); toast("已清空。");
+};
+
+let tt;
+function toast(msg, err){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.className = "toast on" + (err ? " err" : "");
+  clearTimeout(tt); tt = setTimeout(() => t.className = "toast", err ? 6000 : 3600);
+}
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  filter = b.dataset.f;
+  document.querySelectorAll(".tabs button").forEach(o => o.classList.toggle("on", o === b));
+  render();
+});
+
+refTables(); load(); render();
+</script>
+</body>
+</html>

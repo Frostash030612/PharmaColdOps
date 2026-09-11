@@ -70,7 +70,8 @@ Knowledge-graph entity/relation model draft: [docs/KG_SCHEMA_v1.md](docs/KG_SCHE
 |---|---|---|
 | `data/ml/` | Risk prediction & root cause | Cold-chain / temperature datasets (Kaggle + Hugging Face) — **see [`data/ml/DATA_DICTIONARY.md`](data/ml/DATA_DICTIONARY.md)** |
 | `data/optimisation/solomon/` | Re-routing optimiser | Solomon VRPTW instances (CVRPLIB) |
-| `data/processed/` | All modules | Preprocessed feature tables / audit reports (§7.3) — generated, not committed |
+| `data/processed/` | All modules | Preprocessed feature tables / audit reports (§7.3) — generated, not committed — **except** `agreement_stats.md` + `PROVENANCE.md`, which are annotation deliverables |
+| `data/scenarios/` | Disposition rule engine | Gold-standard scenario bank + the annotation workbench that produced it (see below) |
 
 Download the no-login sources with `python scripts/download_data.py`; Kaggle datasets
 need a manual `kaggle.json` token (see `PROGRESS.md`). Regenerate the ML dataset audit
@@ -114,7 +115,16 @@ A temperature excursion in → a disposition decision out.
 - Input: `ExcursionEvent` (product, excursion temp, duration, MKT, packaging, stage)
 - Output: `Decision` (disposition, reshipment flag, rule path, evidence)
 - Thresholds: `src/rule_engine/rules_config.json` — **placeholders** to be replaced with product-specific WHO/GDP/ICH stability data
-- Evaluation: `data/scenarios/scenarios.csv` is the gold-standard scenario bank (proposal §8.3); `tests/test_rule_engine.py` asserts the engine matches the gold labels
+- Evaluation: `data/scenarios/scenarios.csv` is the gold-standard scenario bank (proposal §8.3).
+  Since 2026-09-12 its `gold_label` column is **independent dual human annotation** — B and C each
+  blind-labelled all 57 scenarios, A arbitrated (Cohen's κ = 0.6434) — replacing the placeholder that
+  used to be the engine's own output (the circularity proposal §8.3 set out to break).
+  `tests/test_rule_engine.py` therefore no longer asserts engine == gold; it **freezes the 18 known
+  engine-vs-gold deviations** and pins the agreement rate at 39/57. Full write-up:
+  [`docs/annotation_findings_v1.md`](docs/annotation_findings_v1.md); statistics and file fingerprints:
+  [`data/processed/agreement_stats.md`](data/processed/agreement_stats.md),
+  [`data/processed/PROVENANCE.md`](data/processed/PROVENANCE.md). Re-run the 9/19 engine evaluation with
+  `python scripts/evaluate_engine.py --engine <outputs.csv> --private-package <annotation package>`.
 
 ## Singapore road-network input (M5)
 
