@@ -4,116 +4,125 @@ Answers the demo's "why" questions by traversing the graph and returns the
 evidence nodes that back each answer, in the /api/qa contract shape
 (see PROGRESS.md): ``{answer: str, evidence: [{node_type, node_id, summary}]}``.
 
-Requires the graph built by :mod:`src.knowledge_graph.build_graph`. Connection
-defaults: ``NEO4J_URI`` / ``NEO4J_USER`` / ``NEO4J_PASSWORD`` env vars.
+Queries follow docs/KG_SCHEMA_v1.md: cases are keyed by ``run_id``
+(ExcursionEvent PK), disposition facts live on the
+``EVENT_LEADS_TO_DISPOSITION`` edge, and per-case chains are written by
+:mod:`src.knowledge_graph.writer` when a case is closed over the API.
+Connections come from ``knowledge_graph.connect`` (``NEO4J_*`` env vars /
+``.env`` / ``pharmaneo`` defaults).
 """
 from __future__ import annotations
 
-import os
 from typing import Dict, List
 
-from neo4j import GraphDatabase
-
-URI = os.environ.get("NEO4J_URI", "neo4j://localhost:7687")
-USER = os.environ.get("NEO4J_USER", "neo4j")
-PASSWORD = os.environ.get("NEO4J_PASSWORD", "pharmacoldops")
+from .connect import get_driver
 
 
 def _connect():
-    driver = GraphDatabase.driver(URI, auth=(USER, PASSWORD))
-    driver.verify_connectivity()
-    return driver
+    return get_driver()
 
 
 def _run(driver, query: str, **params) -> List[Dict]:
     return [dict(r) for r in driver.execute_query(query, parameters_=params).records]
 
 
-def why_disposition(scenario_id: str) -> Dict:
-    """Why did scenario X get its disposition? Answer + regulatory basis + SOPs."""
+def _reg_evidence(cited: list) -> list:
+    cited = sorted(cited, key=lambda r: r.get("clause_id") or "")
+    return [
+        {"node_type": "Regulation", "node_id": r["clause_id"],
+         "summary": f"{r.get('title', '')} — {r.get('clause', '')}"}
+        for r in cited
+    ]
+
+
+def _sop_evidence(sops: list) -> list:
+    sops = sorted(sops, key=lambda s: s.get("sop_id") or "")
+    return [
+        {"node_type": "SOP", "node_id": s["sop_id"],
+         "summary": f"{s.get('title', '')}: {s.get('summary', '')}"}
+        for s in sops
+    ]
+
+
+def why_disposition(run_id: str) -> Dict:
+    """Why did case ``run_id`` get its disposition? Answer + regulatory basis + SOPs."""
     with _connect() as driver:
         rows = _run(
             driver,
             """
-            MATCH (dec:Decision {scenario_id: $sid})-[:RESOLVES]->(e:ExcursionEvent)
-            OPTIONAL MATCH (dec)-[:CITES]->(r:Regulation)
-            OPTIONAL MATCH (dec)-[:FOLLOWS]->(sp:SOP)
-            RETURN dec, e, collect(DISTINCT r) AS cited, collect(DISTINCT sp) AS sops
+            MATCH (e:ExcursionEvent {run_id: $rid})-[d:EVENT_LEADS_TO_DISPOSITION]->(dis:Disposition)
+            OPTIONAL MATCH (dis)<-[:CITES]-(r:Regulation)
+            OPTIONAL MATCH (e)-[:FOLLOWS]->(sp:SOP)
+            RETURN e, d, dis, collect(DISTINCT r) AS cited, collect(DISTINCT sp) AS sops
             """,
-            sid=scenario_id,
+            rid=run_id,
         )
     if not rows:
-        return {"answer": f"no decision recorded for scenario {scenario_id}", "evidence": []}
+        return {"answer": f"no decision recorded for run {run_id}", "evidence": []}
     row = rows[0]
-    dec, e = row["dec"], row["e"]
-    cited = sorted(row["cited"], key=lambda r: r["clause_id"])
-    sops = sorted(row["sops"], key=lambda s: s["sop_id"])
+    e, d, dis = row["e"], row["d"], row["dis"]
     answer = (
-        f"Scenario {scenario_id}: {dec['disposition'].upper()} — {dec['reason']}. "
+        f"Case {run_id}: {dis['disposition'].upper()} — {d['reason']}. "
         f"Excursion: {e['excursion_temp_c']} °C for {e['duration_min']} min "
         f"(MKT {e['mkt_c']} °C, packaging {e['packaging']}, stage {e['stage']})."
     )
-    evidence = []
-    for r in cited:
-        evidence.append(
-            {
-                "node_type": "Regulation",
-                "node_id": r["clause_id"],
-                "summary": f"{r['title']} — {r['clause']}: {r['summary']}",
-            }
-        )
-    for s in sops:
-        evidence.append(
-            {"node_type": "SOP", "node_id": s["sop_id"], "summary": f"{s['title']}: {s['summary']}"}
-        )
+    evidence = _reg_evidence(row["cited"]) + _sop_evidence(row["sops"])
     return {"answer": answer, "evidence": evidence}
 
 
-def audit_chain(scenario_id: str) -> Dict:
-    """Full traceable chain for one scenario: shipment → product → event →
-    decision → regulations/SOPs (+ root cause if recorded)."""
+def audit_chain(run_id: str) -> Dict:
+    """Full traceable chain for one case: event → disposition → regulations/SOPs
+    (+ cause, occurrence facility, and shipment context when the case
+    carries them)."""
     with _connect() as driver:
         rows = _run(
             driver,
             """
-            MATCH (dec:Decision {scenario_id: $sid})-[:RESOLVES]->(e:ExcursionEvent)-[:OCCURRED_ON]->(s:Shipment)
-            MATCH (s)-[:CARRIES]->(p:Product)
-            MATCH (s)-[:DEPARTS_FROM]->(o:Facility)
-            MATCH (s)-[:DELIVERS_TO]->(d:Facility)
-            OPTIONAL MATCH (dec)-[:CITES]->(r:Regulation)
-            OPTIONAL MATCH (dec)-[:FOLLOWS]->(sp:SOP)
-            OPTIONAL MATCH (c:RootCause)-[:CAUSED]->(e)
-            RETURN dec, e, s, p, o, d, collect(DISTINCT r) AS cited,
-                   collect(DISTINCT sp) AS sops, collect(DISTINCT c) AS causes
+            MATCH (e:ExcursionEvent {run_id: $rid})-[d:EVENT_LEADS_TO_DISPOSITION]->(dis:Disposition)
+            OPTIONAL MATCH (e)-[:EVENT_CAUSED_BY]->(c:Cause)
+            OPTIONAL MATCH (e)-[:EVENT_OCCURRED_AT]->(loc:Facility)
+            OPTIONAL MATCH (e)-[:OCCURRED_ON]->(s:Shipment)
+            OPTIONAL MATCH (s)-[:DEPARTS_FROM]->(o:Facility)
+            OPTIONAL MATCH (s)-[:DELIVERS_TO]->(f:Facility)
+            OPTIONAL MATCH (dis)<-[:CITES]-(r:Regulation)
+            OPTIONAL MATCH (e)-[:FOLLOWS]->(sp:SOP)
+            RETURN e, d, dis, c, loc, s, o, f, collect(DISTINCT r) AS cited,
+                   collect(DISTINCT sp) AS sops
             """,
-            sid=scenario_id,
+            rid=run_id,
         )
     if not rows:
-        return {"answer": f"no decision recorded for scenario {scenario_id}", "evidence": []}
+        return {"answer": f"no decision recorded for run {run_id}", "evidence": []}
     row = rows[0]
-    dec, e, s, p, o, d = row["dec"], row["e"], row["s"], row["p"], row["o"], row["d"]
-    answer = (
-        f"{s['shipment_id']}: {o['name']} → {d['name']} carrying {p['product_id']}; "
-        f"excursion {e['excursion_temp_c']} °C for {e['duration_min']} min → "
-        f"{dec['disposition'].upper()} (rule {dec['rule_no']}: {dec['reason']})."
+    e, d, dis = row["e"], row["d"], row["dis"]
+    parts = []
+    if row["s"] is not None:
+        origin = row["o"]["name"] if row["o"] is not None else "unknown origin"
+        dest = row["f"]["name"] if row["f"] is not None else "unknown destination"
+        parts.append(f"{row['s']['shipment_id']}: {origin} → {dest}")
+    parts.append(
+        f"excursion {e['excursion_temp_c']} °C for {e['duration_min']} min "
+        f"(MKT {e['mkt_c']} °C, packaging {e['packaging']}, stage {e['stage']})"
+    )
+    if row["loc"] is not None:
+        parts.append(f"at {row['loc']['name']}")
+    parts.append(
+        f"{dis['disposition'].upper()} (rule {d['rule_no']}: {d['reason']})"
     )
     evidence = [
-        {"node_type": "Shipment", "node_id": s["shipment_id"], "summary": f"{o['name']} → {d['name']}"},
-        {"node_type": "Product", "node_id": p["product_id"], "summary": f"{p['storage_min_c']}–{p['storage_max_c']} °C, allowable {p['allowable_duration_min']} min"},
-        {"node_type": "ExcursionEvent", "node_id": e["scenario_id"], "summary": f"{e['excursion_temp_c']} °C for {e['duration_min']} min (MKT {e['mkt_c']} °C)"},
-        {"node_type": "Decision", "node_id": dec["scenario_id"], "summary": f"{dec['disposition']} · rule {dec['rule_no']}"},
+        {"node_type": "ExcursionEvent", "node_id": e["run_id"],
+         "summary": f"{e['excursion_temp_c']} °C for {e['duration_min']} min (MKT {e['mkt_c']} °C)"},
+        {"node_type": "Disposition", "node_id": dis["disposition"],
+         "summary": f"rule {d['rule_no']} · reshipment {d['reshipment_required']}"},
     ]
-    for r in sorted(row["cited"], key=lambda r: r["clause_id"]):
-        evidence.append(
-            {"node_type": "Regulation", "node_id": r["clause_id"], "summary": f"{r['title']} — {r['clause']}"}
-        )
-    for sp in sorted(row["sops"], key=lambda s: s["sop_id"]):
-        evidence.append({"node_type": "SOP", "node_id": sp["sop_id"], "summary": sp["title"]})
-    for c in row["causes"]:
-        evidence.append(
-            {"node_type": "RootCause", "node_id": c["cause_id"], "summary": c["description"]}
-        )
-    return {"answer": answer, "evidence": evidence}
+    if row["c"] is not None:
+        evidence.append({"node_type": "Cause", "node_id": row["c"]["cause_code"],
+                         "summary": f"deterministic API risk code (score {d.get('risk_score')})"})
+    if row["loc"] is not None:
+        evidence.append({"node_type": "Facility", "node_id": row["loc"]["facility_id"],
+                         "summary": f"event location ({row['loc']['name']})"})
+    evidence += _reg_evidence(row["cited"]) + _sop_evidence(row["sops"])
+    return {"answer": f"Case {run_id}: " + "; ".join(parts) + ".", "evidence": evidence}
 
 
 def product_requirements(product_id: str) -> Dict:
@@ -130,32 +139,27 @@ def product_requirements(product_id: str) -> Dict:
     if not rows:
         return {"answer": f"unknown product {product_id}", "evidence": []}
     p = rows[0]["p"]
-    rules = sorted(rows[0]["rules"], key=lambda r: r["clause_id"])
     answer = (
         f"{product_id}: storage {p['storage_min_c']}–{p['storage_max_c']} °C, "
         f"allowable excursion {p['allowable_duration_min']} min, MKT ceiling {p['mkt_threshold_c']} °C, "
         f"freeze-sensitive: {p['freeze_sensitive']}, retestable: {p['retestable']}."
     )
-    evidence = [
-        {"node_type": "Regulation", "node_id": r["clause_id"], "summary": f"{r['title']} — {r['clause']}"}
-        for r in rules
-    ]
+    evidence = _reg_evidence(rows[0]["rules"])
     return {"answer": answer, "evidence": evidence}
 
 
 def disposition_stats() -> Dict:
-    """Distribution of dispositions over the 57 scenarios (gold-label cross-check)."""
+    """Distribution of dispositions over every closed case in the graph."""
     with _connect() as driver:
         rows = _run(
             driver,
             """
-            MATCH (dec:Decision)-[:RESOLVES]->(e:ExcursionEvent)
-            RETURN dec.disposition AS disposition, count(*) AS n,
-                   sum(CASE WHEN dec.disposition = e.gold_label THEN 1 ELSE 0 END) AS match_gold
+            MATCH (e:ExcursionEvent)-[d:EVENT_LEADS_TO_DISPOSITION]->(dis:Disposition)
+            RETURN dis.disposition AS disposition, count(*) AS n
             ORDER BY disposition
             """,
         )
     return {
-        "answer": "; ".join(f"{r['disposition']}: {r['n']} (gold match {r['match_gold']})" for r in rows),
+        "answer": "; ".join(f"{r['disposition']}: {r['n']}" for r in rows),
         "evidence": [],
     }

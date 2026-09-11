@@ -31,6 +31,7 @@ if str(SRC) not in sys.path:
 from rule_engine.engine import RuleEngine  # noqa: E402
 from rule_engine.models import ExcursionEvent, ProductSpec  # noqa: E402
 
+from knowledge_graph.writer import write_case  # noqa: E402
 from .schemas import EventIn, GridIn, SpecOverride  # noqa: E402
 
 # Loaded once; used both as the source of stock thresholds and to keep the
@@ -251,8 +252,13 @@ def list_runs(limit: int = 200) -> dict:
 
 
 def _event_dump(event: EventIn) -> dict:
-    """The six excursion inputs only — never leaks spec_override / case meta."""
-    return {
+    """The excursion inputs only — never leaks spec_override / case meta.
+
+    Optional facility fields pass through when the case contract carries
+    them (placeholders for the KG writer's EVENT_OCCURRED_AT / RESHIPS_TO
+    edges — A 9/12 review / C 9/21 contract will pin the names).
+    """
+    dump = {
         "product_id": event.product_id,
         "excursion_temp_c": event.excursion_temp_c,
         "duration_min": event.duration_min,
@@ -260,6 +266,10 @@ def _event_dump(event: EventIn) -> dict:
         "packaging": event.packaging,
         "stage": event.stage,
     }
+    for field in ("facility_id", "destination_facility_id"):
+        if getattr(event, field, None):
+            dump[field] = getattr(event, field)
+    return dump
 
 
 def _decision_view(event: EventIn, spec: ProductSpec, decision) -> dict:
@@ -306,8 +316,12 @@ def close_case(event: EventIn, override: SpecOverride | None,
         event.product_id, event.excursion_temp_c, event.duration_min,
         event.mkt_c, event.packaging, event.stage, scenario_id="case_close"))
     _audit("close", event, spec, decision)
-    return _record_run(_decision_view(event, spec, decision),
-                       started_at=started_at, remark=remark)
+    record = _record_run(_decision_view(event, spec, decision),
+                         started_at=started_at, remark=remark)
+    # Mirror the chain into the knowledge graph (best-effort: the runs log
+    # stays authoritative; a down graph must never fail the close).
+    write_case(record)
+    return record
 
 
 def grid_view(req: GridIn) -> dict:

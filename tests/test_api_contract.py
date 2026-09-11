@@ -26,8 +26,10 @@ engine = RuleEngine()
 
 @pytest.fixture(autouse=True)
 def isolated_runs_file(tmp_path, monkeypatch):
-    """Point the runs log at a throwaway file so tests never write data/audit/."""
+    """Point the runs log at a throwaway file so tests never write data/audit/,
+    and no-op the KG writer so tests never touch the dev Neo4j graph."""
     monkeypatch.setattr(service, "RUNS_FILE", tmp_path / "runs.jsonl")
+    monkeypatch.setattr(service, "write_case", lambda rec: True)
 
 
 def _decide_payload(pid, temp, dur, mkt, packaging="intact", stage="transit"):
