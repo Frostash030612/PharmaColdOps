@@ -1,82 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif">
+<?xml version="1.0" ?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" font-family="Arial, Helvetica, sans-serif" role="img" aria-label="Knowledge graph concepts and case-writing boundary">
+  <rect width="960" height="640" fill="#ffffff"/>
   <defs>
-    <marker id="arrKG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#A0AEC0"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
     </marker>
   </defs>
-
-  <text x="480" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#1A202C">Cold-Chain Knowledge Graph (entities — relations)</text>
-
-  <!-- edges -->
-  <g stroke="#A0AEC0" stroke-width="1.5" fill="none" marker-end="url(#arrKG)">
-    <line x1="465" y1="260" x2="180" y2="136"/>
-    <line x1="480" y1="260" x2="480" y2="126"/>
-    <line x1="555" y1="260" x2="780" y2="136"/>
-    <line x1="390" y1="292" x2="200" y2="298"/>
-    <line x1="570" y1="292" x2="720" y2="298"/>
-    <line x1="480" y1="324" x2="480" y2="420" stroke="#2F855A"/>
-    <line x1="405" y1="448" x2="280" y2="468"/>
-    <line x1="555" y1="448" x2="660" y2="468"/>
-  </g>
-
-  <!-- edge labels -->
-  <g font-size="11" fill="#718096">
-    <text x="322" y="198" text-anchor="middle">involves</text>
-    <text x="495" y="192" text-anchor="start">occurred in</text>
-    <text x="682" y="198" text-anchor="middle">loaded on</text>
-    <text x="295" y="288" text-anchor="middle">via</text>
-    <text x="645" y="288" text-anchor="middle">attributed to</text>
-    <text x="495" y="375" text-anchor="start" fill="#2F855A">triggers</text>
-    <text x="342" y="450" text-anchor="middle">per</text>
-    <text x="608" y="450" text-anchor="middle">refers to</text>
-  </g>
-
-  <!-- center node -->
-  <rect x="390" y="260" width="180" height="64" rx="10" fill="#FFF5F5" stroke="#C53030" stroke-width="2"/>
-  <text x="480" y="288" text-anchor="middle" font-size="13.5" font-weight="700" fill="#C53030">Temperature Excursion</text>
-  <text x="480" y="306" text-anchor="middle" font-size="10.5" fill="#4A5568">2026-09 · +8.3 °C · 35 min</text>
-
-  <!-- surrounding nodes -->
-  <g>
-    <rect x="90" y="80" width="150" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="165" y="104" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2B6CB0">Drug Product</text>
-    <text x="165" y="122" text-anchor="middle" font-size="10.5" fill="#4A5568">vaccine · stability</text>
-  </g>
-  <g>
-    <rect x="405" y="70" width="150" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="480" y="94" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2B6CB0">Shipment Order</text>
-    <text x="480" y="112" text-anchor="middle" font-size="10.5" fill="#4A5568">order # · route</text>
-  </g>
-  <g>
-    <rect x="720" y="80" width="150" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="795" y="104" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2B6CB0">Vehicle</text>
-    <text x="795" y="122" text-anchor="middle" font-size="10.5" fill="#4A5568">plate · temp zone</text>
-  </g>
-  <g>
-    <rect x="60" y="270" width="140" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="130" y="294" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2B6CB0">Warehouse</text>
-    <text x="130" y="312" text-anchor="middle" font-size="10.5" fill="#4A5568">W1 main depot</text>
-  </g>
-  <g>
-    <rect x="720" y="270" width="150" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="795" y="294" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2B6CB0">Root Cause</text>
-    <text x="795" y="312" text-anchor="middle" font-size="10.5" fill="#4A5568">reefer failure</text>
-  </g>
-  <g>
-    <rect x="405" y="420" width="150" height="56" rx="10" fill="#F0FFF4" stroke="#2F855A" stroke-width="1.5"/>
-    <text x="480" y="444" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2F855A">Disposition</text>
-    <text x="480" y="462" text-anchor="middle" font-size="10.5" fill="#4A5568">quarantine · retest</text>
-  </g>
-  <g>
-    <rect x="130" y="440" width="150" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="205" y="464" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2B6CB0">Regulatory Clause</text>
-    <text x="205" y="482" text-anchor="middle" font-size="10.5" fill="#4A5568">EU GDP 9.2</text>
-  </g>
-  <g>
-    <rect x="660" y="440" width="150" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="735" y="464" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2B6CB0">SOP</text>
-    <text x="735" y="482" text-anchor="middle" font-size="10.5" fill="#4A5568">SOP-EXC-07</text>
-  </g>
-
-  <text x="480" y="536" text-anchor="middle" font-size="11.5" fill="#718096">Answers are grounded in rules, graph queries and the decision chain; historical-case nodes can link similar events (extension)</text>
+  <text x="40" y="42" font-size="24" font-weight="700" fill="#202b33">Knowledge graph concepts and case-writing boundary</text>
+  <rect x="40" y="80" width="430" height="96" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="56" y="108" font-size="18" fill="#202b33" font-weight="700">Static sources</text>
+  <text x="56" y="135" font-size="15" fill="#33414b">Product, Regulation and public-guidance SOP</text>
+  <text x="56" y="158" font-size="15" fill="#33414b">Each source retains its scope and limitations</text>
+  <rect x="490" y="80" width="430" height="96" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="506" y="108" font-size="18" fill="#202b33" font-weight="700">Other source records</text>
+  <text x="506" y="135" font-size="15" fill="#33414b">Facility and Shipment</text>
+  <text x="506" y="158" font-size="15" fill="#33414b">Anonymous shipments are not Singapore orders</text>
+  <line x1="255" y1="176" x2="255" y2="228" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="705" y1="176" x2="705" y2="228" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <rect x="180" y="228" width="600" height="100" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="196" y="256" font-size="18" fill="#202b33" font-weight="700">ExcursionEvent keyed by run_id</text>
+  <text x="196" y="283" font-size="15" fill="#33414b">case_close writes a case; decide previews do not</text>
+  <text x="196" y="306" font-size="15" fill="#33414b">Facility/shipment associations require input identifiers</text>
+  <line x1="300" y1="328" x2="170" y2="387" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="480" y1="328" x2="480" y2="387" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="660" y1="328" x2="790" y2="387" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="40" y="387" width="270" height="95" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="56" y="415" font-size="18" fill="#202b33" font-weight="700">Disposition</text>
+  <text x="56" y="442" font-size="15" fill="#33414b">Four shared concepts</text>
+  <text x="56" y="465" font-size="15" fill="#33414b">Case facts on relation</text>
+  <rect x="345" y="387" width="270" height="95" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="361" y="415" font-size="18" fill="#202b33" font-weight="700">Cause</text>
+  <text x="361" y="442" font-size="15" fill="#33414b">Heuristic API code</text>
+  <text x="361" y="465" font-size="15" fill="#33414b">Not an investigated cause</text>
+  <rect x="650" y="387" width="270" height="95" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="666" y="415" font-size="18" fill="#202b33" font-weight="700">ReshipmentOrder</text>
+  <text x="666" y="442" font-size="15" fill="#33414b">Created when flagged</text>
+  <text x="666" y="465" font-size="15" fill="#33414b">Not yet linked to solving</text>
+  <text x="40" y="538" font-size="14" fill="#596771">Case explanations also use Regulation and SOP evidence. This is a conceptual view.</text>
+  <text x="40" y="567" font-size="14" fill="#596771">Graph writing is best-effort. The frontend still uses a QA concept mockup.</text>
+  <text x="40" y="596" font-size="14" fill="#596771">Live HTTP queries and case-specific evidence acceptance remain planned work.</text>
 </svg>

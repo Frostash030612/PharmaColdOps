@@ -1,79 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 660" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif">
+<?xml version="1.0" ?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 680" font-family="Arial, Helvetica, sans-serif" role="img" aria-label="Current architecture and pending integration">
+  <rect width="960" height="680" fill="#ffffff"/>
   <defs>
-    <marker id="arrUp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#4A5568"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
     </marker>
   </defs>
-
-  <text x="480" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#1A202C">System Architecture (layered)</text>
-
-  <!-- presentation layer -->
-  <rect x="60" y="66" width="840" height="120" rx="12" fill="#F0FFF4" stroke="#2F855A" stroke-width="2"/>
-  <text x="80" y="96" font-size="15" font-weight="700" fill="#2F855A">Presentation</text>
-  <g>
-    <rect x="230" y="112" width="120" height="30" rx="8" fill="#FFFFFF" stroke="#2F855A"/>
-    <rect x="362" y="112" width="120" height="30" rx="8" fill="#FFFFFF" stroke="#2F855A"/>
-    <rect x="494" y="112" width="120" height="30" rx="8" fill="#FFFFFF" stroke="#2F855A"/>
-    <rect x="626" y="112" width="120" height="30" rx="8" fill="#FFFFFF" stroke="#2F855A"/>
-    <rect x="758" y="112" width="120" height="30" rx="8" fill="#FFFFFF" stroke="#2F855A"/>
-    <text x="290" y="132" text-anchor="middle" font-size="11.5" fill="#2D3748">Anomaly list</text>
-    <text x="422" y="132" text-anchor="middle" font-size="11.5" fill="#2D3748">Disposition card</text>
-    <text x="554" y="132" text-anchor="middle" font-size="11.5" fill="#2D3748">Route visualisation</text>
-    <text x="686" y="132" text-anchor="middle" font-size="11.5" fill="#2D3748">Audit report</text>
-    <text x="818" y="132" text-anchor="middle" font-size="11.5" fill="#2D3748">Compliance Q&amp;A</text>
-  </g>
-
-  <line x1="480" y1="186" x2="480" y2="216" stroke="#4A5568" stroke-width="2" marker-end="url(#arrUp)"/>
-
-  <!-- knowledge layer -->
-  <rect x="60" y="216" width="840" height="120" rx="12" fill="#E6FFFA" stroke="#2C7A7B" stroke-width="2"/>
-  <text x="80" y="246" font-size="15" font-weight="700" fill="#2C7A7B">Knowledge &amp; Explanation</text>
-  <g>
-    <rect x="230" y="262" width="150" height="30" rx="8" fill="#FFFFFF" stroke="#2C7A7B"/>
-    <rect x="400" y="262" width="150" height="30" rx="8" fill="#FFFFFF" stroke="#2C7A7B"/>
-    <rect x="570" y="262" width="150" height="30" rx="8" fill="#FFFFFF" stroke="#2C7A7B"/>
-    <rect x="740" y="262" width="150" height="30" rx="8" fill="#FFFFFF" stroke="#2C7A7B"/>
-    <text x="305" y="282" text-anchor="middle" font-size="11.5" fill="#2D3748">Knowledge graph</text>
-    <text x="475" y="282" text-anchor="middle" font-size="11.5" fill="#2D3748">Evidence tracing</text>
-    <text x="645" y="282" text-anchor="middle" font-size="11.5" fill="#2D3748">Compliance Q&amp;A</text>
-    <text x="815" y="282" text-anchor="middle" font-size="11.5" fill="#2D3748">Decision-chain store</text>
-  </g>
-
-  <line x1="480" y1="336" x2="480" y2="366" stroke="#4A5568" stroke-width="2" marker-end="url(#arrUp)"/>
-
-  <!-- rules & models layer -->
-  <rect x="60" y="366" width="840" height="120" rx="12" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="2"/>
-  <text x="80" y="396" font-size="15" font-weight="700" fill="#2B6CB0">Rules &amp; Models</text>
-  <g>
-    <rect x="230" y="412" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#2B6CB0"/>
-    <rect x="440" y="412" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#2B6CB0"/>
-    <rect x="650" y="412" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#2B6CB0"/>
-    <rect x="230" y="450" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#2B6CB0"/>
-    <rect x="440" y="450" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#2B6CB0"/>
-    <text x="325" y="432" text-anchor="middle" font-size="11.5" fill="#2D3748">Anomaly detection</text>
-    <text x="535" y="432" text-anchor="middle" font-size="11.5" fill="#2D3748">Risk prediction</text>
-    <text x="745" y="432" text-anchor="middle" font-size="11.5" fill="#2D3748">Rule engine</text>
-    <text x="325" y="470" text-anchor="middle" font-size="11.5" fill="#2D3748">Root-cause classification</text>
-    <text x="535" y="470" text-anchor="middle" font-size="11.5" fill="#2D3748">Route optimisation</text>
-  </g>
-
-  <line x1="480" y1="486" x2="480" y2="516" stroke="#4A5568" stroke-width="2" marker-end="url(#arrUp)"/>
-
-  <!-- data layer -->
-  <rect x="60" y="516" width="840" height="120" rx="12" fill="#EDF2F7" stroke="#4A5568" stroke-width="2"/>
-  <text x="80" y="546" font-size="15" font-weight="700" fill="#4A5568">Data</text>
-  <g>
-    <rect x="230" y="562" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
-    <rect x="440" y="562" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
-    <rect x="650" y="562" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
-    <rect x="230" y="600" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
-    <rect x="440" y="600" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
-    <rect x="650" y="600" width="190" height="30" rx="8" fill="#FFFFFF" stroke="#4A5568"/>
-    <text x="325" y="582" text-anchor="middle" font-size="11.5" fill="#2D3748">Temperature logs</text>
-    <text x="535" y="582" text-anchor="middle" font-size="11.5" fill="#2D3748">GPS traces</text>
-    <text x="745" y="582" text-anchor="middle" font-size="11.5" fill="#2D3748">Order data</text>
-    <text x="325" y="620" text-anchor="middle" font-size="11.5" fill="#2D3748">Inventory data</text>
-    <text x="535" y="620" text-anchor="middle" font-size="11.5" fill="#2D3748">Vehicle info</text>
-    <text x="745" y="620" text-anchor="middle" font-size="11.5" fill="#2D3748">Stability parameters</text>
-  </g>
+  <text x="40" y="42" font-size="24" font-weight="700" fill="#202b33">Current architecture and pending integration</text>
+  <rect x="40" y="83" width="880" height="93" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="56" y="111" font-size="18" fill="#202b33" font-weight="700">Vue frontend</text>
+  <text x="56" y="138" font-size="15" fill="#33414b">Rule sandbox, case history, precomputed routes and keyword QA mockup</text>
+  <text x="56" y="161" font-size="15" fill="#33414b">Online Python rules or offline JS port; the risk index is heuristic</text>
+  <line x1="200" y1="176" x2="200" y2="224" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="745" y1="176" x2="745" y2="224" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <rect x="40" y="224" width="410" height="124" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="56" y="252" font-size="18" fill="#202b33" font-weight="700">FastAPI rule service</text>
+  <text x="56" y="279" font-size="15" fill="#33414b">decide, grid, batch, case_close, runs</text>
+  <text x="56" y="302" font-size="15" fill="#33414b">Rules and input/specification snapshots</text>
+  <text x="56" y="325" font-size="15" fill="#33414b">Implemented online decision path</text>
+  <rect x="490" y="224" width="430" height="124" rx="5" fill="#fff8ed" stroke="#a66c19" stroke-dasharray="6 4"/>
+  <text x="506" y="252" font-size="18" fill="#202b33" font-weight="700">Pending HTTP interfaces</text>
+  <text x="506" y="279" font-size="15" fill="#33414b">/api/route: 501</text>
+  <text x="506" y="302" font-size="15" fill="#33414b">/api/qa: 501</text>
+  <text x="506" y="325" font-size="15" fill="#33414b">No live frontend route solving or graph QA</text>
+  <line x1="245" y1="348" x2="245" y2="368" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="40" y="368" width="410" height="96" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="56" y="396" font-size="18" fill="#202b33" font-weight="700">Persistence</text>
+  <text x="56" y="423" font-size="15" fill="#33414b">JSONL case history + Neo4j writer</text>
+  <text x="56" y="446" font-size="15" fill="#33414b">Both currently use best-effort persistence</text>
+  <rect x="490" y="368" width="430" height="96" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="506" y="396" font-size="18" fill="#202b33" font-weight="700">Independent routing module</text>
+  <text x="506" y="423" font-size="15" fill="#33414b">Greedy + OR-Tools Routing Solver</text>
+  <text x="506" y="446" font-size="15" fill="#33414b">Singapore export feeds static frontend data</text>
+  <rect x="40" y="506" width="880" height="100" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="56" y="534" font-size="18" fill="#202b33" font-weight="700">Offline ML research</text>
+  <text x="56" y="561" font-size="15" fill="#33414b">Public datasets -&gt; risk / candidate-cause experiments -&gt; metrics and SHAP</text>
+  <text x="56" y="584" font-size="15" fill="#33414b">No ML score enters the decision API. No automatic feedback training is implemented.</text>
+  <text x="40" y="648" font-size="14" fill="#596771">Solid connector: implemented path. Dashed connector: integration still required.</text>
 </svg>

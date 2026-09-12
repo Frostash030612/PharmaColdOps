@@ -1,371 +1,347 @@
 # PharmaColdOps
-## An Intelligent System for Temperature-Excursion Disposition and Delivery Re-routing in Cold-Chain Pharmaceuticals
+## Decision Support for Cold Chain Pharmaceutical Excursions and Delivery Replanning
 
-**Formal Project Proposal (4-member team)**
-Project code: PharmaColdOps · Course: IRS Practice Module · Team size: 4 (~10 person-days each) · Proposal due: 2026-09-13 · Final submission: 2026-10-25
+**Project proposal for a four-member team**
 
----
+Course: IRS Practice Module · Team: 4 members, approximately 10 person-days each
+Proposal deadline: 2026-09-13 · Final deadline: 2026-10-25
+Updated: 2026-09-12 · Status: revised draft awaiting team review and submission
+
+Group number: to be completed. Member names and student IDs or masked IDs: to be completed. A/B/C/D identify responsibilities below.
 
 ## 1. Project Overview
 
-PharmaColdOps is an intelligent decision-support system for cold-chain pharmaceutical transport and warehousing. It integrates temperature-sensor data, product-stability rules, inventory and vehicle-scheduling capabilities, and a knowledge-graph Q&A into a closed loop: when a temperature excursion occurs, the system does not merely raise an alarm — it issues an explainable disposition recommendation (release / quarantine / retest / scrap / reshipment) and automatically generates an alternative inventory-allocation and delivery re-routing plan.
+PharmaColdOps supports temperature-excursion assessment in pharmaceutical transport and storage. A deterministic rule engine produces traceable disposition recommendations, with a delivery optimiser and knowledge graph intended to connect replacement demand to routes and evidence. Batch dispositions are release, quarantine, retest and scrap. Reshipment is a separate logistics action, not a fifth mutually exclusive disposition.
 
-The project covers all four IRS technique groups: decision automation, resource optimisation, knowledge discovery & data mining, and cognitive systems. Compared with a single-prediction or single-rule system, PharmaColdOps's core advantage is a complete "excursion disposition + logistics re-routing + explainable audit" loop, with clear experiment metrics, a demonstrable result, and a clear business value.
+The project covers four IRS technique groups: decision automation, resource optimisation, knowledge discovery and data mining, and cognitive systems. The delivery objective is a minimal integrated workflow in a controlled Singapore scenario: temperature event → disposition recommendation → reshipment order → delivery plan → evidence query. Risk and candidate-cause classification remain offline experiments and do not enter the disposition API.
+
+As of 2026-09-12, the rule engine, bilingual interface, independently annotated scenarios, offline ML baselines, Singapore routing and KG case-write code have been developed. Event-triggered route solving and live graph answers in the frontend still need integration. This prototype does not replace final quality approval or claim production or regulatory validation.
 
 ## 2. Problem Definition
 
-Cold-chain pharmaceuticals such as vaccines, biologics and insulin are highly temperature-sensitive. A temperature deviation during transport, warehousing, loading/unloading or airport dwell can compromise product safety and efficacy. The main pain points today are:
+After an excursion, quality staff must check product requirements, exposure conditions and packaging, record their reasoning, and coordinate continued supply. The project investigates three testable questions:
 
-- After an excursion, whether to release, quarantine, retest or scrap relies largely on manual judgement, with inconsistent criteria across staff.
-- WHO, EU GDP and ICH requirements emphasise deviation recording, assessment, decision and traceability, but existing spreadsheets or simple alarm systems cannot satisfy audit requirements.
-- Excursion handling and logistics re-routing are disconnected: systems only alert, and do not answer "should this batch be stopped?", "where does replacement stock come from?", or "how should the new route be arranged?".
-- "One-size-fits-all" disposition causes either excessive scrapping or improper release.
-- Black-box AI decisions are hard for quality leads and auditors to trust.
+- Can written rules be implemented consistently while exposing differences between the specification and human judgement?
+- Under vehicle-capacity and delivery-window constraints, how much can optimisation improve distance and service feasibility over a greedy baseline?
+- Can a user trace a closed case to its inputs, rule path and evidence, with explicit feedback when records are missing?
 
-This project aims to build an explainable, traceable and quantitatively evaluable system that automatically turns a temperature-excursion event into a compliant disposition recommendation and an executable delivery re-routing plan.
+Reduced assessment time, fewer inappropriate dispositions and less supply disruption are intended benefits. There is no operational controlled trial, so these are not reported as achieved, quantified benefits.
 
-## 3. Background & Domain Foundation
+## 3. Background and Domain Foundations
 
-### 3.1 Regulatory foundation
+### 3.1 Regulatory Principles and Applicability
 
-Cold-chain pharmaceutical compliance is governed by the following domain regulations:
+Sources include WHO TRS 961 Annex 9, EU GDP 2013/C 343/01, ICH stability and quality-risk guidance, and public CDC/WHO procedures. Acceptable excursion windows for an individual product still require applicable stability evidence. [WHO](https://www.who.int/publications/m/item/trs961-annex9-modelguidanceforstoragetransport), [EU GDP](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32013C0343), [ICH](https://www.ich.org/page/quality-guidelines)
 
-- WHO Model Guidance for the Storage and Transport of Time- and Temperature-Sensitive Pharmaceutical Products, TRS 961 Annex 9.
-- EU Guidelines on Good Distribution Practice of Medicinal Products for Human Use, 2013/C 343/01.
-- ICH Quality Guidelines, in particular the stability and quality-risk-management sections.
-- Product-stability data, allowable temperature-excursion durations, and the Mean Kinetic Temperature (MKT) calculation rules.
+The project distinguishes public domain principles, product stability evidence and engineering assumptions. Configuration records sources and limitations, but allowable durations, MKT ceilings, some retest settings and rule multipliers include engineering assumptions. These are not universal numerical limits prescribed by regulation. Linking a regulatory node does not validate a particular product threshold.
 
-Existing research mostly addresses single-point tasks — temperature time-series anomaly detection, cold-chain vehicle-routing optimisation, and MKT calculation — and rarely integrates "disposition decision, root-cause diagnosis, alternative stock allocation, delivery re-routing, and compliance explanation" into one system. PharmaColdOps targets this gap with a closed-loop solution.
+CDC excursion guidance calls for holding affected vaccines from use and seeking advice from the immunisation programme or manufacturer. Prototype outputs are recommendations for quality review, not authorisation to release or destroy actual products using demonstration thresholds. [CDC storage and handling guidance](https://www.cdc.gov/pinkbook/hcp/table-of-contents/chapter-5-vaccine-storage-and-handling.html)
 
-### 3.2 Related work (literature review)
+### 3.2 Related Work and Method Selection
 
-Work relevant to PharmaColdOps clusters into four areas:
+Solomon's VRPTW benchmark supplies standard routing problems with capacity and time-window constraints. The project compares algorithms on six instances and uses Singapore road matrices for the geographic demonstration. OR-Tools Routing Solver provides route construction and local search; the implementation uses time-bounded Guided Local Search. [Solomon, 1987](https://doi.org/10.1287/opre.35.2.254), [OR-Tools](https://developers.google.com/optimization/routing/routing_options)
 
-- **Cold-chain anomaly detection & temperature modelling** — time-series anomaly detection (isolation forests, LSTM autoencoders) and Mean Kinetic Temperature (MKT) calculation per USP <1079> underpin the excursion-detection module.
-- **Cold-chain / vaccine distribution optimisation** — delivery re-routing is a Vehicle Routing Problem with Time Windows (VRPTW) in the spirit of Solomon's classic benchmark; modern solvers use exact CP-SAT or metaheuristics such as genetic algorithms.
-- **Interpretable machine learning** — gradient-boosted trees (LightGBM, XGBoost) are the standard for tabular risk prediction, with SHAP supplying feature-level explanation for quality and audit reviewers.
-- **Pharmaceutical knowledge graphs & compliant Q&A** — entity-centric graphs link products, events, rules and SOPs to produce traceable, evidence-backed answers rather than free-form generation.
+Risk experiments compare logistic regression, LightGBM and XGBoost, with SHAP explaining dependence on tabular features. The cognitive component uses structured graph queries over stored cases, rules and evidence. Original method papers are listed in §14. Feature attribution and cause-label classification on observational data do not establish causality.
 
-Most existing work addresses one of these in isolation. PharmaColdOps's contribution is to compose them into a single closed loop — disposition decision, root-cause diagnosis, re-routing, and compliance explanation — with a defensible, non-circular evaluation (§8.3). Compared with black-box single-predictor systems, the rule engine gives the disposition step a deterministic, audit-friendly decision path.
+The contribution is integration and reproducible evaluation in a controlled workflow, without claiming a new foundational algorithm or the first cold-chain use of these techniques.
 
-### 3.3 Market landscape & competitors
+### 3.3 Market Context and Positioning
 
-The cold-chain visibility market is populated but fragmented. Established vendors — Controlant, Elpro, Sensitech (Carrier), Berlinger, Tive and Roambee — focus on real-time temperature logging, shipment visibility and excursion alerting. Air-cargo specialists such as Envirotainer provide active temperature-controlled containers, while logistics providers (DHL, FedEx, UPS Healthcare, World Courier) offer pharma-specific transport. Their shared limitation is that they alert and record, but stop short of an integrated, explainable disposition decision plus automatic re-routing grounded in WHO / EU GDP / ICH rules.
+Commercial products already cover monitoring, shipment visibility and some quality-process automation. For example, Controlant describes Product Stability Automation that determines release status from product stability profiles. It is therefore inaccurate to describe existing vendors collectively as alert-only systems without disposition capabilities. [Controlant applications](https://www.controlant.com/applications)
 
-Key trends reinforce the opportunity: tightening EU GDP 2013/C 343/01 enforcement, growth in temperature-sensitive biologics and mRNA vaccines, and rising audit demand for traceable decisions. PharmaColdOps positions itself in the gap between commodity monitoring and bespoke consultancy — an automated, rule-grounded decision layer that turns an excursion into a compliant disposition and an executable reshipment plan.
+PharmaColdOps is positioned as a teaching and research prototype with inspectable rules, reproducible experiments and demonstrable delivery integration. Comparison dimensions include rule transparency, evidence tracing, routing interfaces and deployment scope. Unverified competitor capabilities remain unknown; missing public documentation is not evidence of absence. Market value still needs user interviews and operational validation.
 
-![Figure 1 — Cold-chain market positioning matrix](figures/en/fig1-market-positioning.svg)
+![Figure 1 Capability and scope comparison](figures/en/fig1-market-positioning.svg)
 
-**Figure 1 — Cold-chain market positioning matrix**
+**Figure 1:** Cold-chain decision-support capabilities and project scope, not a vendor performance ranking.
 
-## 4. Stakeholders & Business Value
+## 4. Stakeholders and Intended Value
 
-- **Quality leads / QA** — receive compliant, explainable and traceable release / quarantine / retest / scrap recommendations.
-- **Logistics dispatchers** — automatically obtain replacement stock and re-routed routes after an excursion, reducing stockouts.
-- **Warehouse / transport supervisors** — identify the root cause of an excursion, e.g. refrigeration-unit failure, doors left open too long, or prolonged transit dwell.
-- **Compliance / audit personnel** — obtain the full decision chain, the regulatory basis, and the excursion-disposition report.
-- **Patients and end institutions** — benefit from fewer improper releases and more timely reshipment, lowering drug-safety risk and the impact of shortages.
-
-## 5. Overall System Approach
-
-The processing flow is as follows:
-
-1. Ingest temperature/humidity-sensor, GPS, order, inventory, vehicle and product-stability-parameter data.
-2. Compute in real time the temperature excursion, excursion duration, MKT and excursion window, and predict whether a temperature deviation is likely within the next 30/60 minutes.
-3. The rule engine outputs a disposition level based on product type, excursion magnitude, duration, packaging state and transport stage.
-4. The root-cause diagnosis module links the anomaly to the vehicle, warehouse, route, equipment and loading/unloading events.
-5. The optimisation module re-routes orders that require reshipment, allocation or re-delivery as a time-windowed, multi-temperature-zone vehicle-routing problem.
-6. The knowledge-graph and Q&A module provides explanations such as "why quarantine" and "which SOP/GDP clause", and generates the audit report.
-7. Actual disposition outcomes are written back to the knowledge base and risk model, forming a continuous-improvement loop.
-
-## 6. Technical Approach & IRS Technique Mapping
-
-Technique selection is driven by four requirements: audit-grade transparency for the disposition step, strong performance on small tabular datasets, scalable re-routing, and hallucination-free compliance answers. Accordingly we choose a deterministic rule engine (not a classifier) for disposition; gradient-boosted trees (LightGBM / XGBoost) with SHAP for risk and root-cause prediction on tabular data (with LSTM / Transformer as an optional time-series extension); and a greedy-baseline → CP-SAT → genetic-algorithm progression for VRPTW so that an explainable lower bound is always available. The knowledge graph, rather than a free-form LLM, is the source of compliance answers; any LLM is restricted to natural-language polishing.
-
-### 6.1 Technique mapping
-
-| IRS technique group | Implementation in this project |
-|---|---|
-| Decision automation | Rule engine that decides release / quarantine / retest / scrap / reshipment and outputs a traceable decision chain |
-| Resource optimisation | Genetic algorithm or OR-Tools / CP-SAT for cold-chain VRPTW, replacement stock and vehicle scheduling |
-| Knowledge discovery / data mining | Temperature-excursion risk prediction, anomaly root-cause classification, quality-risk grading |
-| Cognitive systems | Cold-chain knowledge graph + natural-language compliance Q&A + explainable audit report |
-
-### 6.2 Decision automation: rule engine
-
-Input variables include:
-
-- Product category and standard storage temperature (e.g. 2–8 °C, −20 °C).
-- Temperature-deviation magnitude and duration.
-- MKT and the product's allowable excursion threshold.
-- Packaging state, transport stage, and historical anomaly records.
-- Regulatory / SOP constraints.
-
-Output decisions include:
-
-- **Release** — the deviation is within an acceptable safety range.
-- **Quarantine / retest** — further quality assessment or testing is required.
-- **Scrap** — the risk is unacceptable.
-- **Reshipment** — replenish from an alternative warehouse and re-deliver.
-
-Every conclusion carries its rule path, e.g. "A 2–8 °C product held at 12 °C for 35 minutes exceeds the product's allowable 30 minutes; therefore recommend quarantine and initiate quality assessment."
-
-![Figure 2 — Rule-engine disposition decision flow](figures/en/fig2-rule-engine-flow.svg)
-
-**Figure 2 — Rule-engine disposition decision flow**
-
-### 6.3 Knowledge discovery: risk prediction & root-cause diagnosis
-
-Risk prediction uses tabular machine-learning baselines:
-
-- LightGBM and XGBoost as the primary models.
-- SHAP to explain key features such as excursion duration, MKT, door-open count and transport stage.
-- Optional extension: LSTM / Transformer time-series models for early warning.
-
-Root-cause diagnosis categories include: refrigeration-unit failure, frequent or prolonged door opening, prolonged transit dwell, improper packaging or phase-change-material configuration, and sensor failure or data drift.
-
-### 6.4 Resource optimisation: cold-chain delivery re-routing
-
-Reshipment and re-routing are modelled as a Vehicle Routing Problem with Time Windows (VRPTW), with multi-temperature zones, capacity constraints, driver working hours and stockout priority.
-
-![Figure 3 — Delivery re-routing (VRPTW) schematic](figures/en/fig3-vrptw-replan.svg)
-
-**Figure 3 — Delivery re-routing (VRPTW) schematic**
-
-- **Main constraints:** vehicle capacity and multi-temperature-zone capacity, time windows, driver hours, priority delivery of temperature-sensitive orders, and replacement-warehouse stock availability.
-- **Optimisation objectives:** minimise stockout time, minimise scrap loss, minimise total distance / time / carbon emissions, and maximise constraint satisfaction.
-- **Implementation strategy:** first generate an explainable greedy baseline, then optimise with OR-Tools / CP-SAT or a genetic algorithm, and report the improvement in on-time rate, cost and scrap loss relative to the greedy baseline.
-
-### 6.5 Cognitive systems: knowledge graph & compliance Q&A
-
-![Figure 4 — Cold-chain knowledge graph](figures/en/fig4-knowledge-graph.svg)
-
-**Figure 4 — Cold-chain knowledge graph**
-
-Knowledge-graph entities (schema v1, 2026-09-10): product, regulation clause, SOP, excursion event, disposition, cause, facility, shipment and reshipment order. Static nodes are loaded only from verifiable sources — WHO / EU GDP / ICH / HSA documents (regulations, clause-level verified), CDC and WHO procedural guidance (SOPs, document level), the engine's `rules_config.json` (products and thresholds), C's Singapore routing table (facilities), B's root-cause benchmark classes, and the Kaggle cold-chain silent-failure dataset (~8,000 real shipment records). AI-drafted demo scenarios are deliberately not loaded into the graph. The runtime chain (excursion event → disposition → cause → reshipment order) is written per real case_close run by the API.
-
-The graph is built with Neo4j (Community, local container; unique constraints on every primary key). The Q&A system generates answers exclusively from rules, knowledge-graph queries and the decision chain; when no matching evidence exists, it answers "no record" rather than guessing. The proposal demo shows the Q&A interface as a concept mockup; the delivered version (W2) runs real queries. If a large language model is introduced, it is used only for natural-language polishing and is not allowed to generate unverified compliance conclusions.
-
-![Demo — decision sandbox](figures/demo-rule-engine-en.png)
-
-**Demo (2026-09-12) — decision sandbox:** temperature excursion → live rule-engine disposition (scrap), decision path, cited rule and risk index.
-
-![Demo — route visualisation & Q&amp;A concept mockup](figures/demo-route-qa-en.png)
-
-**Demo (2026-09-12) — route visualisation & Q&amp;A:** Singapore road-network re-routing (M5) and the Q&amp;A panel as a concept mockup (real Cypher answers arrive in W2).
-
-### 6.6 System architecture
-
-- **Data layer:** temperature logs, orders, inventory, vehicles, product-stability parameters.
-- **Rule & model layer:** anomaly detection, risk prediction, rule engine, root-cause classification, route optimisation.
-- **Knowledge & explanation layer:** knowledge graph, evidence tracing, compliance Q&A.
-- **Presentation layer:** anomaly list, disposition recommendation, route visualisation, audit report, natural-language Q&A interface.
-
-![Figure 5 — System architecture (layered)](figures/en/fig5-system-architecture.svg)
-
-**Figure 5 — System architecture (layered)**
-
-![Figure 6 — End-to-end system pipeline](figures/en/fig6-pipeline.svg)
-
-**Figure 6 — End-to-end system pipeline**
-
-## 7. Data Collection & Preprocessing
-
-### 7.1 Main datasets
-
-| Dataset | Link | Size | Use in project |
-|---|---|---|---|
-| Cold Chain Shipment Silent Failure Dataset | https://www.kaggle.com/datasets/skarin/cold-chain-shipment-silent-failure-dataset | ~8,000 rows, 24 columns, ~0.94 MB; contains `label`, `silent_failure` | Risk prediction, failure classification, feature engineering |
-| Vaccine Distribution with Temperature Logging | https://www.kaggle.com/datasets/manankhanna0/vaccine-distribution-with-temperature-logging | ~26,674 rows, 13 columns, ~2.64 MB | Temperature anomaly detection, excursion-segment identification, MKT simulation |
-| Electric Sheep Africa vaccine-cold-chain | https://huggingface.co/datasets/electricsheepafrica/vaccine-cold-chain | 30,000 rows (three 10,000-row CSVs) | Facility / route-level cold-chain anomaly and multi-temperature behaviour analysis |
-| Africa Synth Immunization Vaccine Quality Cold Chain All | https://huggingface.co/datasets/electricsheepafrica/africa-synth-immunization-vaccine-quality-cold-chain-all | ~30,000 rows | Data augmentation, cold-chain quality-label supplementation |
-| CVRPLIB | http://vrp.atd-lab.inf.puc-rio.br/index.php/en/ | Standard VRP instances | Re-routing algorithm benchmarking |
-
-### 7.2 Domain knowledge sources
-
-- WHO Model Guidance for TTSPPs, TRS 961 Annex 9: https://www.who.int/publications/m/item/trs961-annex9-modelguidanceforstoragetransport
-- EU GDP Guidelines, 2013/C 343/01: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32013C0343
-- ICH Quality Guidelines: https://www.ich.org/page/quality-guidelines
-
-### 7.3 Preprocessing & synthetic-data strategy
-
-- Merge temperature, GPS, order, inventory and vehicle data; unify timestamps and device IDs.
-- Resample by time window; compute temperature mean, maximum deviation, excursion duration, MKT and door-open-event features.
-- Interpolate or flag missing values to avoid data leakage.
-- Split training / validation / test sets in chronological order.
-- Where public data does not cover certain routes, cities or product combinations, generate a synthetic delivery network from public road-network data (OSRM / OpenRouteService) and simulate sensor time series.
-- For the 8,000-row risk dataset, use cross-validation, class weights and data augmentation to avoid overfitting.
-
-## 8. Experiments & Evaluation Metrics
-
-### 8.1 Evaluation metrics by module
-
-| Module | Main metrics |
-|---|---|
-| Risk prediction | Accuracy, Precision, Recall, F1, AUC, PR-AUC, warning lead time |
-| Disposition decision | Accuracy, agreement rate vs. expert labels, rule coverage, Cohen's kappa |
-| Root-cause diagnosis | Top-1 / Top-3 accuracy, macro-F1 |
-| Delivery optimisation | On-time rate, scrap loss, total distance / time, constraint-satisfaction rate, improvement vs. greedy & CP-SAT baselines |
-| Cognitive Q&A | Answer accuracy, evidence-traceability coverage, unanswered-without-evidence rate, average response time |
-| System level | End-to-end response time, explanation coverage, audit-report completeness |
-
-### 8.2 Baseline design
-
-- Risk prediction: logistic regression, decision tree, LightGBM, XGBoost.
-- Root-cause diagnosis: rule matching, Naive Bayes, XGBoost.
-- Route optimisation: greedy nearest-neighbour / priority heuristic, OR-Tools / CP-SAT, genetic algorithm.
-
-### 8.3 Disposition ground-truth construction
-
-The disposition module (release / quarantine / retest / scrap / reshipment) is rule-based and therefore has no natural label in the public datasets (which provide only a binary `silent_failure` flag). We therefore construct a human-annotated gold standard as follows:
-
-1. **Scenario bank** — author 40–60 synthetic temperature-excursion scenarios spanning all five disposition classes and boundary cases (near-threshold MKT, borderline excursion duration, different products, packaging states and transport stages).
-2. **Independent annotation** — two team members, using only a written WHO/GDP/ICH rule rubric (not the implemented code), independently label each scenario with a disposition.
-3. **Agreement & reconciliation** — inter-annotator agreement is measured with Cohen's kappa (target ≥ 0.8); disagreements are reconciled by a third member to form the final gold standard.
-4. **Evaluation** — the rule engine is scored against the gold standard using accuracy, macro-F1, per-class precision/recall (emphasising recall of high-consequence classes such as scrap and quarantine), rule coverage, and Cohen's kappa (engine vs. gold standard).
-5. **External validation (optional)** — if a supervisor or domain contact is available, they review a 5–10 case subset to validate that the rubric itself reflects real pharmaceutical practice.
-
-This separates rule correctness (human rubric vs. engine) from data-driven correctness (dataset labels for risk prediction and root-cause classification), avoiding the circularity of evaluating rules against the rules that generate them.
-
-## 9. MVP & Scope Control
-
-**In-scope (MVP):**
-
-- Scenario limited to a Singapore or single-city delivery network.
-- Products limited to 1–2 categories, e.g. 2–8 °C vaccines and −20 °C frozen drugs.
-- Build the rule-engine MVP first, ensuring a temperature event can produce an explainable disposition recommendation.
-- Use public datasets plus rule-generated simulated sensor time series.
-- Build the greedy route baseline first, then introduce OR-Tools / genetic algorithm and compare improvements.
-- Interface includes an anomaly list, disposition recommendation, route visualisation and a Q&A box.
-
-**Extensions (later):**
-
-- Real-time time-series early warning.
-- Multi-temperature-zone, multi-warehouse joint optimisation.
-- Dynamic maps and real-time vehicle positions.
-- Fuller multi-language compliance Q&A.
-- Mock ERP / WMS interfaces.
-
-**Explicitly excluded:**
-
-- Production-grade ERP / WMS integration.
-- Drug registration, clinical or formal compliance certification.
-- Real IoT hardware deployment.
-- Real patient data or protected medical data.
-
-## 10. Project Plan & Team Division (4-member)
-
-### 10.1 Member roles & responsibilities
-
-| Member | Responsibility | Corresponding module |
+| User | Work requirement | Prototype support |
 |---|---|---|
-| A | Project lead, domain rules, decision engine | Decision automation, compliance rules, report |
-| B | Data & machine learning | Knowledge discovery, risk prediction, root-cause diagnosis, experiment evaluation |
-| C | Delivery optimisation | Resource optimisation, VRPTW, OR-Tools / genetic algorithm |
-| D | Knowledge graph, Q&A, integration & frontend | Cognitive systems, backend API, UI, video demo |
+| Quality lead | Review excursions and disposition evidence | Input snapshots, rule paths, evidence sources and limitations |
+| Dispatcher | Plan deliveries following replacement demand | Candidate routes under capacity and time-window constraints |
+| Warehouse and transport manager | Investigate factors associated with exceptions | Offline risk analysis and candidate causes |
+| Auditor | Reconstruct an assessment | Case records, linked identifiers and evidence queries |
 
-### 10.2 Weekly tasks
+People retain responsibility for final approval and delivery execution. The project collects no patient data and evaluates no clinical outcomes.
 
-**W0 (3–13 Sep): Proposal sprint**
-- A: define project boundary, MVP scope and 1–2 product categories; draft Introduction, Problem Statement, System Design; collate WHO / GDP / ICH rule sources.
-- B: confirm downloadability of the three main datasets and supplementary data; record fields, size and licence; write Data Collection and preprocessing plan.
-- C: confirm CVRPLIB and OR-Tools feasibility; define VRPTW inputs, outputs and objective function; write the optimisation experiment design.
-![Figure 7 — Project timeline gantt chart](figures/en/fig7-gantt.svg)
+## 5. Overall System Design
 
-**Figure 7 — Project timeline gantt chart**
+### 5.1 Target Workflow
 
-- D: design the initial knowledge-graph entity-relationship schema; confirm Neo4j or NetworkX; write the system architecture and demo plan.
-- *Week deliverable: complete and submit the Proposal.*
+1. Enter an event with a known product category. Current inputs are forms or demonstration data; sequence parsing is a subsequent data task.
+2. Return one of four dispositions, a reshipment flag, rule number, reason and evidence states.
+3. Have quality staff review the recommendation. Current closure stores inputs and the system recommendation; fields for final human decisions, approvers and execution outcomes remain to be designed.
+4. For replacement cases, create a simulated order with destination, quantity and time window under an agreed contract, then trigger single-depot solving. This connection is not yet implemented.
+5. Link the case and route, display stops, distance, schedules and unserved orders, and query case-specific graph evidence. Route association and frontend query wiring remain incomplete.
 
-**W1 (14–20 Sep): Data & rule preparation**
-- A: compile the disposition rule table for 1–2 product categories; define fields, thresholds and rule paths for release / quarantine / retest / scrap / reshipment.
-- B: download and unify datasets; handle missing values and outliers; build base features (excursion duration, MKT, door-open count, transport stage); output a data dictionary.
-- C: generate or select 20–50-node VRPTW instances; implement the greedy baseline; define constraints and objective function.
-- D: set up the GitHub repository and directory structure; configure the dev environment; complete knowledge-graph schema v1.
-- *Week deliverable: usable data, rule table v1, runnable greedy baseline.*
+Archiving a case does not establish its real-world outcome. Automatic feedback learning is outside the MVP.
 
-**W2 (21–27 Sep): Rule-engine MVP & model baselines**
-- A: implement rule engine v1; output disposition recommendations and rule evidence from a temperature event; prepare 20 test cases and unit tests.
-- B: build chronological train / validation / test splits; train LightGBM and XGBoost risk-prediction baselines; compute F1, AUC, PR-AUC; produce initial SHAP output.
-- C: finalise the optimisation interface; consume "reshipment orders" from the rule engine; implement an initial time-windowed, capacity-constrained optimisation model.
-- D: build knowledge-graph data-loading scripts; import product, rule and case nodes; complete the backend API skeleton.
-- *Week deliverable: rule-engine MVP demo, risk-model baseline report, optimisation interface v1.*
+### 5.2 Current Progress
 
-**W3 (28 Sep – 4 Oct): End-to-end integration v1**
-- A: link the rule engine with B's risk model; collate rule coverage and agreement with human labels; begin the report methodology.
-- B: complete the root-cause classification model; align features with the rule engine; output Top-1 / Top-3 accuracy and F1; prepare experiment tables.
-- C: complete the "reshipment order → warehouse selection → route re-routing" main flow; implement OR-Tools / CP-SAT v1 and compare with the greedy baseline.
-- D: wire the "anomaly list → disposition recommendation → route result" API; complete a basic frontend; implement the knowledge-graph query interface.
-- *Week deliverable: end-to-end v1 demo — a temperature anomaly produces a disposition recommendation and a re-routed route.*
+| Module | Status as of 2026-09-12 | Remaining work |
+|---|---|---|
+| M1 Data preparation | Data, dictionary, licence checks and audit scripts available | Task definitions and reproducible environment |
+| M2 Event generation | Demo export available with single-reading MKT approximation | Sequence windows, MKT implementation and validation |
+| M3 Rule engine | Four category prototypes, six rules, API, human gold for 57 cases | Domain review, disagreement analysis and formal evaluation |
+| M4 Risk and causes | LR/LGBM/XGB, SHAP and ten-class cause experiment available | Multi-fold evaluation, feature availability and failure analysis |
+| M5 Routing | Greedy solver, Routing Solver, real road network and precomputed display available | Reshipment contract and event-triggered solving |
+| M6 Graph and QA | Schema, loading, closure writing and query functions available | HTTP and frontend integration, evidence evaluation |
+| M7 Integration | Bilingual Vue, offline/API modes and case history available | Integrated acceptance and failure-state checks |
 
-**W4 (5–11 Oct): Optimisation & explanation enhancement**
-- A: refine explainable disposition output; generate the audit-report template; draft the user manual.
-- B: add data augmentation or class weights and tune the risk model; refine SHAP explanations; prepare failure-case analysis.
-- C: tune the genetic algorithm or OR-Tools; add multi-temperature-zone and stockout-priority constraints; systematically compare greedy, CP-SAT and genetic algorithm.
-- D: complete knowledge-graph Q&A v1; implement "why quarantine" and "which rule" queries; integrate the decision chain into the explanation interface.
-- *Week deliverable: optimisation comparison results, audit-report template, Q&A v1.*
+## 6. Technical Approach and IRS Mapping
 
-**W5 (12–18 Oct): Integration testing & video**
-- A: organise full-flow and boundary-case testing; check completeness of compliance evidence; complete the report first draft.
-- B: finalise experiment scripts and reproducibility; aggregate all metrics; support A on the experiments chapter.
-- C: fix optimisation-scenario issues; output final route-visualisation data; support the demo script.
-- D: complete the UI and Q&A module; prepare the two 5-minute video scripts, pages and demo data; finish the GitHub README.
-- *Week deliverable: full flow demonstrable, report first draft complete, video scripts complete.*
+### 6.1 Technique Mapping
 
-**W6 (19–25 Oct): Final delivery**
-- A: final review of the Proposal / final report, user manual, individual reflection; check technical coverage and deliverables against the course rubric.
-- B: pre-submission check of data and experiment reproducibility; package data notes, preprocessing scripts and experiment scripts.
-- C: pre-submission check of optimisation results and baselines; tidy GitHub code and run instructions.
-- D: complete video editing, subtitles and final demo; produce the report zip; final GitHub tidy-up.
-- *Week deliverable: by 25 Oct, submit GitHub, two 5-minute videos, report zip, user manual and individual reflections.*
-
-## 11. Risks & Mitigation
-
-| Risk | Mitigation |
+| IRS technique group | Implementation and evaluation object |
 |---|---|
-| Risk-prediction dataset is small | Use tabular models, cross-validation and data augmentation; complement with the 26,674-row and 30,000-row datasets |
-| Disposition rules are domain-complex | Limit to 1–2 product categories and build a small rule set from public WHO / GDP / ICH rules |
-| Route-optimisation problem too large | Start with a greedy baseline, then gradually introduce OR-Tools / genetic algorithm; control the node count |
-| Q&A may produce unverified conclusions | Answers generated only from rules, knowledge graph and decision chain; LLM used only for language polishing; when no evidence exists the system answers "no record" |
-| Scope creep prevents completion | Define the MVP boundary clearly; use module interfaces and weekly integration |
-| Kaggle download / login restrictions | Use Hugging Face sources, CVRPLIB and synthetic data as alternatives |
-| Data copyright or usage restrictions | Research-only use; comply with each platform's licence and cite sources in the report |
+| Decision automation | Deterministic priority rules, four dispositions and separate reshipment action |
+| Resource optimisation | Capacity-constrained VRPTW with greedy and OR-Tools Routing Solver |
+| Knowledge discovery and data mining | Shipment failure classification, facility-level candidate causes and SHAP |
+| Cognitive systems | Neo4j, template Cypher queries and evidence tracing |
+
+M1 and M7 provide engineering support. ML scores do not enter the decision API; the rule engine is the sole semantic source of online disposition recommendations.
+
+### 6.2 Rule-Based Disposition
+
+Inputs are product category, excursion temperature, duration in minutes, MKT, packaging condition and transport stage. Stage is recorded but currently does not affect rule branches. Historical exceptions are not decision features. The four category prototypes are vaccine_2_8, frozen_m20, insulin_2_8 and mrna_ultracold; none is a validated brand-specific configuration.
+
+Rules run in priority order, stopping at the first match: freezing risk, compromised packaging with overtemperature, severe duration/MKT excursion, ordinary duration/MKT excursion, near-limit conditions for retestable products, and the remaining cases. Outputs are release / quarantine / retest / scrap. The current policy sets reshipment_required to true for quarantine or scrap; this logistics default requires separate evaluation.
+
+rules_config.json and the Python engine define behaviour, with a semantic port for offline use. Sandbox overrides apply only to the current request and are saved at closure. Known limitations include low-temperature excursions for non-freeze-sensitive categories, approximating tiered stability with single thresholds, and the unresolved quarantine/scrap policy for rule 4. Rules or labels will not be changed merely to increase gold agreement.
+
+![Figure 2 Rule and output semantics](figures/en/fig2-rule-engine-flow.svg)
+
+**Figure 2:** Four dispositions and an independent reshipment flag. Thresholds include prototype assumptions; recommendations require quality review.
+
+### 6.3 Risk Classification and Candidate Causes
+
+The risk task predicts silent_failure from 8,000 shipment summaries, comparing LR, LightGBM and XGBoost and contrasting interpretable features with an extended anonymous-feature set. The current split is 70/15/15, randomly stratified. The validation set selects the F1 threshold; imputation and scaling are fitted on training data only. Features include transit duration, temperature summaries, door openings and humidity statistics, not the current API's MKT or stage fields.
+
+The dataset has no timestamp or forward-looking label relative to a prediction time. This is shipment-level failure classification, not demonstrated 30/60-minute early warning. The UI risk index and cause_code are deterministic heuristics, not ML inference.
+
+Candidate-cause classification uses 16,192 facility-month simulation records with heat or freeze excursions and ten cause classes, currently split 80/20 with random stratification. Inputs cover equipment, power, monitoring and vaccine context. Their availability at diagnosis and repeated facilities across partitions require further checking. The legitimacy of outcome columns as inputs depends on the task's observation time. SHAP describes model associations, not proof of equipment-failure causation.
+
+### 6.4 Delivery Optimisation
+
+The model is a single-depot VRPTW with equal vehicle capacities, customer service windows, service times and depot-return limits, minimising travel distance. The implementation uses RoutingModel, PATH_CHEAPEST_ARC and GUIDED_LOCAL_SEARCH, not CP-SAT. A time-bounded solution has no global-optimality guarantee. A feasible greedy solution is a comparison baseline, not a lower bound. [OR-Tools documentation](https://developers.google.com/optimization/routing/routing_options)
+
+Six Solomon instances support standard comparisons. The Singapore case uses one depot, ten hospitals and real directed OSM matrices, measured in km and min. Travel times estimate free flow and exclude live congestion. Demands, fleet and service windows are simulated and do not imply actual commercial relationships among the facilities.
+
+Vue currently displays precomputed routes; temperature edits do not trigger solving. The MVP will connect a single-depot reshipment order to the solver. Alternative-stock selection, multiple temperature compartments, carbon and wastage-loss objectives are extensions. A genetic algorithm may be considered after integrated acceptance, but is not a mandatory deliverable.
+
+![Figure 3 Singapore routing case](figures/en/fig3-vrptw-replan.svg)
+
+**Figure 3:** Real roads, simulated operations and recorded time-bounded results, not live vehicle tracking.
+
+### 6.5 Knowledge Graph and QA
+
+Neo4j entities include Product, Regulation, SOP, ExcursionEvent, Disposition, Cause, Facility, Shipment and ReshipmentOrder. Regulations, public procedural guidance, product configurations, Singapore facilities and dataset records retain source semantics. The approximately 8,000 Kaggle shipment records have unconfirmed real-world provenance and are suspected synthetic; they are not described as verified pharmaceutical shipments. Anonymous zones cannot be directly mapped to Singapore hospitals.
+
+case_close records a case and attempts a graph write; decide previews are not archived. Cause currently represents the API heuristic code, not an ML prediction or investigated root cause. Reshipment-node writing exists but does not imply an order was solved or executed. Log and graph persistence are best-effort and do not provide validated audit-grade durability.
+
+Python query functions support run_id-based explanations, audit chains, product requirements and statistics. /api/qa still returns 501, while the frontend uses a keyword-template concept mockup. Delivery will use bounded intent recognition and parameterised Cypher, returning case-specific evidence and distinguishing missing cases, insufficient evidence, unsupported questions and database failure. Evidence must support the particular rule, rather than merely provide a regulatory link. An LLM is not required for the MVP.
+
+![Figure 4 Graph concepts and writing boundary](figures/en/fig4-knowledge-graph.svg)
+
+**Figure 4:** Conceptual case chain. Facility, shipment and route associations depend on the input contracts.
+
+![Demo Decision sandbox](figures/demo-rule-engine-en.png)
+
+**Demo, 2026-09-12:** Rule recommendations, paths and heuristic risk scores, not final human approvals.
+
+![Demo Routes and QA](figures/demo-route-qa-en.png)
+
+**Demo, 2026-09-12:** Fixed precomputed routes and a QA concept mockup, not evidence of a completed integrated workflow.
+
+### 6.6 Architecture and Interfaces
+
+The frontend uses Vue 3, Vite, Pinia and Leaflet, with a legacy static demo retained. Online mode calls the Python engine through FastAPI/Uvicorn; offline mode uses a JS port. JSONL stores case history and Neo4j stores graph knowledge. Training and route-export scripts run separately.
+
+![Figure 5 Current architecture](figures/en/fig5-system-architecture.svg)
+
+**Figure 5:** Online rules, offline experiments, precomputed routes and pending interfaces are shown separately.
+
+Cross-member contracts must fix the association among run_id, order_id, product, destination, quantity, time windows, temperature compatibility and ReplanResult, and handle infeasible routes, repeated closures and storage failures. These are proposed interface requirements, not fields already supported by the API.
+
+![Figure 6 Minimal integrated workflow](figures/en/fig6-pipeline.svg)
+
+**Figure 6:** W3 integration acceptance target. Core modules exist, while connections remain to be implemented.
+
+## 7. Data Collection and Preparation
+
+### 7.1 Main Datasets
+
+| Dataset | Size and grain | Use | Nature and licence |
+|---|---|---|---|
+| [Cold Chain Silent Failure](https://www.kaggle.com/datasets/skarin/cold-chain-shipment-silent-failure-dataset) | 8,000 × 24; shipment summaries | Failure classification | Suspected synthetic; CC0 |
+| [Vaccine Distribution](https://www.kaggle.com/datasets/manankhanna0/vaccine-distribution-with-temperature-logging) | 26,674 × 13; logs for 30 batches | Demo material and sequence task | Suspected synthetic, real place names; CC0 |
+| [Electric Sheep Africa vaccine-cold-chain](https://huggingface.co/datasets/electricsheepafrica/vaccine-cold-chain) | 3 × 10,000 × 46; facility-month | Candidate causes | Simulation; CC BY 4.0 |
+| [Africa Synth Immunization](https://huggingface.co/datasets/electricsheepafrica/africa-synth-immunization-vaccine-quality-cold-chain-all) | Approximately 30,000 rows | Optional quality-risk supplement | Synthetic; CC BY 4.0 |
+| [Solomon / CVRPLIB](http://vrp.atd-lab.inf.puc-rio.br/index.php/en/) | Six committed instances | Standard VRPTW comparison | Abstract benchmark, preserve attribution |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) Singapore | 11 facilities, 11×11 matrices, 110 directed paths | Local routing case | Real roads, simulated operations; ODbL |
+| Authored scenarios and human gold | 57 cases, four dispositions | Rule evaluation | Synthetic scenarios, independent annotation and arbitration |
+
+Licence verification is recorded in the [data dictionary](../data/ml/DATA_DICTIONARY.md). Preserve Electric Sheep Africa attribution and licence information and the applicable OSM attribution. Other small-sample or cybersecurity datasets are not core benchmarks.
+
+### 7.2 Domain Knowledge Sources
+
+Rule evidence comes from WHO, EU GDP, ICH and applicable product documents. Procedural nodes cite public CDC/WHO guidance, not fictitious internal company SOPs. Record source, scope and assumptions, separating product evidence from general principles. Incomplete rule reviews are not described as fully verified.
+
+### 7.3 Preparation and Task Boundaries
+
+- Model each dataset at its original grain; do not invent common batch identifiers linking shipments, facility-months and Singapore orders.
+- Use random stratification for the timestamp-free failure task. Multi-fold work must fit preprocessing and select thresholds inside each fold's training portion, reserving its test portion for scoring.
+- Check repeated entities and feasibility of grouped or temporal facility-month splits, reporting differences from random splitting.
+- Define product bands, windows, missing-data handling, MKT parameters and prediction time before the sequence task; prevent overlapping batch windows from leaking across partitions.
+- Current demo export infers category from temperature, approximates MKT with one reading and fixes packaging as intact. These mappings cannot validate product stability or an MKT algorithm.
+- Threshold-derived labels check event extraction, not the independent domain validity of disposition rules using the same thresholds.
+- OSMnx builds directed distances, times and matching path geometry from cached roads, with source fingerprints. Order and vehicle assumptions are recorded separately.
+
+## 8. Experiments and Evaluation
+
+### 8.1 Metrics and Acceptance
+
+| Module | Metrics and checks | Interpretation boundary |
+|---|---|---|
+| Risk classification | F1, ROC-AUC, PR-AUC, precision/recall, multi-fold mean and standard deviation | No undefined early-warning metric |
+| Disposition rules | Gold agreement, macro-F1, class recall, confusion matrix, κ and rule coverage | Separate implementation fidelity, human agreement and domain validity |
+| Reshipment | Policy agreement, order creation and duplicate triggering | Evaluate separately from the four dispositions |
+| Candidate causes | Top-1, Top-3, macro-F1, support and failures | Simulation classification is not causal diagnosis |
+| Routing | Distance, vehicles, summed duration, on-time rate, unserved orders, violations and runtime | Same instance, constraints and fixed budget |
+| Graph QA | Correctness, case-relevant evidence coverage, no-evidence refusal and latency | Citation count is not relevance |
+| System | End-to-end latency, identifiers, snapshot completeness and recovery | Separate preview, solving and closure timing |
+
+Routing reports unserved orders alongside on-time rates to avoid hiding failures. Published Solomon solutions require aligned fleet objectives, distance precision and constraints; one Singapore result does not establish operational savings. System acceptance covers reshipment, no reshipment, infeasibility, missing evidence, service failure and repeated closure.
+
+### 8.2 Baselines and Preliminary Results
+
+The following risk results were recorded on 2026-09-09; training was not rerun for this revision. The data are suspected synthetic and the results describe that dataset, not real-world effectiveness. These are single-split results, not completed multi-fold evaluation.
+
+| Risk model, interpretable features | Validation threshold | F1 | ROC-AUC | PR-AUC |
+|---|---:|---:|---:|---:|
+| Logistic regression | 0.55 | 0.626 | 0.891 | 0.651 |
+| LightGBM | 0.35 | 0.688 | 0.925 | 0.745 |
+| XGBoost | 0.30 | 0.659 | 0.919 | 0.734 |
+
+For causes, LightGBM recorded Top-1=0.143, Top-3=0.421 and macro-F1=0.125. The majority baseline recorded Top-1=0.161 and macro-F1=0.028. Top-1 did not exceed the majority baseline, supporting further work on candidate ranking and features rather than a claim of reliable diagnosis. Formal evaluation must define an unambiguous Top-3 baseline and tie handling.
+
+Recorded Singapore results from 2026-09-10:
+
+| Algorithm | Vehicles used | Customers served | Distance km | Summed route duration min | Violations / unserved |
+|---|---:|---:|---:|---:|---:|
+| Greedy | 2 | 10 | 142.6305 | 364.6972 | 0 / 0 |
+| OR-Tools Routing, 10 seconds | 2 | 10 | 133.8073 | 357.5731 | 0 / 0 |
+
+Distance decreased by approximately 6.19%. The case offers three vehicles of capacity 200 units each, demand of 30 units per hospital, customer windows 09:00–17:00 with 15-minute service, and depot hours 08:00–18:00. Duration sums vehicle working times. Time-bounded results may vary by environment. [Experiment record](../PROGRESS.md), [Singapore assumptions](../docs/singapore_network_assumptions.md)
+
+### 8.3 Disposition Ground Truth
+
+B and C independently labelled all 57 synthetic cases using only the written rubric, followed by A's arbitration. Human gold replaced engine-generated placeholder labels on 2026-09-12. Annotators are team members, not represented as domain experts. Individual responses remain in a private annotation package; the repository preserves arbitrated labels, findings and fingerprints.
+
+| Measure | Current result |
+|---|---|
+| Original B/C agreement | 44/57 |
+| Inter-annotator Cohen's κ | 0.6434, below the original 0.80 target |
+| Current engine agreement with gold | 39/57, 68.4% |
+| Eighteen differences | 15 engine quarantine/gold scrap; 2 engine release/gold quarantine; 1 engine retest/gold quarantine |
+| Gold support | Release 13, retest 8, quarantine 3, scrap 33 |
+| High-consequence class recall | Quarantine 0/3; scrap 18/33, 54.5% |
+
+The team decided to report κ=0.6434 without revising and repeating the rubric exercise merely to increase κ, and to retain the three gold quarantine cases. Rule 4's quarantine/scrap choice remains an unresolved domain-policy question requiring product evidence. With only three gold quarantine cases, report support alongside metrics and avoid stable population-performance claims.
+
+There are three evaluation levels: unit checks establish fidelity to frozen rules; human gold measures differences between written rules and team judgement; domain validity requires applicable product documents or external review. Tests freeze the eighteen known differences. Passing tests does not mean 100% gold agreement or prove all differences should be resolved by changing the engine.
+
+This revision directly checked the real engine's 39/57 agreement and confusion counts. The selftest mode of evaluate_engine.py substitutes rubric outputs for an engine and validates the evaluation script only. Formal evaluation still needs a complete macro-F1, per-class precision/recall, κ and coverage table with version information. [Annotation statistics](../data/processed/agreement_stats.md), [Findings](../docs/annotation_findings_v1.md), [Engine checks](../tests/test_rule_engine.py)
+
+External product-level review is optional and has not been completed. Evidence-driven rule revisions should be versioned and assessed on independent new cases; tuning to the same gold set is not fresh independent validation.
+
+## 9. MVP and Scope Control
+
+**Required:** four explicitly prototype category configurations; four dispositions and separate reshipment semantics; single-depot simulated Singapore deliveries; rule-to-order-to-route integration; graph queries connected to the frontend; linked case records; independent rule evaluation and offline risk/cause experiments; bilingual UI and reproduction instructions.
+
+**Supplementary targets:** sequence event generation and MKT validation, additional routing cases and stricter data splits. Prioritise the required workflow if time is constrained, disclose approximate demo inputs, and do not count unfinished supplementary work as delivered.
+
+**Optional extensions:** early warning, tiered stability windows, multi-depot inventory selection, multiple temperature compartments, genetic algorithms, live vehicle positions, LLM polishing and feedback learning. Integrated acceptance takes priority.
+
+**Excluded:** production ERP/WMS, actual IoT deployment, clinical or formal regulatory validation, patient data, automatic authorisation of real pharmaceutical dispositions and actual transport execution.
+
+## 10. Plan and Team Responsibilities
+
+### 10.1 Responsibilities
+
+| Member | Primary work | Shared deliverable |
+|---|---|---|
+| A | Rules, domain evidence, human evaluation and report | Reshipment input contract and proposal review |
+| B | Data, risk, candidate causes and experiments | Data-nature disclosures and reported metrics |
+| C | VRPTW, roads and route evaluation | Reshipment mapping and route output contract |
+| D | KG, QA, API, frontend and demonstration | Case association, evidence display and videos |
+
+### 10.2 Revised Weekly Plan
+
+Start from work completed by 2026-09-12 and retain the original deadlines. The approximately 40 person-day budget prioritises integration, verification and delivery; optional algorithms are not mandatory. This is the revised proposal plan. Historical tasks in the daily plan do not mean those activities have yet to start.
+
+| Week | Main tasks and owners | Acceptance deliverable |
+|---|---|---|
+| W0 9/3–13 | All: consolidate rules, data, annotation, routes and KG, revise proposal, add team details and synchronise materials | Review and submission; still awaiting closure on 9/12 |
+| W1 9/14–20 | A: evidence/gold evaluation; B: task spec/multi-fold risk; C: order mapping; D: QA API/evidence checks | Evaluation tables, task specification and reviewable interfaces/queries |
+| W2 9/21–27 | A/C/D: order, route and case contracts/wiring; B: cause and split comparisons; D: frontend graph answers | Single-depot reshipment solving, real QA and failure states |
+| W3 9/28–10/4 | All: integration; A/D: closure and human-review record boundaries | Minimal workflow v1 with replacement, no-replacement and failure cases |
+| W4 10/5–11 | A: report/audit template; B: experiments/failures; C: Solomon and Singapore comparisons; D: QA evaluation | Formal results, relevant evidence checks and report draft |
+| W5 10/12–18 | All: integration tests and clean-environment reproduction; D: videos; A: report | Revised report, manual, video material and rehearsal |
+| W6 10/19–25 | All: final review, videos, packaging, reflections and submission | Final delivery by 10/25 |
+
+![Figure 7 Weekly plan](figures/en/fig7-gantt.svg)
+
+**Figure 7:** Deadlines retained, with remaining work focused on integration and evaluation.
+
+## 11. Risks and Mitigation
+
+| Risk | Mitigation and disclosure |
+|---|---|
+| Engineering thresholds mistaken for stability limits | Identify evidence level, product scope and assumptions; retain human review |
+| Annotation disagreement and unresolved policy | Report κ, confusion and small-sample limits; revise based on domain evidence |
+| Synthetic data and mismatched grain undermine generalisation | Define tasks per dataset and check observation time and grouped leakage |
+| Weak cause Top-1 | Retain the majority baseline and analyse rankings and available features |
+| Standalone modules without business integration | A/C/D prioritise order, destination, quantity, windows and case association |
+| Irrelevant or missing QA evidence | Evaluate relevance per case and distinguish absent records, insufficient evidence and failure |
+| Log or KG write failure | Test failure reporting, duplicate triggering and association completeness; no audit-grade durability claim |
+| Infeasible or incomparable routing | Report unserved/violations and align constraints, objectives, units and budget |
+| Scope and environment threaten delivery | Defer extensions, record dependencies/reproduction and retain offline demonstration |
+| Data use and provenance | Preserve licences, attribution and fingerprints; keep personal annotations private |
 
 ## 12. Final Deliverables
 
-- GitHub code repository: data processing, models, rule engine, optimisation algorithm, knowledge graph and frontend.
-- Formal project report.
-- User manual.
-- Two 5-minute project-demonstration videos.
-- Report and code packaged as a zip.
-- Individual reflection documents.
-- Experiment scripts and reproducibility notes.
+- GitHub repository containing rules, data preparation, model experiments, optimisation, KG/API and frontend.
+- Formal report, user manual, personal reflections and a submission archive organised to course requirements.
+- Two five-minute videos covering the workflow and methods/evaluation, identifying simulated and incomplete parts.
+- Reproduction instructions, rule assumptions and sources, annotation findings, route metrics and QA evaluation cases.
+
+The Markdown files are the revised bilingual proposal sources, and the Chinese Word proposal has been regenerated from this version. Before submission, check PPT consistency and complete group number, names, IDs and submission records. Content revision does not itself mean W0 has been submitted.
 
 ## 13. Conclusion
 
-PharmaColdOps addresses a real, high-stakes gap in pharmaceutical cold-chain operations: turning a temperature excursion into a compliant, explainable disposition and an executable re-routing plan, rather than a mere alarm. By composing a rule engine, interpretable machine learning, VRPTW optimisation and a knowledge-graph Q&A into one closed loop, the project spans all four IRS technique groups and bridges academic reasoning techniques with a tangible market need.
+PharmaColdOps now has a rule-decision core, independent human annotations, offline experiments and routing over real Singapore roads. Results also expose specification disagreements, limited cause-classification performance and gaps in data provenance and product-threshold evidence, informing the remaining evaluation.
 
-Its two defining strengths are audit-grade explainability and a non-circular evaluation design (§8.3) that separates rule correctness from data-driven correctness. The MVP is deliberately scoped — a single-city, one-to-two-product network with the rule engine built first — so that the core loop is demonstrable within seven weeks, with the final deliverables (repository, report, user manual, videos) ready by 25 October 2026.
+The remaining priority is to connect replacement demand, route results and case evidence into an explainable, reproducible workflow with explicit applicability limits by 2026-10-25. Integration and evaluation demonstrate the four IRS technique groups; unverified clinical, operational or compliance benefits are not completion criteria.
 
-## 14. References
+## 14. References and Project Evidence
 
-- WHO Model Guidance for the Storage and Transport of Time- and Temperature-Sensitive Pharmaceutical Products: https://www.who.int/publications/m/item/trs961-annex9-modelguidanceforstoragetransport
-- EU Guidelines on Good Distribution Practice, 2013/C 343/01: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32013C0343
-- ICH Quality Guidelines: https://www.ich.org/page/quality-guidelines
-- USP <1079> Good Storage and Distribution Practices for Drug Products (Mean Kinetic Temperature definition): https://www.usp.org/
-- Solomon, M. M. (1987). Algorithms for the Vehicle Routing and Scheduling Problems with Time Window Constraints. *Operations Research*, 35(2), 254–265.
-- Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. *ACM SIGKDD*.
-- Ke, G., et al. (2017). LightGBM: A Highly Efficient Gradient Boosting Decision Tree. *NeurIPS*.
-- Lundberg, S. M., & Lee, S.-I. (2017). A Unified Approach to Interpreting Model Predictions. *NeurIPS*.
-- Google OR-Tools: https://developers.google.com/optimization
-- Cold Chain Shipment Silent Failure Dataset: https://www.kaggle.com/datasets/skarin/cold-chain-shipment-silent-failure-dataset
-- Vaccine Distribution with Temperature Logging: https://www.kaggle.com/datasets/manankhanna0/vaccine-distribution-with-temperature-logging
-- Electric Sheep Africa vaccine-cold-chain: https://huggingface.co/datasets/electricsheepafrica/vaccine-cold-chain
-- Africa Synth Immunization Vaccine Quality Cold Chain All: https://huggingface.co/datasets/electricsheepafrica/africa-synth-immunization-vaccine-quality-cold-chain-all
-- CVRPLIB: http://vrp.atd-lab.inf.puc-rio.br/index.php/en/
+- WHO. [TRS 961 Annex 9](https://www.who.int/publications/m/item/trs961-annex9-modelguidanceforstoragetransport).
+- European Commission. [GDP 2013/C 343/01](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32013C0343).
+- ICH. [Quality Guidelines](https://www.ich.org/page/quality-guidelines).
+- CDC. [Vaccine Storage and Handling](https://www.cdc.gov/pinkbook/hcp/table-of-contents/chapter-5-vaccine-storage-and-handling.html).
+- Controlant. [Applications and Product Stability Automation](https://www.controlant.com/applications), checked 2026-09-12; vendor description.
+- Solomon, M. M. (1987). [Algorithms for the Vehicle Routing and Scheduling Problems with Time Window Constraints](https://doi.org/10.1287/opre.35.2.254). Operations Research, 35(2), 254–265.
+- Chen, T., & Guestrin, C. (2016). [XGBoost: A Scalable Tree Boosting System](https://arxiv.org/abs/1603.02754). ACM SIGKDD.
+- Ke, G., et al. (2017). [LightGBM: A Highly Efficient Gradient Boosting Decision Tree](https://papers.nips.cc/paper/6907-lightgbm-a-highly-efficient-gradient-boosting-decision-tree). NeurIPS.
+- Lundberg, S. M., & Lee, S.-I. (2017). [A Unified Approach to Interpreting Model Predictions](https://arxiv.org/abs/1705.07874). NeurIPS.
+- Google. [OR-Tools Routing Options](https://developers.google.com/optimization/routing/routing_options).
+- OpenStreetMap contributors. [Copyright and ODbL](https://www.openstreetmap.org/copyright).
+- Dataset links appear in §7.1. Project evidence: [DATA_DICTIONARY](../data/ml/DATA_DICTIONARY.md), [PROGRESS](../PROGRESS.md), [Network assumptions](../docs/singapore_network_assumptions.md), [Annotation statistics](../data/processed/agreement_stats.md), [PROVENANCE](../data/processed/PROVENANCE.md).
+- NUS-ISS. [IRS proposal and final presentation guidelines v016](IRS%20practice%20module%20project%20proposal%20%26%20final%20presentation%20guidelines%20v016.pdf), course-supplied material.
 
----
+## 15. Supplementary Note on AI Use
 
-## 15. Supplementary Note: Use of AI
-
-Generative AI (Claude) was used in the preparation of this proposal to draft, translate and structure the document, and to help design the evaluation methodology and the presentation deck. All technical content, references, datasets and rule/regulation details were reviewed and verified by the team; AI output was used as a drafting aid, not as a source of domain decisions. Final responsibility for the proposal's accuracy rests with the team.
+Generative AI assisted drafting, translation, layout and cross-checking: Claude for earlier drafts and Codex for this revision. AI also assisted scenario drafts and development. Human gold comes from independent B/C annotation and A's arbitration. AI output is not stability or compliance evidence. The team is responsible for citations, rule assumptions, experiment reproduction and submission materials. Incomplete product-level and external validation are disclosed in the proposal.

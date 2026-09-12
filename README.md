@@ -1,8 +1,11 @@
 # PharmaColdOps
 
-An intelligent decision-support system for cold-chain pharmaceutical transport and warehousing. When a temperature excursion occurs, PharmaColdOps issues an explainable disposition (release / quarantine / retest / scrap + reshipment) and generates an alternative inventory-allocation and delivery re-routing plan — grounded in WHO / EU GDP / ICH rules.
+An explainable decision-support prototype for cold-chain pharmaceutical temperature excursions. When an excursion occurs, PharmaColdOps issues a traceable disposition recommendation (release / quarantine / retest / scrap) and flags whether a separate reshipment workflow should be considered, grounded in WHO / EU GDP / ICH principles and product-specific stability assumptions.
 
 Proposal & related documents live in [`proposal/`](proposal/):
+
+The current proposal baseline is the **2026-09-12 revised EN/ZH Markdown, SVG figures, and regenerated Chinese Word proposal**.
+PPT exports are retained as older reference files until the team synchronises them; see [proposal version status](proposal/README.md).
 
 - Proposal (EN): [proposal/PharmaColdOps-Proposal-EN.md](proposal/PharmaColdOps-Proposal-EN.md)
 - Proposal (中文): [proposal/PharmaColdOps-Proposal-ZH.md](proposal/PharmaColdOps-Proposal-ZH.md)

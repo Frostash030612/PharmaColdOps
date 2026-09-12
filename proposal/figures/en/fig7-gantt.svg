@@ -1,81 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 390" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif">
-  <text x="490" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#1A202C">Project Timeline Gantt Chart (2026-09-03 → 2026-10-25)</text>
-
-  <!-- gridlines -->
-  <g stroke="#E2E8F0" stroke-width="1">
-    <line x1="150" y1="70" x2="150" y2="298"/>
-    <line x1="309" y1="70" x2="309" y2="298"/>
-    <line x1="410" y1="70" x2="410" y2="298"/>
-    <line x1="511" y1="70" x2="511" y2="298"/>
-    <line x1="612" y1="70" x2="612" y2="298"/>
-    <line x1="713" y1="70" x2="713" y2="298"/>
-    <line x1="813" y1="70" x2="813" y2="298"/>
-    <line x1="900" y1="70" x2="900" y2="298"/>
-  </g>
-  <line x1="150" y1="298" x2="900" y2="298" stroke="#4A5568" stroke-width="2"/>
-
-  <!-- ticks -->
-  <g font-size="11" fill="#4A5568" text-anchor="middle">
-    <text x="150" y="316">9/3</text>
-    <text x="309" y="316">9/14</text>
-    <text x="410" y="316">9/21</text>
-    <text x="511" y="316">9/28</text>
-    <text x="612" y="316">10/5</text>
-    <text x="713" y="316">10/12</text>
-    <text x="813" y="316">10/19</text>
-    <text x="900" y="316">10/25</text>
-  </g>
-
-  <!-- row labels -->
-  <g font-size="12" font-weight="600" fill="#2D3748" text-anchor="end">
-    <text x="140" y="92">W0 Proposal sprint</text>
-    <text x="140" y="130">W1 Data &amp; rules</text>
-    <text x="140" y="168">W2 MVP &amp; baselines</text>
-    <text x="140" y="206">W3 Integration v1</text>
-    <text x="140" y="244">W4 Optimise &amp; explain</text>
-    <text x="140" y="282">W5 Testing &amp; video</text>
-    <text x="140" y="320">W6 Final delivery</text>
-  </g>
-
-  <!-- task bars -->
-  <rect x="150" y="76" width="144" height="22" rx="5" fill="#3182CE"/>
-  <rect x="309" y="114" width="100" height="22" rx="5" fill="#2C7A7B"/>
-  <rect x="410" y="152" width="100" height="22" rx="5" fill="#319795"/>
-  <rect x="511" y="190" width="100" height="22" rx="5" fill="#2F855A"/>
-  <rect x="612" y="228" width="100" height="22" rx="5" fill="#D69E2E"/>
-  <rect x="713" y="266" width="100" height="22" rx="5" fill="#DD6B20"/>
-  <rect x="813" y="304" width="87" height="22" rx="5" fill="#6B46C1"/>
-
-  <g font-size="10" font-weight="600" fill="#FFFFFF">
-    <text x="158" y="91">Submit proposal</text>
-    <text x="317" y="129">Data + rules</text>
-    <text x="418" y="167">MVP + baselines</text>
-    <text x="519" y="205">Integration v1</text>
-    <text x="620" y="243">Optimise</text>
-    <text x="721" y="281">Test + video</text>
-    <text x="821" y="319">Final delivery</text>
-  </g>
-
-  <!-- date ranges -->
-  <g font-size="10" fill="#718096">
-    <text x="302" y="91">9/3–13</text>
-    <text x="417" y="129">9/14–20</text>
-    <text x="518" y="167">9/21–27</text>
-    <text x="619" y="205">9/28–10/4</text>
-    <text x="720" y="243">10/5–11</text>
-    <text x="821" y="281">10/12–18</text>
-    <text x="913" y="319">10/19–25</text>
-  </g>
-
-  <!-- milestone 1 -->
-  <polygon points="294,79 302,87 294,95 286,87" fill="#E53E3E"/>
-  <text x="294" y="68" text-anchor="middle" font-size="11.5" font-weight="700" fill="#E53E3E">Proposal due 9/13</text>
-
-  <!-- milestone 2 -->
-  <polygon points="900,301 908,309 900,317 892,309" fill="#E53E3E"/>
-  <text x="900" y="336" text-anchor="middle" font-size="11.5" font-weight="700" fill="#E53E3E">Final submission 10/25</text>
-
-  <!-- legend -->
-  <polygon points="150,354 156,360 150,366 144,360" fill="#E53E3E"/>
-  <text x="164" y="364" font-size="11.5" fill="#4A5568">milestone</text>
+<?xml version="1.0" ?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 630" font-family="Arial, Helvetica, sans-serif" role="img" aria-label="Revised delivery schedule">
+  <rect width="960" height="630" fill="#ffffff"/>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
+    </marker>
+  </defs>
+  <text x="40" y="42" font-size="24" font-weight="700" fill="#202b33">Revised delivery schedule</text>
+  <text x="40" y="79" font-size="16" fill="#33414b">Baseline: 2026-09-12. Original submission deadlines are retained.</text>
+  <rect x="40" y="104" width="880" height="40" fill="#e8edf0"/>
+  <text x="56" y="131" font-size="16" fill="#202b33" font-weight="700">Week</text>
+  <text x="145" y="131" font-size="16" fill="#202b33" font-weight="700">Dates</text>
+  <text x="300" y="131" font-size="16" fill="#202b33" font-weight="700">Acceptance milestone</text>
+  <rect x="40" y="150" width="880" height="48" fill="#ffffff"/>
+  <text x="56" y="181" font-size="17" fill="#202b33" font-weight="700">W0</text>
+  <text x="145" y="181" font-size="16" fill="#33414b">09/03-09/13</text>
+  <text x="300" y="181" font-size="16" fill="#33414b">Proposal review, material alignment and submission</text>
+  <rect x="40" y="201" width="880" height="48" fill="#f2f5f6"/>
+  <text x="56" y="232" font-size="17" fill="#202b33" font-weight="700">W1</text>
+  <text x="145" y="232" font-size="16" fill="#33414b">09/14-09/20</text>
+  <text x="300" y="232" font-size="16" fill="#33414b">Task specifications, rule evaluation and interface review</text>
+  <rect x="40" y="252" width="880" height="48" fill="#ffffff"/>
+  <text x="56" y="283" font-size="17" fill="#202b33" font-weight="700">W2</text>
+  <text x="145" y="283" font-size="16" fill="#33414b">09/21-09/27</text>
+  <text x="300" y="283" font-size="16" fill="#33414b">Reshipment solving and frontend graph queries</text>
+  <rect x="40" y="303" width="880" height="48" fill="#f2f5f6"/>
+  <text x="56" y="334" font-size="17" fill="#202b33" font-weight="700">W3</text>
+  <text x="145" y="334" font-size="16" fill="#33414b">09/28-10/04</text>
+  <text x="300" y="334" font-size="16" fill="#33414b">Minimal integrated workflow and failure cases</text>
+  <rect x="40" y="354" width="880" height="48" fill="#ffffff"/>
+  <text x="56" y="385" font-size="17" fill="#202b33" font-weight="700">W4</text>
+  <text x="145" y="385" font-size="16" fill="#33414b">10/05-10/11</text>
+  <text x="300" y="385" font-size="16" fill="#33414b">Formal experiments, QA evaluation and report draft</text>
+  <rect x="40" y="405" width="880" height="48" fill="#f2f5f6"/>
+  <text x="56" y="436" font-size="17" fill="#202b33" font-weight="700">W5</text>
+  <text x="145" y="436" font-size="16" fill="#33414b">10/12-10/18</text>
+  <text x="300" y="436" font-size="16" fill="#33414b">Integration checks, reproduction and video rehearsal</text>
+  <rect x="40" y="456" width="880" height="48" fill="#ffffff"/>
+  <text x="56" y="487" font-size="17" fill="#202b33" font-weight="700">W6</text>
+  <text x="145" y="487" font-size="16" fill="#33414b">10/19-10/25</text>
+  <text x="300" y="487" font-size="16" fill="#33414b">Final review, videos, packaging and submission</text>
+  <text x="40" y="551" font-size="14" fill="#596771">Proposal due: 2026-09-13. Final delivery due: 2026-10-25.</text>
+  <text x="40" y="580" font-size="14" fill="#596771">W0 is not yet submitted. Optional algorithms follow integrated acceptance.</text>
 </svg>

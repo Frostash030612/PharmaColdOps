@@ -1,49 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif">
+<?xml version="1.0" ?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" font-family="Arial, Helvetica, sans-serif" role="img" aria-label="Minimal integrated workflow targeted for W3">
+  <rect width="960" height="640" fill="#ffffff"/>
   <defs>
-    <marker id="arrP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#4A5568"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
     </marker>
   </defs>
-
-  <text x="480" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#1A202C">End-to-End System Pipeline</text>
-
-  <!-- INPUT -->
-  <rect x="210" y="56" width="540" height="56" rx="10" fill="#EDF2F7" stroke="#4A5568" stroke-width="2"/>
-  <text x="480" y="90" text-anchor="middle" font-size="13.5" font-weight="600" fill="#2D3748">INPUT: sensor · GPS · order · inventory · vehicle · stability data</text>
-
-  <!-- steps -->
-  <g>
-    <rect x="260" y="140" width="440" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="480" y="175" text-anchor="middle" font-size="13.5" font-weight="600" fill="#2B6CB0">1 · Ingest &amp; normalise</text>
-
-    <rect x="260" y="224" width="440" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="480" y="259" text-anchor="middle" font-size="13.5" font-weight="600" fill="#2B6CB0">2 · Detect excursion · MKT · risk</text>
-
-    <rect x="260" y="308" width="440" height="56" rx="10" fill="#FFFAF0" stroke="#DD6B20" stroke-width="1.5"/>
-    <text x="480" y="343" text-anchor="middle" font-size="13.5" font-weight="600" fill="#DD6B20">3 · Rule engine → disposition</text>
-
-    <rect x="260" y="392" width="440" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="480" y="427" text-anchor="middle" font-size="13.5" font-weight="600" fill="#2B6CB0">4 · Root-cause diagnosis</text>
-
-    <rect x="260" y="476" width="440" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="480" y="511" text-anchor="middle" font-size="13.5" font-weight="600" fill="#2B6CB0">5 · Optimiser → VRPTW re-route</text>
-
-    <rect x="260" y="560" width="440" height="56" rx="10" fill="#EBF4FF" stroke="#2B6CB0" stroke-width="1.5"/>
-    <text x="480" y="595" text-anchor="middle" font-size="13.5" font-weight="600" fill="#2B6CB0">6 · Knowledge graph + Q&amp;A</text>
-  </g>
-
-  <!-- OUTPUT -->
-  <rect x="210" y="636" width="540" height="56" rx="10" fill="#F0FFF4" stroke="#2F855A" stroke-width="2"/>
-  <text x="480" y="670" text-anchor="middle" font-size="13.5" font-weight="600" fill="#2F855A">OUTPUT: disposition + routes + audit report</text>
-
-  <!-- arrows -->
-  <g stroke="#4A5568" stroke-width="2" marker-end="url(#arrP)">
-    <line x1="480" y1="112" x2="480" y2="140"/>
-    <line x1="480" y1="196" x2="480" y2="224"/>
-    <line x1="480" y1="280" x2="480" y2="308"/>
-    <line x1="480" y1="364" x2="480" y2="392"/>
-    <line x1="480" y1="448" x2="480" y2="476"/>
-    <line x1="480" y1="532" x2="480" y2="560"/>
-    <line x1="480" y1="616" x2="480" y2="636"/>
-  </g>
+  <text x="40" y="42" font-size="24" font-weight="700" fill="#202b33">Minimal integrated workflow targeted for W3</text>
+  <rect x="80" y="80" width="800" height="66" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="96" y="108" font-size="18" fill="#202b33" font-weight="700">1  Enter a temperature event</text>
+  <text x="96" y="135" font-size="15" fill="#33414b">Form/demo input exists; sequence extraction is supplementary</text>
+  <line x1="480" y1="146" x2="480" y2="167" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <rect x="80" y="167" width="800" height="66" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="96" y="195" font-size="18" fill="#202b33" font-weight="700">2  Compute a rule recommendation</text>
+  <text x="96" y="222" font-size="15" fill="#33414b">Four dispositions, reshipment flag and evidence states exist</text>
+  <line x1="480" y1="233" x2="480" y2="254" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <rect x="80" y="254" width="800" height="66" rx="5" fill="#fff8ed" stroke="#a66c19" stroke-dasharray="6 4"/>
+  <text x="96" y="282" font-size="18" fill="#202b33" font-weight="700">3  Review and close the case</text>
+  <text x="96" y="309" font-size="15" fill="#33414b">Closure exists; final human outcome and approval fields are pending</text>
+  <line x1="480" y1="320" x2="480" y2="341" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <rect x="80" y="341" width="800" height="66" rx="5" fill="#fff8ed" stroke="#a66c19" stroke-dasharray="6 4"/>
+  <text x="96" y="369" font-size="18" fill="#202b33" font-weight="700">4  Build order and solve a route</text>
+  <text x="96" y="396" font-size="15" fill="#33414b">Single-depot order mapping and event-triggered solving are pending</text>
+  <line x1="480" y1="407" x2="480" y2="428" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <rect x="80" y="428" width="800" height="66" rx="5" fill="#fff8ed" stroke="#a66c19" stroke-dasharray="6 4"/>
+  <text x="96" y="456" font-size="18" fill="#202b33" font-weight="700">5  Link results and query evidence</text>
+  <text x="96" y="483" font-size="15" fill="#33414b">Associate run/order/route IDs and connect graph answers to the frontend</text>
+  <text x="40" y="554" font-size="14" fill="#596771">Acceptance: replacement, no replacement, infeasible route, missing evidence and service failure.</text>
+  <text x="40" y="584" font-size="14" fill="#596771">Offline ML experiments support the report. Case closure is not automatic model learning.</text>
 </svg>

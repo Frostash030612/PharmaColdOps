@@ -32,6 +32,10 @@ data/audit/
 .DS_Store
 Thumbs.db
 
+# Office temporary lock files
+~$*.docx
+~$*.pptx
+
 # Claude Code local config
 .claude/
 
