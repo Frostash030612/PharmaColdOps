@@ -69,6 +69,8 @@ def validate_dispatch_inputs(
     orders: tuple[DeliveryOrder, ...],
     inventory: tuple[InventoryLot, ...],
     vehicles: tuple[DispatchVehicle, ...],
+    *,
+    origin_facility_id: str | None = None,
 ) -> None:
     """Reject duplicate IDs and resource claims that cannot form a plan."""
     if not orders:
@@ -83,7 +85,9 @@ def validate_dispatch_inputs(
 
     available: dict[tuple[str, str], int] = {}
     for lot in inventory:
-        if lot.status == "available":
+        if lot.status == "available" and (
+            origin_facility_id is None or lot.facility_id == origin_facility_id
+        ):
             key = (lot.product_id, lot.temperature_zone)
             available[key] = available.get(key, 0) + lot.available_quantity
     required: dict[tuple[str, str], int] = {}
@@ -95,3 +99,8 @@ def validate_dispatch_inputs(
             raise ValueError(f"insufficient available inventory for {key[0]} ({key[1]})")
         if not any(v.status == "available" and v.temperature_zone == key[1] for v in vehicles):
             raise ValueError(f"no available vehicle for temperature zone {key[1]}")
+    if origin_facility_id is not None and any(
+        vehicle.status == "available" and vehicle.start_facility_id != origin_facility_id
+        for vehicle in vehicles
+    ):
+        raise ValueError("available vehicles must start at the dispatch origin")

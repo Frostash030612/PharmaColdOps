@@ -15,6 +15,8 @@ from .singapore_loader import (
     restore_network_node_ids,
 )
 
+DISPATCH_ORIGIN = "W-KN-PIONEER"
+
 
 @dataclass(frozen=True)
 class ZonePlan:
@@ -49,7 +51,9 @@ def plan_delivery_orders(
     vehicles. Vehicles within one temperature zone must currently share a
     capacity because the existing solver model has one fleet-wide capacity.
     """
-    validate_dispatch_inputs(orders, inventory, vehicles)
+    validate_dispatch_inputs(
+        orders, inventory, vehicles, origin_facility_id=DISPATCH_ORIGIN
+    )
     if algorithm not in {"greedy", "ortools"}:
         raise ValueError(f"unsupported routing algorithm {algorithm!r}")
 

@@ -65,3 +65,11 @@ def test_dispatch_endpoint_rejects_order_outside_facility_hours():
     response = client.post("/api/dispatch/plan", json=request)
     assert response.status_code == 422
     assert "does not overlap facility hours" in response.json()["detail"]
+
+
+def test_dispatch_endpoint_does_not_use_inventory_at_another_facility():
+    request = payload()
+    request["inventory"][0]["facility_id"] = "H-NUH"
+    response = client.post("/api/dispatch/plan", json=request)
+    assert response.status_code == 422
+    assert "insufficient available inventory" in response.json()["detail"]
