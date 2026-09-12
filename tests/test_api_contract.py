@@ -163,7 +163,14 @@ def test_route_plans_closed_reshipment_case():
     assert body["algorithm"] == "greedy-nearest-insertion"
     assert body["vehicles_used"] >= 1
     assert body["on_time_rate"] == 1.0
+    assert body["served_customers"] >= 0
+    assert {
+        "time_window_violations", "capacity_violations",
+        "depot_return_violations", "vehicle_limit_violations",
+    } <= body.keys()
     assert body["routes"] and body["routes"][0]["stops"]
+    assert body["geojson"]["type"] == "FeatureCollection"
+    assert len(body["geojson"]["features"]) == body["vehicles_used"]
 
 
 def test_route_rejects_case_that_does_not_need_reshipment():

@@ -38,6 +38,8 @@ from optimisation.reshipment import (  # noqa: E402
     build_reshipment_order,
     plan_reshipment_route,
 )
+from optimisation.singapore_export import routes_geojson  # noqa: E402
+from optimisation.singapore_loader import read_network  # noqa: E402
 from .schemas import EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
 
 # Loaded once; used both as the source of stock thresholds and to keep the
@@ -383,6 +385,11 @@ def route_view(req: RouteIn) -> dict:
         "vehicles_used": result.metrics.vehicles_used,
         "total_distance": result.metrics.total_distance,
         "on_time_rate": result.metrics.on_time_rate,
+        "served_customers": result.metrics.served_customers,
+        "time_window_violations": result.metrics.time_window_violations,
+        "capacity_violations": result.metrics.capacity_violations,
+        "depot_return_violations": result.metrics.depot_return_violations,
+        "vehicle_limit_violations": result.metrics.vehicle_limit_violations,
         "routes": [
             {
                 "vehicle_id": route.vehicle_id,
@@ -394,6 +401,9 @@ def route_view(req: RouteIn) -> dict:
             }
             for route in result.routes
         ],
+        # The browser needs the road geometry for a newly solved sequence; the
+        # static node table alone cannot reconstruct facility-to-facility legs.
+        "geojson": routes_geojson(read_network(), result),
     }
 
 

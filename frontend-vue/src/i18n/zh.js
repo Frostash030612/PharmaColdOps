@@ -5,9 +5,10 @@
 export default {
   singapore: {
   "title": "新加坡配送网络",
-  "note": "预计算演示 · 1 个仓库 / 10 个配送点",
+  "note": "1 个仓库 / 10 个配送点 · 结案后可读取当前案例路线",
   "assumption": "需求量、车辆容量与时间窗为模拟值；修改温度或处置不会重算路线。",
   "active": "当前处置建议补发，可参考下方固定算例。",
+  "activeLive": "当前补发案例已通过后端求解，下方显示该案例所在的改派方案。",
   "idle": "当前处置无需补发；下方仍可浏览配送演示。",
   "greedy": "贪心方案",
   "ortools": "优化方案",
@@ -29,7 +30,10 @@ export default {
   "savings": "相对贪心减少",
   "units": "单位",
   "noStop": "仓库出发 / 返回",
-  "km": "公里"
+  "km": "公里",
+  "liveRoute": "当前案例真实路线",
+  "demoRoute": "固定演示路线",
+  "loadingRoute": "正在计算当前案例路线…"
 },
   header: {
     sub: "冷链药品温度超限处置与配送重新规划",
@@ -72,10 +76,17 @@ export default {
   right: {
     rerouteTitle: "配送重新规划",
     qaTitle: "合规问答",
-    qaNote: "（知识图谱 · 概念）",
+    qaNote: "（结构化查询 · 离线兜底）",
     qaPlaceholder: "例如：什么是 MKT？什么时候报废？",
     qaAsk: "提问",
+    qaLoading: "查询中…",
     qaInitial: "提出合规问题，查看基于法规的回答。",
+    qaNeedsCase: "请先结案归档一个案例，再追问这类问题。",
+    qaOfflineNote: "（离线示意，非真实查询）",
+    qaSource_live: "知识图谱实时查询",
+    qaSource_fallback: "知识图谱不可用，已使用离线示意",
+    qaSource_concept: "离线关键词回答",
+    qaSource_notice: "需要已归档案例",
   },
 
   audit: {
@@ -133,7 +144,7 @@ export default {
   },
 
   footer:
-    "PharmaColdOps · 交互演示 —— 规则引擎与风险指数为实时逻辑（风险指数由同一组阈值导出，确定性）；配送地图使用真实新加坡道路与预计算方案（订单为模拟数据）；知识图谱问答为概念示意。",
+    "PharmaColdOps · 交互演示 —— API 模式可读取归档案例的实时改派结果与结构化知识图谱查询；离线模式使用预计算路线和关键词回答；订单参数为模拟数据。",
 
   /* --- structural sentence templates (interpolated by pure libs / components) --- */
   templates: {

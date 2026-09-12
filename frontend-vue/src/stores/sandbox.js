@@ -18,6 +18,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
   const routeMode = ref("optimized");
   const selectedPharm = ref(null);
   const activeId = ref(null);          // highlighted scenario card (like .active)
+  const currentRunId = ref(null);      // archived case currently shown, if any
   const auditRows = ref([]);           // html <tr> strings, newest first, cap 8
 
   let animTimer = null;
@@ -46,6 +47,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
 
   /* ---- scenario / spec switches (vanilla switchProduct / setEvent) ---- */
   function switchProduct(pid) {
+    currentRunId.value = null;
     stopTimeline();
     current.value = { product_id: pid, ...DEFAULT_EVENT[pid] };
     spec.value = { ...PRODUCT_NUM[pid] };
@@ -53,6 +55,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
   }
 
   function applyScenario(sc) {
+    currentRunId.value = null;
     stopTimeline();
     current.value = {
       product_id: sc.product_id, excursion_temp_c: sc.excursion_temp_c,
@@ -65,20 +68,21 @@ export const useSandboxStore = defineStore("sandbox", () => {
   }
 
   /* ---- event input mutations ---- */
-  function setStage(v) { current.value.stage = v; }
-  function setPackaging(v) { current.value.packaging = v; }
-  function setTemp(v) { current.value.excursion_temp_c = v; }
-  function setDur(v) { current.value.duration_min = v; }
-  function setMkt(v) { current.value.mkt_c = v; }
+  function setStage(v) { currentRunId.value = null; current.value.stage = v; }
+  function setPackaging(v) { currentRunId.value = null; current.value.packaging = v; }
+  function setTemp(v) { currentRunId.value = null; current.value.excursion_temp_c = v; }
+  function setDur(v) { currentRunId.value = null; current.value.duration_min = v; }
+  function setMkt(v) { currentRunId.value = null; current.value.mkt_c = v; }
 
   /* ---- rule-config overrides ---- */
-  function setAllowable(v) { if (v > 0) spec.value.allowable = v; }
-  function setMktThreshold(v) { if (!Number.isNaN(v)) spec.value.mktThreshold = v; }
-  function setRetestable(b) { spec.value.retestable = b; }
-  function resetCfg() { spec.value = { ...PRODUCT_NUM[current.value.product_id] }; }
+  function setAllowable(v) { if (v > 0) { currentRunId.value = null; spec.value.allowable = v; } }
+  function setMktThreshold(v) { if (!Number.isNaN(v)) { currentRunId.value = null; spec.value.mktThreshold = v; } }
+  function setRetestable(b) { currentRunId.value = null; spec.value.retestable = b; }
+  function resetCfg() { currentRunId.value = null; spec.value = { ...PRODUCT_NUM[current.value.product_id] }; }
 
   /* ---- 🎲 randomize (mirror of the vanilla button) ---- */
   function randomize() {
+    currentRunId.value = null;
     stopTimeline();
     const [tLo, tHi] = TEMP_RANGE[current.value.product_id];
     current.value.excursion_temp_c = Math.round((tLo + Math.random() * (tHi - tLo)) * 10) / 10;
@@ -120,6 +124,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
     nowTime.value = 0;
     activeId.value = null;
     selectedPharm.value = null;
+    currentRunId.value = record.run_id || null;
   }
 
   /* ---- re-route panel selection ---- */
@@ -132,7 +137,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
   }
 
   return {
-    spec, current, nowTime, playing, routeMode, selectedPharm, activeId, auditRows,
+    spec, current, nowTime, playing, routeMode, selectedPharm, activeId, currentRunId, auditRows,
     switchProduct, applyScenario, restoreCase,
     setStage, setPackaging, setTemp, setDur, setMkt,
     setAllowable, setMktThreshold, setRetestable, resetCfg, randomize,

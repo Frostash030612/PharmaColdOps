@@ -1,19 +1,59 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useDecisionsStore } from "../stores/decisions.js";
+import { useSandboxStore } from "../stores/sandbox.js";
 import data from "../data/singaporeRoutes.json";
 import LeafletMap from "./LeafletMap.vue";
 import { locale, bundle } from "../i18n/index.js";
 
 const decisions = useDecisionsStore();
+const sandbox = useSandboxStore();
 const text = computed(() => bundle(locale.value).singapore);
 const mode = ref("ortools");
 const selectedId = ref(null);
-const plan = computed(() => data.plans[mode.value]);
+const canUseLiveRoute = computed(() =>
+  decisions.useApi && decisions.apiUp === true &&
+  !!sandbox.currentRunId && decisions.decisionFor.reshipment
+);
+const liveKey = computed(() => sandbox.currentRunId
+  ? `${sandbox.currentRunId}|${mode.value}` : null);
+const livePlan = computed(() => liveKey.value
+  ? decisions.routeResults[liveKey.value] : null);
+const isLive = computed(() => !!livePlan.value);
+const plan = computed(() => livePlan.value ? {
+  routes: livePlan.value.routes,
+  geojson: livePlan.value.geojson,
+  metrics: {
+    total_distance: livePlan.value.total_distance,
+    vehicles_used: livePlan.value.vehicles_used,
+    served_customers: livePlan.value.served_customers,
+    time_window_violations: livePlan.value.time_window_violations,
+    capacity_violations: livePlan.value.capacity_violations,
+    depot_return_violations: livePlan.value.depot_return_violations,
+    vehicle_limit_violations: livePlan.value.vehicle_limit_violations,
+  },
+} : data.plans[mode.value]);
 const colors = ["#0d9488", "#7c3aed", "#d97706"];
 const color = (index) => colors[index % colors.length];
 const names = Object.fromEntries(data.nodes.map(n => [n.node_id, n.name]));
-const saving = computed(() => 100 * (1 - plan.value.metrics.total_distance / data.plans.greedy.metrics.total_distance));
+const liveGreedy = computed(() => sandbox.currentRunId
+  ? decisions.routeResults[`${sandbox.currentRunId}|greedy`] : null);
+const baselineDistance = computed(() => isLive.value
+  ? liveGreedy.value?.total_distance : data.plans.greedy.metrics.total_distance);
+const saving = computed(() => baselineDistance.value
+  ? 100 * (1 - plan.value.metrics.total_distance / baselineDistance.value) : null);
+const routePending = computed(() => liveKey.value
+  ? decisions.routePending.has(liveKey.value) : false);
+
+watch([canUseLiveRoute, mode], () => {
+  if (canUseLiveRoute.value) decisions.fetchRoute(sandbox.currentRunId, mode.value);
+}, { immediate: true });
+watch(canUseLiveRoute, (can) => {
+  if (can) {
+    decisions.fetchRoute(sandbox.currentRunId, "greedy");
+    decisions.fetchRoute(sandbox.currentRunId, "ortools");
+  }
+}, { immediate: true });
 const selected = computed(() => {
   if (selectedId.value === null) return null;
   const node = data.nodes.find(n => n.node_id === selectedId.value);
@@ -33,6 +73,9 @@ function clock(minutes) {
   <div class="sg-routing">
     <strong>{{ text.title }}</strong>
     <p class="sg-note">{{ text.note }}</p>
+    <p class="sg-source" :class="{ live: isLive }">
+      {{ isLive ? text.liveRoute : routePending ? text.loadingRoute : text.demoRoute }}
+    </p>
     <div class="route-toggle" role="group" :aria-label="text.title">
       <button v-for="key in ['greedy', 'ortools']" :key="key" :class="{ on: mode === key }"
         :aria-pressed="mode === key" @click="mode = key">{{ text[key] }}</button>
@@ -41,10 +84,10 @@ function clock(minutes) {
     <div class="sg-metrics">
       <div><b>{{ plan.metrics.total_distance.toFixed(2) }}</b><span>{{ text.distance }} · {{ text.km }}</span></div>
       <div><b>{{ plan.metrics.vehicles_used }}</b><span>{{ text.vehicles }}</span></div>
-      <div><b>{{ plan.metrics.served_customers }}/{{ data.nodes.length - 1 }}</b><span>{{ text.served }}</span></div>
-      <div><b>{{ plan.metrics.time_window_violations + plan.metrics.capacity_violations + plan.metrics.depot_return_violations + plan.metrics.vehicle_limit_violations }}</b><span>{{ text.violations }}</span></div>
+      <div><b>{{ plan.metrics.served_customers ?? "—" }}<template v-if="plan.metrics.served_customers != null">/{{ data.nodes.length - 1 }}</template></b><span>{{ text.served }}</span></div>
+      <div><b>{{ plan.metrics.time_window_violations == null ? "—" : plan.metrics.time_window_violations + plan.metrics.capacity_violations + plan.metrics.depot_return_violations + plan.metrics.vehicle_limit_violations }}</b><span>{{ text.violations }}</span></div>
     </div>
-    <p v-if="mode === 'ortools'" class="sg-saving">{{ text.savings }} {{ saving.toFixed(2) }}%</p>
+    <p v-if="mode === 'ortools' && saving != null" class="sg-saving">{{ text.savings }} {{ saving.toFixed(2) }}%</p>
     <div v-for="(route, index) in plan.routes" :key="route.vehicle_id" class="sg-vehicle">
       <b :style="{ color: color(index) }">● {{ text.vehicle }} {{ route.vehicle_id }}</b>
       <span>{{ route.total_distance.toFixed(2) }} {{ text.km }}</span>
@@ -67,7 +110,7 @@ function clock(minutes) {
       </template>
       <span v-else>{{ text.select }}</span>
     </div>
-    <p class="sg-note">{{ decisions.decisionFor.reshipment ? text.active : text.idle }}</p>
+    <p class="sg-note">{{ isLive ? text.activeLive : decisions.decisionFor.reshipment ? text.active : text.idle }}</p>
     <p class="sg-disclaimer">{{ text.assumption }}</p>
   </div>
 </template>
@@ -75,6 +118,8 @@ function clock(minutes) {
 <style scoped>
 .sg-routing { min-width: 0; font-size: 12px; }
 .sg-note { color: #64748b; line-height: 1.5; margin: 7px 0 10px; }
+.sg-source { display: inline-block; margin: 0 0 9px; padding: 3px 7px; border-radius: 999px; background: #f1f5f9; color: #64748b; font-weight: 700; }
+.sg-source.live { background: #ccfbf1; color: #0f766e; }
 .sg-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; margin-top: 10px; }
 .sg-metrics > div { padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
 .sg-metrics b { display: block; font-size: 18px; color: #0f172a; }

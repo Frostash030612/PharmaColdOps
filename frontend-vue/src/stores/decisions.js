@@ -38,6 +38,8 @@ export const useDecisionsStore = defineStore("decisions", () => {
   const gridKey = ref(null);
   const gridPending = ref(null);
   const presets = ref(null);            // { scenarioId: dispositionCode }
+  const routeResults = ref({});         // { "runId|algorithm": RouteOut }
+  const routePending = ref(new Set());
 
   /* ---- live keys (what the controls currently describe) ---- */
   const liveDecisionKey = computed(() => liveKey(sandbox.current, sandbox.spec));
@@ -131,6 +133,21 @@ export const useDecisionsStore = defineStore("decisions", () => {
       .catch(() => apiDown());
   }
 
+  function fetchRoute(runId, algorithm) {
+    const key = `${runId}|${algorithm}`;
+    if (routeResults.value[key] || routePending.value.has(key)) return;
+    if (!useApi.value || apiUp.value !== true) return;
+    routePending.value.add(key);
+    postJson(apiBase.value + "/api/route", { run_id: runId, algorithm })
+      .then((res) => {
+        apiUp.value = true;
+        routeResults.value = { ...routeResults.value, [key]: res };
+      })
+      // A rejected case/destination must not mark the whole decision API down.
+      .catch(() => {})
+      .finally(() => routePending.value.delete(key));
+  }
+
   function apiDown() {
     if (apiUp.value !== false) apiUp.value = false;
     scheduleRecheck();
@@ -178,8 +195,8 @@ export const useDecisionsStore = defineStore("decisions", () => {
 
   return {
     apiBase, useApi, apiUp, serverDecision, serverDecisionKey,
-    grid, gridKey, gridPending, presets,
+    grid, gridKey, gridPending, presets, routeResults, routePending,
     liveDecisionKey, liveSpecKey, freshServer, decisionFor, riskFor, currentGrid,
-    syncDecision, syncGrid, syncPresets, apiDown, init,
+    syncDecision, syncGrid, syncPresets, fetchRoute, apiDown, init,
   };
 });

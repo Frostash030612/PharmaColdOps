@@ -6,9 +6,10 @@
 export default {
   singapore: {
   "title": "Singapore delivery network",
-  "note": "Precomputed demo · 1 depot / 10 delivery sites",
+  "note": "1 depot / 10 delivery sites · close a case to load its route",
   "assumption": "Demand, capacity and time windows are simulated. Temperature or disposition changes do not recalculate routes.",
   "active": "This disposition recommends reshipment. The fixed example below is available for reference.",
+  "activeLive": "This archived reshipment case was solved by the backend; its re-routing plan is shown below.",
   "idle": "No reshipment needed for this disposition. You can still explore the delivery demo.",
   "greedy": "Greedy",
   "ortools": "Optimized",
@@ -30,7 +31,10 @@ export default {
   "savings": "Less distance than greedy",
   "units": "units",
   "noStop": "Depot departure / return",
-  "km": "km"
+  "km": "km",
+  "liveRoute": "Live route for this case",
+  "demoRoute": "Fixed demo route",
+  "loadingRoute": "Calculating this case route…"
 },
   header: {
     sub: "Cold-chain temperature-excursion disposition & delivery re-routing",
@@ -73,10 +77,17 @@ export default {
   right: {
     rerouteTitle: "Delivery re-routing",
     qaTitle: "Compliance Q&A",
-    qaNote: "(knowledge graph · concept)",
+    qaNote: "(structured query · offline fallback)",
     qaPlaceholder: "e.g. what is MKT? when to scrap?",
     qaAsk: "Ask",
+    qaLoading: "Querying…",
     qaInitial: "Ask a regulatory question to see a grounded answer.",
+    qaNeedsCase: "Close and archive a case first to ask this question.",
+    qaOfflineNote: "(offline concept answer, not a live query)",
+    qaSource_live: "Live knowledge-graph query",
+    qaSource_fallback: "Knowledge graph unavailable; showing offline guidance",
+    qaSource_concept: "Offline keyword answer",
+    qaSource_notice: "Archived case required",
   },
 
   audit: {
@@ -135,7 +146,7 @@ export default {
   },
 
   footer:
-    "PharmaColdOps · interactive demo — the rule engine and risk index are live logic (the risk index is derived from the same thresholds, deterministic); delivery maps use real Singapore roads and precomputed routes with simulated orders; knowledge-graph Q&A is a concept mockup.",
+    "PharmaColdOps · interactive demo — API mode loads live re-routing results for archived cases and structured knowledge-graph queries; offline mode uses precomputed routes and keyword answers; order parameters are simulated.",
 
   /* --- structural sentence templates (interpolated by pure libs / components) --- */
   templates: {

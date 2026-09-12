@@ -88,7 +88,13 @@ class RouteOut(BaseModel):
     vehicles_used: int
     total_distance: float
     on_time_rate: float
+    served_customers: int
+    time_window_violations: int
+    capacity_violations: int
+    depot_return_violations: int
+    vehicle_limit_violations: int
     routes: list[dict]
+    geojson: dict
 
 
 class QAIn(BaseModel):
