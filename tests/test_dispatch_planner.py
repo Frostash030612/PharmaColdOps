@@ -10,7 +10,7 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def isolated_dispatch_db(tmp_path, monkeypatch):
-    monkeypatch.setattr(service, "DISPATCH_DB", tmp_path / "dispatch.sqlite3")
+    monkeypatch.setattr(service, "DISPATCH_DATABASE_URL", str(tmp_path / "dispatch.sqlite3"))
 
 
 def payload():

@@ -15,6 +15,7 @@ from __future__ import annotations
 import datetime
 import json
 import logging
+import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -25,6 +26,11 @@ from pathlib import Path
 log = logging.getLogger("uvicorn.error")
 
 ROOT = Path(__file__).resolve().parents[2]
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+except ImportError:  # Minimal test environments may omit this optional loader.
+    pass
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
@@ -55,7 +61,9 @@ ENGINE = RuleEngine()
 # artifact (gitignored via `data/audit/`), served newest-first over GET /api/runs.
 # Tests monkeypatch RUNS_FILE to a temp path so pytest never writes into the repo.
 RUNS_FILE = ROOT / "data" / "audit" / "runs.jsonl"
-DISPATCH_DB = ROOT / "data" / "audit" / "dispatch.sqlite3"
+DISPATCH_DATABASE_URL = os.environ.get(
+    "DATABASE_URL", str(ROOT / "data" / "audit" / "dispatch.sqlite3")
+)
 
 
 def valid_product_ids() -> list:
@@ -488,29 +496,29 @@ def create_dispatch(req: DispatchCreateIn) -> dict:
             "vehicles": [item.model_dump() for item in req.vehicles],
         },
     }
-    create_run(DISPATCH_DB, req.dispatch_id, state, context=context)
+    create_run(DISPATCH_DATABASE_URL, req.dispatch_id, state, context=context)
     return {"dispatch_id": req.dispatch_id, **state_to_dict(state), **context}
 
 
 def get_dispatch(dispatch_id: str) -> dict:
-    state = load_run(DISPATCH_DB, dispatch_id)
-    return {"dispatch_id": dispatch_id, **state_to_dict(state), **load_context(DISPATCH_DB, dispatch_id)}
+    state = load_run(DISPATCH_DATABASE_URL, dispatch_id)
+    return {"dispatch_id": dispatch_id, **state_to_dict(state), **load_context(DISPATCH_DATABASE_URL, dispatch_id)}
 
 
 def depart_dispatch(dispatch_id: str, command_id: str) -> dict:
-    old = load_run(DISPATCH_DB, dispatch_id)
+    old = load_run(DISPATCH_DATABASE_URL, dispatch_id)
     new = depart(old, command_id=command_id)
     if new is not old:
-        update_run(DISPATCH_DB, dispatch_id, new, expected_version=old.version)
-    return {"dispatch_id": dispatch_id, **state_to_dict(new), **load_context(DISPATCH_DB, dispatch_id)}
+        update_run(DISPATCH_DATABASE_URL, dispatch_id, new, expected_version=old.version)
+    return {"dispatch_id": dispatch_id, **state_to_dict(new), **load_context(DISPATCH_DATABASE_URL, dispatch_id)}
 
 
 def deliver_dispatch(dispatch_id: str, vehicle_id: str, command_id: str) -> dict:
-    old = load_run(DISPATCH_DB, dispatch_id)
+    old = load_run(DISPATCH_DATABASE_URL, dispatch_id)
     new = deliver_next(old, vehicle_id, command_id=command_id)
     if new is not old:
-        update_run(DISPATCH_DB, dispatch_id, new, expected_version=old.version)
-    return {"dispatch_id": dispatch_id, **state_to_dict(new), **load_context(DISPATCH_DB, dispatch_id)}
+        update_run(DISPATCH_DATABASE_URL, dispatch_id, new, expected_version=old.version)
+    return {"dispatch_id": dispatch_id, **state_to_dict(new), **load_context(DISPATCH_DATABASE_URL, dispatch_id)}
 
 
 def qa_view(req: QAIn) -> dict:

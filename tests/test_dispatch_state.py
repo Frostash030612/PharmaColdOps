@@ -1,6 +1,7 @@
 from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot
 from optimisation.dispatch_planner import plan_delivery_orders
 from optimisation.dispatch_state import accept_plan, deliver_next, depart
+from optimisation import dispatch_repository
 
 
 def fixtures():
@@ -36,3 +37,9 @@ def test_depart_command_is_idempotent():
                         command_id="accept-1")
     departed = depart(state, command_id="depart-1")
     assert depart(departed, command_id="depart-1") == departed
+
+
+def test_repository_recognises_cloud_postgres_urls():
+    assert dispatch_repository._is_postgres("postgresql://host/database")
+    assert dispatch_repository._is_postgres("postgres://host/database")
+    assert not dispatch_repository._is_postgres("/tmp/dispatch.sqlite3")
