@@ -169,6 +169,20 @@
   .alloc .strong { font-weight: 700; }
   .idle { margin-top: 12px; background: #f8fafc; border: 1px dashed var(--line); border-radius: 8px; padding: 12px; text-align: center; color: var(--muted); font-size: 12.5px; }
 
+  .dispatch-console { max-width: 1440px; margin: 16px auto 0; padding: 0 24px; }
+  .dispatch-grid { display: grid; grid-template-columns: 280px 1fr 1fr; gap: 14px; }
+  .dispatch-step { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: #f8fafc; }
+  .dispatch-step h3 { margin: 0 0 10px; font-size: 13px; color: var(--navy); }
+  .dispatch-step label { display: block; color: var(--muted); font-size: 11px; margin: 8px 0 3px; }
+  .dispatch-step input, .dispatch-step select { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
+  .dispatch-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .dispatch-actions .btn { flex: 1; }
+  .dispatch-actions .primary { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .dispatch-status { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+  .dispatch-candidate { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 9px; margin-top: 7px; font-size: 12px; }
+  .dispatch-candidate.selected { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(20,184,166,.12); }
+  .dispatch-log { min-height: 42px; color: #475569; font-size: 12px; margin-top: 8px; }
+
   .qa { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
   .qa .qline { display: flex; gap: 8px; }
   .qa input[type=text] { flex: 1; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
@@ -184,7 +198,7 @@
 
   footer { text-align: center; color: var(--muted); font-size: 11.5px; padding: 0 24px 30px; }
 
-  @media (max-width: 1080px) { main { grid-template-columns: 1fr; } }
+  @media (max-width: 1080px) { main, .dispatch-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -326,6 +340,46 @@
   </aside>
 </main>
 
+<section class="dispatch-console">
+  <div class="card">
+    <h2>实时配送调度 <span style="color:#94a3b8;text-transform:none;letter-spacing:0">（订单、库存、车辆与紧急插单）</span></h2>
+    <div class="dispatch-status">
+      <div class="metric"><div class="mv" id="dsState">未建立</div><div class="mk">调度状态</div></div>
+      <div class="metric"><div class="mv" id="dsOrders">0</div><div class="mk">订单数</div></div>
+      <div class="metric"><div class="mv" id="dsVehicles">0</div><div class="mk">执行车辆</div></div>
+      <div class="metric"><div class="mv" id="dsStock">—</div><div class="mk">仓库余量</div></div>
+    </div>
+    <div class="dispatch-grid">
+      <div class="dispatch-step">
+        <h3>1. 日常配送</h3>
+        <p style="font-size:12px;color:#64748b">两家医院共 50 剂，仓库 100 剂，三辆同温层冷藏车。</p>
+        <div class="dispatch-actions">
+          <button class="btn primary" id="dispatchCreate">建立配送</button>
+          <button class="btn" id="dispatchDepart" disabled>确认发车</button>
+        </div>
+        <div class="dispatch-log" id="dispatchLog">连接后端后开始。</div>
+      </div>
+      <div class="dispatch-step">
+        <h3>2. 紧急订单</h3>
+        <label>目的医院</label>
+        <select id="emergencyHospital">
+          <option value="H-KKH">KK 妇女儿童医院</option>
+          <option value="H-TTSH">陈笃生医院</option>
+          <option value="H-SKH">盛港综合医院</option>
+        </select>
+        <label>需求量（剂）</label><input id="emergencyQty" type="number" min="1" value="20">
+        <label>最迟送达（当日分钟）</label><input id="emergencyLatest" type="number" min="600" value="700">
+        <button class="btn primary" id="emergencyPreview" style="margin-top:10px" disabled>比较配送方案</button>
+      </div>
+      <div class="dispatch-step">
+        <h3>3. 候选方案</h3>
+        <div id="emergencyCandidates" class="dispatch-log">发车后可比较备用车专送与在途车辆返仓取货。</div>
+        <button class="btn primary" id="emergencyAccept" style="margin-top:10px" disabled>确认推荐方案</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="audit">
   <div class="card">
     <h2>审计追踪</h2>
@@ -414,6 +468,8 @@ let nowTime = 0;
 let animTimer = null;
 let routeMode = "optimized";
 let selectedPharm = null;
+let dispatchRun = null;
+let emergencyPreview = null;
 
 /* ================= 工具 ================= */
 const $ = (id) => document.getElementById(id);
@@ -972,6 +1028,90 @@ function renderReroute() {
   $("reroute").innerHTML = toggle + svg + metrics + viol + detail + alloc;
 }
 
+function dispatchOrder() {
+  return {
+    order_id: "URG-" + Date.now(), product_id: "vaccine_2_8",
+    destination_facility_id: $("emergencyHospital").value,
+    quantity: Number($("emergencyQty").value), earliest_min: 600,
+    latest_min: Number($("emergencyLatest").value), temperature_zone: "chilled",
+  };
+}
+function dispatchRequest(path, body) {
+  if (!USE_API) return Promise.reject(new Error("请用带 ?api=http://127.0.0.1:8000 的地址打开页面"));
+  return fetch(API_BASE + path, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  }).then(async (r) => {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.detail || ("HTTP " + r.status));
+    return data;
+  });
+}
+function renderDispatchState(message) {
+  $("dispatchLog").textContent = message || "";
+  if (!dispatchRun) return;
+  const vehicles = Object.values(dispatchRun.vehicles || {});
+  $("dsState").textContent = ({accepted:"已确认",in_transit:"运输中",completed:"已完成"})[dispatchRun.status] || dispatchRun.status;
+  $("dsOrders").textContent = Object.keys(dispatchRun.orders || {}).length;
+  $("dsVehicles").textContent = vehicles.length;
+  $("dsStock").textContent = Object.values(dispatchRun.available_by_lot || {}).reduce((a, b) => a + b, 0) + " 剂";
+  $("dispatchDepart").disabled = dispatchRun.status !== "accepted";
+  $("emergencyPreview").disabled = dispatchRun.status !== "in_transit";
+}
+function createDispatch() {
+  const id = "DSP-WEB-" + Date.now();
+  const base = {
+    dispatch_id: id, command_id: "accept-" + id, algorithm: "greedy",
+    orders: [
+      {order_id:id+"-NUH",product_id:"vaccine_2_8",destination_facility_id:"H-NUH",quantity:20,earliest_min:540,latest_min:1020,temperature_zone:"chilled"},
+      {order_id:id+"-CGH",product_id:"vaccine_2_8",destination_facility_id:"H-CGH",quantity:30,earliest_min:540,latest_min:1020,temperature_zone:"chilled"},
+    ],
+    inventory: [{lot_id:id+"-LOT",product_id:"vaccine_2_8",facility_id:"W-KN-PIONEER",available_quantity:100,temperature_zone:"chilled"}],
+    vehicles: [1,2,3].map((n) => ({vehicle_id:id+"-V"+n,capacity:100,temperature_zone:"chilled",start_facility_id:"W-KN-PIONEER"})),
+  };
+  $("dispatchLog").textContent = "正在检查订单、库存和车辆…";
+  dispatchRequest("/api/dispatch/runs", base).then((data) => {
+    dispatchRun = data; emergencyPreview = null;
+    $("emergencyCandidates").textContent = "日常配送已建立，请先确认发车。";
+    $("emergencyAccept").disabled = true;
+    renderDispatchState("已建立两家医院的日常配送，库存已预留 50 剂。未使用车辆仍是备用车。");
+  }).catch((e) => renderDispatchState("建立失败：" + e.message));
+}
+function departDispatch() {
+  dispatchRequest(`/api/dispatch/runs/${dispatchRun.dispatch_id}/depart`, {command_id:"depart-"+dispatchRun.dispatch_id})
+    .then((data) => { dispatchRun = data; renderDispatchState("车辆已发车。现在可以加入紧急订单并比较真实候选。"); })
+    .catch((e) => renderDispatchState("发车失败：" + e.message));
+}
+function previewEmergency() {
+  const order = dispatchOrder();
+  $("emergencyCandidates").textContent = "正在重新检查库存、车辆和送达时间…";
+  dispatchRequest(`/api/dispatch/runs/${dispatchRun.dispatch_id}/emergency-preview`, {current_time_min:600, order})
+    .then((data) => {
+      emergencyPreview = {...data, order};
+      if (!data.candidates.length) {
+        $("emergencyCandidates").textContent = "没有可行候选：" + (data.reason || "车辆或库存不足");
+        $("emergencyAccept").disabled = true; return;
+      }
+      $("emergencyCandidates").innerHTML = data.candidates.map((c, i) => `
+        <div class="dispatch-candidate ${i===0?"selected":""}">
+          <b>${i===0?"推荐 · ":""}${c.kind==="spare_vehicle"?"备用车专送":"在途车辆返仓取货"}</b><br>
+          ${c.vehicle_id} · 预计 ${Math.floor(c.eta_min/60)}:${String(Math.round(c.eta_min%60)).padStart(2,"0")} 到达 · ${(c.distance_m/1000).toFixed(1)} km<br>
+          <span style="color:${c.on_time?"#15803d":"#b91c1c"}">${c.on_time?"可按时送达":"预计迟到 "+c.lateness_min+" 分钟"}</span>${c.affected_order_ids.length?" · 影响原订单 "+c.affected_order_ids.length+" 个":" · 不影响原订单"}
+        </div>`).join("");
+      $("emergencyAccept").disabled = !data.selected_candidate || !data.selected_candidate.on_time;
+    }).catch((e) => { $("emergencyCandidates").textContent = "计算失败："+e.message; });
+}
+function acceptEmergency() {
+  const c = emergencyPreview.selected_candidate;
+  dispatchRequest(`/api/dispatch/runs/${dispatchRun.dispatch_id}/emergency-accept`, {
+    current_time_min:600, order:emergencyPreview.order, candidate_kind:c.kind,
+    vehicle_id:c.vehicle_id, command_id:"accept-"+emergencyPreview.order.order_id,
+  }).then((data) => {
+    dispatchRun = data; $("emergencyAccept").disabled = true;
+    renderDispatchState("紧急订单已加入执行计划：库存已扣减，推荐车辆任务已更新并持久化。刷新后仍可从后端恢复。");
+    $("emergencyCandidates").querySelector(".selected").insertAdjacentHTML("beforeend", "<br><b style='color:#0f766e'>✓ 已确认执行</b>");
+  }).catch((e) => renderDispatchState("确认失败：" + e.message));
+}
+
 function renderAll() {
   renderBanner();
   renderTimeline();
@@ -1125,6 +1265,10 @@ function bind() {
     $("qaAnswer").textContent = askKG(q);
   });
   $("qaInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("qaAsk").click(); });
+  $("dispatchCreate").addEventListener("click", createDispatch);
+  $("dispatchDepart").addEventListener("click", departDispatch);
+  $("emergencyPreview").addEventListener("click", previewEmergency);
+  $("emergencyAccept").addEventListener("click", acceptEmergency);
 }
 
 /* ================= 知识图谱问答（概念示意） ================= */
