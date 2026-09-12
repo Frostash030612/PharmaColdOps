@@ -114,9 +114,10 @@ def test_build_reshipment_order_skips_non_reshipment_case():
     assert build_reshipment_order(_closed_record(reshipment=False)) is None
 
 
-def test_plan_reshipment_route_uses_verified_singapore_instance():
+@pytest.mark.parametrize("algorithm", ["greedy", "ortools"])
+def test_plan_reshipment_route_uses_only_order_destination(algorithm):
     order = build_reshipment_order(_closed_record())
-    result = plan_reshipment_route(order)
+    result = plan_reshipment_route(order, algorithm=algorithm)
     assert result.routes
     assert result.metrics.vehicles_used == 1
     assert result.metrics.served_customers == 1
