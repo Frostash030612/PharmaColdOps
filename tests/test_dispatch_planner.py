@@ -104,3 +104,36 @@ def test_dispatch_run_persists_and_advances_idempotently():
     assert sum(o["status"] == "delivered" for o in delivered.json()["orders"].values()) == 1
     restored = client.get("/api/dispatch/runs/DSP-1")
     assert restored.json() == delivered.json()
+
+
+def test_emergency_preview_compares_spare_vehicle_and_return_to_depot():
+    request = payload()
+    request.update(dispatch_id="DSP-EMERGENCY", command_id="accept-emergency")
+    request["inventory"][0]["available_quantity"] = 80
+    request["vehicles"].append({
+        "vehicle_id": "V-CHILL-2", "capacity": 100,
+        "temperature_zone": "chilled", "start_facility_id": "W-KN-PIONEER",
+    })
+    request["vehicles"].append({
+        "vehicle_id": "V-CHILL-3", "capacity": 100,
+        "temperature_zone": "chilled", "start_facility_id": "W-KN-PIONEER",
+    })
+    assert client.post("/api/dispatch/runs", json=request).status_code == 200
+    assert client.post(
+        "/api/dispatch/runs/DSP-EMERGENCY/depart", json={"command_id": "depart-emergency"}
+    ).status_code == 200
+    response = client.post("/api/dispatch/runs/DSP-EMERGENCY/emergency-preview", json={
+        "current_time_min": 600,
+        "order": {
+            "order_id": "DO-URGENT", "product_id": "vaccine_2_8",
+            "destination_facility_id": "H-KKH", "quantity": 20,
+            "earliest_min": 600, "latest_min": 700, "temperature_zone": "chilled",
+        },
+    })
+    assert response.status_code == 200
+    body = response.json()
+    assert body["feasible"] is True
+    assert body["selected_candidate"]["kind"] == "spare_vehicle"
+    assert {item["kind"] for item in body["candidates"]} == {
+        "spare_vehicle", "return_to_depot"
+    }

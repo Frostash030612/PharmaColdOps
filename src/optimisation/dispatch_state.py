@@ -92,6 +92,8 @@ def accept_plan(
     sequences: dict[str, list[str]] = {}
     for zone_plan in plan.zone_plans:
         for route in zone_plan.result.routes:
+            if not route.customer_ids:
+                continue
             vehicle_id = zone_plan.vehicle_ids[route.vehicle_id - 1]
             sequence = sequences.setdefault(vehicle_id, [])
             for node_id in route.customer_ids:

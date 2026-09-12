@@ -147,6 +147,11 @@ class DispatchDeliverIn(DispatchCommandIn):
     vehicle_id: str
 
 
+class EmergencyPreviewIn(BaseModel):
+    order: DispatchOrderIn
+    current_time_min: int = Field(ge=0)
+
+
 class QAIn(BaseModel):
     """Structured KG query; natural-language classification is client-side."""
 

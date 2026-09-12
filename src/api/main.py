@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import service
 from .schemas import (
-    BatchIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
+    BatchIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn, EmergencyPreviewIn,
     DispatchDeliverIn, DispatchPlanIn, GridIn, QAIn, RouteIn, RouteOut,
 )
 
@@ -160,6 +160,17 @@ def deliver_dispatch_run(dispatch_id: str, req: DispatchDeliverIn):
         raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/emergency-preview")
+def preview_emergency_dispatch(dispatch_id: str, req: EmergencyPreviewIn):
+    """Compare real resource options; this preview does not reserve or reroute."""
+    try:
+        return service.emergency_dispatch_preview(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @app.post("/api/qa")
