@@ -148,3 +148,21 @@ class ReplanResult:
     @property
     def feasible(self) -> bool:
         return self.metrics.violation_count == 0
+
+
+@dataclass(frozen=True)
+class ReshipmentOrder:
+    """A resupply request derived from one closed disposition case.
+
+    The ``RO-{run_id}`` id mirrors the Neo4j ``:ReshipmentOrder`` written by
+    ``knowledge_graph.writer`` so routing and graph records remain joinable.
+    """
+
+    order_id: str
+    run_id: str
+    product_id: str
+    origin_facility_id: str
+    destination_facility_id: str
+    demand_units: int
+    priority: str
+    requested_at: str

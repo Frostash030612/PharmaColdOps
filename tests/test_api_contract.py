@@ -150,9 +150,58 @@ def test_decide_matches_engine_on_gold_bank():
             assert api["reshipment_required"] == direct.reshipment_required
 
 
-def test_reserved_routes_are_501():
-    assert client.post("/api/route", json={}).status_code == 501
-    assert client.post("/api/qa", json={}).status_code == 501
+def test_route_plans_closed_reshipment_case():
+    closed = client.post(
+        "/api/case_close",
+        json={**_decide_payload("vaccine_2_8", 20.0, 90, 19.0),
+              "destination_facility_id": "H-NUH"},
+    ).json()
+    response = client.post("/api/route", json={"run_id": closed["run_id"]})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["order_id"] == f"RO-{closed['run_id']}"
+    assert body["algorithm"] == "greedy-nearest-insertion"
+    assert body["vehicles_used"] >= 1
+    assert body["on_time_rate"] == 1.0
+    assert body["routes"] and body["routes"][0]["stops"]
+
+
+def test_route_rejects_case_that_does_not_need_reshipment():
+    closed = client.post(
+        "/api/case_close",
+        json=_decide_payload("vaccine_2_8", 6.0, 10, 5.0),
+    ).json()
+    response = client.post("/api/route", json={"run_id": closed["run_id"]})
+    assert response.status_code == 422
+    assert "does not require reshipment" in response.json()["detail"]
+
+
+def test_route_unknown_run_is_404():
+    response = client.post("/api/route", json={"run_id": "R-NOT-FOUND"})
+    assert response.status_code == 404
+
+
+def test_qa_routes_structured_question(monkeypatch):
+    expected = {"answer": "release: 2", "evidence": []}
+    monkeypatch.setattr(service.kg_qa, "disposition_stats", lambda: expected)
+    response = client.post("/api/qa", json={"question_type": "disposition_stats"})
+    assert response.status_code == 200
+    assert response.json() == expected
+
+
+def test_qa_requires_identifier_for_question_type():
+    response = client.post("/api/qa", json={"question_type": "audit_chain"})
+    assert response.status_code == 422
+
+
+def test_qa_returns_503_when_graph_is_unavailable(monkeypatch):
+    def unavailable():
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(service.kg_qa, "disposition_stats", unavailable)
+    response = client.post("/api/qa", json={"question_type": "disposition_stats"})
+    assert response.status_code == 503
+    assert response.json()["detail"] == "knowledge graph unavailable"
 
 
 def test_decide_is_preview_only_never_archives():

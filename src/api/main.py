@@ -7,8 +7,8 @@ Run from the repo root::
 Open the demo against it:  ``frontend/index.html?api=http://127.0.0.1:8000``
 (CORS is open so the demo also works from ``file://``).
 
-Routes marked 501 are reserved for the optimisation (re-routing) and
-knowledge-graph QA modules, which this milestone does not expose over HTTP yet.
+The route endpoint bridges closed reshipment cases to the fixed Singapore
+VRPTW demo. The QA endpoint exposes structured knowledge-graph queries.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import service
-from .schemas import BatchIn, CaseCloseIn, DecideIn, GridIn
+from .schemas import BatchIn, CaseCloseIn, DecideIn, GridIn, QAIn, RouteIn, RouteOut
 
 app = FastAPI(
     title="PharmaColdOps disposition API",
@@ -104,17 +104,19 @@ def decide_batch(req: BatchIn) -> dict:
     return service.batch_view(req.events)
 
 
-@app.post("/api/route")
-def route() -> None:
-    raise HTTPException(
-        status_code=501,
-        detail="re-routing optimiser is not exposed over HTTP in this milestone",
-    )
+@app.post("/api/route", response_model=RouteOut)
+def route(req: RouteIn):
+    try:
+        return service.route_view(req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown run_id {req.run_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @app.post("/api/qa")
-def qa() -> None:
-    raise HTTPException(
-        status_code=501,
-        detail="knowledge-graph QA is not exposed over HTTP in this milestone",
-    )
+def qa(req: QAIn):
+    try:
+        return service.qa_view(req)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))

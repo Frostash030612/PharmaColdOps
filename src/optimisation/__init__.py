@@ -5,7 +5,6 @@ instances (``data/optimisation/solomon/``) into unified, validated in-memory
 data classes so the greedy baseline (W1), CP-SAT / GA (W2+) and the
 reshipment → re-route main flow can all consume one input shape.
 
-Greenfield on 2026-09-10: loader + models only. The output contract
-(``ReplanResult``) and the ``ReshipmentOrder`` field set are cross-member
-contracts finalised 9/21 (A+C draft, D review) — not self-invented here.
+The output contract (``ReplanResult``) and the ``ReshipmentOrder`` bridge are
+shared contracts used by the API, routing solvers and knowledge graph.
 """

@@ -6,6 +6,7 @@ import pytest
 from optimisation.greedy import solve_greedy
 from optimisation.models import Node, SolomonInstance
 from optimisation.ortools_solver import solve_ortools
+from optimisation.reshipment import build_reshipment_order, plan_reshipment_route
 from optimisation.routing import build_result, evaluate_route
 from optimisation.solomon_loader import SOLOMON_DIR, SOLOMON_NAMES, load_instance
 
@@ -86,3 +87,41 @@ def test_ortools_solves_small_instance_with_hard_constraints():
     assert result.feasible
     assert result.metrics.served_customers == 3
     assert result.metrics.on_time_rate == 1.0
+
+
+def _closed_record(*, reshipment=True, destination=None):
+    event = {"product_id": "vaccine_2_8"}
+    if destination is not None:
+        event["destination_facility_id"] = destination
+    return {
+        "run_id": "R20260912-001",
+        "created_at": "2026-09-12T09:00:00",
+        "disposition": "scrap" if reshipment else "release",
+        "reshipment_required": reshipment,
+        "event": event,
+    }
+
+
+def test_build_reshipment_order_matches_kg_order_id():
+    order = build_reshipment_order(_closed_record())
+    assert order is not None
+    assert order.order_id == "RO-R20260912-001"
+    assert order.origin_facility_id == "W-KN-PIONEER"
+    assert order.demand_units == 30
+
+
+def test_build_reshipment_order_skips_non_reshipment_case():
+    assert build_reshipment_order(_closed_record(reshipment=False)) is None
+
+
+def test_plan_reshipment_route_uses_verified_singapore_instance():
+    order = build_reshipment_order(_closed_record())
+    result = plan_reshipment_route(order)
+    assert result.routes
+    assert result.metrics.vehicles_used >= 1
+
+
+def test_plan_reshipment_route_rejects_unknown_destination():
+    order = build_reshipment_order(_closed_record(destination="H-NOT-REAL"))
+    with pytest.raises(ValueError, match="H-NOT-REAL"):
+        plan_reshipment_route(order)

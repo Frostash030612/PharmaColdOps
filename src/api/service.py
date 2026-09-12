@@ -16,6 +16,7 @@ import datetime
 import json
 import logging
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 # uvicorn wires handlers onto its own loggers, so this line appears on the
@@ -32,7 +33,12 @@ from rule_engine.engine import RuleEngine  # noqa: E402
 from rule_engine.models import ExcursionEvent, ProductSpec  # noqa: E402
 
 from knowledge_graph.writer import write_case  # noqa: E402
-from .schemas import EventIn, GridIn, SpecOverride  # noqa: E402
+from knowledge_graph import qa as kg_qa  # noqa: E402
+from optimisation.reshipment import (  # noqa: E402
+    build_reshipment_order,
+    plan_reshipment_route,
+)
+from .schemas import EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
 
 # Loaded once; used both as the source of stock thresholds and to keep the
 # per-request override engines cheap (dict copy, no disk I/O).
@@ -357,3 +363,50 @@ def batch_view(events: list) -> dict:
         })
         _audit("batch", ev, None, decision)
     return {"decisions": decisions}
+
+
+def route_view(req: RouteIn) -> dict:
+    """Find a closed case, derive its order, solve, and serialise the replan."""
+    record = next(
+        (item for item in list_runs()["runs"] if item["run_id"] == req.run_id),
+        None,
+    )
+    if record is None:
+        raise KeyError(req.run_id)
+    order = build_reshipment_order(record)
+    if order is None:
+        raise ValueError(f"case {req.run_id} does not require reshipment")
+    result = plan_reshipment_route(order, algorithm=req.algorithm)
+    return {
+        "order_id": order.order_id,
+        "algorithm": result.algorithm,
+        "vehicles_used": result.metrics.vehicles_used,
+        "total_distance": result.metrics.total_distance,
+        "on_time_rate": result.metrics.on_time_rate,
+        "routes": [
+            {
+                "vehicle_id": route.vehicle_id,
+                "customer_ids": list(route.customer_ids),
+                "stops": [asdict(stop) for stop in route.stops],
+                "total_load": route.total_load,
+                "total_distance": route.total_distance,
+                "duration": route.duration,
+            }
+            for route in result.routes
+        ],
+    }
+
+
+def qa_view(req: QAIn) -> dict:
+    """Route one structured question to KG queries; hide DB/query failures."""
+    try:
+        if req.question_type == "why_disposition":
+            return kg_qa.why_disposition(req.run_id)
+        if req.question_type == "audit_chain":
+            return kg_qa.audit_chain(req.run_id)
+        if req.question_type == "product_requirements":
+            return kg_qa.product_requirements(req.product_id)
+        return kg_qa.disposition_stats()
+    except Exception as exc:
+        log.warning("qa query failed: %s", exc, exc_info=True)
+        raise RuntimeError("knowledge graph unavailable") from exc

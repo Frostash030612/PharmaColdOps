@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SpecOverride(BaseModel):
@@ -21,7 +21,7 @@ class SpecOverride(BaseModel):
 
 
 class EventIn(BaseModel):
-    """The six excursion inputs the sandbox edits (mirrors ``current``)."""
+    """Excursion inputs, optionally linked to known routing facilities."""
 
     product_id: str
     excursion_temp_c: float
@@ -29,6 +29,8 @@ class EventIn(BaseModel):
     mkt_c: float
     packaging: Literal["intact", "compromised"]
     stage: str = "transit"
+    facility_id: Optional[str] = None
+    destination_facility_id: Optional[str] = None
 
 
 class DecideIn(EventIn):
@@ -71,3 +73,37 @@ class BatchIn(BaseModel):
     """Preset scenarios → trimmed decisions (disposition is all the UI needs)."""
 
     events: List[EventIn] = Field(min_length=1)
+
+
+class RouteIn(BaseModel):
+    """Route a reshipment attached to one already-closed case."""
+
+    run_id: str
+    algorithm: Literal["greedy", "ortools"] = "greedy"
+
+
+class RouteOut(BaseModel):
+    order_id: str
+    algorithm: str
+    vehicles_used: int
+    total_distance: float
+    on_time_rate: float
+    routes: list[dict]
+
+
+class QAIn(BaseModel):
+    """Structured KG query; natural-language classification is client-side."""
+
+    question_type: Literal[
+        "why_disposition", "audit_chain", "product_requirements", "disposition_stats"
+    ]
+    run_id: Optional[str] = None
+    product_id: Optional[str] = None
+
+    @model_validator(mode="after")
+    def require_query_identifier(self):
+        if self.question_type in {"why_disposition", "audit_chain"} and not self.run_id:
+            raise ValueError(f"run_id is required for {self.question_type}")
+        if self.question_type == "product_requirements" and not self.product_id:
+            raise ValueError("product_id is required for product_requirements")
+        return self
