@@ -94,7 +94,9 @@ def plan_delivery_orders(
         if algorithm == "greedy":
             dense_result = solve_greedy(instance, leg_fn=leg_fn)
         else:
-            dense_result = solve_ortools(instance, leg_fn=leg_fn)
+            # Interactive previews need a bounded response; this is a feasible
+            # route search, not an optimality certificate.
+            dense_result = solve_ortools(instance, leg_fn=leg_fn, time_limit_seconds=2)
         result = restore_network_node_ids(dense_result, source_ids)
         # Rebuild by source node without relying on request dictionary order.
         node_by_facility = {n["facility_id"]: n["node_id"] for n in read_network(network_path)["nodes"]}

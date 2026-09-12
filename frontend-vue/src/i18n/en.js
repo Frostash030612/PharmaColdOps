@@ -35,6 +35,13 @@ export default {
   "liveRoute": "Live route for this case",
   "demoRoute": "Fixed demo route",
   "loadingRoute": "Calculating this case route…"
+  ,"dispatchTitle": "Plan hospital orders (simulated data)"
+  ,"dispatchHelp": "Select hospitals with actual orders; only those stops are routed."
+  ,"dispatchPlan": "Plan order routes"
+  ,"dispatchLoading": "Planning…"
+  ,"dispatchRoute": "Live order-driven route"
+  ,"dispatchActive": "The map is solved from the simulated hospital orders you selected."
+  ,"dispatchError": "Planning failed; check the API and order resources."
 },
   header: {
     sub: "Cold-chain temperature-excursion disposition & delivery re-routing",

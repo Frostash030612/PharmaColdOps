@@ -34,6 +34,13 @@ export default {
   "liveRoute": "当前案例真实路线",
   "demoRoute": "固定演示路线",
   "loadingRoute": "正在计算当前案例路线…"
+  ,"dispatchTitle": "按医院订单规划（模拟数据）"
+  ,"dispatchHelp": "选择今天真正有订单的医院，地图只规划这些站点。"
+  ,"dispatchPlan": "生成订单路线"
+  ,"dispatchLoading": "规划中…"
+  ,"dispatchRoute": "订单驱动的实时路线"
+  ,"dispatchActive": "当前地图按你勾选的模拟医院订单实时求解。"
+  ,"dispatchError": "规划失败，请检查后端或订单资源。"
 },
   header: {
     sub: "冷链药品温度超限处置与配送重新规划",
