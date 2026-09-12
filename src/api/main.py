@@ -17,7 +17,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import service
 from .schemas import (
-    BatchIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn, EmergencyPreviewIn,
+    BatchIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
+    EmergencyAcceptIn, EmergencyPreviewIn,
     DispatchDeliverIn, DispatchPlanIn, GridIn, QAIn, RouteIn, RouteOut,
 )
 
@@ -171,6 +172,16 @@ def preview_emergency_dispatch(dispatch_id: str, req: EmergencyPreviewIn):
         raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/emergency-accept")
+def accept_emergency_dispatch(dispatch_id: str, req: EmergencyAcceptIn):
+    try:
+        return service.accept_emergency_dispatch(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.post("/api/qa")

@@ -50,8 +50,8 @@ from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, Invento
 from optimisation.dispatch_planner import plan_delivery_orders  # noqa: E402
 from optimisation.dispatch_state import accept_plan, deliver_next, depart, state_to_dict  # noqa: E402
 from optimisation.dispatch_repository import create_run, load_context, load_run, update_run  # noqa: E402
-from optimisation.dynamic_problem import preview_emergency_order  # noqa: E402
-from .schemas import DispatchCreateIn, DispatchPlanIn, EmergencyPreviewIn, EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
+from optimisation.dynamic_problem import accept_emergency_order, preview_emergency_order  # noqa: E402
+from .schemas import DispatchCreateIn, DispatchPlanIn, EmergencyAcceptIn, EmergencyPreviewIn, EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
 
 # Loaded once; used both as the source of stock thresholds and to keep the
 # per-request override engines cheap (dict copy, no disk I/O).
@@ -531,6 +531,21 @@ def emergency_dispatch_preview(dispatch_id: str, req: EmergencyPreviewIn) -> dic
         DeliveryOrder(**req.order.model_dump()),
         current_time_min=req.current_time_min,
     )
+
+
+def accept_emergency_dispatch(dispatch_id: str, req: EmergencyAcceptIn) -> dict:
+    old = load_run(DISPATCH_DATABASE_URL, dispatch_id)
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    new = accept_emergency_order(
+        old, context, DeliveryOrder(**req.order.model_dump()),
+        current_time_min=req.current_time_min,
+        candidate_kind=req.candidate_kind,
+        vehicle_id=req.vehicle_id,
+        command_id=req.command_id,
+    )
+    if new is not old:
+        update_run(DISPATCH_DATABASE_URL, dispatch_id, new, expected_version=old.version)
+    return {"dispatch_id": dispatch_id, **state_to_dict(new), **context}
 
 
 def qa_view(req: QAIn) -> dict:

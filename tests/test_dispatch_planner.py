@@ -137,3 +137,21 @@ def test_emergency_preview_compares_spare_vehicle_and_return_to_depot():
     assert {item["kind"] for item in body["candidates"]} == {
         "spare_vehicle", "return_to_depot"
     }
+    accepted = client.post("/api/dispatch/runs/DSP-EMERGENCY/emergency-accept", json={
+        "current_time_min": 600,
+        "candidate_kind": body["selected_candidate"]["kind"],
+        "vehicle_id": body["selected_candidate"]["vehicle_id"],
+        "command_id": "accept-urgent",
+        "order": {
+            "order_id": "DO-URGENT", "product_id": "vaccine_2_8",
+            "destination_facility_id": "H-KKH", "quantity": 20,
+            "earliest_min": 600, "latest_min": 700, "temperature_zone": "chilled",
+        },
+    })
+    assert accepted.status_code == 200
+    accepted_body = accepted.json()
+    assert accepted_body["available_by_lot"] == {"LOT-1": 10}
+    assert accepted_body["orders"]["DO-URGENT"]["status"] == "in_transit"
+    assert accepted_body["vehicles"][body["selected_candidate"]["vehicle_id"]][
+        "remaining_order_ids"
+    ] == ["DO-URGENT"]

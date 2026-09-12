@@ -152,6 +152,12 @@ class EmergencyPreviewIn(BaseModel):
     current_time_min: int = Field(ge=0)
 
 
+class EmergencyAcceptIn(EmergencyPreviewIn):
+    candidate_kind: Literal["spare_vehicle", "return_to_depot"]
+    vehicle_id: str
+    command_id: str
+
+
 class QAIn(BaseModel):
     """Structured KG query; natural-language classification is client-side."""
 

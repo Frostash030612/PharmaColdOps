@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from .dispatch_models import DeliveryOrder
 from .dispatch_planner import DISPATCH_ORIGIN
-from .dispatch_state import DispatchState
+from dataclasses import replace
+
+from .dispatch_state import DispatchState, OrderProgress, VehicleProgress
 from .singapore_loader import read_network
 
 
@@ -106,3 +108,73 @@ def _candidate(kind: str, vehicle_id: str, eta: float, distance: float, order: D
         "distance_m": round(distance, 2),
         "affected_order_ids": [],
     }
+
+
+def accept_emergency_order(
+    state: DispatchState,
+    context: dict,
+    order: DeliveryOrder,
+    *,
+    current_time_min: int,
+    candidate_kind: str,
+    vehicle_id: str,
+    command_id: str,
+) -> DispatchState:
+    """Revalidate and apply one previewed emergency option exactly once."""
+    if command_id in state.applied_commands:
+        return state
+    preview = preview_emergency_order(
+        state, context, order, current_time_min=current_time_min
+    )
+    candidate = next((item for item in preview["candidates"] if (
+        item["kind"] == candidate_kind and item["vehicle_id"] == vehicle_id
+    )), None)
+    if candidate is None or not candidate["on_time"]:
+        raise ValueError("selected emergency candidate is unavailable or late")
+
+    lots = {item["lot_id"]: item for item in context["input"]["inventory"]}
+    available = dict(state.available_by_lot)
+    needed = order.quantity
+    allocations = []
+    for lot_id, lot in lots.items():
+        if (lot["product_id"] != order.product_id
+                or lot["temperature_zone"] != order.temperature_zone
+                or lot["facility_id"] != DISPATCH_ORIGIN
+                or lot.get("status", "available") != "available"):
+            continue
+        take = min(needed, available.get(lot_id, 0))
+        if take:
+            available[lot_id] -= take
+            needed -= take
+            allocations.append((lot_id, take))
+        if needed == 0:
+            break
+    if needed:
+        raise ValueError("inventory changed after emergency preview")
+
+    vehicles = dict(state.vehicles)
+    if candidate_kind == "spare_vehicle":
+        vehicles[vehicle_id] = VehicleProgress(
+            vehicle_id, DISPATCH_ORIGIN, (order.order_id,), status="in_transit"
+        )
+    else:
+        vehicle = vehicles[vehicle_id]
+        vehicles[vehicle_id] = replace(
+            vehicle, remaining_order_ids=(order.order_id, *vehicle.remaining_order_ids)
+        )
+    orders = {**state.orders, order.order_id: OrderProgress(
+        order.order_id, order.product_id, order.destination_facility_id,
+        order.quantity, vehicle_id, "in_transit",
+    )}
+    return replace(
+        state,
+        version=state.version + 1,
+        status="in_transit",
+        orders=orders,
+        vehicles=vehicles,
+        available_by_lot=available,
+        reserved_by_order={
+            **state.reserved_by_order, order.order_id: tuple(allocations)
+        },
+        applied_commands=(*state.applied_commands, command_id),
+    )
