@@ -12,6 +12,8 @@ Proposal & related documents live in [`proposal/`](proposal/):
 
 ## Modules (IRS technique groups)
 
+新加坡路网与前端的完成范围、实测结果及复用方式：[交付记录](docs/M5_singapore_handover.md)。
+
 | Module | Directory | Technique group |
 |---|---|---|
 | Disposition rule engine | `src/rule_engine/` | Decision automation |
