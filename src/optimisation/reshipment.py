@@ -8,8 +8,9 @@ from .models import ReplanResult, ReshipmentOrder
 from .ortools_solver import solve_ortools
 from .singapore_loader import (
     SINGAPORE_NETWORK_PATH,
-    load_singapore_instance,
+    load_singapore_subset,
     read_network,
+    restore_network_node_ids,
 )
 
 DEPOT_FACILITY_ID = "W-KN-PIONEER"
@@ -63,25 +64,23 @@ def plan_reshipment_route(
     algorithm: str = "greedy",
     network_path: str | Path = SINGAPORE_NETWORK_PATH,
 ) -> ReplanResult:
-    """Validate ``order`` and solve the existing fixed Singapore instance.
-
-    This MVP does not build a one-order VRP or dynamically change demand. It
-    checks that the order destination belongs to the verified 10-customer demo,
-    then returns a full-demo replan containing that order's destination.
-    """
+    """Solve only the destination and demand carried by this reshipment order."""
     network = read_network(network_path)
     destination = resolve_destination(order, network)
-    node_ids = {
-        node["facility_id"]: node["node_id"] for node in network["nodes"]
-    }
-    instance, leg_fn = load_singapore_instance(network_path)
+    instance, leg_fn, source_ids = load_singapore_subset(
+        {destination: order.demand_units}, network_path
+    )
     if algorithm == "greedy":
         result = solve_greedy(instance, leg_fn=leg_fn)
     elif algorithm == "ortools":
         result = solve_ortools(instance, leg_fn=leg_fn)
     else:
         raise ValueError(f"unsupported routing algorithm {algorithm!r}")
-    destination_node = node_ids[destination]
+    result = restore_network_node_ids(result, source_ids)
+    destination_node = next(
+        node["node_id"] for node in network["nodes"]
+        if node["facility_id"] == destination
+    )
     if destination_node not in {
         node_id for route in result.routes for node_id in route.customer_ids
     }:

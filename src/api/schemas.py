@@ -89,6 +89,7 @@ class RouteOut(BaseModel):
     total_distance: float
     on_time_rate: float
     served_customers: int
+    target_customers: int
     time_window_violations: int
     capacity_violations: int
     depot_return_violations: int

@@ -164,6 +164,9 @@ def test_route_plans_closed_reshipment_case():
     assert body["vehicles_used"] >= 1
     assert body["on_time_rate"] == 1.0
     assert body["served_customers"] >= 0
+    assert body["target_customers"] == 1
+    assert body["served_customers"] == 1
+    assert body["routes"][0]["customer_ids"] == [2]  # H-NUH network node
     assert {
         "time_window_violations", "capacity_violations",
         "depot_return_violations", "vehicle_limit_violations",

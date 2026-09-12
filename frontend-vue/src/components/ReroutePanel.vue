@@ -27,6 +27,7 @@ const plan = computed(() => livePlan.value ? {
     total_distance: livePlan.value.total_distance,
     vehicles_used: livePlan.value.vehicles_used,
     served_customers: livePlan.value.served_customers,
+    target_customers: livePlan.value.target_customers,
     time_window_violations: livePlan.value.time_window_violations,
     capacity_violations: livePlan.value.capacity_violations,
     depot_return_violations: livePlan.value.depot_return_violations,
@@ -84,7 +85,7 @@ function clock(minutes) {
     <div class="sg-metrics">
       <div><b>{{ plan.metrics.total_distance.toFixed(2) }}</b><span>{{ text.distance }} · {{ text.km }}</span></div>
       <div><b>{{ plan.metrics.vehicles_used }}</b><span>{{ text.vehicles }}</span></div>
-      <div><b>{{ plan.metrics.served_customers ?? "—" }}<template v-if="plan.metrics.served_customers != null">/{{ data.nodes.length - 1 }}</template></b><span>{{ text.served }}</span></div>
+      <div><b>{{ plan.metrics.served_customers ?? "—" }}<template v-if="plan.metrics.served_customers != null">/{{ plan.metrics.target_customers ?? data.nodes.length - 1 }}</template></b><span>{{ text.served }}</span></div>
       <div><b>{{ plan.metrics.time_window_violations == null ? "—" : plan.metrics.time_window_violations + plan.metrics.capacity_violations + plan.metrics.depot_return_violations + plan.metrics.vehicle_limit_violations }}</b><span>{{ text.violations }}</span></div>
     </div>
     <p v-if="mode === 'ortools' && saving != null" class="sg-saving">{{ text.savings }} {{ saving.toFixed(2) }}%</p>

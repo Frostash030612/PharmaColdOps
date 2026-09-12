@@ -386,6 +386,10 @@ def route_view(req: RouteIn) -> dict:
         "total_distance": result.metrics.total_distance,
         "on_time_rate": result.metrics.on_time_rate,
         "served_customers": result.metrics.served_customers,
+        "target_customers": (
+            result.metrics.served_customers
+            + len(result.metrics.unserved_customer_ids)
+        ),
         "time_window_violations": result.metrics.time_window_violations,
         "capacity_violations": result.metrics.capacity_violations,
         "depot_return_violations": result.metrics.depot_return_violations,

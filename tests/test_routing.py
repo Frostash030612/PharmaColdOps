@@ -118,7 +118,9 @@ def test_plan_reshipment_route_uses_verified_singapore_instance():
     order = build_reshipment_order(_closed_record())
     result = plan_reshipment_route(order)
     assert result.routes
-    assert result.metrics.vehicles_used >= 1
+    assert result.metrics.vehicles_used == 1
+    assert result.metrics.served_customers == 1
+    assert result.routes[0].customer_ids == (1,)
 
 
 def test_plan_reshipment_route_rejects_unknown_destination():

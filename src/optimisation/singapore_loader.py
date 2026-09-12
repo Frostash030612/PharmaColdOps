@@ -9,7 +9,7 @@ import json
 import math
 from pathlib import Path
 
-from .models import Node, SolomonInstance
+from .models import Node, ReplanMetrics, ReplanResult, RouteStop, SolomonInstance, VehicleRoute
 from .routing import LegFn
 
 SINGAPORE_NETWORK_PATH = Path(__file__).resolve().parents[2] / 'data/optimisation/singapore/network.json'
@@ -86,3 +86,87 @@ def load_singapore_instance(path: str | Path = SINGAPORE_NETWORK_PATH) -> tuple[
         return distance[a.node_id][b.node_id] / 1000, duration[a.node_id][b.node_id] / 60
 
     return SolomonInstance(raw['instance'], raw['vehicle_nr'], raw['capacity'], nodes), leg_fn
+
+
+def load_singapore_subset(
+    facility_demands: dict[str, int],
+    path: str | Path = SINGAPORE_NETWORK_PATH,
+) -> tuple[SolomonInstance, LegFn, tuple[int, ...]]:
+    """Build a dense solver problem for only the requested facilities.
+
+    The returned tuple maps dense solver IDs back to the committed network IDs.
+    This separation is essential: OR-Tools indexes ``instance.nodes`` densely,
+    while GeoJSON geometry uses the original network node IDs.
+    """
+    if not facility_demands:
+        raise ValueError("at least one destination facility is required")
+    raw = read_network(path)
+    by_facility = {node['facility_id']: node for node in raw['nodes']}
+    unknown = sorted(set(facility_demands) - set(by_facility))
+    if unknown:
+        raise ValueError(f"unknown Singapore destination facilities: {unknown}")
+    requested = []
+    for facility_id, demand in facility_demands.items():
+        node = by_facility[facility_id]
+        if node['role'] != 'customer':
+            raise ValueError(f"destination {facility_id!r} is not a customer")
+        if type(demand) is not int or demand <= 0:
+            raise ValueError(f"demand for {facility_id!r} must be a positive integer")
+        requested.append((node, demand))
+    requested.sort(key=lambda item: item[0]['node_id'])
+
+    source_ids = (raw['nodes'][0]['node_id'], *(node['node_id'] for node, _ in requested))
+    nodes = [Node(0, 0, 0, 0, raw['nodes'][0]['earliest_min'],
+                  raw['nodes'][0]['latest_min'], raw['nodes'][0]['service_min'])]
+    for dense_id, (node, demand) in enumerate(requested, start=1):
+        nodes.append(Node(dense_id, 0, 0, demand, node['earliest_min'],
+                          node['latest_min'], node['service_min']))
+    distance = raw['matrix']['distance_m']
+    duration = raw['matrix']['duration_s']
+
+    def leg_fn(a: Node, b: Node) -> tuple[float, float]:
+        source_a, source_b = source_ids[a.node_id], source_ids[b.node_id]
+        return distance[source_a][source_b] / 1000, duration[source_a][source_b] / 60
+
+    instance = SolomonInstance(
+        f"{raw['instance']}-ORDERS-{len(requested)}",
+        raw['vehicle_nr'], raw['capacity'], tuple(nodes),
+    )
+    return instance, leg_fn, source_ids
+
+
+def restore_network_node_ids(result: ReplanResult, source_ids: tuple[int, ...]) -> ReplanResult:
+    """Translate a subset solution back to network IDs for API and GeoJSON use."""
+    def source(dense_id: int) -> int:
+        try:
+            return source_ids[dense_id]
+        except IndexError as exc:
+            raise ValueError(f"solver returned unknown dense node {dense_id}") from exc
+
+    routes = tuple(VehicleRoute(
+        vehicle_id=route.vehicle_id,
+        customer_ids=tuple(source(node_id) for node_id in route.customer_ids),
+        stops=tuple(RouteStop(
+            node_id=source(stop.node_id), arrival=stop.arrival,
+            service_start=stop.service_start, departure=stop.departure,
+            demand=stop.demand, cumulative_load=stop.cumulative_load,
+            late_by=stop.late_by,
+        ) for stop in route.stops),
+        total_load=route.total_load, total_distance=route.total_distance,
+        duration=route.duration,
+        time_window_violations=route.time_window_violations,
+        capacity_violation_units=route.capacity_violation_units,
+        depot_return_violation=route.depot_return_violation,
+    ) for route in result.routes)
+    old = result.metrics
+    metrics = ReplanMetrics(
+        total_distance=old.total_distance, total_duration=old.total_duration,
+        vehicles_used=old.vehicles_used, served_customers=old.served_customers,
+        on_time_customers=old.on_time_customers, on_time_rate=old.on_time_rate,
+        time_window_violations=old.time_window_violations,
+        capacity_violations=old.capacity_violations,
+        depot_return_violations=old.depot_return_violations,
+        vehicle_limit_violations=old.vehicle_limit_violations,
+        unserved_customer_ids=tuple(source(node_id) for node_id in old.unserved_customer_ids),
+    )
+    return ReplanResult(result.instance, result.algorithm, routes, metrics)
