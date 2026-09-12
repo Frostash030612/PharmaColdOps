@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html
 import re
+import struct
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +18,12 @@ from zipfile import ZIP_DEFLATED, ZipFile
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
+WP_NS = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
+PIC_NS = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+EMU_PER_INCH = 914400
+MAX_IMAGE_CX = int(6.2 * EMU_PER_INCH)
 
 
 def esc(text: str) -> str:
@@ -106,6 +113,67 @@ def paragraph_xml(
     return f"<w:p><w:pPr>{''.join(ppr)}</w:pPr>{body}</w:p>"
 
 
+def svg_dimensions(path: Path) -> tuple[float, float]:
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    view_box = re.search(r'viewBox="([^"]+)"', text)
+    if view_box:
+        parts = [float(p) for p in re.split(r"[\s,]+", view_box.group(1).strip()) if p]
+        if len(parts) == 4 and parts[2] > 0 and parts[3] > 0:
+            return parts[2], parts[3]
+    width = re.search(r'width="([0-9.]+)', text)
+    height = re.search(r'height="([0-9.]+)', text)
+    if width and height:
+        return float(width.group(1)), float(height.group(1))
+    return 960.0, 540.0
+
+
+def png_dimensions(path: Path) -> tuple[float, float]:
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        return 960.0, 540.0
+    width, height = struct.unpack(">II", data[16:24])
+    return float(width), float(height)
+
+
+def image_dimensions(path: Path) -> tuple[int, int]:
+    if path.suffix.lower() == ".svg":
+        width, height = svg_dimensions(path)
+    elif path.suffix.lower() == ".png":
+        width, height = png_dimensions(path)
+    else:
+        width, height = 960.0, 540.0
+    aspect = height / width if width else 0.5625
+    cx = MAX_IMAGE_CX
+    cy = int(cx * aspect)
+    return cx, cy
+
+
+def image_xml(alt: str, rid: str, docpr_id: int, cx: int, cy: int) -> str:
+    name = attr_escape(alt or f"Figure {docpr_id}")
+    return (
+        '<w:p><w:pPr><w:spacing w:before="120" w:after="90" w:line="276" w:lineRule="auto"/>'
+        '<w:jc w:val="center"/></w:pPr><w:r><w:drawing>'
+        f'<wp:inline distT="0" distB="0" distL="0" distR="0">'
+        f'<wp:extent cx="{cx}" cy="{cy}"/>'
+        f'<wp:effectExtent l="0" t="0" r="0" b="0"/>'
+        f'<wp:docPr id="{docpr_id}" name="{name}" descr="{name}"/>'
+        '<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>'
+        '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        '<pic:pic><pic:nvPicPr>'
+        f'<pic:cNvPr id="{docpr_id}" name="{name}"/>'
+        '<pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr>'
+        '</pic:nvPicPr><pic:blipFill>'
+        f'<a:blip r:embed="{rid}"/>'
+        '<a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+        '<pic:spPr bwMode="auto">'
+        f'<a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+        '</pic:spPr></pic:pic>'
+        '</a:graphicData></a:graphic>'
+        '</wp:inline></w:drawing></w:r></w:p>'
+    )
+
+
 def heading_xml(text: str, level: int) -> str:
     if level == 1:
         return paragraph_xml(text, size=40, bold=True, before=0, after=80, line=320, keep_next=True)
@@ -156,8 +224,9 @@ def table_xml(rows: list[list[str]]) -> str:
     return "".join(out)
 
 
-def parse_markdown(md: str) -> list[str]:
+def parse_markdown(md: str, source_dir: Path) -> tuple[list[str], list[tuple[str, Path, str]]]:
     blocks: list[str] = []
+    media: list[tuple[str, Path, str]] = []
     lines = md.splitlines()
     i = 0
     while i < len(lines):
@@ -182,8 +251,17 @@ def parse_markdown(md: str) -> list[str]:
             i += 1
             continue
         if line.startswith("!["):
-            alt = re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", r"\1", line)
-            blocks.append(paragraph_xml(f"图示：{alt}", italic=True, size=20, after=70))
+            image_match = re.match(r"!\[([^\]]*)\]\(([^)]+)\)", line)
+            if image_match:
+                alt = clean_inline(image_match.group(1))
+                rel_path = image_match.group(2)
+                image_path = (source_dir / rel_path).resolve()
+                rid = f"rIdImg{len(media) + 1}"
+                cx, cy = image_dimensions(image_path)
+                media.append((rid, image_path, rel_path))
+                blocks.append(image_xml(alt, rid, len(media), cx, cy))
+            else:
+                blocks.append(paragraph_xml(clean_inline(line), italic=True, size=20, after=70))
             i += 1
             continue
         if line.startswith("- "):
@@ -210,7 +288,7 @@ def parse_markdown(md: str) -> list[str]:
             i += 1
         paragraph = " ".join(para_parts)
         blocks.append(paragraph_xml(split_bold_runs(paragraph), size=21, after=95))
-    return blocks
+    return blocks, media
 
 
 def document_xml(body_blocks: list[str]) -> str:
@@ -223,7 +301,8 @@ def document_xml(body_blocks: list[str]) -> str:
     body = "".join(body_blocks) + sect
     return (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        f'<w:document xmlns:w="{W_NS}" xmlns:r="{R_NS}" xmlns:xml="{XML_NS}">'
+        f'<w:document xmlns:w="{W_NS}" xmlns:r="{R_NS}" xmlns:xml="{XML_NS}" '
+        f'xmlns:wp="{WP_NS}" xmlns:a="{A_NS}" xmlns:pic="{PIC_NS}">'
         f"<w:body>{body}</w:body></w:document>"
     )
 
@@ -247,13 +326,56 @@ def core_xml() -> str:
     )
 
 
+def add_relationships(rels_xml: bytes, media: list[tuple[str, Path, str]]) -> bytes:
+    text = rels_xml.decode("utf-8")
+    text = re.sub(
+        r'<Relationship Id="rIdImg\d+" Type="http://schemas\.openxmlformats\.org/officeDocument/2006/relationships/image" Target="media/image\d+\.[^"]+"\s*/>',
+        "",
+        text,
+    )
+    insert = "".join(
+        f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+        f'Target="media/image{idx}{path.suffix.lower()}"/>'
+        for idx, (rid, path, _rel_path) in enumerate(media, start=1)
+    )
+    text = text.replace("</Relationships>", insert + "</Relationships>")
+    return text.encode("utf-8")
+
+
+def ensure_content_types(content_xml: bytes, media: list[tuple[str, Path, str]]) -> bytes:
+    text = content_xml.decode("utf-8")
+    defaults = {
+        ".png": '<Default Extension="png" ContentType="image/png"/>',
+        ".svg": '<Default Extension="svg" ContentType="image/svg+xml"/>',
+    }
+    needed = []
+    for _rid, path, _rel_path in media:
+        suffix = path.suffix.lower()
+        if suffix in defaults and f'Extension="{suffix[1:]}"' not in text:
+            needed.append(defaults[suffix])
+    if needed:
+        text = re.sub(r"(<Types\b[^>]*>)", r"\1" + "".join(dict.fromkeys(needed)), text, count=1)
+    return text.encode("utf-8")
+
+
 def build_docx(source_md: Path, template_docx: Path, output_docx: Path) -> None:
-    blocks = parse_markdown(source_md.read_text(encoding="utf-8"))
+    blocks, media = parse_markdown(source_md.read_text(encoding="utf-8"), source_md.parent)
     doc_xml = document_xml(blocks)
     with ZipFile(template_docx, "r") as zin:
         entries = {info.filename: zin.read(info.filename) for info in zin.infolist()}
+    entries = {
+        name: data
+        for name, data in entries.items()
+        if not re.fullmatch(r"word/media/image\d+\.(svg|png)", name)
+    }
     entries["word/document.xml"] = doc_xml.encode("utf-8")
     entries["docProps/core.xml"] = core_xml().encode("utf-8")
+    entries["word/_rels/document.xml.rels"] = add_relationships(
+        entries["word/_rels/document.xml.rels"], media
+    )
+    entries["[Content_Types].xml"] = ensure_content_types(entries["[Content_Types].xml"], media)
+    for idx, (_rid, image_path, _rel_path) in enumerate(media, start=1):
+        entries[f"word/media/image{idx}{image_path.suffix.lower()}"] = image_path.read_bytes()
     tmp = output_docx.with_suffix(".docx.tmp")
     with ZipFile(tmp, "w", ZIP_DEFLATED) as zout:
         for name, data in entries.items():
