@@ -16,7 +16,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import service
-from .schemas import BatchIn, CaseCloseIn, DecideIn, DispatchPlanIn, GridIn, QAIn, RouteIn, RouteOut
+from .schemas import (
+    BatchIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
+    DispatchDeliverIn, DispatchPlanIn, GridIn, QAIn, RouteIn, RouteOut,
+)
 
 app = FastAPI(
     title="PharmaColdOps disposition API",
@@ -121,6 +124,42 @@ def dispatch_plan(req: DispatchPlanIn):
         return service.dispatch_plan_view(req)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs")
+def create_dispatch_run(req: DispatchCreateIn):
+    try:
+        return service.create_dispatch(req)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.get("/api/dispatch/runs/{dispatch_id}")
+def get_dispatch_run(dispatch_id: str):
+    try:
+        return service.get_dispatch(dispatch_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/depart")
+def depart_dispatch_run(dispatch_id: str, req: DispatchCommandIn):
+    try:
+        return service.depart_dispatch(dispatch_id, req.command_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/deliver-next")
+def deliver_dispatch_run(dispatch_id: str, req: DispatchDeliverIn):
+    try:
+        return service.deliver_dispatch(dispatch_id, req.vehicle_id, req.command_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.post("/api/qa")

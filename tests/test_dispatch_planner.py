@@ -1,9 +1,16 @@
 from fastapi.testclient import TestClient
+import pytest
 
+from api import service
 from api.main import app
 
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def isolated_dispatch_db(tmp_path, monkeypatch):
+    monkeypatch.setattr(service, "DISPATCH_DB", tmp_path / "dispatch.sqlite3")
 
 
 def payload():
@@ -73,3 +80,25 @@ def test_dispatch_endpoint_does_not_use_inventory_at_another_facility():
     response = client.post("/api/dispatch/plan", json=request)
     assert response.status_code == 422
     assert "insufficient available inventory" in response.json()["detail"]
+
+
+def test_dispatch_run_persists_and_advances_idempotently():
+    request = {**payload(), "dispatch_id": "DSP-1", "command_id": "accept-1"}
+    created = client.post("/api/dispatch/runs", json=request)
+    assert created.status_code == 200
+    assert created.json()["status"] == "accepted"
+    assert created.json()["available_by_lot"] == {"LOT-1": 0}
+
+    departed = client.post("/api/dispatch/runs/DSP-1/depart", json={"command_id": "depart-1"})
+    assert departed.status_code == 200
+    assert departed.json()["status"] == "in_transit"
+    duplicate = client.post("/api/dispatch/runs/DSP-1/depart", json={"command_id": "depart-1"})
+    assert duplicate.json()["version"] == departed.json()["version"]
+
+    delivered = client.post("/api/dispatch/runs/DSP-1/deliver-next", json={
+        "command_id": "deliver-1", "vehicle_id": "V-CHILL-1",
+    })
+    assert delivered.status_code == 200
+    assert sum(o["status"] == "delivered" for o in delivered.json()["orders"].values()) == 1
+    restored = client.get("/api/dispatch/runs/DSP-1")
+    assert restored.json() == delivered.json()

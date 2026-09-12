@@ -37,6 +37,44 @@ class DispatchState:
     applied_commands: tuple[str, ...] = ()
 
 
+def state_to_dict(state: DispatchState) -> dict:
+    """JSON-safe representation used by the runtime repository and API."""
+    return {
+        "version": state.version, "status": state.status,
+        "orders": {key: vars(value) for key, value in state.orders.items()},
+        "vehicles": {key: {
+            **vars(value),
+            "remaining_order_ids": list(value.remaining_order_ids),
+            "delivered_order_ids": list(value.delivered_order_ids),
+        } for key, value in state.vehicles.items()},
+        "available_by_lot": state.available_by_lot,
+        "reserved_by_order": {
+            key: [list(part) for part in value]
+            for key, value in state.reserved_by_order.items()
+        },
+        "applied_commands": list(state.applied_commands),
+    }
+
+
+def state_from_dict(raw: dict) -> DispatchState:
+    """Rehydrate a persisted state without replaying side effects."""
+    return DispatchState(
+        version=raw["version"], status=raw["status"],
+        orders={key: OrderProgress(**value) for key, value in raw["orders"].items()},
+        vehicles={key: VehicleProgress(
+            **{**value,
+               "remaining_order_ids": tuple(value["remaining_order_ids"]),
+               "delivered_order_ids": tuple(value["delivered_order_ids"])}
+        ) for key, value in raw["vehicles"].items()},
+        available_by_lot=dict(raw["available_by_lot"]),
+        reserved_by_order={
+            key: tuple((part[0], part[1]) for part in value)
+            for key, value in raw["reserved_by_order"].items()
+        },
+        applied_commands=tuple(raw["applied_commands"]),
+    )
+
+
 def accept_plan(
     plan: DispatchPlan,
     orders: tuple[DeliveryOrder, ...],

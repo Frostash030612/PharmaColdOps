@@ -134,6 +134,19 @@ class DispatchPlanIn(BaseModel):
     algorithm: Literal["greedy", "ortools"] = "greedy"
 
 
+class DispatchCreateIn(DispatchPlanIn):
+    dispatch_id: str
+    command_id: str
+
+
+class DispatchCommandIn(BaseModel):
+    command_id: str
+
+
+class DispatchDeliverIn(DispatchCommandIn):
+    vehicle_id: str
+
+
 class QAIn(BaseModel):
     """Structured KG query; natural-language classification is client-side."""
 

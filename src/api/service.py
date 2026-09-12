@@ -42,7 +42,9 @@ from optimisation.singapore_export import routes_geojson  # noqa: E402
 from optimisation.singapore_loader import read_network  # noqa: E402
 from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot  # noqa: E402
 from optimisation.dispatch_planner import plan_delivery_orders  # noqa: E402
-from .schemas import DispatchPlanIn, EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
+from optimisation.dispatch_state import accept_plan, deliver_next, depart, state_to_dict  # noqa: E402
+from optimisation.dispatch_repository import create_run, load_run, update_run  # noqa: E402
+from .schemas import DispatchCreateIn, DispatchPlanIn, EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
 
 # Loaded once; used both as the source of stock thresholds and to keep the
 # per-request override engines cheap (dict copy, no disk I/O).
@@ -53,6 +55,7 @@ ENGINE = RuleEngine()
 # artifact (gitignored via `data/audit/`), served newest-first over GET /api/runs.
 # Tests monkeypatch RUNS_FILE to a temp path so pytest never writes into the repo.
 RUNS_FILE = ROOT / "data" / "audit" / "runs.jsonl"
+DISPATCH_DB = ROOT / "data" / "audit" / "dispatch.sqlite3"
 
 
 def valid_product_ids() -> list:
@@ -458,6 +461,44 @@ def dispatch_plan_view(req: DispatchPlanIn) -> dict:
         "order_count": plan.order_count,
         "zones": zone_views,
     }
+
+
+def _dispatch_inputs(req: DispatchPlanIn):
+    return (
+        tuple(DeliveryOrder(**item.model_dump()) for item in req.orders),
+        tuple(InventoryLot(**item.model_dump()) for item in req.inventory),
+        tuple(DispatchVehicle(**item.model_dump()) for item in req.vehicles),
+    )
+
+
+def create_dispatch(req: DispatchCreateIn) -> dict:
+    """Plan, accept and atomically persist one dispatch run."""
+    orders, inventory, vehicles = _dispatch_inputs(req)
+    plan = plan_delivery_orders(orders, inventory, vehicles, algorithm=req.algorithm)
+    state = accept_plan(plan, orders, inventory, command_id=req.command_id)
+    create_run(DISPATCH_DB, req.dispatch_id, state)
+    return {"dispatch_id": req.dispatch_id, **state_to_dict(state)}
+
+
+def get_dispatch(dispatch_id: str) -> dict:
+    state = load_run(DISPATCH_DB, dispatch_id)
+    return {"dispatch_id": dispatch_id, **state_to_dict(state)}
+
+
+def depart_dispatch(dispatch_id: str, command_id: str) -> dict:
+    old = load_run(DISPATCH_DB, dispatch_id)
+    new = depart(old, command_id=command_id)
+    if new is not old:
+        update_run(DISPATCH_DB, dispatch_id, new, expected_version=old.version)
+    return {"dispatch_id": dispatch_id, **state_to_dict(new)}
+
+
+def deliver_dispatch(dispatch_id: str, vehicle_id: str, command_id: str) -> dict:
+    old = load_run(DISPATCH_DB, dispatch_id)
+    new = deliver_next(old, vehicle_id, command_id=command_id)
+    if new is not old:
+        update_run(DISPATCH_DB, dispatch_id, new, expected_version=old.version)
+    return {"dispatch_id": dispatch_id, **state_to_dict(new)}
 
 
 def qa_view(req: QAIn) -> dict:
