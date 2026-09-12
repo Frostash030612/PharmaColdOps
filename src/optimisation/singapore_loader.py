@@ -91,6 +91,10 @@ def load_singapore_instance(path: str | Path = SINGAPORE_NETWORK_PATH) -> tuple[
 def load_singapore_subset(
     facility_demands: dict[str, int],
     path: str | Path = SINGAPORE_NETWORK_PATH,
+    *,
+    vehicle_nr: int | None = None,
+    capacity: int | None = None,
+    facility_windows: dict[str, tuple[int, int]] | None = None,
 ) -> tuple[SolomonInstance, LegFn, tuple[int, ...]]:
     """Build a dense solver problem for only the requested facilities.
 
@@ -118,9 +122,16 @@ def load_singapore_subset(
     source_ids = (raw['nodes'][0]['node_id'], *(node['node_id'] for node, _ in requested))
     nodes = [Node(0, 0, 0, 0, raw['nodes'][0]['earliest_min'],
                   raw['nodes'][0]['latest_min'], raw['nodes'][0]['service_min'])]
+    facility_windows = facility_windows or {}
     for dense_id, (node, demand) in enumerate(requested, start=1):
-        nodes.append(Node(dense_id, 0, 0, demand, node['earliest_min'],
-                          node['latest_min'], node['service_min']))
+        requested_window = facility_windows.get(
+            node['facility_id'], (node['earliest_min'], node['latest_min'])
+        )
+        earliest = max(node['earliest_min'], requested_window[0])
+        latest = min(node['latest_min'], requested_window[1])
+        if earliest > latest:
+            raise ValueError(f"order window for {node['facility_id']!r} does not overlap facility hours")
+        nodes.append(Node(dense_id, 0, 0, demand, earliest, latest, node['service_min']))
     distance = raw['matrix']['distance_m']
     duration = raw['matrix']['duration_s']
 
@@ -128,9 +139,15 @@ def load_singapore_subset(
         source_a, source_b = source_ids[a.node_id], source_ids[b.node_id]
         return distance[source_a][source_b] / 1000, duration[source_a][source_b] / 60
 
+    resolved_vehicle_nr = raw['vehicle_nr'] if vehicle_nr is None else vehicle_nr
+    resolved_capacity = raw['capacity'] if capacity is None else capacity
+    if type(resolved_vehicle_nr) is not int or resolved_vehicle_nr < 1:
+        raise ValueError("vehicle_nr must be a positive integer")
+    if type(resolved_capacity) is not int or resolved_capacity < 1:
+        raise ValueError("capacity must be a positive integer")
     instance = SolomonInstance(
         f"{raw['instance']}-ORDERS-{len(requested)}",
-        raw['vehicle_nr'], raw['capacity'], tuple(nodes),
+        resolved_vehicle_nr, resolved_capacity, tuple(nodes),
     )
     return instance, leg_fn, source_ids
 

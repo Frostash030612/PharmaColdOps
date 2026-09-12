@@ -16,7 +16,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import service
-from .schemas import BatchIn, CaseCloseIn, DecideIn, GridIn, QAIn, RouteIn, RouteOut
+from .schemas import BatchIn, CaseCloseIn, DecideIn, DispatchPlanIn, GridIn, QAIn, RouteIn, RouteOut
 
 app = FastAPI(
     title="PharmaColdOps disposition API",
@@ -110,6 +110,15 @@ def route(req: RouteIn):
         return service.route_view(req)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"unknown run_id {req.run_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/dispatch/plan")
+def dispatch_plan(req: DispatchPlanIn):
+    """Preview daily multi-order routes; no stock or vehicle state is changed."""
+    try:
+        return service.dispatch_plan_view(req)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 

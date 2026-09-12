@@ -40,7 +40,9 @@ from optimisation.reshipment import (  # noqa: E402
 )
 from optimisation.singapore_export import routes_geojson  # noqa: E402
 from optimisation.singapore_loader import read_network  # noqa: E402
-from .schemas import EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
+from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot  # noqa: E402
+from optimisation.dispatch_planner import plan_delivery_orders  # noqa: E402
+from .schemas import DispatchPlanIn, EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
 
 # Loaded once; used both as the source of stock thresholds and to keep the
 # per-request override engines cheap (dict copy, no disk I/O).
@@ -408,6 +410,53 @@ def route_view(req: RouteIn) -> dict:
         # The browser needs the road geometry for a newly solved sequence; the
         # static node table alone cannot reconstruct facility-to-facility legs.
         "geojson": routes_geojson(read_network(), result),
+    }
+
+
+def dispatch_plan_view(req: DispatchPlanIn) -> dict:
+    """Preview an order-driven plan without mutating inventory or vehicles."""
+    orders = tuple(DeliveryOrder(**item.model_dump()) for item in req.orders)
+    inventory = tuple(InventoryLot(**item.model_dump()) for item in req.inventory)
+    vehicles = tuple(DispatchVehicle(**item.model_dump()) for item in req.vehicles)
+    plan = plan_delivery_orders(
+        orders, inventory, vehicles, algorithm=req.algorithm
+    )
+    network = read_network()
+    zone_views = []
+    for zone_plan in plan.zone_plans:
+        result = zone_plan.result
+        routes = []
+        for route in result.routes:
+            vehicle_id = zone_plan.vehicle_ids[route.vehicle_id - 1]
+            routes.append({
+                "vehicle_id": vehicle_id,
+                "customer_ids": list(route.customer_ids),
+                "order_ids": [
+                    order_id for node_id in route.customer_ids
+                    for order_id in zone_plan.order_ids_by_node[node_id]
+                ],
+                "stops": [asdict(stop) for stop in route.stops],
+                "total_load": route.total_load,
+                "total_distance": route.total_distance,
+                "duration": route.duration,
+            })
+        zone_views.append({
+            "temperature_zone": zone_plan.temperature_zone,
+            "feasible": result.feasible,
+            "target_orders": sum(len(ids) for ids in zone_plan.order_ids_by_node.values()),
+            "target_facilities": len(zone_plan.order_ids_by_node),
+            "served_facilities": result.metrics.served_customers,
+            "unserved_customer_ids": list(result.metrics.unserved_customer_ids),
+            "total_distance": result.metrics.total_distance,
+            "routes": routes,
+            "geojson": routes_geojson(network, result),
+        })
+    return {
+        "algorithm": req.algorithm,
+        "preview": True,
+        "feasible": plan.feasible,
+        "order_count": plan.order_count,
+        "zones": zone_views,
     }
 
 

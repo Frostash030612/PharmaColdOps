@@ -98,6 +98,42 @@ class RouteOut(BaseModel):
     geojson: dict
 
 
+class DispatchOrderIn(BaseModel):
+    order_id: str
+    product_id: str
+    destination_facility_id: str
+    quantity: int = Field(gt=0)
+    earliest_min: int = Field(ge=0)
+    latest_min: int = Field(ge=0)
+    temperature_zone: Literal["chilled", "frozen", "ultracold"]
+    source_run_id: Optional[str] = None
+
+
+class InventoryLotIn(BaseModel):
+    lot_id: str
+    product_id: str
+    facility_id: str
+    available_quantity: int = Field(ge=0)
+    temperature_zone: Literal["chilled", "frozen", "ultracold"]
+    status: Literal["available", "reserved", "quarantine", "scrap"] = "available"
+
+
+class DispatchVehicleIn(BaseModel):
+    vehicle_id: str
+    capacity: int = Field(gt=0)
+    temperature_zone: Literal["chilled", "frozen", "ultracold"]
+    start_facility_id: str
+    available_from_min: int = Field(default=0, ge=0)
+    status: Literal["available", "in_transit", "failed"] = "available"
+
+
+class DispatchPlanIn(BaseModel):
+    orders: List[DispatchOrderIn] = Field(min_length=1)
+    inventory: List[InventoryLotIn]
+    vehicles: List[DispatchVehicleIn]
+    algorithm: Literal["greedy", "ortools"] = "greedy"
+
+
 class QAIn(BaseModel):
     """Structured KG query; natural-language classification is client-side."""
 
