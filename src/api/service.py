@@ -43,7 +43,7 @@ from optimisation.singapore_loader import read_network  # noqa: E402
 from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot  # noqa: E402
 from optimisation.dispatch_planner import plan_delivery_orders  # noqa: E402
 from optimisation.dispatch_state import accept_plan, deliver_next, depart, state_to_dict  # noqa: E402
-from optimisation.dispatch_repository import create_run, load_run, update_run  # noqa: E402
+from optimisation.dispatch_repository import create_run, load_context, load_run, update_run  # noqa: E402
 from .schemas import DispatchCreateIn, DispatchPlanIn, EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
 
 # Loaded once; used both as the source of stock thresholds and to keep the
@@ -418,12 +418,15 @@ def route_view(req: RouteIn) -> dict:
 
 def dispatch_plan_view(req: DispatchPlanIn) -> dict:
     """Preview an order-driven plan without mutating inventory or vehicles."""
-    orders = tuple(DeliveryOrder(**item.model_dump()) for item in req.orders)
-    inventory = tuple(InventoryLot(**item.model_dump()) for item in req.inventory)
-    vehicles = tuple(DispatchVehicle(**item.model_dump()) for item in req.vehicles)
+    orders, inventory, vehicles = _dispatch_inputs(req)
     plan = plan_delivery_orders(
         orders, inventory, vehicles, algorithm=req.algorithm
     )
+    return _dispatch_plan_response(plan, requested_algorithm=req.algorithm)
+
+
+def _dispatch_plan_response(plan, *, requested_algorithm: str) -> dict:
+    """Serialise one already-computed plan; never invokes a solver again."""
     network = read_network()
     zone_views = []
     for zone_plan in plan.zone_plans:
@@ -455,7 +458,7 @@ def dispatch_plan_view(req: DispatchPlanIn) -> dict:
             "geojson": routes_geojson(network, result),
         })
     return {
-        "algorithm": req.algorithm,
+        "algorithm": requested_algorithm,
         "preview": True,
         "feasible": plan.feasible,
         "order_count": plan.order_count,
@@ -476,13 +479,22 @@ def create_dispatch(req: DispatchCreateIn) -> dict:
     orders, inventory, vehicles = _dispatch_inputs(req)
     plan = plan_delivery_orders(orders, inventory, vehicles, algorithm=req.algorithm)
     state = accept_plan(plan, orders, inventory, command_id=req.command_id)
-    create_run(DISPATCH_DB, req.dispatch_id, state)
-    return {"dispatch_id": req.dispatch_id, **state_to_dict(state)}
+    plan_view = _dispatch_plan_response(plan, requested_algorithm=req.algorithm)
+    context = {
+        "plan": plan_view,
+        "input": {
+            "orders": [item.model_dump() for item in req.orders],
+            "inventory": [item.model_dump() for item in req.inventory],
+            "vehicles": [item.model_dump() for item in req.vehicles],
+        },
+    }
+    create_run(DISPATCH_DB, req.dispatch_id, state, context=context)
+    return {"dispatch_id": req.dispatch_id, **state_to_dict(state), **context}
 
 
 def get_dispatch(dispatch_id: str) -> dict:
     state = load_run(DISPATCH_DB, dispatch_id)
-    return {"dispatch_id": dispatch_id, **state_to_dict(state)}
+    return {"dispatch_id": dispatch_id, **state_to_dict(state), **load_context(DISPATCH_DB, dispatch_id)}
 
 
 def depart_dispatch(dispatch_id: str, command_id: str) -> dict:
@@ -490,7 +502,7 @@ def depart_dispatch(dispatch_id: str, command_id: str) -> dict:
     new = depart(old, command_id=command_id)
     if new is not old:
         update_run(DISPATCH_DB, dispatch_id, new, expected_version=old.version)
-    return {"dispatch_id": dispatch_id, **state_to_dict(new)}
+    return {"dispatch_id": dispatch_id, **state_to_dict(new), **load_context(DISPATCH_DB, dispatch_id)}
 
 
 def deliver_dispatch(dispatch_id: str, vehicle_id: str, command_id: str) -> dict:
@@ -498,7 +510,7 @@ def deliver_dispatch(dispatch_id: str, vehicle_id: str, command_id: str) -> dict
     new = deliver_next(old, vehicle_id, command_id=command_id)
     if new is not old:
         update_run(DISPATCH_DB, dispatch_id, new, expected_version=old.version)
-    return {"dispatch_id": dispatch_id, **state_to_dict(new)}
+    return {"dispatch_id": dispatch_id, **state_to_dict(new), **load_context(DISPATCH_DB, dispatch_id)}
 
 
 def qa_view(req: QAIn) -> dict:

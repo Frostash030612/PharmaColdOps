@@ -88,6 +88,8 @@ def test_dispatch_run_persists_and_advances_idempotently():
     assert created.status_code == 200
     assert created.json()["status"] == "accepted"
     assert created.json()["available_by_lot"] == {"LOT-1": 0}
+    assert created.json()["plan"]["zones"][0]["target_facilities"] == 2
+    assert created.json()["plan"]["zones"][0]["geojson"]["features"]
 
     departed = client.post("/api/dispatch/runs/DSP-1/depart", json={"command_id": "depart-1"})
     assert departed.status_code == 200
