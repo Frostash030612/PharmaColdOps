@@ -10,22 +10,22 @@
   <rect x="80" y="80" width="800" height="66" rx="5" fill="#f0f7f6" stroke="#397d73"/>
   <text x="96" y="108" font-size="18" fill="#202b33" font-weight="700">1  Enter a temperature event</text>
   <text x="96" y="135" font-size="15" fill="#33414b">Form/demo input exists; sequence extraction is supplementary</text>
-  <line x1="480" y1="146" x2="480" y2="167" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <line x1="480" y1="146" x2="480" y2="167" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
   <rect x="80" y="167" width="800" height="66" rx="5" fill="#f0f7f6" stroke="#397d73"/>
   <text x="96" y="195" font-size="18" fill="#202b33" font-weight="700">2  Compute a rule recommendation</text>
   <text x="96" y="222" font-size="15" fill="#33414b">Four dispositions, reshipment flag and evidence states exist</text>
-  <line x1="480" y1="233" x2="480" y2="254" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <line x1="480" y1="233" x2="480" y2="254" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
   <rect x="80" y="254" width="800" height="66" rx="5" fill="#fff8ed" stroke="#a66c19" stroke-dasharray="6 4"/>
   <text x="96" y="282" font-size="18" fill="#202b33" font-weight="700">3  Review and close the case</text>
   <text x="96" y="309" font-size="15" fill="#33414b">Closure exists; final human outcome and approval fields are pending</text>
-  <line x1="480" y1="320" x2="480" y2="341" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
-  <rect x="80" y="341" width="800" height="66" rx="5" fill="#fff8ed" stroke="#a66c19" stroke-dasharray="6 4"/>
+  <line x1="480" y1="320" x2="480" y2="341" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="80" y="341" width="800" height="66" rx="5" fill="#f0f7f6" stroke="#397d73"/>
   <text x="96" y="369" font-size="18" fill="#202b33" font-weight="700">4  Build order and solve a route</text>
-  <text x="96" y="396" font-size="15" fill="#33414b">Single-depot order mapping and event-triggered solving are pending</text>
-  <line x1="480" y1="407" x2="480" y2="428" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
-  <rect x="80" y="428" width="800" height="66" rx="5" fill="#fff8ed" stroke="#a66c19" stroke-dasharray="6 4"/>
+  <text x="96" y="396" font-size="15" fill="#33414b">Single-depot order mapping and event-triggered solving are wired (2026-09-12)</text>
+  <line x1="480" y1="407" x2="480" y2="428" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="80" y="428" width="800" height="66" rx="5" fill="#f0f7f6" stroke="#397d73"/>
   <text x="96" y="456" font-size="18" fill="#202b33" font-weight="700">5  Link results and query evidence</text>
-  <text x="96" y="483" font-size="15" fill="#33414b">Associate run/order/route IDs and connect graph answers to the frontend</text>
+  <text x="96" y="483" font-size="15" fill="#33414b">run/order/route IDs are associated; graph answers reach the frontend</text>
   <text x="40" y="554" font-size="14" fill="#596771">Acceptance: replacement, no replacement, infeasible route, missing evidence and service failure.</text>
   <text x="40" y="584" font-size="14" fill="#596771">Offline ML experiments support the report. Case closure is not automatic model learning.</text>
 </svg>

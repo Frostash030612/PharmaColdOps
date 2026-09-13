@@ -36,5 +36,5 @@
   <text x="757" y="400" font-size="18" fill="#33414b">0</text>
   <text x="40" y="454" font-size="22" fill="#276c61" font-weight="700">Distance improvement: 6.19% in this fixed case</text>
   <text x="40" y="504" font-size="14" fill="#596771">Source: docs/singapore_network_assumptions.md. Time-bounded results may vary.</text>
-  <text x="40" y="533" font-size="14" fill="#596771">Frontend routes are precomputed. Current temperature edits do not trigger solving.</text>
+  <text x="40" y="533" font-size="14" fill="#596771">Routes are solved when a case is closed; live temperature edits do not trigger re-solving.</text>
 </svg>
