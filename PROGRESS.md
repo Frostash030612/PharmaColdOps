@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-09-13 — 第 5 类问答意图（该原因最常见场景）+ 问答评估集 + KG 可视化截图
+
+- **`/api/qa` 新增第 5 类意图 `cause_context`**：默认取**本案例**的 `EVENT_CAUSED_BY` 主因码（调用方只需 `run_id`，不必再同步一份代码），再聚合全部结案案例的 `stage / product` 分布；也可直接传 `cause_code`。改动落在 `qa.cause_context` + `service` 路由 + `QAIn.cause_code`；前端关键词表与 `QAPanel` 同步（`cause_context` 排在最后，避免「原因」遮蔽「判定原因」）。
+- **问答评估集与评测脚本**（W4 交付物）：`data/qa/intent_labels.csv`（37 条问句从既有 i18n 关键词表逐条复制，`expected_intent` 列**留空待人工标注**）+ `scripts/evaluate_qa.py`。57 条场景上 **466/466** 派生检查通过（证据覆盖率 / 答案与记录一致 / 产品阈值一致 / 四态 / 跨案例隔离 / 主因场景分布），期望值取自静态映射与 `rules_config.json`——**非循环验证**；报告写 `data/processed/qa_eval_report.json`（生成物，不入库）。**意图分类准确率未测**（待人工标注，未编造任何数字）。
+- **KG 可视化截图**：`proposal/figures/kg-neo4j-browser.png`（Neo4j Browser 实拍一个结案案例的完整链路，顶部即实际执行语句），已作为**图 4b** 嵌入提案 ZH/EN，并随中文 Word 重建。
+- 验证：全量 **132 passed / 0 failed / 0 xfailed**；前端 `pnpm build` 通过；评测 466/466。
+- 说明：`CITES` 案例级修复后，`scrap` 处置下同时存在规则 1/2/3 的案例，跨案例隔离护栏在真实场景上被真正验证。
+
+---
+
+## 2026-09-13 — KG 问答四态契约 + 证据作用域修正（P1-1）
+
+- `/api/qa` 响应新增机器可读 `status`：`ok` / `no_case` / `insufficient_evidence` / `unsupported`（数据库故障仍为 503）。`question_type` 由 `Literal` 放宽为 `str`，未知意图返回结构化 `unsupported` 而非 4xx。前端 `QAPanel.vue` 按状态渲染本地化提示（新增 zh/en 各 5 条文案）；**证据与答案正文保持来源文档原文**（WHO/EU/CDC 英文与设施名），翻译它们等于编造内容。
+- `audit_chain` 的证据与答案新增补发单（`TRIGGERS_RESHIPMENT`）与真实补发目的地（`RESHIPS_TO`）；此前目的地只写进图里，前端看不到。
+- **修正证据作用域缺陷（本次测试实测发现）**：`CITES` 原先挂在共享的 `Disposition` 节点上，导致同处置、不同规则的案例互相串证据——`why_disposition` 会返回该处置历史上被引用过的**全部**法规，违反「证据与具体规则匹配」。现改为按案例挂：`(ExcursionEvent)-[:CITES]->(Regulation)`；`tests/test_kg_writer.py` 与 `docs/KG_SCHEMA_v1.md` §3/§4 同步（该缺陷需重建图谱以清除旧的处置级边）。
+- 测试：`tests/test_kg_qa.py` 由 1 xfailed 转为全绿，并新增两例（目的地进证据、无引用时 `insufficient_evidence`）；`tests/test_api_contract.py` 新增未知意图用例。全量 **129 passed / 0 failed / 0 xfailed**。
+- 实测（`docker compose` 起的 Neo4j + 真实 API）：结案 → `why_disposition` = `ok`（证据恰为该规则映射的法规+SOP）、`audit_chain` = `ok`（含 `ReshipmentOrder` 与目的地 `H-NUH`，答案含目的地名）、`no_case` / `unsupported` / 产品要求 / 处置统计均符合契约。前端 `pnpm build` 通过。
+
+---
+
+## 2026-09-13 — KG 数据库端到端跑通：Neo4j 容器化、QA 查询层测试、容器名与文档统一
+
+> 推翻了此前「本机无 Docker、未做数据库端到端验证」的限制：下面每一项都在真实 Neo4j 上执行过。
+
+- **容器名冲突修复（为队友着想）**：`docker-compose.yml` 删掉全局 `container_name: pharmaneo`，改用顶层 `name: pharmacoldops` 固定 compose 项目名 → 任何机器、任何克隆目录都得到 `pharmacoldops-neo4j-1` 与 `pharmacoldops_neo4j_data`，不会再有人因为「容器名已被占用」而起不来（原做法要求每人先 `docker rm -f` 别人的容器）。旧的 ad-hoc 容器及其 528MB 数据卷已清理，仓库内 `pharmaneo` 字样归零。
+- **载图 + 跳过项转正**：`python -m src.knowledge_graph.build_graph` 重建静态图（Product 4 / Regulation 8 / SOP 3 / Facility 11 / RootCause 11 / Shipment 8000；边 CONNECTS 55 / FOLLOWS_PROCEDURE 10 / IMPLEMENTS 6 / REGULATED_BY 22）。全量 **117 passed / 0 skipped**——原先 6 个 `needs_db` 用例首次真实执行（此前 111 passed / 6 skipped）。
+- **QA 查询层测试（新增 `tests/test_kg_qa.py`，10 例）**：覆盖 `why_disposition` / `audit_chain` / `product_requirements` / `disposition_stats` 四个查询，并断言**证据集合精确等于触发那条规则的** `RULE_TO_REGULATIONS` / `RULE_TO_SOPS`（而非「有法规链接」即可）、证据条目严格是 `{node_type,node_id,summary}` 前端契约、4 个产品阈值与 `rules_config.json` 逐项对账、未知 `run_id` 的「无案例」形态。全量 **126 passed / 1 xfailed**。
+- **已知缺口（用 strict xfail 钉住）**：`qa.audit_chain` 读 `(e)-[:OCCURRED_ON]->(s:Shipment)-[:DELIVERS_TO]->(f)`，但全仓库没有任何写入路径创建这三条边（实测边数 0），所以「shipment: 起点 → 终点」对真实案例永不出现；且补发目的地只写成 `RESHIPS_TO` 边、未进 `evidence`，前端证据列表看不到它。修好后 xfail 会转红提醒移除标记。
+- **测试环境加固**：`tests/conftest.py` 的 `neo4j` 导入改为可选——此前环境不对时（例如仓库里 Python 3.9 的旧 `.venv` 没有该驱动）会让**整仓 pytest 收集阶段失败**，A/B/C 的用例也一起跑不了；现在只 skip `needs_db` 用例，并在 skip 原因里写明是缺驱动还是 DB 不可达。
+- **如实说明**：`build_graph` 会先 `MATCH (n) DETACH DELETE n` 再重建（`build_graph.py:403`），所以**重建会一并清掉 `case_close` 写入的案例链**；演示前要保留案例的话，请重新结案一次（后续可给重建加 `--keep-cases` 之类开关）。
+
+---
+
 ## 2026-09-12 — C 动态调度改造启动：补发路线按真实目的地求解
 
 - 新增订单、库存批次和车辆能力的 C 侧业务模型及基础校验；隔离库存不会被当作可用库存，订单必须有目的地、正数量和有效时间窗。
@@ -53,7 +86,7 @@
 - `EventIn` 新增可选异常地点与补发目的地；Python `ReshipmentOrder` 使用与 Neo4j 相同的 `RO-{run_id}` 标识。
 - `/api/route` 从 501 改为真实接口：读取已关闭 case，校验确需补发，按贪心或 OR-Tools 返回新加坡路线与排程摘要。MVP 固定单仓库，目的地必须属于固定 10 站算例，复用全量算例求解，不是单订单动态优化。
 - `/api/qa` 从 501 改为结构化问题接口，调用现有 4 类 Cypher 查询；不做自然语言分类，图数据库不可用时返回 503。
-- 新增补发单、目的地、路线 API、QA 路由和数据库故障测试；补装 `requirements.txt` 已声明但当前 `.venv` 缺失的 `neo4j>=6.3` 后，全量验证为 **96 passed / 6 skipped**。跳过项均需真实 Neo4j；本机无 Docker，未声称完成数据库端到端验证，503 故障路径已用 mock 验证。
+- 新增补发单、目的地、路线 API、QA 路由和数据库故障测试；补装 `requirements.txt` 已声明但当前 `.venv` 缺失的 `neo4j>=6.3` 后，全量验证为 **96 passed / 6 skipped**。跳过项均需真实 Neo4j；本机无 Docker，未声称完成数据库端到端验证，503 故障路径已用 mock 验证。（**9/13 更新**：`docker compose up -d` 已可跑通，那 6 个跳过项全部真实执行通过——见下方 2026-09-13 条目。）
 
 ---
 
@@ -133,7 +166,7 @@
 | A（姓名待填） | 项目负责人 · 规则/决策引擎 · 合规 · 报告 | `src/rule_engine/` | 规则引擎 v2 完成（冻结规则+法规引用+4 产品）；57 场景；10 测试 |
 | B（姓名待填） | 数据与机器学习 · 根因诊断 · 实验评估 | `src/ml/` `data/ml/` | 数据字典+审计、LR/LGBM/XGB+SHAP 与根因全实验脚本**已跑通出数** |
 | C（姓名待填） | 配送优化 · VRPTW · OR-Tools/遗传 | `src/optimisation/` | 数据已备（solomon 实例 + 真实新加坡路网）；贪心/OR-Tools 均已跑通出路线 |
-| D（姓名待填） | 知识图谱/问答 · 后端 API · UI · 视频 | `src/knowledge_graph/` `src/api/` | demo 前端（EN+ZH）；KG 已接 Neo4j（容器 + 加载 + 问答），`/decide` 契约测试在位 |
+| D（姓名待填） | 知识图谱/问答 · 后端 API · UI · 视频 | `src/knowledge_graph/` `src/api/` | demo 前端（EN+ZH，Vue 在线/离线双模式）；KG schema + 加载 + 问答已接 Neo4j，**9/13 起本地 `docker compose up -d` 起库并完成数据库端到端验证**；`/decide` `/route` `/qa` 三端点均真实现 + 契约测试 |
 
 ### A —— 规则 / 决策引擎 / 报告
 
@@ -161,12 +194,12 @@
 
 ### D —— 知识图谱 / 问答 / 集成 / UI
 
-- [ ] **提案冲刺（9/13 前）**：准备提案要用的 1–2 张 demo 截图/流程图；确认 demo 里合规问答的定位（KG 概念示意 or 查图真问答）在提案里口径一致。
-- [ ] **W1-D**：建 `src/knowledge_graph/`：schema v1（实体/关系：产品、规则、法规、案例/补发单）+ 数据加载脚本（从 rules_config + scenarios 导节点）。
-- [ ] **W2-D**：`src/api/` FastAPI 骨架：`/decide`（接 A 引擎）、`/route`（接 C，先留 stub）、`/qa`（接 KG）三个路由契约定死——这是四模块集成的锚点。
-- [ ] **W3-D**：打通「异常 → 处置 → 改派」最小闭环的 API + 前端；KG 问答要么换成真查询、要么维持概念示意并在报告如实标注。
+- [x] **提案冲刺（9/13 前）**：准备提案要用的 1–2 张 demo 截图/流程图（`proposal/figures/demo-rule-engine-en.png` + `demo-route-qa-en.png`，9/12 已入提案）；demo 里合规问答的定位口径已写入 §6.5（真查询 vs 概念示意、无证据不回答）。**遗留**：提案 §1 与 §6.5 仍写「事件触发路线求解和前端真实图谱问答仍待集成」「/api/qa 仍为 501，前端为关键词模板概念示意」——这两项 9/12 均已落地，需在 A 的提案终审里改成「已落地真查询（Vue 在线走 `/api/qa`，离线保留关键词兜底）」。
+- [x] **W1-D**：建 `src/knowledge_graph/`：schema v1（`docs/KG_SCHEMA_v1.md` + `schema.py` 10 唯一约束 / 3 索引）+ 数据加载脚本 `build_graph.py`（9/11 落地）。**与原计划的差异（有意）**：`data/scenarios/scenarios.csv` 已于 9/11 主动移出图谱（AI 起草的演示数据不得作为证据），节点改由 A 的 `rules_config`、C 的 `network.json` 真实设施、Kaggle 运输记录、B 的 11 类根因词表供应。
+- [x] **W2-D**：`src/api/` FastAPI 骨架：`/decide`（接 A 引擎）、`/route`（接 C，先留 stub）、`/qa`（接 KG）三个路由契约定死——这是四模块集成的锚点。**已落地**：三端点均为真实现（`/route` 按 `run_id` 读已结案案例 + C 求解器，不再是 stub；`/qa` 为 4 类结构化 Cypher，9/12 起），契约定义在 `src/api/schemas.py`，契约测试 `tests/test_api_contract.py`（17 例）。
+- [x] **W3-D**：打通「异常 → 处置 → 改派」最小闭环的 API + 前端；KG 问答要么换成真查询、要么维持概念示意并在报告如实标注。**已落地**：`POST /api/case_close` → 记录 → `POST /api/route`(`run_id`) → Vue 缓存并渲染真实路线；KG 问答已换成**真查询**（Vue 在线走 `/api/qa`，离线保留关键词兜底）。**已知细化项**（不阻塞闭环，9/13 审计发现）：`/api/qa` 缺机器可读的 `status`（无案例 / 证据不足 / 不支持 / DB 故障四态未完全区分）；补发目的地未进 `evidence`（前端证据列表看不到它）；结案表单未传 `facility_id` / `destination_facility_id`（故设施级证据在真实操作路径中不会出现）。
 - [ ] **W5-D**：视频脚本（demo 录屏走查）+ 报告集成章节。
-- [ ] **W4–W5·部署（D 主导，全员试）**：契约端点 + `Dockerfile` + 上云（Render/HF/静态兜底），演示前一晚全网实测——**架构基线见「前后端接口与上云」节**。
+- [ ] **W4–W5·部署（D 主导，全员试）**：契约端点 + `Dockerfile` + 上云（Render/HF/静态兜底），演示前一晚全网实测——**架构基线见「前后端接口与上云」节**。（**前置已完成**：9/13 本地 `docker compose up -d` 起 Neo4j 跑通并完成数据库端到端验证；`Dockerfile` 与上云仍未做。）
 
 ### 跨成员契约（防各做各的）
 

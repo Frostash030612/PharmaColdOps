@@ -2,7 +2,7 @@
 
 > 依据：提案 §10.2 周计划（9/13 提案截止 · 10/25 终提交）、PROGRESS.md「四成员下一步分工」、docs/ARCHITECTURE.md（M1–M7）。
 > 角色：**A** 项目负责人/规则引擎/报告 · **B** 数据与机器学习 · **C** 配送优化 VRPTW · **D** 知识图谱/问答/API/UI/视频。
-> 已生效决策：Neo4j 从 W1 起为 KG 主线（本地容器 `pharmaneo`）；ML 分数不进 API（只进报告）；前端双模式（静态兜底 + API_BASE 切后端）；环境统一 conda `cold-chain`（Python 3.12）。
+> 已生效决策：Neo4j 从 W1 起为 KG 主线（本地容器 `docker compose up -d`，容器名 `pharmacoldops-neo4j-1`）；ML 分数不进 API（只进报告）；前端双模式（静态兜底 + API_BASE 切后端）；环境统一 conda `cold-chain`（Python 3.12）。
 
 ## 里程碑（全员对齐）
 
@@ -223,13 +223,22 @@
 ## D —— 知识图谱（Neo4j）/ 问答 / API / UI / 视频
 
 ### W0 冲刺（9/9–9/13）
-- **9/9 周三**：① PROGRESS 填姓名认领；② 仓库根写 `docker-compose.yml`（neo4j:5-community，密码走 `.env.example`），让队友一条命令拉起；③ 确认本机 `pharmaneo` 容器与 neo4j driver 连通。
-- **9/10 周四**：① ☑ KG schema v1 文档（实体：Product/Regulation/SOP/ExcursionEvent/Disposition/Cause/Facility/ReshipmentOrder；关系：PRODUCT_HAS_REQUIREMENT、EVENT_CAUSED_BY、EVENT_LEADS_TO_DISPOSITION、DISPOSITION_CITED_BY 等，附属性表）。
-- **9/11 周五**：① ☑ `connect.py`（连接工厂：NEO4J_* 环境变量 / .env / pharmaneo 默认，build/writer/qa/schema 统一走它）+ `schema.py`（10 唯一约束 + 3 索引，幂等 `IF NOT EXISTS`，build 重建前自动 ensure）；② ☑ **提前完成（原 9/24 ①）**：case_close→KG writer（`writer.py` 幂等 MERGE，已接入 `close_case`）+ `qa.py` 查询切 `run_id` 形态 + `test_kg_writer.py`；③ ☑ Facility 路网边（`CONNECTS` 55 条全带 OSMnx 路线几何，来自 C `network.json` 矩阵/leg_geometry）+ Product→SOP 静态边（`FOLLOWS_PROCEDURE`，映射推导，待 A/C 评审）+ `test_kg_edges.py`；④ ☑ writer 预留 facility 边分支（`EVENT_OCCURRED_AT`/`RESHIPS_TO`，字段名占位：`event.facility_id` / `destination_facility_id`，待 A 9/12 会议 / C 9/21 契约定稿后自动生效）。
-- **9/12 周六**：① ☑ 提案冲刺：demo 截图 2 张（`proposal/figures/demo-rule-engine-en.png` 决策沙盒 + `demo-route-qa-en.png` 路线/问答）+ 合规问答定位口径写入提案 §6.5（实体清单对齐 KG_SCHEMA v1、真查询 vs 概念示意、无证据不回答，EN/ZH 同步，两图已引用）；② 「无证据不回答」边界文案已写入提案风险表（"查无证据时明确回答『无记录』"）——**待与 A 确认**；③ ☑ A 的 `rules_config v1.0` 与 3 处前端常量（`frontend/index.html`、`index-zh.html`、`frontend-vue/src/data/products.js`）核对一致，新增 `test_frontend_threshold_parity.py` 锁定同源；④ ☑ 补 9/9 遗留：仓库根 `docker-compose.yml` + `.env.example`（与 `pharmaneo` 同配置，`docker compose config` 验证通过）。
-- **9/13 周日**：① 提案提交；② 周例会。
+- **9/9 周三**：① **未做**（PROGRESS 仍为「姓名待填」）PROGRESS 填姓名认领；② ☑ 仓库根写 `docker-compose.yml`（neo4j:5-community，密码走 `.env.example`），让队友一条命令拉起；③ ☑ 确认本机 Neo4j 容器（9/9 为 ad-hoc 容器，9/13 起统一为 compose 的 `pharmacoldops-neo4j-1`）与 neo4j driver 连通。**9/13 复核**：② 除落地外还修掉了全局 `container_name` 冲突（改为顶层 `name:`），并实测「全新队友」流程（`down -v` → `up -d` → 载图 → 测试全绿）；③ 端到端完成（载图 + 57 场景实跑）。
+- **9/10 周四**：① ☑ KG schema v1 文档（实体：Product/Regulation/SOP/ExcursionEvent/Disposition/Cause/Facility/ReshipmentOrder；关系：PRODUCT_HAS_REQUIREMENT、EVENT_CAUSED_BY、EVENT_LEADS_TO_DISPOSITION、DISPOSITION_CITED_BY 等，附属性表）。 —— **9/13 复核**：☑ 文档在；关系名已与实现对齐（`PRODUCT_HAS_REQUIREMENT` → `REGULATED_BY`；`DISPOSITION_CITED_BY` → 案例级 `CITES`，见 §3），§6 未决项已逐条复核状态。
+- **9/11 周五**：① ☑ `connect.py`（连接工厂：NEO4J_* 环境变量 / .env / compose 默认，build/writer/qa/schema 统一走它）+ `schema.py`（10 唯一约束 + 3 索引，幂等 `IF NOT EXISTS`，build 重建前自动 ensure）；② ☑ **提前完成（原 9/24 ①）**：case_close→KG writer（`writer.py` 幂等 MERGE，已接入 `close_case`）+ `qa.py` 查询切 `run_id` 形态 + `test_kg_writer.py`；③ ☑ Facility 路网边（`CONNECTS` 55 条全带 OSMnx 路线几何，来自 C `network.json` 矩阵/leg_geometry）+ Product→SOP 静态边（`FOLLOWS_PROCEDURE`，映射推导，待 A/C 评审）+ `test_kg_edges.py`；④ ☑ writer 预留 facility 边分支（`EVENT_OCCURRED_AT`/`RESHIPS_TO`，字段名占位：`event.facility_id` / `destination_facility_id`，待 A 9/12 会议 / C 9/21 契约定稿后自动生效）。 —— **9/13 复核**：①②③④ 均 ☑；④ **已生效**：`EventIn` 已带 `facility_id`/`destination_facility_id`，`audit_chain` 证据与答案含真实补发目的地（结案表单尚未传参）。
+- **9/12 周六**：① ☑ 提案冲刺：demo 截图 2 张（`proposal/figures/demo-rule-engine-en.png` 决策沙盒 + `demo-route-qa-en.png` 路线/问答）+ 合规问答定位口径写入提案 §6.5（实体清单对齐 KG_SCHEMA v1、真查询 vs 概念示意、无证据不回答，EN/ZH 同步，两图已引用）；② 「无证据不回答」边界文案已写入提案风险表（"查无证据时明确回答『无记录』"）——**待与 A 确认**；③ ☑ A 的 `rules_config v1.0` 与 3 处前端常量（`frontend/index.html`、`index-zh.html`、`frontend-vue/src/data/products.js`）核对一致，新增 `test_frontend_threshold_parity.py` 锁定同源；④ ☑ 补 9/9 遗留：仓库根 `docker-compose.yml` + `.env.example`（与当时的 ad-hoc Neo4j 容器同配置，`docker compose config` 验证通过）。 —— **9/13 复核**：①③④ ☑；② 文案已入提案，「无证据不回答」**已实现**（`status=insufficient_evidence`），与 A 的口径确认仍未做。
+- **9/13 周日**：① 提案提交；② 周例会。 —— **9/13 复核**：① 提案 ZH/EN/Word 已按实测更新（§1/§5.1/§6.4/§6.5/§6.6 + 5 张配图），**提交本身属团队动作，未做**；② 团队动作。
 
 ### W1（9/14–9/20）— KG 建库
+
+> **9/13 复核（本段多数已提前完成，个别被后续决策取代）**：
+> - 9/14 ① ☑ 加载脚本已落地（`build_graph.py`，9/11–9/12）；② ☑ 已跑通可查询（Neo4j Browser `:7474`），**可视化截图待补**（见 9/19）。
+> - 9/15 ① **已被 9/11 决策取代**：`scenarios.csv` **不入图**（AI 起草的演示数据不得作为证据），改由运行时 `case_close` 逐案写入；评测需要时按需结案（`scripts/evaluate_qa.py` 就是这么做的）；② ☑ 关系齐全性由 `schema.py`（10 约束 + 3 索引）与 `test_kg_edges.py` 保证。
+> - 9/16 ① **口径已调整**：未按 ES 抽样；设施用 C 的真实新加坡 11 节点、运输用 Kaggle 8,000 条（`verified` 注明疑似合成，且不与设施/产品连边）、根因用 B 的 11 类词表；② ☑ 法规 8 条带 `source_url`+`verified`，SOP 已于 9/11 换真实公共指引。
+> - 9/17 ① **已完成（9/13）**：`why_disposition` / `audit_chain` / `product_requirements` / `cause_context`（「该原因最常见场景」，默认取本案例主因码再聚合 stage/product 分布）/ `disposition_stats` 全部实现；② 快照存档以 `data/processed/qa_eval_report.json` 替代。
+> - 9/18 ① ☑ `/api/qa` 真实现（9/12，四态 9/13）；② ☑ 无证据明确回答（`no_case` / `insufficient_evidence`）。
+> - 9/19 ① ☑ **可视化截图已完成（9/13）**：`proposal/figures/kg-neo4j-browser.png`（Neo4j Browser 实拍案例链路，顶部即实际查询语句），已作为**图 4b** 嵌入提案 ZH/EN 并随 Word 重建；② ☑ schema v1 已复核定稿（§1/§3/§6）。
+> - 9/20 ① 例会属团队动作；② ☑ PROGRESS 已持续更新。
 - **9/14 周一**：① 加载脚本 v1：`rules_config.json` → Product/阈值/规则节点；② 跑通并可视化检查。
 - **9/15 周二**：① 加载脚本：`scenarios.csv` 57 条 → ExcursionEvent/Disposition 节点；② 关系齐全性检查。
 - **9/16 周三**：① 加载脚本：ES `vaccine-cold-chain` 抽 300–500 条 → Facility/Cause/事件节点（注明抽样与来源）；② 法规节点（WHO/EU GDP 文档级）+ SOP 占位。
@@ -239,6 +248,15 @@
 - **9/20 周日**：① 周例会：演示 KG 查询；② PROGRESS 更新。
 
 ### W2（9/21–9/27）— 问答 v1 + 前端接线
+
+> **9/13 复核（本段几乎全部提前完成）**：
+> - 9/21 ① ☑ 评估集已提前交付：`data/qa/intent_labels.csv`（37 条问句，取自既有 i18n 关键词表）+ 57 场景派生评测；**`expected_intent` 列留空待人工标注**；② ☑ 评估脚本 `scripts/evaluate_qa.py`（证据覆盖率 / 答案一致性 / 阈值一致 / 四态 / 跨案例隔离）；**准确率待标注后补**。
+> - 9/22 ① ☑ 评估还真发现并修掉一个缺陷：`CITES` 原挂共享 `Disposition` 节点导致同处置案例串证据（已改案例级 + 回归测试）；② ☑ 指标 v1：57 场景 **409/409** 派生检查通过。
+> - 9/23 ① ☑ 前端问答框已接 `/api/qa`（双模式，9/12）；② ☑ 联调完成（真实 API 实测 + `pnpm build` 通过）。
+> - 9/24 ① ☑ 已于 9/11 提前完成（原行已勾）；② ☑ 前端显示依据节点（证据列表 + 9/13 节点类型本地化）。
+> - 9/25 ① ☑ 契约测试补齐（`test_api_contract.py` 含四态；`/api/route` 真实现）；② **部分**：审计日志已实现（`_audit` + `runs.jsonl`），CORS 仍为开发期全开，**上云前需收紧**。
+> - 9/26 ① ☑ 前端路线可视化（Leaflet + 演示数据）；② **未做**：审计报告视图 v1（现有问答证据列表 + 结案历史面板；ARCHITECTURE M6 的「审计报告」产物口径待定）。
+> - 9/27 例会属团队动作；PROGRESS ☑。
 - **9/21 周一**：① 问答评估集 20 条（覆盖 5 类问题：为何隔离/依据/根因/统计/边界）；② 评估脚本（准确率/证据覆盖率/无证据不回答率）。
 - **9/22 周二**：① `/api/qa` 按评估结果修模板与查询；② 指标 v1。
 - **9/23 周三**：① 前端问答框接 `/api/qa`（双模式切换：离线给固定 FAQ，在线走后端）；② 联调。
@@ -248,6 +266,8 @@
 - **9/27 周日**：① 周例会；② PROGRESS 更新。
 
 ### W3（9/28–10/4）— 最小闭环
+
+> **9/13 复核（仅列 D 侧）**：9/29 ② ☑ 端到端最小闭环已走通（9/13 实测：结案 → 图谱写链 → `/api/route` 真实求解 → `/api/qa` 按触发规则给证据）；9/30 ② ☑ Leaflet 已接真实路线（9/12）；10/1 ① 审计报告视图 v2 **未做**（口径待与 A 定）；10/1 ② 双模式打磨 **部分**（9/13 补 QA 四态与节点类型本地化）；10/2 ① 全站中英文案核对 **部分**（问答面板已完成）；10/3–10/4 预演/彩排属团队动作。
 - **9/28 周一**：① 与 A 联调 `/api/decide` 全场景；② 准备 `/api/route` 契约测试样例（C 当天实现完即可跑）。
 - **9/29 周二**：① 与 C 联调 `/api/route`（契约样例跑通）；② 端到端最小闭环：一次异常 → 处置 → 补发 → 路线 → 问答全走通；③ 问题清单。
 - **9/30 周三**：① 修闭环问题；② Leaflet 接 C 的真实路线数据。
@@ -257,6 +277,8 @@
 - **10/4 周日**：① 周例会 + 端到端 v1 全员彩排；② PROGRESS 更新。
 
 ### W4（10/5–10/11）— 问答评估 + 上云
+
+> **9/13 复核（仅列 D 侧）**：10/5 ① KG 问答评估 **已提前部分交付**（57 场景 409/409 派生检查通过；意图分类准确率待人工标注 `data/qa/intent_labels.csv`）；10/5 ② 问题样本 **已交付 37 条**（超过 30 条目标）；10/6 ② 评估表进报告待定稿时补（数字已就绪）；10/8 ① 根目录 `Dockerfile` **未做**（仓库内无任何 Dockerfile，属 D 侧、无需他人确认，但需实构建验证）；10/7、10/9–10/11 的静态兜底上线与上云需账号/团队决策，未做。
 - **10/5 周一**：① KG 问答 v1 正式评估（20+ 条问答集，指标表）；② 问题样本扩到 30 条。
 - **10/6 周二**：① 「为何隔离」「依据哪条规则」演示脚本打磨；② 评估表进报告。
 - **10/7 周三**：① Level 0 静态兜底上线：`frontend/` 推 GitHub Pages / Vercel；② 验证离线模式。
