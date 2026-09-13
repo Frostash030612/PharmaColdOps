@@ -5,9 +5,9 @@
 
 Course: IRS Practice Module · Team: 4 members, approximately 10 person-days each
 Proposal deadline: 2026-09-13 · Final deadline: 2026-10-25
-Updated: 2026-09-12 · Status: revised draft awaiting team review and submission
+Updated: 2026-09-13 · Status: revised draft awaiting team review and submission
 
-Group number: to be completed. Member names and student IDs or masked IDs: to be completed. A/B/C/D identify responsibilities below.
+Group name: Project Group 52 (registered in Canvas). Members: Xu Wenzhe (A0328771W), Zhu Jianyu (A0353769L), Wang Lepeng (A0357864L), Shen Ziyi (A0350940J). A/B/C/D identify responsibilities below (key in §10.1).
 
 ## 1. Project Overview
 
@@ -15,7 +15,7 @@ PharmaColdOps supports temperature-excursion assessment in pharmaceutical transp
 
 The project covers four IRS technique groups: decision automation, resource optimisation, knowledge discovery and data mining, and cognitive systems. The delivery objective is a minimal integrated workflow in a controlled Singapore scenario: temperature event → disposition recommendation → reshipment order → delivery plan → evidence query. Risk and candidate-cause classification remain offline experiments and do not enter the disposition API.
 
-As of 2026-09-12, the rule engine, bilingual interface, independently annotated scenarios, offline ML baselines, Singapore routing and KG case-write code have been developed. Event-triggered route solving and live graph answers in the frontend still need integration. This prototype does not replace final quality approval or claim production or regulatory validation.
+As of 2026-09-13, the rule engine, bilingual interface, independently annotated scenarios, offline ML baselines, Singapore routing, order-driven reshipment solving and KG case-write code have been developed. The frontend calls the live routing and graph QA endpoints for archived reshipment cases. An order-driven dispatch screen and an expanded destination pool remain to be built. This prototype does not replace final quality approval or claim production or regulatory validation.
 
 ## 2. Problem Definition
 
@@ -72,22 +72,22 @@ People retain responsibility for final approval and delivery execution. The proj
 
 1. Enter an event with a known product category. Current inputs are forms or demonstration data; sequence parsing is a subsequent data task.
 2. Return one of four dispositions, a reshipment flag, rule number, reason and evidence states.
-3. Have quality staff review the recommendation. Current closure stores inputs and the system recommendation; fields for final human decisions, approvers and execution outcomes remain to be designed.
-4. For replacement cases, create a simulated order with destination, quantity and time window under an agreed contract, then trigger single-depot solving. This connection is not yet implemented.
-5. Link the case and route, display stops, distance, schedules and unserved orders, and query case-specific graph evidence. Route association and frontend query wiring remain incomplete.
+3. Have quality staff review the recommendation. Current closure stores inputs and the system recommendation; fields for final human decisions and approvers remain to be designed, while dispatch run state separately records acceptance, departure and per-order delivery.
+4. For replacement cases, submit a simulated order with destination, quantity and time window under the agreed contract and solve it with the single-depot solver. The contract, solver and run persistence are implemented and tested; the frontend has no dispatch screen yet.
+5. Link the case and route, display stops, distance, schedules and unserved orders, and query case-specific graph evidence. Archived reshipment cases already fetch live routes and case-specific graph answers; a screen for choosing destinations and quantities remains to be built.
 
 Archiving a case does not establish its real-world outcome. Automatic feedback learning is outside the MVP.
 
 ### 5.2 Current Progress
 
-| Module | Status as of 2026-09-12 | Remaining work |
+| Module | Status as of 2026-09-13 | Remaining work |
 |---|---|---|
 | M1 Data preparation | Data, dictionary, licence checks and audit scripts available | Task definitions and reproducible environment |
 | M2 Event generation | Demo export available with single-reading MKT approximation | Sequence windows, MKT implementation and validation |
 | M3 Rule engine | Four category prototypes, six rules, API, human gold for 57 cases | Domain review, disagreement analysis and formal evaluation |
 | M4 Risk and causes | LR/LGBM/XGB, SHAP and ten-class cause experiment available | Multi-fold evaluation, feature availability and failure analysis |
-| M5 Routing | Greedy solver, Routing Solver, real road network and precomputed display available | Reshipment contract and event-triggered solving |
-| M6 Graph and QA | Schema, loading, closure writing and query functions available | HTTP and frontend integration, evidence evaluation |
+| M5 Routing | Greedy solver, Routing Solver, real road network, reshipment/dispatch solving and run persistence available | Order-driven dispatch screen and expanded destination pool |
+| M6 Graph and QA | Schema, loading, closure writing, query functions, HTTP endpoints and frontend answers available | Evidence evaluation and relevance scoring |
 | M7 Integration | Bilingual Vue, offline/API modes and case history available | Integrated acceptance and failure-state checks |
 
 ## 6. Technical Approach and IRS Mapping
@@ -129,7 +129,7 @@ The model is a single-depot VRPTW with equal vehicle capacities, customer servic
 
 Six Solomon instances support standard comparisons. The Singapore case uses one depot, ten hospitals and real directed OSM matrices, measured in km and min. Travel times estimate free flow and exclude live congestion. Demands, fleet and service windows are simulated and do not imply actual commercial relationships among the facilities.
 
-Vue currently displays precomputed routes; temperature edits do not trigger solving. The MVP will connect a single-depot reshipment order to the solver. Alternative-stock selection, multiple temperature compartments, carbon and wastage-loss objectives are extensions. A genetic algorithm may be considered after integrated acceptance, but is not a mandatory deliverable.
+Vue shows precomputed routes for demonstration cases and fetches live routes for archived reshipment cases; temperature edits do not trigger solving. Single-depot reshipment solving is implemented over HTTP for an ordered set of destinations, quantities and windows. Alternative-stock selection, multiple temperature compartments, carbon and wastage-loss objectives are extensions. A genetic algorithm may be considered after integrated acceptance, but is not a mandatory deliverable.
 
 ![Figure 3 Singapore routing case](figures/en/fig3-vrptw-replan.svg)
 
@@ -139,9 +139,9 @@ Vue currently displays precomputed routes; temperature edits do not trigger solv
 
 Neo4j entities include Product, Regulation, SOP, ExcursionEvent, Disposition, Cause, Facility, Shipment and ReshipmentOrder. Regulations, public procedural guidance, product configurations, Singapore facilities and dataset records retain source semantics. The approximately 8,000 Kaggle shipment records have unconfirmed real-world provenance and are suspected synthetic; they are not described as verified pharmaceutical shipments. Anonymous zones cannot be directly mapped to Singapore hospitals.
 
-case_close records a case and attempts a graph write; decide previews are not archived. Cause currently represents the API heuristic code, not an ML prediction or investigated root cause. Reshipment-node writing exists but does not imply an order was solved or executed. Log and graph persistence are best-effort and do not provide validated audit-grade durability.
+case_close records a case and attempts a graph write; decide previews are not archived. Cause currently represents the API heuristic code, not an ML prediction or investigated root cause. A reshipment node records an order; whether that order was solved and executed is tracked by dispatch run state, not by the graph node. Log and graph persistence are best-effort and do not provide validated audit-grade durability.
 
-Python query functions support run_id-based explanations, audit chains, product requirements and statistics. /api/qa still returns 501, while the frontend uses a keyword-template concept mockup. Delivery will use bounded intent recognition and parameterised Cypher, returning case-specific evidence and distinguishing missing cases, insufficient evidence, unsupported questions and database failure. Evidence must support the particular rule, rather than merely provide a regulatory link. An LLM is not required for the MVP.
+Python query functions support run_id-based explanations, audit chains, product requirements and statistics. /api/qa is implemented as bounded intent recognition over parameterised Cypher and returns case-specific evidence, distinguishing missing cases, insufficient evidence, unsupported questions and database failure; this is structured question-type routing, not natural-language classification. The frontend calls it in API mode and falls back to a keyword template offline. Evidence must support the particular rule, rather than merely provide a regulatory link. An LLM is not required for the MVP.
 
 ![Figure 4 Graph concepts and writing boundary](figures/en/fig4-knowledge-graph.svg)
 
@@ -153,7 +153,7 @@ Python query functions support run_id-based explanations, audit chains, product 
 
 ![Demo Routes and QA](figures/demo-route-qa-en.png)
 
-**Demo, 2026-09-12:** Fixed precomputed routes and a QA concept mockup, not evidence of a completed integrated workflow.
+**Demo, 2026-09-13:** Precomputed routes for the demonstration case and an archived case fetching a live route and a case-specific graph answer. The order-driven dispatch screen is not shown because it is not built; this is not evidence of a completed integrated workflow.
 
 ### 6.6 Architecture and Interfaces
 
@@ -161,9 +161,9 @@ The frontend uses Vue 3, Vite, Pinia and Leaflet, with a legacy static demo reta
 
 ![Figure 5 Current architecture](figures/en/fig5-system-architecture.svg)
 
-**Figure 5:** Online rules, offline experiments, precomputed routes and pending interfaces are shown separately.
+**Figure 5:** Online rules, offline experiments, precomputed routes and HTTP interfaces not yet wired to a screen are shown separately.
 
-Cross-member contracts must fix the association among run_id, order_id, product, destination, quantity, time windows, temperature compatibility and ReplanResult, and handle infeasible routes, repeated closures and storage failures. These are proposed interface requirements, not fields already supported by the API.
+Cross-member contracts must fix the association among run_id, order_id, product, destination, quantity, time windows, temperature compatibility and ReplanResult, and handle infeasible routes, repeated closures and storage failures. The API now carries order destination, quantity, time windows, temperature zone and route results, with defined responses for infeasible routes and infeasible windows and a version-checked store for repeated commands; what remains on the contract is the frontend dispatch screen.
 
 ![Figure 6 Minimal integrated workflow](figures/en/fig6-pipeline.svg)
 
@@ -217,15 +217,15 @@ Routing reports unserved orders alongside on-time rates to avoid hiding failures
 
 ### 8.2 Baselines and Preliminary Results
 
-The following risk results were recorded on 2026-09-09; training was not rerun for this revision. The data are suspected synthetic and the results describe that dataset, not real-world effectiveness. These are single-split results, not completed multi-fold evaluation.
+The following risk results were reproduced on 2026-09-13 by `scripts/train_risk_full.py` in the repository environment recorded in `requirements.txt` (seed 42). The data are suspected synthetic and the results describe that dataset, not real-world effectiveness. These are single-split results, not completed multi-fold evaluation.
 
 | Risk model, interpretable features | Validation threshold | F1 | ROC-AUC | PR-AUC |
 |---|---:|---:|---:|---:|
 | Logistic regression | 0.55 | 0.626 | 0.891 | 0.651 |
-| LightGBM | 0.35 | 0.688 | 0.925 | 0.745 |
-| XGBoost | 0.30 | 0.659 | 0.919 | 0.734 |
+| LightGBM | 0.50 | 0.691 | 0.925 | 0.754 |
+| XGBoost | 0.45 | 0.685 | 0.922 | 0.731 |
 
-For causes, LightGBM recorded Top-1=0.143, Top-3=0.421 and macro-F1=0.125. The majority baseline recorded Top-1=0.161 and macro-F1=0.028. Top-1 did not exceed the majority baseline, supporting further work on candidate ranking and features rather than a claim of reliable diagnosis. Formal evaluation must define an unambiguous Top-3 baseline and tie handling.
+For causes, LightGBM recorded Top-1=0.143, Top-3=0.421 and macro-F1=0.125. The majority baseline recorded Top-1=0.161, Top-3=0.284 and macro-F1=0.028. Top-1 did not exceed the majority baseline, supporting further work on candidate ranking and features rather than a claim of reliable diagnosis. Formal evaluation must define an unambiguous Top-3 baseline and tie handling.
 
 Recorded Singapore results from 2026-09-10:
 
@@ -273,10 +273,12 @@ External product-level review is optional and has not been completed. Evidence-d
 
 | Member | Primary work | Shared deliverable |
 |---|---|---|
-| A | Rules, domain evidence, human evaluation and report | Reshipment input contract and proposal review |
-| B | Data, risk, candidate causes and experiments | Data-nature disclosures and reported metrics |
-| C | VRPTW, roads and route evaluation | Reshipment mapping and route output contract |
-| D | KG, QA, API, frontend and demonstration | Case association, evidence display and videos |
+| A (Xu Wenzhe) | Rules, domain evidence, human evaluation and report | Reshipment input contract and proposal review |
+| B (Zhu Jianyu) | Data, risk, candidate causes and experiments | Data-nature disclosures and reported metrics |
+| C (Wang Lepeng) | VRPTW, roads and route evaluation | Reshipment mapping and route output contract |
+| D (Shen Ziyi) | KG, QA, API, frontend and demonstration | Case association, evidence display and videos |
+
+The table states primary ownership, not strict isolation. Delivery involved cross-assistance: rule thresholds and annotation wording were reviewed by both A and B, and the dispatch contract and frontend wiring were modified by both C and D, so a single module may show commits from more than one member.
 
 ### 10.2 Revised Weekly Plan
 
@@ -284,7 +286,7 @@ Start from work completed by 2026-09-12 and retain the original deadlines. The a
 
 | Week | Main tasks and owners | Acceptance deliverable |
 |---|---|---|
-| W0 9/3–13 | All: consolidate rules, data, annotation, routes and KG, revise proposal, add team details and synchronise materials | Review and submission; still awaiting closure on 9/12 |
+| W0 9/3–13 | All: consolidate rules, data, annotation, routes and KG, revise proposal, add team details and synchronise materials | Review and submission due 9/13; group name, member names and student IDs added |
 | W1 9/14–20 | A: evidence/gold evaluation; B: task spec/multi-fold risk; C: order mapping; D: QA API/evidence checks | Evaluation tables, task specification and reviewable interfaces/queries |
 | W2 9/21–27 | A/C/D: order, route and case contracts/wiring; B: cause and split comparisons; D: frontend graph answers | Single-depot reshipment solving, real QA and failure states |
 | W3 9/28–10/4 | All: integration; A/D: closure and human-review record boundaries | Minimal workflow v1 with replacement, no-replacement and failure cases |
@@ -318,7 +320,7 @@ Start from work completed by 2026-09-12 and retain the original deadlines. The a
 - Two five-minute videos covering the workflow and methods/evaluation, identifying simulated and incomplete parts.
 - Reproduction instructions, rule assumptions and sources, annotation findings, route metrics and QA evaluation cases.
 
-The Markdown files are the revised bilingual proposal sources, and the Chinese Word proposal has been regenerated from this version. Before submission, check PPT consistency and complete group number, names, IDs and submission records. Content revision does not itself mean W0 has been submitted.
+The Markdown files are the revised bilingual proposal sources, and the Chinese Word proposal has been regenerated from this version. Before submission, check PPT consistency and complete the submission records. Content revision does not itself mean W0 has been submitted.
 
 ## 13. Conclusion
 
