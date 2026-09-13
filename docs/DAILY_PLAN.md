@@ -35,6 +35,28 @@
 
 ---
 
+## 今晚（9/13 周日晚）——四件事，都不长
+
+> 提案已提交，明天（9/14 周一）是 W1 第一天。**今晚不把下面第 1 条做完，明天会有人按旧计划开工。**
+
+1. **周例会**（本文件原计划今天就有）：① 全员读一遍上面「9/13 重排说明」6 条——本文件此前有整块任务在还写着时已完成（A 的仲裁、C 的贪心基线/新加坡路网），另有一处**计划与实现相冲突**（D 若照原 W1 9/15① 把 `scenarios.csv` 加载进图谱，会把 AI 起草的演示事件变成"证据"，与硬约束「不杜撰」冲突）；② 过一遍 A/B/C/D 各栏的 W1；③ 定下面第 2 条。
+2. **定「rubric v1.1 出不出」**（这条决定 B 明天开工的输入）：
+   - **不出** → κ = 0.6434 按实际值报出、在报告里写明局限；B 明天照常写 task spec。
+   - **出** → B 先等 A 的 rubric；修改清单已备在 `docs/annotation_findings_v1.md` §5/§6。**同一提交必须更新 `PROVENANCE.md` §2 指纹**，否则 `check_provenance.py` 会对一处正确改动报假警报。
+3. **去问提案演示日期**（现仍 TBA）：不阻塞代码，但卡住两个 deck 的首页占位（`[Member 2] [Member 3] [Member 4]` / `13 Sep 2026`）与 D 的视频排期。由 A 问。
+4. `proposal/figures/raw/` 两张未裁剪原件（2.5 MB）入不入库——**不阻塞任何人**，可缓。
+
+**今明两日的关键路径（谁卡谁）**
+
+| 依赖 | 内容 | 到期 |
+|---|---|---|
+| A → 全员 | rubric v1.1 决策（否则 B 明天口径不定） | **今晚** |
+| D → A | `build_graph.py` 里自陈的 ICH Q1A(R2) 条款级核实项，正式转给 A | 9/14 |
+| C → A/D | 车载库存字段选项一页纸（补字段 vs 固化「必须回仓取货」），A/D 会签 | 9/14 出纸 · **9/15 定** |
+| A → C | `ReshipmentOrder` 草案（C 9/16 评审、9/21 终版；D 的 writer 分支在等字段名） | 9/15 出 · 9/21 终版 |
+
+---
+
 ## A —— 项目负责人 · 规则引擎 · 报告
 
 ### W0 冲刺（9/9–9/13）· 历史记录，已完成项补 ☑
@@ -49,6 +71,8 @@
 > 原 W1 的「收 B/C 标注 → 算 κ → 两批仲裁 → 换 gold → 全量评估」**整块已于 9/12 完成**（gold 入库 `ae3ec61`；B↔C 一致 44/57、κ = 0.6434 已定案不重测；引擎 vs gold = 39/57），故本栏改为下列四项。
 
 - **9/14 周一**：① 把「4 产品阈值证据表 v1」**独立成文** → `docs/阈值证据表_v1.md`：逐产品列 storage 范围 / freeze_sensitive / allowable_duration / MKT 阈值的来源与「原则锚定默认值」标注，**法规只到文档级、不写条款号**（报告附录要人读版，现在只埋在 JSON 里）；② 复核 `rules_config.json` 的阈值表述与提案 §6.2 一致；③ **接 D 转来的一条**：`src/knowledge_graph/build_graph.py` docstring 自陈「ICH Q1A(R2) 条款级措辞仍待 A 核实」——本日核实完就此关闭（核实不了就把它降级为文档级引用，不留"待办"半句）。
+  - **完成口径**：4 个产品每个都有 storage / freeze_sensitive / allowable / MKT 的来源，法规全部停在文档级；跑 `pytest` 仍 111 passed（本轮只写文档，不该动测试）。
+  - **别做**：不要顺手改阈值本身——阈值一动，gold 场景与 B/C 的标注跟着动，改前先协调。
 - **9/15 周二**：① 起草 **`ReshipmentOrder` 字段契约终版**（与 C 的 `src/optimisation/dispatch_models.py` 对齐，**9/21 截止**，A 主笔）；② 把「引擎 vs gold 39/57」的处置口径写成报告 §8.3 的一节——18 条偏离按三类归因（规范缺口 13 条 / 规则理解歧义 8 条 / 阈值政策分歧 5 条，有交叉）。
 - **9/16 周三**：① 契约草案发 C/D 评审；② 决定是否出 `docs/annotation_rubric_v1.md` **v1.1**——`docs/annotation_findings_v1.md` §5/§6 已备好修改清单（三条读法缺陷 + 一条政策缺口「非冻敏产品低于储存下限」）。**若出 v1.1，必须同一提交更新 `PROVENANCE.md` §2 指纹**，否则 `check_provenance.py` 会对一处正确改动报假警报。
 - **9/17 周四**：① 与 B 会签「规则 ↔ ML 特征接口」草案（30 分钟，仅报告口径对齐，ML 不进 API）；② 复核 `tests/test_rule_engine.py` 的冻结清单（冻结 18 条偏离 + 钉住 39/57，**设计如此**，不是被改坏了）。
@@ -117,6 +141,8 @@
 > 本栏无需重排（标注轮已于 9/12 收口，κ = 0.6434 已定案；task spec 与 5-fold 正式实验确实尚未开始）。
 
 - **9/14 周一**：① 确认标注轮已收口、无待处理反馈（κ 按 0.6434 报出，**不修订 rubric 重测**是团队决策，见 `data/processed/agreement_stats.md` §1）；② 写 **ML task spec v1**：录入 schema ↔ 模型特征对齐表、vaccine-distribution 派生标签方案定死、**时间切分矛盾正面决策**（silent-failure 无时间戳 → 接受随机分层切分并注明；另建 vaccine-distribution 时间序列任务作补充）。
+  - **完成口径**：task spec 里「时间切分」那一节**不是"待定"**——两个选项挑一个写死并写出理由。
+  - **别做**：别为 κ = 0.6434 重测（**除非 A 在 9/13 晚的例会上决定出 rubric v1.1**，那就先等 A 的 rubric 再写）；gold 标签不得当训练数据。
 - **9/15 周二**：① task spec v1 起草完成，含「规则 ↔ ML 特征接口」节草案（B 主导，9/17 请 A 会签，仅用于报告口径对齐）；② 升级 `scripts/train_risk_full.py` 为多折（5-fold）正式版，验证集选阈值。
 - **9/16 周三**：① 跑正式风险实验表 → `data/processed/risk_model_full_results.md`（LR/LGBM/XGB × interpretable/all 特征组 × 5-fold 均值±std）。
 - **9/17 周四**：① SHAP 正式图组（beeswarm + bar + top-10 特征）→ `reports/ml/`；② 数字回写 PROGRESS。
@@ -184,7 +210,9 @@
 
 > **为什么重排**：原 W1 的「贪心基线 + 指标 + pytest + `ReplanResult` 对齐」**四项全部已完成**（`greedy.py` 是确定性最近插入基线，`routing.py` 出指标，`tests/test_solomon_loader.py` 在跑）；原 W2 的新加坡路网也已落地（`data/optimisation/singapore/`，提案 §6.4 已按 1 depot + 10 医院 + 真实有向 OSM 矩阵写实）。因此 C 的 W1 改为按 **`docs/C_代码实施计划.md` 的批次**推进：第 1–3 批已完成，第 4 批做了一半，本栏补齐第 4 批余下并开第 5 批。**不要把已实现的紧急插单／库存扣减／运输状态再排一遍。**
 
-- **9/14 周一**：① **第 4 批余下：延误处理**——现在 `dynamic_problem.py` 的候选里已有 `lateness_min`（ETA 相对 `latest_min`），但缺「延误作为事件触发重排」这一条路：定义延误来源（道路时间超时 / 装卸超时）、按车辆与订单算影响范围、给出重排或改派结论；② 明确每个时间要求是硬约束还是软目标（第 4 批验收项，写进模块 docstring）。
+- **9/14 周一**：① **第 4 批余下：延误处理**——现在 `dynamic_problem.py` 的候选里已有 `lateness_min`（ETA 相对 `latest_min`），但缺「延误作为事件触发重排」这一条路：定义延误来源（道路时间超时 / 装卸超时）、按车辆与订单算影响范围、给出重排或改派结论；② 明确每个时间要求是硬约束还是软目标（第 4 批验收项，写进模块 docstring）；③ **为 9/15 的「车载库存字段」决定先出一页纸**：补字段（在途车可直接插单）vs 固化「必须回仓取货」为 v1 口径，两条路各自的代价写清楚——**A/D 要会签，别等到 9/15 当天才提**。
+  - **完成口径**：延误能**触发重排**（先跑通一个场景即可）；硬/软约束写进了 docstring。
+  - **别做**：别再把紧急插单／库存扣减／运输状态排一遍——那三项**已实现**。
 - **9/15 周二**：① **在途插单的合法路径**：当前在途状态**没有「未分配的车载备用药」字段**，因此代码不编造直接插单，在途车辆必须回仓取货（`C_代码实施计划.md` 已如实记录）。本日决定是补车载库存字段，还是把「必须回仓取货」固化为 v1 口径——**若补字段，需先与 A/D 过契约**，不得自造别名；② 空车不得凭空补货，写成测试。
 - **9/16 周三**：① 评审 A 的 `ReshipmentOrder` 草案（当天给出书面反馈）；② 确认 `dispatch_models.py` 里 `DeliveryOrder` / `InventoryLot` / `DispatchVehicle` 的字段与 A 草案无冲突（冲突处记入 9/21 终版清单）。
 - **9/17 周四**：① **第 5 批开工：`dispatch_events.py`**——区分「风险提示 / 确认故障 / 质量处置」；质量事件走 A 的现有接口，故障来源必须是明确标注的模拟设备或人工确认，**没有模型能力时不输出「ML 已确认故障」**；② 按车辆/批次/包装关联确定影响范围（原货安置与替换货配送是两件事，关联同一异常）。
@@ -256,7 +284,9 @@
 
 > **为什么重排**：原 W1 的「加载脚本」三项里有两项**已经落地或已被人为否决**——`build_graph.py` 已把 rules_config 阈值、法规/SOP、C 的设施与 11×11 CONNECTS 边、11 类真实根因、真实 shipment 全部加载；`/api/qa` 真实现也已在 9/11 提前完成。更关键的是 **9/15① 与已实施的决策直接冲突**：`scenarios.csv` 那 57 条是 AI 起草的演示事件，**已被 D 于 9/11 明确从图谱里移除**（"no fabricated nodes"，见 `build_graph.py:537` 起）。按原计划把它加载回去，等于把编造的事件变成"证据"。本栏据此重排。
 
-- **9/14 周一**：① 核对 `build_graph.py` 实际加载的每一类节点**来源可追溯**：products/thresholds（`rules_config.json`）、regulations（WHO TRS 961 / EU GDP / ICH / HSA，**文档级 + `source_url` + `verified`**）、SOP（只取公开程序性指引，公司内部 SOP 不用——决策记在 `docs/ARCHITECTURE.md` §6）、facilities（C 的 `network.json`，1 depot + 10 家公立医院）、真实 shipment（**故意不建 Facility/Product 边**，因为 zone 代号映射不到新加坡设施，硬连是编造地理）；② 把 `build_graph.py` docstring 里自陈的遗留项**「ICH Q1A(R2) 条款级措辞仍待 A 核实」正式转给 A**（A 的 W1 9/14 有对应位）。
+- **9/14 周一**：① 核对 `build_graph.py` 实际加载的每一类节点**来源可追溯**：products/thresholds（`rules_config.json`）、regulations（WHO TRS 961 / EU GDP / ICH / HSA，**文档级 + `source_url` + `verified`**）、SOP（只取公开程序性指引，公司内部 SOP 不用——决策记在 `docs/ARCHITECTURE.md` §6）、facilities（C 的 `network.json`，1 depot + 10 家公立医院）、真实 shipment（**故意不建 Facility/Product 边**，因为 zone 代号映射不到新加坡设施，硬连是编造地理）；② 把 `build_graph.py` docstring 里自陈的遗留项**「ICH Q1A(R2) 条款级措辞仍待 A 核实」正式转给 A**（A 的 W1 9/14 有对应位）；③ **答一次 Neo4j 连通状态**（W0 9/9③ 至今标"未核实"）——连不上就写"未连通"。
+  - **完成口径**：`build_graph.py` 每一类节点都能逐个指到**文件或 URL**。
+  - **别做**：**别把 `data/scenarios/scenarios.csv` 加载进图谱**——9/11 已明确否决（那 57 条是 AI 起草的演示事件，装进去会把编造事件变成"证据"）。本日只把这层决策落到文档，不动加载代码。
 - **9/15 周二**：① ~~加载 `scenarios.csv` 57 条 → ExcursionEvent/Disposition~~ **不做**：那 57 条是 M3 的标注/评估材料（提案 §8.3），装进 Neo4j 会变成假证据。本日改为把这条**决策写进 `docs/KG_SCHEMA_v1.md`**（附原因），并在 `build_graph.py` 的注释旁确认已生效；② 加一条断言/测试锁死：`scenarios.csv` 的任何行都不得出现在图谱写入路径上（防止将来有人"顺手加回去"）。
 - **9/16 周三**：① 抽样与来源说明的书面记录：11 类真实根因（ES `vaccine-cold-chain`）的许可、抽样方式、抽样量写进 KG schema 文档；② 法规节点复核——**文档级引用，不写条款号**（编造条款号是硬约束里明令禁止的）。
 - **9/17 周四**：① Cypher 查询集 v1：`qa.py` 现有 `why_disposition` / `audit_chain` / `product_requirements` / `disposition_stats` 四类，本日补**统计类**查询（如「该原因最常见于哪些场景」）；② 每个查询存一份结果快照，供报告引用。
