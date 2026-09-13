@@ -549,7 +549,14 @@ def accept_emergency_dispatch(dispatch_id: str, req: EmergencyAcceptIn) -> dict:
 
 
 def qa_view(req: QAIn) -> dict:
-    """Route one structured question to KG queries; hide DB/query failures."""
+    """Route one structured question to KG queries; hide DB/query failures.
+
+    An intent outside :data:`knowledge_graph.qa.QUESTION_TYPES` is answered with
+    ``status="unsupported"`` instead of a 4xx, so the front-end renders one
+    localised notice per outcome class (proposal §6.5: no case / insufficient
+    evidence / unsupported question / database failure). A graph failure is
+    raised as ``RuntimeError`` and becomes HTTP 503.
+    """
     try:
         if req.question_type == "why_disposition":
             return kg_qa.why_disposition(req.run_id)
@@ -557,7 +564,11 @@ def qa_view(req: QAIn) -> dict:
             return kg_qa.audit_chain(req.run_id)
         if req.question_type == "product_requirements":
             return kg_qa.product_requirements(req.product_id)
-        return kg_qa.disposition_stats()
+        if req.question_type == "cause_context":
+            return kg_qa.cause_context(req.run_id, req.cause_code)
+        if req.question_type == "disposition_stats":
+            return kg_qa.disposition_stats()
+        return kg_qa.unsupported_response(req.question_type)
     except Exception as exc:
         log.warning("qa query failed: %s", exc, exc_info=True)
         raise RuntimeError("knowledge graph unavailable") from exc

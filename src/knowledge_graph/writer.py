@@ -105,7 +105,11 @@ def write_case(record: dict) -> bool:
                 MERGE (e)-[:EVENT_CAUSED_BY]->(c)
                 FOREACH (rid IN $reg_ids |
                     MERGE (r:Regulation {clause_id: rid})
-                    MERGE (dis)<-[:CITES]-(r))
+                    // Case-scoped on purpose: the citation belongs to THIS case's
+                    // fired rule. Hanging it off the shared Disposition node made
+                    // every case with the same disposition inherit each other's
+                    // regulations (fixed 2026-09-13, see KG_SCHEMA §3).
+                    MERGE (e)-[:CITES]->(r))
                 FOREACH (sid IN $sop_ids |
                     MERGE (s:SOP {sop_id: sid})
                     MERGE (e)-[:FOLLOWS]->(s))

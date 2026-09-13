@@ -19,7 +19,7 @@ from . import service
 from .schemas import (
     BatchIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
     EmergencyAcceptIn, EmergencyPreviewIn,
-    DispatchDeliverIn, DispatchPlanIn, GridIn, QAIn, RouteIn, RouteOut,
+    DispatchDeliverIn, DispatchPlanIn, GridIn, QAIn, QAOut, RouteIn, RouteOut,
 )
 
 app = FastAPI(
@@ -184,7 +184,7 @@ def accept_emergency_dispatch(dispatch_id: str, req: EmergencyAcceptIn):
         raise HTTPException(status_code=409, detail=str(exc))
 
 
-@app.post("/api/qa")
+@app.post("/api/qa", response_model=QAOut)
 def qa(req: QAIn):
     try:
         return service.qa_view(req)
