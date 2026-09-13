@@ -6,7 +6,7 @@
 |---|---|
 | [中文提案](PharmaColdOps-Proposal-ZH.md) | 已更新项目范围、实现状态、数据、实验、标注结果及计划 |
 | [英文提案](PharmaColdOps-Proposal-EN.md) | 与中文内容同步 |
-| [英文配图目录](figures/en/) | 7 张 SVG 已与正文同步；两张演示截图于 2026-09-13 在 Vue 前端（API 模式）重新截取，原图见 `figures/raw/` |
+| [英文配图目录](figures/en/) | 7 张 SVG 已与正文同步；两张演示截图于 2026-09-13 在 Vue 前端（API 模式）重新截取。**两张未裁剪的全幅原件未入库**（仅在提交者本机 `proposal/figures/raw/`，本文件不指向仓库内路径），入库的是裁剪并引用的 `demo-rule-engine-en.png` / `demo-route-qa-en.png` |
 | [正式 Word（中）](PharmaColdOps_正式Proposal_4人版.docx) | 已按本次中文 Markdown 重新生成；组名、成员姓名及学号已填入；仍需人工终审 |
 | [正式 Word（英）](PharmaColdOps-Proposal-EN.docx) | 英文内容在 2026-09-13 的**版本之锚**（含人工对头部的简化）；**重建会覆盖这些人工修改** |
 | [提交件（英）](PharmaColdOps-Proposal-Group%2052.pdf) | **2026-09-13 提交用**：由上述英文 Word 导出的 PDF（20 页 / 4,246 词 / Letter），内容与提交时的英文 Word 一致 |
