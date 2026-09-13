@@ -4,10 +4,14 @@ Sources, per docs/ARCHITECTURE.md M6:
 
 - products / thresholds : ``src/rule_engine/rules_config.json``
 - regulation nodes: WHO TRS 961 Annex 9, EU GDP 2013/C 343/01,
-  ICH Q1A(R2), HSA GDP Guidance Notes (Singapore). Clause numbers and
-  summaries were checked against the official PDFs on 2026-09-10 (each
-  Regulation node carries ``source_url`` + ``verified``); ICH clause-level
-  wording remains A's W1 verification task.
+  ICH Q1A(R2), HSA GDP Guidance Notes (Singapore). Each Regulation node
+  carries ``source_url`` + its own ``verified`` note. **Verification status is
+  per node — do not restate it as one blanket "all clauses checked" claim**;
+  the field-by-field audit lives in ``docs/阈值证据表_v1.md``. Status as of
+  2026-09-14: WHO §6.2 / §6.9 clause-level; EU GDP §9.2 clause-level;
+  ICH Q1A(R2) clause-level (full text read 2026-09-14 — this closed the item
+  D transferred to A); HSA document-level. The remaining EU GDP chapter
+  numbers (1.2 / 3.2.1 / 9.4) are still being checked.
 - SOP nodes: public procedural guidance at DOCUMENT level — CDC Temperature
   Excursion Checklist (May 2014), WHO shake-test validation study,
   EU GDP 1.2 / 9.2. Company-internal SOPs are proprietary and are NOT used
@@ -105,7 +109,7 @@ REGULATIONS = [
         "clause": "Chapter 3.2.1 — Temperature and environment control",
         "summary": "Storage environment (temperature, light, humidity) must be controlled; temperature mapping before use, monitors placed at the points of greatest fluctuation, re-mapping after significant changes.",
         "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
-        "verified": "2026-09-10 official OJ PDF, verbatim match (3.2.1)",
+        "verified": "2026-09-14 official OJ PDF, clause number VERIFIED; summary is a paraphrase (not verbatim)",
     },
     {
         "clause_id": "R-EU-GDP-9.2",
@@ -114,7 +118,7 @@ REGULATIONS = [
         "clause": "Chapter 9.2 — Transportation (excursion reporting)",
         "summary": "Storage conditions must be maintained in transit; a temperature excursion or product damage during transportation must be reported to distributor and recipient, with a procedure for investigating and handling it.",
         "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
-        "verified": "2026-09-10 official OJ PDF, verbatim match (9.2)",
+        "verified": "2026-09-14 official OJ PDF, clause number VERIFIED and content confirmed; summary is condensed wording (原文 'should be reported')",
     },
     {
         "clause_id": "R-EU-GDP-9.4",
@@ -123,25 +127,38 @@ REGULATIONS = [
         "clause": "Chapter 9.4 — Products requiring special conditions",
         "summary": "Temperature-sensitive products must be transported using qualified equipment (thermal packaging, temperature-controlled containers or vehicles) so correct transport conditions are maintained.",
         "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
-        "verified": "2026-09-10 official OJ PDF, verbatim match (9.4)",
+        "verified": "2026-09-14 official OJ PDF, clause number VERIFIED; summary is a paraphrase (原文 'should be used', 节点写 'must be transported')",
     },
     {
         "clause_id": "R-HSA-GDP",
         "title": "HSA Guidance Notes on Good Distribution Practice (rev. 15 Dec 2023)",
         "issuer": "Singapore HSA",
-        "clause": "GDP standard for therapeutic products",
-        "summary": "Singapore's mandatory GDP standard for importers and wholesalers of therapeutic products, aligning storage, transport and temperature-control requirements.",
-        "source_url": "https://www.hsa.gov.sg/therapeutic-products/manufacturing-import-wholesale/licence-to-manufacturer-import-or-wholesale/gmp-gdp/",
-        "verified": "document title/source confirmed 2026-09-10; clause-level wording pending A's W1 check",
+        "clause": "GUIDE-MQA-013 — §2.7 continuous monitoring, §2.8 monitoring points at the extremes of fluctuation, §3.10(d) transport protection, Annex 1 'Cold chain products'",
+        "summary": "Singapore's mandatory GDP standard for local importers and wholesalers (the landing page also lists Chinese proprietary medicines, cell/tissue/gene therapy products and active ingredients), covering storage, transport and temperature control — including continuous monitoring, monitoring devices placed where fluctuations are greatest, protection in transit from unacceptable heat/cold/light/moisture, and a dedicated cold-chain annex.",
+        "source_url": "https://isomer-user-content.by.gov.sg/409/c19890a5-6658-492d-b8ff-1ec6e9dc9f9c/guide-mqa-013.pdf",
+        "verified": "2026-09-14 (A), document + section level: the HSA landing page confirms the title, states that compliance is MANDATORY for local importers/wholesalers, and gives the revision date '15 December 2023'; the guidance PDF itself (GUIDE-MQA-013-012, 21 pp.) states only 'DECEMBER 2023' on its cover and carries no revision-history table — so the precise 15 Dec 2023 wording rests on the landing page, not the PDF. Sections 2.7 / 2.8 / 3.10(d) and Annex 1 'Cold chain products' were read in the PDF. This node is now verified at document + section level; no part of it remains unverified.",
     },
     {
         "clause_id": "R-ICH-Q1A",
-        "title": "ICH Q1A(R2)",
+        "title": "ICH Q1A(R2) Stability Testing of New Drug Substances and Products",
         "issuer": "ICH",
-        "clause": "Stability testing of new drug substances and products",
-        "summary": "Basis for product-specific stability data (storage range, allowable excursion duration, MKT ceiling).",
+        "clause": ("§2.1.7.2 / §2.2.7.4 storage in a refrigerator (long term 5 °C ± 3 °C); "
+                   "§2.1.7.3 / §2.2.7.5 storage in a freezer (long term −20 °C ± 5 °C); "
+                   "§2.1.7.4 / §2.2.7.6 storage below −20 °C — case-by-case; "
+                   "§3 Glossary — 'Mean kinetic temperature'"),
+        "summary": ("Defines the stability data package for a new drug substance/product, including the "
+                    "long-term storage conditions that underpin a label storage range: refrigerator "
+                    "5 °C ± 3 °C (= 2–8 °C) and freezer −20 °C ± 5 °C (= −25 to −15 °C); below −20 °C is "
+                    "explicitly case-by-case. Short-term shipping excursions are to be assessed using "
+                    "accelerated/intermediate data. It DEFINES mean kinetic temperature (§3 Glossary) but "
+                    "sets NO MKT ceiling, and specifies NO per-product allowable excursion duration — "
+                    "those remain project engineering values."),
         "source_url": "https://database.ich.org/sites/default/files/Q1A%28R2%29%20Guideline.pdf",
-        "verified": "pending A's W1 clause-level check",
+        "verified": ("2026-09-14, A: full text read (Current Step 4 version dated 6 February 2003, 24 pp.). "
+                     "Clause titles and the storage-condition values above are verbatim. "
+                     "⚠️ Correction: the pre-2026-09-14 `clause` value of this node was the DOCUMENT TITLE, "
+                     "not a clause — replaced with the real clause anchors. MKT ceiling / allowable "
+                     "excursion duration are NOT ICH values (see summary)."),
     },
 ]
 
@@ -160,9 +177,9 @@ SOPS = [
     {
         "sop_id": "SOP-GDP-002",
         "title": "Freeze-exposure handling (WHO shake test)",
-        "summary": "Protect freeze-sensitive products from temperatures below 0 °C (WHO TRS 961 Annex 9 §6.9). On suspected freezing of an aluminum-adjuvanted vaccine: shake a suspect test vial and a deliberately frozen control vial of the same batch for 10–15 seconds and compare sedimentation side by side; similar or faster sedimentation indicates freeze damage and the batch must be discarded (WHO shake test, validated on 475 vials across 8 freeze-sensitive vaccine types).",
-        "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2908964/",
-        "verified": "2026-09-11 WHO shake-test validation study (PMC2908964) + WHO TRS 961 Annex 9 §6.9 official PDF (verified 2026-09-10)",
+        "summary": "Protect freeze-sensitive products from temperatures below 0 °C (WHO TRS 961 Annex 9 §6.9). On suspected freezing of an aluminum-adjuvanted vaccine: hold a suspect test vial and a deliberately frozen control vial of the same batch together in one hand and shake them, then place the two vials side by side on a flat surface and compare sedimentation — similar or faster sedimentation in the suspect vial indicates freeze damage (WHO shake test; the validation study reports 100% sensitivity, specificity and positive predictive value). ⚠️ Discarding the batch is THIS PROJECT's disposition rule, not a conclusion of the cited study.",
+        "source_url": "https://europepmc.org/article/MED/20680128",
+        "verified": "2026-09-14 (A): identity and numbers verified via the Europe PMC mirror of PMC2908964 — Kartoglu et al., 'Validation of the shake test for detecting freeze damage to adsorbed vaccines', Bull World Health Organ 2010;88:624–631, doi:10.2471/BLT.08.056879. The figure '475 vials across 8 freeze-sensitive vaccine types' is CONFIRMED (480 enrolled, 5 broken during unpacking → 475; Table 3 'Total 475'). ⚠️ CORRECTED: the previously stated 'shake … for 10–15 seconds' does NOT appear anywhere in the source (the paper describes the shake qualitatively; that duration would come from WHO's external 'Shake test learning guide', which could not be obtained) — removed. Also removed the implication that the source prescribes discarding. NOTE: the pmc.ncbi.nlm.nih.gov URL is reCAPTCHA-blocked in our environment (not 404) — hence the mirror.",
     },
     {
         "sop_id": "SOP-GDP-003",

@@ -17,7 +17,15 @@
 - **可直接进正式报告的引用（已一手核实）**：EU GDP 2013/C 343/01 **§9.2**（包装完整性 + 偏移须上报且须有调查处置程序）、WHO Annex 9 **§6.2**（`Product stability profiles`）、Annex 9 **§6.9**（装箱防护）、FDA **Levemir §16.2** 与 **Merilog IFU**、FDA 2021-02-25「−80~−60 °C」（换链接并注年代）、USP MKT 定义（**须改号〈1079.2〉**）。
 - **附带正当性发现**：USP〈1079.2〉Table 1 对 **CCT 2–8 °C** 的公开允许值是 **MKT ≤ 8 °C / 周期 24 h / 偏移区间 8–15 °C 且最高 ≤ 15 °C**；本项目取 `mkt=10 °C`、`30 min` **明显更保守**。故报告可写「严格程度不低于 USP 公开允许值」，但**必须同时写明**「标签上限 + 容差」**并非** USP 方法、属项目自定。
 - **KG 影响**：`build_graph.py:462-491` 把 `_sources` **原样镜像**到 `Product` 节点（全部 `.get()` 带默认值，本次新增的 `refs_note` 会进 `design_notes`）——已实测**无 KeyError**，D 侧重建图谱即自动带上更正，**不需要 D 手抄**。
-- ⚠️ **未做**：`build_graph.py:162-165` 有一个**硬编码**节点「Freeze-exposure handling (WHO shake test)」，仍写着报废语境下的 `(WHO TRS 961 Annex 9 §6.9)` 与 `verified 2026-09-10`——**属 D 的工作区，本轮未动**，修正文案已写进证据表 §4#2 并记入 HANDOFF 待办。
+- ✅ **ICH Q1A(R2) 条款级核实已完成（2026-09-14，关闭 D 转来的待办）**。读全文（ICH Current Step 4 version，**dated 6 February 2003**，24 页），结论：
+  1. **文档身份 VERIFIED**；原节点 `clause` 字段填的是**文档标题**而非条款 → 已换成真实条款锚点（§2.1.7.2/§2.2.7.4 冷藏 `5 °C ± 3 °C`、§2.1.7.3/§2.2.7.5 冷冻 `−20 °C ± 5 °C`、§2.1.7.4/§2.2.7.6 低于 −20 °C `case-by-case`、§3 Glossary MKT 定义）。
+  2. **附带收益：补上了两处此前无解的来源**——`frozen_m20` 的 −25~−15 °C 与 ICH 冷冻长期条件 **−20 °C ± 5 °C 逐格吻合**；`vaccine_2_8` 的 2–8 °C 与冷藏长期条件 **5 °C ± 3 °C 逐格吻合**。二者均**改引 ICH 条款级依据**，替代此前被撤掉的错误归属。
+  3. **必须写进报告的两条边界**：ICH **只定义** MKT、**不设** ceiling；ICH 只要求**评估**偏移、**不给时长上限**（其 Glossary 的「超过容差 24 h 须描述并评估」是**报告门槛，不是允许值**）。故本项目 `allowable_duration_min` / `mkt_threshold_c` / `≤0 °C→scrap` 三者仍是**工程规则**。
+  4. 子代理**独立读法互相印证**，并另查出三处须改：**EU GDP 3.2.1 / 9.4 的 `verbatim match` 标注不成立**（章节号对、内容是**意译**，已改标 `paraphrase`）；**`SOP-GDP-002` 的 `shake … for 10–15 seconds` 在原文中根本不存在**（论文只定性描述；该秒数出自未能取得的 WHO 外部学习指南）→ **已删除**，并把「报废」标明为项目规则（论文只验证检测有效性 100%/100%/100%）；`475 vials / 8 types` **属实**（480 入组、破损 5 支 → 475）。CDC 清单节点 **VERIFIED**（1 页、`May 2014`、步骤逐条相符），但属**美国**语境，用于新加坡须声明为「程序模板参照」。
+  5. HSA 节点：`rev. 15 Dec 2023` **属实**（依据是 HSA **落地页**；指南 PDF 封面只写 `DECEMBER 2023`）；对进口/批发商**强制**已核实；`source_url` 由落地页**换为指南 PDF**（`GUIDE-MQA-013-012`，21 页，含 §2.7/§2.8/§3.10(d) 与 **Annex 1「Cold chain products」**）。两个节点的 `verified` **不再留「pending」半句**。
+  - 原始核实报告：`reports/source_audit_ich_hsa_clauses.md`。
+  - ⚠️ **仍未做（属 D）**：`KG_SCHEMA_v1.md` 的「条款号/摘要已逐条核对」全称口吻，及其 `storage` 出处括注仍写「WHO TRS 961 Annex 9」（与 `rules_config.json` 的更正冲突）。
+- ↺ **更正一处我先前的误判（2026-09-14 复核）**：`build_graph.py:162-165` 的 SOP 节点「Freeze-exposure handling (WHO shake test)」里，`(WHO TRS 961 Annex 9 §6.9)` **挂在「须保护冻敏品免于 0 °C 以下」那句上，该引用是准确的**（§6.9 正是装箱防护）；「报废」那半句挂的是 **WHO shake test 研究（PMC2908964）**，不是 §6.9。本节早先版本把它写成「报废语境下的 §6.9 归属已证伪」——**那是不准确的，已更正**（同时修了 `docs/阈值证据表_v1.md` 与 `HANDOFF.md` §5.11）。
 - ⚠️ **另一条仍未完成**：**ICH Q1A(R2) 条款级核实**（D 于 9/14 转来、DAILY_PLAN A 9/14 ④ 的项）本次**未覆盖**。本次核实范围是 WHO / EU GDP / USP / FDA / Pfizer，**不要因为证据表看起来完整就默认 ICH 那条已完成**。
 
 ---
