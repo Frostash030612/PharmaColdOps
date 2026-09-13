@@ -1,9 +1,12 @@
 # M5 新加坡配送网络接入方案 —— 执行说明（写给负责实现的 AI）
 
+> **状态：已执行完毕（2026-09-13 标注）**。本方案当年是写给实现者的一次性作业单，**其中的内容现已全部落地**：`data/optimisation/singapore/{facilities.json,network.json}` 已入库（1 depot + 10 家公立医院、11×11 真实有向 OSM 矩阵）、`osm_extract.py` / `singapore_loader.py` / `singapore_export.py` 已在 `src/optimisation/`。**下面 §0.1 的「未提交改动清单」是 9/10 的历史快照，那批代码早已按本文建议拆成多个 commit 提交**——不要照它再提交一遍。留档价值：几何/矩阵构建口径与来源说明（报告要引）。
+>
 > 目的：把这份文档喂给另一个能操作这个代码仓库的 AI（或工程师），它不需要再问 Mia 任何背景问题，照着做就能把"新加坡真实路网"接入现有 VRPTW 求解器。
 > 仓库：`https://github.com/Frostash030612/PharmaColdOps`（本地路径示例：`/Users/wang/Desktop/PharmaColdOps`，以实际 clone 路径为准）。
 > 对应文档：`docs/ARCHITECTURE.md` 第 4 节「运输规划的新加坡本地化（M5）」、`docs/DAILY_PLAN.md` 里 C 角色 W2（9/23–9/26）的任务。
 > 角色边界：这是 C（配送优化 VRPTW）一个人的模块，不涉及 A（规则引擎）、B（ML）、D（知识图谱/API/前端）已定的跨成员契约。
+> **术语提醒**：全文原写「CP-SAT」/「CP-SAT 求解器」处，实际实现为 **OR-Tools Routing Solver + PATH_CHEAPEST_ARC + GUIDED_LOCAL_SEARCH**；提案 §6.4 已订正为 `not CP-SAT`，报告与后续文档统一用 Routing Solver（GLS）。
 
 ---
 
@@ -17,7 +20,7 @@
   - `src/optimisation/models.py`（modified，新增了 `VehicleRoute` / `RouteStop` / `ReplanMetrics` / `ReplanResult`）
   - `src/optimisation/routing.py`（untracked，`evaluate_route()` / `build_result()` / `euclidean()`）
   - `src/optimisation/greedy.py`（untracked，`solve_greedy()`，最近邻可行插入贪心算法）
-  - `src/optimisation/ortools_solver.py`（untracked，`solve_ortools()`，OR-Tools CP-SAT 求解器）
+  - `src/optimisation/ortools_solver.py`（untracked，`solve_ortools()`，**OR-Tools Routing Solver + GUIDED_LOCAL_SEARCH**——不是 CP-SAT，见下）
   - `scripts/run_routing_baselines.py`（untracked）
   - `tests/test_routing.py`（untracked，覆盖上面全部逻辑，6 个 Solomon 实例全部 feasible）
 

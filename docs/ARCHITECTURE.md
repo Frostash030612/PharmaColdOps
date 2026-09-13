@@ -16,7 +16,7 @@
 | M2 | 偏移检测与事件生成 | B | 温度序列 → 偏移事件 `ExcursionEvent` + MKT 计算 | 派生标签交叉验证（注意 §8.3 反循环） |
 | M3 | 处置规则引擎（**枢纽**） | A | `ExcursionEvent` → 放行/隔离/复检/报废 + 补发标志 + 法规依据（可审计决策链） | 场景库 + 双人独立标注（§8.3） |
 | M4 | 风险预测 + 根因诊断 | B | 特征表 → 风险分 + 根因类别 + SHAP 解释 | `silent_failure`、`potency_compromised`、`excursion_cause`（11 类） |
-| M5 | 配送改派优化（VRPTW） | C | 补发订单 → 改派路线（贪心 → CP-SAT → GA），新加坡路网 | Solomon / CVRPLIB 已发表最优解 |
+| M5 | 配送改派优化（VRPTW） | C | 补发订单 → 改派路线（贪心 → Routing Solver (GLS) → GA），新加坡路网 | Solomon / CVRPLIB 已发表最优解 |
 | M6 | 知识图谱 + 合规问答 | D | 决策链 + 根因 + 法规 → "为何隔离/依据哪条 SOP" + 审计报告 | 问答准确率、证据可追溯覆盖率 |
 | M7 | 集成与展示 | D | 各模块输出 → FastAPI + 前端（异常列表 → 处置 → 路线 → 问答） | 端到端演示 |
 
@@ -65,7 +65,7 @@
                       ▼                              ▼
         ┌────────────────────────────┐   ┌──────────────────────────────┐
         │ M5 配送改派优化 (C)          │   │ M6 知识图谱 + 合规问答 (D)      │
-        │ VRPTW: 贪心→CP-SAT→GA      │   │ 产品/设施/事件/法规/SOP 节点    │
+        │ VRPTW: 贪心→Routing(GLS)→GA │   │ 产品/设施/事件/法规/SOP 节点    │
         │ 新加坡路网 (OSMnx)          │   │ "为何隔离 / 依据哪条 SOP"       │
         │ Solomon 基准                │   │ + 审计报告                    │
         └─────────────┬──────────────┘   └───────────────┬──────────────┘
@@ -166,14 +166,14 @@ route = ox.shortest_path(G, orig_node, dest_node, weight="travel_time")  # 真�
 
 ### 4.3 落地步骤（只动两层）
 
-**保留**：所有 ML 数据集 + Solomon 实例（Solomon 继续当**算法正确性基准**，证明 CP-SAT/GA 求解器算得对，跟已发表最优解对比）。
+**保留**：所有 ML 数据集 + Solomon 实例（Solomon 继续当**算法正确性基准**，证明 Routing Solver（GLS）/GA 求解器算得对，跟已发表最优解对比）。
 
 **新增（新加坡配送网络层）**：
 
 1. **节点清单**（用真实地址坐标）：
    - 冷库/仓库 depot：裕廊 / 大士（Tuas）冷链仓、樟宜冷链物流区；
    - 配送点：SingHealth / NUHS 各 polyclinic、SGH / NUH / KKH / TTSH / CGH 等医院、Guardian / Unity 药房。
-2. **距离/时间矩阵**：用 OSMnx 对 20–50 个节点算真实驾驶距离 + 时间，替换 Solomon 的欧氏坐标，喂给 OR-Tools CP-SAT / GA。
+2. **距离/时间矩阵**：用 OSMnx 对 20–50 个节点算真实驾驶距离 + 时间，替换 Solomon 的欧氏坐标，喂给 OR-Tools Routing Solver（GLS）/ GA。
 3. **知识图谱**：把真实设施作为 KG 的 `Warehouse` / `Site` 节点，接上现有的产品、异常、法规节点。
 4. **报告如实说明**：运营级传感器/风险数据是合成或非洲/印度来源（地点无关），**新加坡属性只注入在路网与演示层**。这个说法站得住，因为温度偏移物理规律通用。
 
@@ -185,7 +185,7 @@ route = ox.shortest_path(G, orig_node, dest_node, weight="travel_time")  # 真�
 |---|---|---|
 | 立即 | 删除 `data/ml/` 两个重复目录；启动场景库双人独立标注（§8.3 第 2–3 步） | W1 |
 | W1 | M1 预处理 + 数据字典（B）；M5 贪心基线 + Solomon 加载（C）；M6 KG schema v1 + M7 API 骨架（D）；M3 真实阈值（A） | W1 |
-| W2 | M4 LightGBM/XGBoost 基线 + SHAP（B）；M5 接补发订单 + CP-SAT v1（C）；M5 新加坡 OSMnx 路网矩阵（C）；M6 数据加载（D） | W2 |
+| W2 | M4 LightGBM/XGBoost 基线 + SHAP（B）；M5 接补发订单 + Routing Solver（GLS）v1（C）；M5 新加坡 OSMnx 路网矩阵（C）；M6 数据加载（D） | W2 |
 | W3 | 端到端集成 v1：一次温度异常 → 处置建议 + 改派路线 | W3 |
 | W4–W6 | GA 对比、多温区约束、KG 问答 v1、UI、视频、报告 | W4–W6 |
 
