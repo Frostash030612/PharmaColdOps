@@ -1,19 +1,34 @@
 # One-command Neo4j for the PharmaColdOps knowledge graph (M6).
 #
 # Usage:
-#   cp .env.example .env      # optional — defaults already match below
-#   docker compose up -d
-#   http://localhost:7474     # Neo4j Browser (neo4j / password from .env)
-#   neo4j://localhost:7687    # Bolt — KG loader / writer / QA / schema talk here
+#   docker compose up -d                 # start (also creates the data volume)
+#   http://localhost:7474                # Neo4j Browser (neo4j / password from .env)
+#   neo4j://localhost:7687               # Bolt — KG loader / writer / QA / schema
+#   docker compose exec neo4j cypher-shell -u neo4j -p pharmacoldops
+#   docker compose down                  # stop, keep the graph
+#   docker compose down -v               # stop and delete the graph volume
 #
-# Same image, ports and auth as the dev container `pharmaneo`, so a graph
-# built on any teammate's machine is interchangeable. If `pharmaneo` is
-# already running from a plain `docker run`, stop it first (`docker rm -f
-# pharmaneo`) or drop the container_name below.
+# Load / reload the graph (idempotent — it clears and rebuilds, so closed-case
+# chains written by case_close are wiped as well):
+#   python -m src.knowledge_graph.build_graph
+#
+# Deliberately NO `container_name`:
+#   a container name is global to the Docker daemon, so a leftover container
+#   from a plain `docker run`, or a second checkout of this repo, makes
+#   `docker compose up` fail with "container name is already in use" and the
+#   next person has to delete someone else's container before starting. The
+#   top-level `name:` below pins the compose *project* instead, so every
+#   machine gets the same container (`pharmacoldops-neo4j-1`) and volume
+#   (`pharmacoldops_neo4j_data`) without any global name collision.
+#   (On Compose older than v2.3.3, drop `name:` and set COMPOSE_PROJECT_NAME=pharmacoldops.)
+#
+# Same image, ports and auth as the earlier ad-hoc dev container, so a graph
+# built on any teammate's machine is interchangeable.
+name: pharmacoldops
+
 services:
   neo4j:
     image: neo4j:5-community
-    container_name: pharmaneo
     ports:
       - "7474:7474"   # Neo4j Browser
       - "7687:7687"   # Bolt

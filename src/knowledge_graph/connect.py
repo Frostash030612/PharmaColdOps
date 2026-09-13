@@ -4,11 +4,10 @@ One place for URI / user / password resolution so build_graph, writer, qa
 and schema can never drift apart. Resolution order: ``NEO4J_URI`` /
 ``NEO4J_USER`` / ``NEO4J_PASSWORD`` environment variables override a
 repo-root ``.env`` (loaded when python-dotenv is installed), which
-overrides the defaults matching the dev container ``pharmaneo``.
-
-Note (2026-09-11): the repo-root ``docker-compose.yml`` + ``.env.example``
-planned for 9/9 are still missing — until they land, defaults + env vars
-are the source of truth (tracked in DAILY_PLAN 9/12 ④).
+overrides the defaults below. Those defaults mirror the repo-root
+``docker-compose.yml`` (``docker compose up -d`` — container
+``pharmacoldops-neo4j-1``, Bolt on ``localhost:7687``), so a local run
+needs no environment variables at all.
 """
 from __future__ import annotations
 

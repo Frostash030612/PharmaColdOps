@@ -5,7 +5,7 @@ document, it does not define new rules. Idempotent: every statement uses
 ``IF NOT EXISTS``, so re-running (or being called from build_graph on
 every rebuild) is safe.
 
-Usage (cold-chain env, ``pharmaneo`` running, from the repo root)::
+Usage (cold-chain env, compose Neo4j up — ``docker compose up -d`` — from the repo root)::
 
     python -m src.knowledge_graph.schema
 

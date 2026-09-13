@@ -39,13 +39,13 @@ Sources, per docs/ARCHITECTURE.md M6:
   (API ``cause_code`` vocabulary) is a separate one and is written per
   ``case_close`` by the writer, not pre-loaded here.
 
-Usage (cold-chain env, ``pharmaneo`` container running, from the repo root)::
+Usage (cold-chain env, compose Neo4j up — ``docker compose up -d`` — from the repo root)::
 
     python -m src.knowledge_graph.build_graph
 
 The script rebuilds the graph from scratch on every run (project dev
 database only). Connections come from ``knowledge_graph.connect``
-(``NEO4J_*`` env vars / ``.env`` / ``pharmaneo`` defaults); schema
+(``NEO4J_*`` env vars / ``.env`` / compose defaults); schema
 constraints from ``knowledge_graph.schema`` are ensured first.
 """
 from __future__ import annotations
