@@ -1,13 +1,11 @@
 # PharmaColdOps
 ## Decision Support for Cold Chain Pharmaceutical Excursions and Delivery Replanning
 
-**Project proposal for a four-member team**
+Course: IRS Practice Module
 
-Course: IRS Practice Module · Team: 4 members, approximately 10 person-days each
-Proposal deadline: 2026-09-13 · Final deadline: 2026-10-25
-Updated: 2026-09-13 · Status: revised draft awaiting team review and submission
+Group name: Project Group 52
 
-Group name: Project Group 52 (registered in Canvas). Members: Xu Wenzhe (A0328771W), Zhu Jianyu (A0353769L), Wang Lepeng (A0357864L), Shen Ziyi (A0350940J). A/B/C/D identify responsibilities below (key in §10.1).
+Members: Xu Wenzhe (A0328771W), Zhu Jianyu (A0353769L), Wang Lepeng (A0357864L), Shen Ziyi (A0350940J).
 
 ## 1. Project Overview
 
@@ -15,7 +13,7 @@ PharmaColdOps supports temperature-excursion assessment in pharmaceutical transp
 
 The project covers four IRS technique groups: decision automation, resource optimisation, knowledge discovery and data mining, and cognitive systems. The delivery objective is a minimal integrated workflow in a controlled Singapore scenario: temperature event → disposition recommendation → reshipment order → delivery plan → evidence query. Risk and candidate-cause classification remain offline experiments and do not enter the disposition API.
 
-As of 2026-09-13, the rule engine, bilingual interface, independently annotated scenarios, offline ML baselines, Singapore routing, order-driven reshipment solving and KG case-write code have been developed. The frontend calls the live routing and graph QA endpoints for archived reshipment cases. An order-driven dispatch screen and an expanded destination pool remain to be built. This prototype does not replace final quality approval or claim production or regulatory validation.
+By now, the rule engine, bilingual interface, independently annotated scenarios, offline ML baselines, Singapore routing, order-driven reshipment solving and KG case-write code have been developed. The frontend calls the live routing and graph QA endpoints for archived reshipment cases. An order-driven dispatch console exists in the Chinese static page in API mode; wiring it to a case disposition, matching it in the English and Vue interfaces, and expanding the destination pool remain to be built. This prototype does not replace final quality approval or claim production or regulatory validation.
 
 ## 2. Problem Definition
 
@@ -73,7 +71,7 @@ People retain responsibility for final approval and delivery execution. The proj
 1. Enter an event with a known product category. Current inputs are forms or demonstration data; sequence parsing is a subsequent data task.
 2. Return one of four dispositions, a reshipment flag, rule number, reason and evidence states.
 3. Have quality staff review the recommendation. Current closure stores inputs and the system recommendation; fields for final human decisions and approvers remain to be designed, while dispatch run state separately records acceptance, departure and per-order delivery.
-4. For replacement cases, submit a simulated order with destination, quantity and time window under the agreed contract and solve it with the single-depot solver. The contract, solver and run persistence are implemented and tested; the frontend has no dispatch screen yet.
+4. For replacement cases, submit a simulated order with destination, quantity and time window under the agreed contract and solve it with the single-depot solver. The contract, solver and run persistence are implemented and tested; a dispatch console in the Chinese static page drives planning, departure and emergency insertion through those endpoints, but it is not triggered by a case disposition, and the English and Vue interfaces have no equivalent screen.
 5. Link the case and route, display stops, distance, schedules and unserved orders, and query case-specific graph evidence. Archived reshipment cases already fetch live routes and case-specific graph answers; a screen for choosing destinations and quantities remains to be built.
 
 Archiving a case does not establish its real-world outcome. Automatic feedback learning is outside the MVP.
@@ -86,7 +84,7 @@ Archiving a case does not establish its real-world outcome. Automatic feedback l
 | M2 Event generation | Demo export available with single-reading MKT approximation | Sequence windows, MKT implementation and validation |
 | M3 Rule engine | Four category prototypes, six rules, API, human gold for 57 cases | Domain review, disagreement analysis and formal evaluation |
 | M4 Risk and causes | LR/LGBM/XGB, SHAP and ten-class cause experiment available | Multi-fold evaluation, feature availability and failure analysis |
-| M5 Routing | Greedy solver, Routing Solver, real road network, reshipment/dispatch solving and run persistence available | Order-driven dispatch screen and expanded destination pool |
+| M5 Routing | Greedy solver, Routing Solver, real road network, reshipment/dispatch solving and run persistence available | Connecting the dispatch console to a case disposition; English and Vue parity; expanded destination pool |
 | M6 Graph and QA | Schema, loading, closure writing, query functions, HTTP endpoints and frontend answers available | Evidence evaluation and relevance scoring |
 | M7 Integration | Bilingual Vue, offline/API modes and case history available | Integrated acceptance and failure-state checks |
 
@@ -153,7 +151,7 @@ Python query functions support run_id-based explanations, audit chains, product 
 
 ![Demo Routes and QA](figures/demo-route-qa-en.png)
 
-**Demo, 2026-09-13:** Precomputed routes for the demonstration case and an archived case fetching a live route and a case-specific graph answer. The order-driven dispatch screen is not shown because it is not built; this is not evidence of a completed integrated workflow.
+**Demo, 2026-09-13:** Precomputed routes for the demonstration case and an archived case fetching a live route and a case-specific graph answer. The dispatch console is not shown: it exists only in the Chinese static page in API mode and is not driven by a case disposition, so this is not evidence of a completed integrated workflow.
 
 ### 6.6 Architecture and Interfaces
 
@@ -163,7 +161,7 @@ The frontend uses Vue 3, Vite, Pinia and Leaflet, with a legacy static demo reta
 
 **Figure 5:** Online rules, offline experiments, precomputed routes and HTTP interfaces not yet wired to a screen are shown separately.
 
-Cross-member contracts must fix the association among run_id, order_id, product, destination, quantity, time windows, temperature compatibility and ReplanResult, and handle infeasible routes, repeated closures and storage failures. The API now carries order destination, quantity, time windows, temperature zone and route results, with defined responses for infeasible routes and infeasible windows and a version-checked store for repeated commands; what remains on the contract is the frontend dispatch screen.
+Cross-member contracts must fix the association among run_id, order_id, product, destination, quantity, time windows, temperature compatibility and ReplanResult, and handle infeasible routes, repeated closures and storage failures. The API now carries order destination, quantity, time windows, temperature zone and route results, with defined responses for infeasible routes and infeasible windows and a version-checked store for repeated commands; what remains on the contract is the dispatch screen in the English and Vue interfaces and its wiring to a case disposition.
 
 ![Figure 6 Minimal integrated workflow](figures/en/fig6-pipeline.svg)
 
