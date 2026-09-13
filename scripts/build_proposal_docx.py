@@ -24,6 +24,11 @@ PIC_NS = "http://schemas.openxmlformats.org/drawingml/2006/picture"
 REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 EMU_PER_INCH = 914400
 MAX_IMAGE_CX = int(6.2 * EMU_PER_INCH)
+# Letter page (11 in) less 0.75 in margins on each side leaves 9.5 in of text
+# height; leave room for the caption. An inline image taller than the text area
+# is pushed off the page by Word and reads as a blank block, so the long edge is
+# capped as well as the width.
+MAX_IMAGE_CY = int(8.5 * EMU_PER_INCH)
 
 
 def esc(text: str) -> str:
@@ -34,24 +39,28 @@ def attr_escape(text: str) -> str:
     return html.escape(text, quote=True)
 
 
-def clean_inline(text: str) -> str:
+def clean_inline(text: str, *, strip: bool = True) -> str:
     text = text.replace("`", "")
     text = re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", r"\1", text)
     text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1 (\2)", text)
     text = text.replace("\\|", "|")
-    return text.strip()
+    # Only the outer edges of a paragraph may be stripped. Stripping every
+    # inline segment would eat the space that separates a bold run from the
+    # text after it ("**Demo, 2026-09-13:** Precomputed…" -> "…13:Precomputed").
+    return text.strip() if strip else text
 
 
 def split_bold_runs(text: str) -> list[tuple[str, bool]]:
+    text = text.strip()  # strip the paragraph's outer edges once, not per segment
     parts: list[tuple[str, bool]] = []
     pos = 0
     for match in re.finditer(r"\*\*(.+?)\*\*", text):
         if match.start() > pos:
-            parts.append((clean_inline(text[pos : match.start()]), False))
+            parts.append((clean_inline(text[pos : match.start()], strip=False), False))
         parts.append((clean_inline(match.group(1)), True))
         pos = match.end()
     if pos < len(text):
-        parts.append((clean_inline(text[pos:]), False))
+        parts.append((clean_inline(text[pos:], strip=False), False))
     return [(value, bold) for value, bold in parts if value]
 
 
@@ -145,6 +154,10 @@ def image_dimensions(path: Path) -> tuple[int, int]:
     aspect = height / width if width else 0.5625
     cx = MAX_IMAGE_CX
     cy = int(cx * aspect)
+    if cy > MAX_IMAGE_CY:
+        scale = MAX_IMAGE_CY / cy
+        cx = int(cx * scale)
+        cy = MAX_IMAGE_CY
     return cx, cy
 
 
