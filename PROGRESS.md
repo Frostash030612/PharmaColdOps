@@ -141,34 +141,34 @@
 
 ### A —— 规则 / 决策引擎 / 报告
 
-- [ ] **提案冲刺（9/13 前）**：终版提案定稿提交；把「真 ML 骨架已出数」写进 §6/§8（引用 PROGRESS 下方数字，务必带合成数据警示句）。
-- [ ] **W1-A**：把 `src/rule_engine/rules_config.json` 的占位阈值按真实数据校一遍——demo 接真实数据后暴露「占位 allowable=30 min 把小时级超限全判报废」。产出：4 产品「阈值证据表」（来源链接到 WHO/GDP 文档级，不杜撰条款号）。阈值动 → 同步跑 `pytest`（gold 场景跟着改）。
-- [ ] **W2-A**：报告方法论初稿（§8.3 反循环评估）：gold label 应改成独立人工标注流程（谁写场景、谁核 label 要分开），写清「与 ML 训练集不共用」。
-- [ ] **W3-A**：规则↔ML 特征对齐接口设计（供 B 落地）；跨成员「补发单」字段契约与 C 对齐。
+- [x] **提案冲刺（9/13 前）**：终版提案定稿提交；把「真 ML 骨架已出数」写进 §6/§8（引用 PROGRESS 下方数字，务必带合成数据警示句）。**☑ 2026-09-13 已提交**（英文 PDF 交 Canvas）；提交后源稿的调度界面口径修正与提交件的差异登记在 `proposal/README.md`。
+- [x] **W1-A**：把 `src/rule_engine/rules_config.json` 的占位阈值按真实数据校一遍——demo 接真实数据后暴露「占位 allowable=30 min 把小时级超限全判报废」。产出：4 产品「阈值证据表」（来源链接到 WHO/GDP 文档级，不杜撰条款号）。阈值动 → 同步跑 `pytest`（gold 场景跟着改）。**☑ 机读版已完成**（以 `rules_config.json` 的 `_note` / `_sources` 落地，逐产品列 storage / freeze_sensitive / allowable / MKT 来源，并标「原则锚定默认值」）；**人读版 `docs/阈值证据表_v1.md` 定于 W1 9/14 独立成文**（报告附录要）。阈值导出为前端 JS 常量并由 `tests/test_frontend_threshold_parity.py` 锁定同源。
+- [x] **W2-A**：报告方法论初稿（§8.3 反循环评估）：gold label 应改成独立人工标注流程（谁写场景、谁核 label 要分开），写清「与 ML 训练集不共用」。**☑ 已完成**（9/12 提前）：B/C 双人独立全量标注 57 场景，gold 入库 `ae3ec61`；B↔C 一致 44/57、**κ = 0.6434**（未达 0.8，团队决策为不修订 rubric 重测，按实际值报出并写明局限）；引擎 vs gold = 39/57，18 条偏离按三类归因。
+- [ ] **W3-A**：规则↔ML 特征对齐接口设计（供 B 落地）；跨成员「补发单」字段契约与 C 对齐。**进行中**：`ReshipmentOrder` 草案 9/15 出、9/21 终版；规则↔ML 特征接口 9/17 与 B 会签、9/23 定稿（仅报告口径，ML 不进 API）。
 - [ ] 全程：维护本 PROGRESS、例会分派、风险清单（提案 §11）跟踪。
 
 ### B —— 数据与机器学习
 
-- [ ] **提案冲刺（9/13 前）**：§7 数据描述贴 DATA_DICTIONARY 口径（来源/行数/合成声明）；**到源页逐一核实许可证**（当前是「待核实」占位，提交前必做）。
-- [ ] **W1-B**：写 **ML task spec**——录入 schema ↔ 模型特征对齐表、vaccine-distribution 派生标签方案定死、**时间切分矛盾正面决策**（silent-failure 无时间戳 → 接受随机切分+注明，或改用带 `date` 的 vaccine-distribution 建时间序列任务补充）。
+- [x] **提案冲刺（9/13 前）**：§7 数据描述贴 DATA_DICTIONARY 口径（来源/行数/合成声明）；**到源页逐一核实许可证**（当前是「待核实」占位，提交前必做）。**☑ 已完成**（`fb9b37f`；2026-09-13 复核 §7.1 许可证列 CC0 ×2 / CC BY 4.0 ×3 / ODbL 与 `DATA_DICTIONARY.md` §8 逐条一致）。
+- [ ] **W1-B**：写 **ML task spec**——录入 schema ↔ 模型特征对齐表、vaccine-distribution 派生标签方案定死、**时间切分矛盾正面决策**（silent-failure 无时间戳 → 接受随机切分+注明，或改用带 `date` 的 vaccine-distribution 建时间序列任务补充）。**W1 9/14 起**；标注轮已于 9/12 收口，本项不含标注。
 - [ ] **W2-B**：把已跑通骨架升级成报告正式版：多折 CV 实验表、SHAP 图并进实验节、把 `data/processed/` 关键数字同步回 PROGRESS/报告。
 - [ ] **W3-B**：根因特征正当性分析（核心问题：只用前置上下文 vs 结果列的权衡、防「用结果解释结果」）+ macro-F1/top-3 正式表 + SHAP/特征重要性图。
 - [ ] 全程：每次实验交代 seed / 切分 / 阈值选择，保证可复现。
 
 ### C —— 配送优化（VRPTW）—— 仓库侧还空着，任务量最大
 
-- [ ] **提案冲刺（9/13 前）**：确认 OR-Tools 可行性（装 `ortools` 出 hello-world 即可）；demo 右栏「简化启发式 ≠ 正式求解器」口径在提案/README 一致（已注）。
-- [ ] **W1-C**：建 `src/optimisation/` 包 + 输入/输出 schema 定义（**补发单 → 仓库分配 → 车辆路线**的数据契约，字段与 A/B/D 对齐）；贪心基线正式化（把 demo 的 NN+2-opt 思路搬成带时间窗/容量约束校验的 Python 实现）。
-- [ ] **W2-C**：OR-Tools / CP-SAT v1 求解器，跑通 solomon c101（有全局最优参考值可对）。
-- [ ] **W3-C**：主流程打通 + 贪心 vs CP-SAT 对比表；多温区 / 缺货优先级留 W4（可选）。
+- [x] **提案冲刺（9/13 前）**：确认 OR-Tools 可行性（装 `ortools` 出 hello-world 即可）；demo 右栏「简化启发式 ≠ 正式求解器」口径在提案/README 一致（已注）。**☑ 2026-09-13 复核**：可行性已远超 hello-world——`src/optimisation/ortools_solver.py` 是可用求解器，提案 §6.4 把名称写实为 `RoutingModel` + `PATH_CHEAPEST_ARC` + `GUIDED_LOCAL_SEARCH` 并注明 `not CP-SAT`。
+- [x] **W1-C**：建 `src/optimisation/` 包 + 输入/输出 schema 定义（**补发单 → 仓库分配 → 车辆路线**的数据契约，字段与 A/B/D 对齐）；贪心基线正式化（把 demo 的 NN+2-opt 思路搬成带时间窗/容量约束校验的 Python 实现）。**☑ 已完成**：`models.py`（`ReplanResult` / `VehicleRoute` / `RouteStop` / `ReplanMetrics`，`models.py:135`）、`solomon_loader.py`、`routing.py`、`greedy.py`（确定性最近插入 + 容量/时间窗/回仓窗口校验，不可服务客户显式列为 unserved）；另有 `dispatch_models.py` / `dispatch_planner.py` / `dispatch_state.py` / `dispatch_repository.py` 承载订单驱动调度。
+- [x] **W2-C**：OR-Tools / CP-SAT v1 求解器，跑通 solomon c101（有全局最优参考值可对）。**☑ 已完成**，但**术语订正**：实现是 **OR-Tools Routing Solver + GUIDED_LOCAL_SEARCH，不是 CP-SAT**（`ortools_solver.py`）；`scripts/run_routing_baselines.py` 可复跑全 6 个 Solomon 实例并出可复现表；c101 文献最优 828.94 是模块注释里的对照锚。新加坡路网矩阵（原 W2）也已落地（`data/optimisation/singapore/`）。
+- [ ] **W3-C**：主流程打通 + 贪心 vs Routing Solver（GLS）对比表；多温区 / 缺货优先级留 W4（可选）。**部分完成**：主流程已通（`/api/dispatch/*` 全链 + 状态机 + 持久化），**对比表尚未落盘**；后续按 `docs/C_代码实施计划.md` 第 6 批出正式对比表。
 - [ ] 产出文件固定位：`data/optimisation/`（输入已入库）→ 结果写 `data/processed/`（不入库）。
 
 ### D —— 知识图谱 / 问答 / 集成 / UI
 
-- [ ] **提案冲刺（9/13 前）**：准备提案要用的 1–2 张 demo 截图/流程图；确认 demo 里合规问答的定位（KG 概念示意 or 查图真问答）在提案里口径一致。
-- [ ] **W1-D**：建 `src/knowledge_graph/`：schema v1（实体/关系：产品、规则、法规、案例/补发单）+ 数据加载脚本（从 rules_config + scenarios 导节点）。
-- [ ] **W2-D**：`src/api/` FastAPI 骨架：`/decide`（接 A 引擎）、`/route`（接 C，先留 stub）、`/qa`（接 KG）三个路由契约定死——这是四模块集成的锚点。
-- [ ] **W3-D**：打通「异常 → 处置 → 改派」最小闭环的 API + 前端；KG 问答要么换成真查询、要么维持概念示意并在报告如实标注。
+- [x] **提案冲刺（9/13 前）**：准备提案要用的 1–2 张 demo 截图/流程图；确认 demo 里合规问答的定位（KG 概念示意 or 查图真问答）在提案里口径一致。**☑ 已完成**：两张截图已于 9/13 在 Vue（API 模式）重拍并引用；问答定位口径写入提案 §6.5（真查询 vs 概念示意、无证据不回答，EN/ZH 同步）。
+- [x] **W1-D**：建 `src/knowledge_graph/`：schema v1（实体/关系：产品、规则、法规、案例/补发单）+ 数据加载脚本（从 rules_config + scenarios 导节点）。**☑ 已完成，但 `scenarios` 部分已改口径**：`build_graph.py` 加载 rules_config 阈值、法规/SOP（文档级 + `source_url` + `verified`）、C 的设施与 11×11 CONNECTS 边（带真实路线几何）、11 类真实根因、真实 shipment（不建 Facility/Product 边）；**`data/scenarios/scenarios.csv` 那 57 条是 AI 起草的演示事件，9/11 已明确移出图谱，不得加载**（"no fabricated nodes"，见 `build_graph.py:537` 起——装进去会把编造事件变成"证据"）。
+- [x] **W2-D**：`src/api/` FastAPI 骨架：`/decide`（接 A 引擎）、`/route`（接 C，先留 stub）、`/qa`（接 KG）三个路由契约定死——这是四模块集成的锚点。**☑ 已完成且 stub 已替换为真实现**：`/api/route`、`/api/qa` 均不再是 501；另有 `/api/dispatch/*` 一组（C 的调度）。
+- [x] **W3-D**：打通「异常 → 处置 → 改派」最小闭环的 API + 前端；KG 问答要么换成真查询、要么维持概念示意并在报告如实标注。**☑ 问答已取真查询**（`qa.py`：`why_disposition` / `audit_chain` / `product_requirements` / `disposition_stats`，按 `run_id` 形态查）；闭环前端仍在做（中文静态页的调度台尚未由案例处置结论触发，英文与 Vue 界面无对应屏）。
 - [ ] **W5-D**：视频脚本（demo 录屏走查）+ 报告集成章节。
 - [ ] **W4–W5·部署（D 主导，全员试）**：契约端点 + `Dockerfile` + 上云（Render/HF/静态兜底），演示前一晚全网实测——**架构基线见「前后端接口与上云」节**。
 
