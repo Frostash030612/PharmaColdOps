@@ -33,21 +33,35 @@ async function ask() {
     source.value = "fallback";
     return;
   }
-  if (["why_disposition", "audit_chain"].includes(type) && !sandbox.currentRunId) {
+  if (["why_disposition", "audit_chain", "cause_context"].includes(type) && !sandbox.currentRunId) {
     answer.value = L.value.right.qaNeedsCase;
     source.value = "notice";
     return;
   }
   const body = { question_type: type };
-  if (["why_disposition", "audit_chain"].includes(type)) body.run_id = sandbox.currentRunId;
+  if (["why_disposition", "audit_chain", "cause_context"].includes(type)) body.run_id = sandbox.currentRunId;
   if (type === "product_requirements") body.product_id = sandbox.current.product_id;
   pending.value = true;
   try {
     const res = await postJson(decisions.apiBase + "/api/qa", body);
     if (id !== requestId) return;
-    answer.value = res.answer;
-    evidence.value = res.evidence || [];
-    source.value = "live";
+    /* The API reports an outcome class per answer (proposal §6.5): only the
+       system wording is localised here — the answer/evidence text itself
+       quotes the English source documents and is shown verbatim. */
+    const status = res.status || "ok";
+    if (status === "ok") {
+      answer.value = res.answer;
+      evidence.value = res.evidence || [];
+      source.value = "live";
+    } else if (status === "insufficient_evidence") {
+      answer.value = `${res.answer} ${L.value.right.qaStatus_insufficient_evidence}`;
+      evidence.value = res.evidence || [];
+      source.value = "insufficient";
+    } else {
+      answer.value = L.value.right[`qaStatus_${status}`] || res.answer;
+      evidence.value = [];
+      source.value = status === "unsupported" ? "unsupported" : "notice";
+    }
   } catch {
     if (id !== requestId) return;
     answer.value = `${askKG(text, L.value)} ${L.value.right.qaOfflineNote}`;
@@ -69,7 +83,7 @@ function onKeydown(e) { if (e.key === "Enter") ask(); }
     <div v-if="answer && decisions.useApi" class="qa-source" :class="source">{{ L.right[`qaSource_${source}`] }}</div>
     <ul v-if="evidence.length" class="qa-evidence">
       <li v-for="(item, i) in evidence" :key="`${item.node_type}-${item.node_id}-${i}`">
-        <b>{{ item.node_type }} · {{ item.node_id }}</b><span>{{ item.summary }}</span>
+        <b>{{ (L.right.qaNode && L.right.qaNode[item.node_type]) || item.node_type }} · {{ item.node_id }}</b><span>{{ item.summary }}</span>
       </li>
     </ul>
   </div>

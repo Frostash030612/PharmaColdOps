@@ -88,6 +88,17 @@ export default {
     qaSource_fallback: "Knowledge graph unavailable; showing offline guidance",
     qaSource_concept: "Offline keyword answer",
     qaSource_notice: "Archived case required",
+    qaStatus_no_case: "No record of this case in the knowledge graph.",
+    qaStatus_insufficient_evidence: "(The graph holds no regulation/SOP for this rule, so the answer follows the no-evidence-no-answer rule.)",
+    qaStatus_unsupported: "This question is outside the supported intents (why-disposition, audit chain, product requirements, disposition statistics).",
+    qaSource_insufficient: "Case exists, evidence missing",
+    qaSource_unsupported: "Unsupported question",
+    /* Evidence node-type labels — mirrors docs/KG_SCHEMA_v1.md §1. */
+    qaNode: {
+      Product: "Product", Regulation: "Regulation", SOP: "SOP", ExcursionEvent: "ExcursionEvent",
+      Disposition: "Disposition", Cause: "Cause", Facility: "Facility", Shipment: "Shipment",
+      ReshipmentOrder: "ReshipmentOrder",
+    },
   },
 
   audit: {

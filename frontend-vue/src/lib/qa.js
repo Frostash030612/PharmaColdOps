@@ -18,6 +18,8 @@ const TYPE_KEYWORDS = {
   audit_chain: ["链路", "追溯", "audit", "全过程", "chain"],
   product_requirements: ["阈值", "储存要求", "threshold", "requirement", "允许时长"],
   disposition_stats: ["统计", "分布", "多少例", "stats", "比例"],
+  /* Last on purpose: the broader 「原因」 must not shadow 「判定原因」 above. */
+  cause_context: ["根因", "原因", "最常见", "多见于", "cause", "root cause"],
 };
 
 export function classifyQuestion(q) {

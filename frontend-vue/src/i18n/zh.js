@@ -87,6 +87,17 @@ export default {
     qaSource_fallback: "知识图谱不可用，已使用离线示意",
     qaSource_concept: "离线关键词回答",
     qaSource_notice: "需要已归档案例",
+    qaStatus_no_case: "知识图谱中查无此案例记录。",
+    qaStatus_insufficient_evidence: "（图谱中该规则没有对应法规/SOP，按“无证据不回答”处理。）",
+    qaStatus_unsupported: "这类问题不在当前支持范围内（仅支持：为何这样判定、审计链、产品要求、处置统计）。",
+    qaSource_insufficient: "案例存在但证据不足",
+    qaSource_unsupported: "不支持的问题",
+    /* 证据节点类型标签：取自 docs/KG_SCHEMA_v1.md §1 实体总览的「现实对应」列 */
+    qaNode: {
+      Product: "产品", Regulation: "法规", SOP: "SOP", ExcursionEvent: "超限事件",
+      Disposition: "处置", Cause: "主因", Facility: "设施", Shipment: "发运",
+      ReshipmentOrder: "补发单",
+    },
   },
 
   audit: {
