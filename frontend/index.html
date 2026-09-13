@@ -367,7 +367,7 @@ const RULES = [
   "Freeze damage: freeze-sensitive product at or below 0 °C → scrap",
   "Compromised packaging during an excursion → scrap",
   "Duration ≥ 2× allowable, or MKT ≥ threshold + 3 °C → scrap",
-  "Duration > allowable, or MKT > threshold → quarantine",
+  "Duration > allowable, or MKT > threshold → scrap",
   "Retestable and near the edge (duration ≥ 0.8× allowable, or MKT ≥ threshold − 0.5 °C) → retest",
   "Otherwise → release",
 ];
@@ -376,10 +376,10 @@ const RULES = [
    risk cause_code, evidence levels — and these tables turn them into text. EN
    and ZH wording therefore never has to live in the Python engine. */
 const RULE_TEXT = {
-  1: { reason: "freeze damage; freeze-sensitive product exposed below freezing point", regulation: "WHO TRS 961 Annex 9 — freeze-sensitive vaccines lose potency when frozen" },
+  1: { reason: "freeze damage; freeze-sensitive product exposed below freezing point", regulation: "WHO TRS 961 Annex 9 §6.9 — freeze-sensitive products must be protected against temperatures below 0 °C; discarding a frozen batch is the project rule for irreversible freeze damage" },
   2: { reason: "packaging compromised during excursion", regulation: "EU GDP 2013/C 343/01 — packaging integrity must be preserved during transport" },
   3: { reason: "excursion severity beyond any acceptable margin", regulation: "WHO TRS 961 Annex 9 — excursion beyond acceptable stability margin" },
-  4: { reason: "exceeded allowable excursion; hold for quality assessment", regulation: "WHO TRS 961 Annex 9 / EU GDP — hold for quality assessment on excursion" },
+  4: { reason: "exceeded allowable excursion; any overrun is unacceptable (no hold band)", regulation: "WHO TRS 961 Annex 9 / EU GDP 2013/C 343/01 — excursion beyond the labelled range requires assessment; project policy (both annotators, 2026-09-11) treats any overrun as unacceptable" },
   5: { reason: "within limits but near threshold; confirm by testing", regulation: "EU GDP 2013/C 343/01 — confirm within-threshold excursions by testing" },
   6: { reason: "excursion within acceptable safety range", regulation: "WHO TRS 961 Annex 9 — within acceptable range" },
 };
@@ -446,8 +446,10 @@ function evaluate(event, s) {
     return decide("scrap", 2);
   if (event.duration_min >= 2 * s.allowable || event.mkt_c >= s.mktThreshold + 3.0)
     return decide("scrap", 3);
+  /* rubric v1.1 (2026-09-14): clause 4 has no buffer band — any overrun is scrap,
+     not quarantine. Mirrors src/rule_engine/engine.py. */
   if (event.duration_min > s.allowable || event.mkt_c > s.mktThreshold)
-    return decide("quarantine", 4);
+    return decide("scrap", 4);
   if (s.retestable && (event.duration_min >= 0.8 * s.allowable || event.mkt_c >= s.mktThreshold - 0.5))
     return decide("retest", 5);
   return decide("release", 6);

@@ -421,7 +421,7 @@ const RULES = [
   "冻结损坏：冻敏产品在 0 °C 及以下 → 报废",
   "超限期间包装破损 → 报废",
   "时长 ≥ 2× 允许值，或 MKT ≥ 阈值 + 3 °C → 报废",
-  "时长 > 允许值，或 MKT > 阈值 → 隔离",
+  "时长 > 允许值，或 MKT > 阈值 → 报废",
   "可复验且接近边界（时长 ≥ 0.8× 允许值，或 MKT ≥ 阈值 − 0.5 °C）→ 复验",
   "否则 → 放行",
 ];
@@ -429,10 +429,10 @@ const RULES = [
    语义代码——disposition、rule_no、risk cause_code、evidence 等级——由本表转成
    文字。因此英文与中文文案无需进入 Python 引擎。 */
 const RULE_TEXT = {
-  1: { reason: "冻结损坏；冻敏产品暴露在冰点以下", regulation: "WHO TRS 961 附录 9 — 冻敏疫苗冻结即失效" },
+  1: { reason: "冻结损坏；冻敏产品暴露在冰点以下", regulation: "WHO TRS 961 附录 9 §6.9 — 冻敏产品须防止低于 0 °C；冻结后报废是本项目对不可逆冻结损伤的处置规则" },
   2: { reason: "超限期间包装破损", regulation: "EU GDP 2013/C 343/01 — 运输过程中包装完整性必须保持" },
   3: { reason: "超限严重程度超出任何可接受范围", regulation: "WHO TRS 961 附录 9 — 超限超出可接受稳定性余量" },
-  4: { reason: "超出允许超限；隔离待质量评估", regulation: "WHO TRS 961 附录 9 / EU GDP — 超限时隔离待质量评估" },
+  4: { reason: "超出允许超限；越限即不可接受（不设缓冲档）", regulation: "WHO TRS 961 附录 9 / EU GDP 2013/C 343/01 — 超出标签范围须评估；项目政策（两位标注者，2026-09-11）：越限即不可接受" },
   5: { reason: "未超限但接近阈值；复验确认", regulation: "EU GDP 2013/C 343/01 — 阈内超限以复验确认" },
   6: { reason: "超限在可接受安全范围内", regulation: "WHO TRS 961 附录 9 — 在可接受范围内" },
 };
@@ -500,8 +500,10 @@ function evaluate(event, s) {
     return decide("scrap", 2);
   if (event.duration_min >= 2 * s.allowable || event.mkt_c >= s.mktThreshold + 3.0)
     return decide("scrap", 3);
+  /* rubric v1.1（2026-09-14）：第 4 条不设缓冲档，越限即报废而非隔离。
+     与 src/rule_engine/engine.py 保持同口径。 */
   if (event.duration_min > s.allowable || event.mkt_c > s.mktThreshold)
-    return decide("quarantine", 4);
+    return decide("scrap", 4);
   if (s.retestable && (event.duration_min >= 0.8 * s.allowable || event.mkt_c >= s.mktThreshold - 0.5))
     return decide("retest", 5);
   return decide("release", 6);

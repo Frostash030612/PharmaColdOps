@@ -12,7 +12,8 @@
 离线（不需要标注包）：
 
   §2    入库件指纹
-        15 份入库件的 SHA-256 须与 `PROVENANCE.md` §2 登记值一致。
+        16 份入库件的 SHA-256 须与 `PROVENANCE.md` §2 登记值一致。
+        （原件数 15；2026-09-14 新增 `docs/annotation_rubric_v1.1.md`，见 §2.4。）
   §3.1  探测工作台不得含原轮场景号
         4 份 `probes/*工作台_*.html` 源码里出现 `S0xx`，标注者即可认出被重测的
         是哪几条原轮场景。**只查探测工作台**——两份主工作台本就逐条列出 57 个
@@ -158,10 +159,27 @@ def read_text(rel):
         return p.read_text(encoding="latin-1")
 
 
+def split_provenance(md: str):
+    """把 PROVENANCE.md 切成 §1 / §2 两段，供下面的正则抓取。
+
+    ⚠️ **§2 必须止于第一个子标题（`### 2.1 …`），不能只切到 `## 3.`。**
+    原因：`SECTION_2` 只要看到「`文件名` | `16 位哈希`」就当成登记行，而
+    §2.1–§2.4 是**说明**性子节，里面正常会出现对照表（含原/新指纹两列）。
+    只切到 §3 的话，那些说明用表会被误当登记行 → 对一处**正确**的改动
+    报假警报。而假警报会让人开始忽略真警报（§3 已记过同一教训：
+    校验器本身也要被校验）。回归用例见 `selftest()`。
+    """
+    i1 = md.index("## 1. ")
+    i2 = md.index("## 2. ")
+    i3 = md.index("## 3. ")
+    j = md.find("### ", i2)
+    end2 = j if 0 <= j < i3 else i3
+    return md[i1:i2], md[i2:end2]
+
+
 def parse_provenance():
     md = PROVENANCE.read_text(encoding="utf-8")
-    s2 = md[md.index("## 2. "):md.index("## 3. ")]
-    s1 = md[md.index("## 1. "):md.index("## 2. ")]
+    s1, s2 = split_provenance(md)
     return SECTION_1.findall(s1), SECTION_2.findall(s2)
 
 
@@ -213,6 +231,16 @@ def selftest() -> bool:
 
     expect("空集合会被规模守卫拦下",
            not all([0 >= MIN_SCOPE["ingested"], 0 >= MIN_SCOPE["private"]]))
+
+    # §2 切片必须止于第一个子标题：§2.1–§2.4 的说明表里会出现「文件名 | 哈希」
+    # 形式，若被 SECTION_2 当成登记行，就会对正确的改动报假警报。
+    fake = ("## 1. 原始作答\n\n## 2. 入库件\n\n| 文件 | SHA |\n|---|---|\n"
+            "| `a.py` | `0123456789abcdef` |\n\n### 2.1 说明性对照表\n\n"
+            "| 文件 | 原指纹 | 新指纹 |\n|---|---|---|\n"
+            "| `a.py` | `fedcba9876543210` | `0123456789abcdef` |\n\n## 3. 泄露校验\n")
+    _, s2 = split_provenance(fake)
+    expect("§2 只抓登记表，不吃子节里的指纹对照表",
+           SECTION_2.findall(s2) == [("a.py", "0123456789abcdef")])
     return ok
 
 

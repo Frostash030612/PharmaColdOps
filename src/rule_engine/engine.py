@@ -18,7 +18,11 @@ from .models import Decision, Disposition, ExcursionEvent, ProductSpec
 CONFIG_PATH = Path(__file__).parent / "rules_config.json"
 
 # Freeze damage is ice formation, which occurs at or below the freezing point of
-# water. Freeze-sensitive products lose potency once frozen (WHO TRS 961 Annex 9).
+# water. WHO TRS 961 Annex 9 §6.9 (Shipping container packing) requires that
+# freeze-sensitive products be protected against temperatures below 0 °C; the
+# *disposition* below (discard) is a project rule for irreversible freeze damage,
+# not a WHO clause — Annex 9's disposal clauses (§8.6.x) are assessment-first.
+# Per-field provenance: docs/阈值证据表_v1.md.
 FREEZING_POINT_C = 0.0
 
 
@@ -44,7 +48,9 @@ class RuleEngine:
                 spec,
                 event,
                 "freeze damage; freeze-sensitive product exposed below freezing point",
-                "WHO TRS 961 Annex 9 — freeze-sensitive vaccines lose potency when frozen",
+                "WHO TRS 961 Annex 9 §6.9 — freeze-sensitive products must be protected "
+                "against temperatures below 0 °C; discarding a frozen batch is the project "
+                "rule for irreversible freeze damage",
                 rule_no=1,
             )
 
@@ -70,14 +76,22 @@ class RuleEngine:
                 rule_no=3,
             )
 
-        # 4. Exceeds allowable duration or MKT threshold → quarantine + assess.
+        # 4. Exceeds allowable duration or MKT threshold → scrap + reship.
+        #    Policy: any overrun (strictly greater) is unacceptable, with no
+        #    intermediate hold band. Confirmed independently by both annotators in
+        #    the 2026-09-11 blind test and already reflected in the gold labels.
+        #    rubric v1 stated `quarantine` here; rubric v1.1 changes this clause to
+        #    `scrap` and this engine follows it — see
+        #    docs/annotation_rubric_v1.1.md §0.1–§0.2 for the decision record.
         if event.duration_min > spec.allowable_duration_min or event.mkt_c > spec.mkt_threshold_c:
             return self._decide(
-                Disposition.QUARANTINE,
+                Disposition.SCRAP,
                 spec,
                 event,
-                "exceeded allowable excursion; hold for quality assessment",
-                "WHO TRS 961 Annex 9 / EU GDP — hold for quality assessment on excursion",
+                "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+                "WHO TRS 961 Annex 9 / EU GDP 2013/C 343/01 — excursion beyond the labelled "
+                "range requires assessment; project policy (both annotators, 2026-09-11) "
+                "treats any overrun as unacceptable",
                 rule_no=4,
             )
 

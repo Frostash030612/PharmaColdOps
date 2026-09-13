@@ -37,15 +37,16 @@
       "freeze_sensitive": false
     }
   ],
-  "_note": "MVP 阈值（4 个产品类别原型，非真实品牌）。字段级真实性：(1) storage_min_c / storage_max_c / freeze_sensitive 有真实公开来源（WHO TRS 961 Annex 9、FDA 说明书、Pfizer EUA）；(2) allowable_duration_min / mkt_threshold_c 无公开逐产品精确数字，本文件为其设定「原则锚定默认值」——阈值实现的是可引用的国际原则，量级为保守工程取值（非任何文件刊载的精确数字，亦不声称有逐产品来源）。原则依据：mkt_threshold_c = 标签上限 + 容差，依据 USP〈1079〉MKT 定义（MKT 为时间加权均值，短暂尖峰被阻尼）与 WHO TRS 961 Annex 9 / EU GDP 2013/C 343/01「产品须维持在标签范围内、超范围需评估」；allowable_duration_min = 保守短时值，依据 WHO TRS 961 Annex 9 §6.2（偏移时长由稳定性数据决定、偏移须短促并评估）与 EU GDP 2013/C 343/01 §9.2（偏移须上报评估）。冻结规则（freeze_sensitive && temp <= 0 C -> scrap）依据 WHO TRS 961 Annex 9 §6.9。mrna_ultracold 已按 Pfizer-BioNTech 真实超低温档修正为 -80~-60 C（原 -90 无来源）；其厂商多级稳定性窗口（解冻后 2-8 C ≤1 个月、-20 C ≤2 周、室温数小时，FDA 2021-05）未在当前单阈值模型内表达，后续应升级为 stability_tiers。投产前应以上述原则为准、用供应商稳定性数据替换量级。",
+  "_note": "MVP 阈值（4 个产品类别原型，非真实品牌）。字段级出处**逐产品不同，勿一概而论**（逐条判定与原文片段见 docs/阈值证据表_v1.md）：(1) storage_min_c / storage_max_c / freeze_sensitive —— insulin_2_8 有 FDA 标签条款级出处（Levemir §16.2 / Merilog IFU）；mrna_ultracold 有 FDA 2021-02-25 一手出处（-80~-60 C，属 **2021 原始剂型**，现售 Comirnaty 已是 2-8 C 体系）；vaccine_2_8 与 frozen_m20 **无逐产品一手出处**（前者原引 WHO TRS 961 Annex 9 承载「+2~+8 铝佐剂」的主张，经 2026-09-14 通读全文 49 页核实**不成立**，已撤；后者原引 USP freezer 档**未证实**）。(2) allowable_duration_min / mkt_threshold_c 无公开逐产品精确数字，本文件为其设定「原则锚定默认值」——阈值实现的是可引用的国际原则，量级为保守工程取值（非任何文件刊载的精确数字，亦不声称有逐产品来源）。原则依据：mkt_threshold_c = 标签上限 + 容差，MKT 定义见 USP〈1079.2〉§3（**不是〈1079〉**；该文本为 PF 49(2) 预发布版），且「上限 + 容差」这一构造**是项目自定、并非 USP 方法**；allowable_duration_min = 保守短时值，依据 WHO TRS 961 Annex 9 §6.2（Product stability profiles：可接受的偏移时长须由稳定性数据证明）、EU GDP 2013/C 343/01 §9.2（偏移须上报，且须有调查与处置程序）与 WHO TRS 961 Annex 9 §8.2.2（不可接受的偏移须评估其对产品的影响）。冻结规则（freeze_sensitive && temp <= 0 C -> scrap）**是本项目工程规则，不是 WHO 条款**：其原则依据是 WHO TRS 961 Annex 9 §6.9（Shipping container packing：装箱须保护冻敏品免于 0 C 以下），而「冻结即报废」的处置由本项目按冻结损伤不可逆自行选定。mrna_ultracold 的多级稳定性窗口**一手仅到「稀释后室温 6 小时内可用」**（FDA 2021-02-25）；「2-8 C 1 个月」仅**二手**可证（Iowa 州卫生署 2021-05-20 通讯，**非 FDA**）；「-20 C 2 周」在 FDA 口径下应写 **-25~-15 C**。该多级窗口未在当前单阈值模型内表达，后续应升级为 stability_tiers。投产前应以上述原则为准、用供应商稳定性数据替换量级。",
   "_sources": {
-    "scope": "4 个产品类别原型。字段级真实性：storage_min_c / storage_max_c / freeze_sensitive 有公开来源；allowable_duration_min / mkt_threshold_c 为原则锚定的保守默认值（原则有来源、量级为工程取值）；retestable 为设计假设。",
+    "scope": "4 个产品类别原型。字段级出处**逐产品不同**：storage_min_c / storage_max_c / freeze_sensitive 在 insulin_2_8 与 mrna_ultracold 上有公开一手出处，在 vaccine_2_8 与 frozen_m20 上**没有**；allowable_duration_min / mkt_threshold_c 为原则锚定的保守默认值（原则有来源、量级为工程取值）；retestable 为设计假设。逐条判定与原文片段见 docs/阈值证据表_v1.md。",
     "vaccine_2_8": {
       "category": "2-8 C 冷藏、含铝佐剂疫苗（如 DTaP、乙肝、HPV）",
-      "storage_range": "WHO：铝佐剂疫苗全程冷链 +2~+8 C，勿冻结（WHO TRS 961 Annex 9 / WHO 免疫实践）",
-      "freeze_sensitive": "true —— 冻结致佐剂-抗原解离、效力不可逆丧失（WHO shake test）",
-      "allowable_duration_min": "原则锚定默认值 30 min：WHO TRS 961 Annex 9 §6.2 / EU GDP 9.2「偏移须短促并评估」；量级为保守工程取值，无公开逐产品数字",
-      "mkt_threshold_c": "原则锚定默认值 10.0 C（=标签上限 8 + 2 容差）：USP〈1079〉MKT 定义 + WHO/GDP「维持在标签范围内」；容差量为工程取值",
+      "storage_range": "2-8 C 冷藏、含铝佐剂疫苗**类别原型**。⚠️ 2026-09-14 条款级核实的更正：原引「WHO TRS 961 Annex 9 / WHO 免疫实践」承载本主张，但通读 Annex 9 全文 49 页**无** `+2 to +8`、`2 °C to 8 °C`、`aluminium adjuvant`、`shake test` 任何字样，该归属**不成立、已撤**。本取值现为**类别原型设定（来源待补）**；如需一手出处，应改引真正承载该主张的 WHO 疫苗冷链 / shake test 文件（**候选尚未核实，不得先写上去**）。",
+      "freeze_sensitive": "true —— 冻敏产品冻结后效力不可逆丧失属**领域共识**；可引的条款级原则是 WHO TRS 961 Annex 9 §6.9（Shipping container packing）：「protect freeze-sensitive products against temperatures below 0 °C」。⚠️ 但「冻结即报废」这一**处置**是本项目工程规则，**不是** WHO 条款——Annex 9 的处置条款（§8.6.1 mark for disposal / §8.6.3）均以评估为前提。",
+      "allowable_duration_min": "原则锚定默认值 30 min：WHO TRS 961 Annex 9 §6.2（Product stability profiles）「Product stability data must demonstrate the acceptable temperature excursion time during transport.」+ EU GDP 2013/C 343/01 §9.2（偏移须上报，且须有调查与处置程序）+ WHO TRS 961 Annex 9 §8.2.2（不可接受的偏移须评估其对产品的影响）；量级为保守工程取值，无公开逐产品数字。⚠️ 原表述含「偏移须**短促**」，经核实 §6.2 **无此语**，已删。",
+      "mkt_threshold_c": "原则锚定默认值 10.0 C（=标签上限 8 + 2 容差）：MKT 定义见 USP〈1079.2〉§3（**章节号更正：不是〈1079〉**；〈1079.2〉为 PF 49(2) 预发布文本，带 Change to read 标记）——「MKT is the single calculated temperature at which the total amount of degradation…It is not a simple arithmetic mean.」。⚠️ 「标签上限 + 容差」这一**构造是项目自定，并非 USP 方法**。",
+      "refs_note": "⚠️ 第 1 条 ScienceDirect 链接（S0264410X18313896）实测 **HTTP 403 + captcha + 订阅墙，未亲见原文**：**只能作二手文献、内容未核实，不得作规范性依据**。第 2 条为 WHO 官方 PDF（可解析）。",
       "refs": [
         "https://cdn.who.int/media/docs/default-source/medicines/norms-and-standards/guidelines/inspections/trs961-annex9-modelguidanceforstoragetransport.pdf",
         "https://www.sciencedirect.com/science/article/abs/pii/S0264410X18313896"
@@ -53,10 +54,10 @@
     },
     "insulin_2_8": {
       "category": "2-8 C 冷藏胰岛素（未开封）",
-      "storage_range": "FDA 说明书：未开封 2-8 C 冷藏（Levemir / glargine / lispro / Merilog）",
-      "freeze_sensitive": "true —— FDA：勿冻结、冻结即弃用",
+      "storage_range": "FDA 说明书（**条款级已核实**）：未开封 2-8 C 冷藏 —— Levemir（NDA 021536）§16.2 Storage：「Store unused (unopened) LEVEMIR in the refrigerator between…(2° and 8°C). Do not freeze.」；Merilog（761325）Instructions for Use：「Store unused MERILOG vials in the refrigerator between…(2°C to 8°C). Do not freeze MERILOG.」。⚠️ 原列产品名中的 **glargine 与 lispro 无任何来源**（所引两个 URL 只覆盖 Levemir(detemir) 与 Merilog(aspart)），已移除；如需覆盖应另行补引其标签。",
+      "freeze_sensitive": "true —— FDA 说明书**条款级已核实**：Levemir「Do not use LEVEMIR if it has been frozen.」；Merilog「If a vial has been frozen or overheated, throw it away.」",
       "allowable_duration_min": "原则锚定默认值 30 min：同 vaccine_2_8；现实胰岛素热稳定性更耐（FDA：开封后室温可用至 28 天），30 min 为运输偏移下的保守取值",
-      "mkt_threshold_c": "原则锚定默认值 10.0 C（=标签上限 8 + 2 容差）：USP〈1079〉MKT + WHO/GDP「维持在标签范围内」",
+      "mkt_threshold_c": "原则锚定默认值 10.0 C（=标签上限 8 + 2 容差）：MKT 定义见 USP〈1079.2〉§3（**章节号更正：不是〈1079〉**）；「上限 + 容差」构造为项目自定、非 USP 方法",
       "retestable": "设计假设：现实中胰岛素不做实验室「复检」，此字段存疑（保留 true 以维持与 rubric/场景一致）",
       "refs": [
         "https://www.accessdata.fda.gov/drugsatfda_docs/label/2022/021536s060lbl.pdf",
@@ -65,22 +66,23 @@
     },
     "frozen_m20": {
       "category": "-25~-15 C 冷冻储存类别原型（无单一对应药品名）",
-      "storage_range": "冷链「frozen」档；USP〈1079〉freezer 档为 -25~-10 C（本项目取 -25~-15 为保守子区间）",
-      "freeze_sensitive": "false —— 已冷冻产品不属「冻敏」",
-      "allowable_duration_min": "原则锚定默认值 15 min：同「偏移须短促并评估」原则；无公开逐产品数字",
-      "mkt_threshold_c": "原则锚定默认值 -12.0 C（=标签上限 -15 + 3 容差）：USP〈1079〉MKT + WHO/GDP「维持在标签范围内」",
+      "storage_range": "⚠️ **UNVERIFIED**：原引「USP〈1079〉freezer 档为 -25~-10 C」经条款级核实**不成立**——〈1079.2〉Table 1 只有 CCT 2°-8° / CRT 20°-25° / zone IVb 15°-30°，**无 freezer 档、无 -25/-10**；该节反指向 USP〈659〉，而〈659〉在付费墙后（仅 INTRODUCTION 预览）。本类别**无单一对应药品名**，-25~-15 C 为**类别原型设定（来源待补）**。",
+      "freeze_sensitive": "false —— 定义性：已冷冻产品不属「冻敏」，属类别定义而非文献结论",
+      "allowable_duration_min": "原则锚定默认值 15 min：同「可接受的偏移时长须由稳定性数据证明、偏移须评估」原则（WHO TRS 961 Annex 9 §6.2 + §8.2.2）；无公开逐产品数字",
+      "mkt_threshold_c": "原则锚定默认值 -12.0 C（=标签上限 -15 + 3 容差）：MKT 定义见 USP〈1079.2〉§3（**更正：不是〈1079〉**）；「上限 + 容差」构造为项目自定、非 USP 方法",
       "refs": []
     },
     "mrna_ultracold": {
       "category": "mRNA 疫苗（对应 Pfizer-BioNTech 超低温档）",
-      "storage_range": "Pfizer-BioNTech 超低温 -80~-60 C（FDA EUA）",
-      "freeze_sensitive": "false —— 超低温/冷冻储存，非「冻敏」",
-      "allowable_duration_min": "原则锚定默认值 60 min：单阈值近似；真实为多级窗口（2-8 C ≤1 月、-20 C ≤2 周、解冻后室温数小时，FDA 2021-05），后续应升级为 stability_tiers",
-      "mkt_threshold_c": "原则锚定默认值 -55.0 C（=标签上限 -60 + 5 容差）：MKT 对超低温档意义有限，取保守容差",
+      "storage_range": "Pfizer-BioNTech 超低温 -80~-60 C（**一手已核实**，句子级：FDA 2021-02-25 新闻稿「the preferred storage of the undiluted vials in an ultra-low temperature freezer between -80ºC to -60ºC」）。⚠️ **属 2021 年原始剂型**：现售 Comirnaty（DailyMed 更新 2026-09-02，2026-2027 配方）已是 2-8 C 体系——**不注年代会误导报告**。",
+      "freeze_sensitive": "false —— 定义性：超低温/冷冻储存，非「冻敏」",
+      "allowable_duration_min": "原则锚定默认值 60 min：单阈值近似；真实为多级稳定性窗口，**一手仅到「稀释后室温 6 小时内可用」**（FDA 2021-02-25）；「2-8 C 1 个月」仅**二手**可证（Iowa 州卫生署 2021-05-20 通讯，**非 FDA**）；「-20 C 2 周」在 FDA 口径下应写 **-25~-15 C**。后续应升级为 stability_tiers。",
+      "mkt_threshold_c": "原则锚定默认值 -55.0 C（=标签上限 -60 + 5 容差）：MKT 对超低温档意义有限，取保守容差（**工程假设，无出处**）",
       "refs": [
-        "https://www.fda.gov/media/144413/download",
+        "https://webarchiveweb.wayback.bac-lac.canada.ca/web/20210310223840/https://www.fda.gov/news-events/press-announcements/coronavirus-covid-19-update-fda-allows-more-flexible-storage-transportation-conditions-pfizer",
         "http://content.govdelivery.com/accounts/IACIO/bulletins/2da52d5"
-      ]
+      ],
+      "refs_note": "⚠️ 原第 1 条 `https://www.fda.gov/media/144413/download` 实测 **HTTP 404**（属**引用失效、非捏造**；2021-02-25 FDA 新闻稿的 Related Information 正指向它）。上列第 1 条为**同一 FDA 新闻稿的存档版**（Library and Archives Canada Wayback，2021-03-10 抓取）。第 2 条**不是 FDA**：是 Iowa 州卫生署 2021-05-20 通讯（写 Ultra-Cold (-70) 与 -20 ºC），**属二手/三手，仅可作旁证**。"
     }
   }
 }

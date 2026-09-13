@@ -124,9 +124,12 @@ A temperature excursion in → a disposition decision out.
   Since 2026-09-12 its `gold_label` column is **independent dual human annotation** — B and C each
   blind-labelled all 57 scenarios, A arbitrated (Cohen's κ = 0.6434) — replacing the placeholder that
   used to be the engine's own output (the circularity proposal §8.3 set out to break).
-  `tests/test_rule_engine.py` therefore no longer asserts engine == gold; it **freezes the 18 known
-  engine-vs-gold deviations** and pins the agreement rate at 39/57. Full write-up:
-  [`docs/annotation_findings_v1.md`](docs/annotation_findings_v1.md); statistics and file fingerprints:
+  `tests/test_rule_engine.py` therefore no longer asserts engine == gold; it **freezes the 3 remaining
+  engine-vs-gold deviations** and pins the agreement rate at 54/57. (Before rubric v1.1 the freeze list
+  held 18 entries and the pinned rate was 39/57; v1.1 rewrote clause 4 from `quarantine` to `scrap`,
+  which dissolved 15 of them and left 3 that point at the gold labels rather than the spec.) Full write-up:
+  [`docs/annotation_findings_v1.md`](docs/annotation_findings_v1.md) and the current spec
+  [`docs/annotation_rubric_v1.1.md`](docs/annotation_rubric_v1.1.md); statistics and file fingerprints:
   [`data/processed/agreement_stats.md`](data/processed/agreement_stats.md),
   [`data/processed/PROVENANCE.md`](data/processed/PROVENANCE.md). Re-run the 9/19 engine evaluation with
   `python scripts/evaluate_engine.py --engine <outputs.csv> --private-package <annotation package>`;

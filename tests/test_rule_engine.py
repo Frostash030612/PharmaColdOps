@@ -8,6 +8,15 @@
 任何**新增**偏离都会失败并指名道姓，迫使人二选一：修引擎，或把该条登记进
 `KNOWN_GOLD_DEVIATIONS` 并写明依据。
 
+**2026-09-14 · rubric v1.1 落地后本表由 18 条收缩为 3 条**：v1.1 把第 4 条的处置由
+`quarantine` 改为 `scrap`（政策：时长或 MKT 任一越限即报废，不设缓冲档），
+该档位在全库命中 15 条、其 gold 全部是 `scrap`，故这 15 条一次性从偏离表消失。
+引擎 vs gold 一致率随之由 39/57 升为 54/57。决策记录见
+`docs/annotation_rubric_v1.1.md` §0.1–§0.2。
+
+剩余 3 条**不指向引擎，而指向 gold 自身**（S034/S035 为场景次序产物，
+S052 为 0.1 的边界），按「gold 侧待复核」登记，本轮不改 gold。
+
 偏离的逐条依据见 `docs/annotation_findings_v1.md`；分歧类别与来源见
 `data/scenarios/gold_labels.csv` 的 `decision_source` / `disagreement_type` 列。
 """
@@ -21,34 +30,19 @@ ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS = ROOT / "data" / "scenarios" / "scenarios.csv"
 GOLD_LABELS = ROOT / "data" / "scenarios" / "gold_labels.csv"
 
-#: 引擎（忠实实现 rubric v1）与终版 gold 的**全部** 18 条偏离。
+#: 引擎（忠实实现 rubric v1.1）与终版 gold 的**全部** 3 条偏离。
 #: 元组 = (引擎应判, gold 实际判, 分歧类别)。
 #:
-#: 这 18 条**不是引擎 bug**：两人独立标注都越过了 rubric 字面，责任在说明书不在引擎。
-#: 真正要修的是规则文本（rubric v1.1），修完重测后本表应随之收缩。
+#: 这 3 条**不是引擎 bug，也不是 rubric 缺陷**——v1.1 之后它们指向 gold 自身：
+#:   S034/S035  findings §6.1 已证明该批 frozen_m20 暖端异常由场景排列次序造成
+#:              （打乱次序并摆出规则后两人全判 release）；
+#:   S052       第 5 条复检线为 9.5，该条 mkt = 9.6，只差 0.1（findings §5.3）。
+#: 本轮决定**不改 gold**（改金标准会移动 9/19 引擎评估基线），故按待复核登记。
 KNOWN_GOLD_DEVIATIONS = {
-    # ── 阈值政策分歧（5 条）────────────────────────────────────────────
-    # 政策：时长或 MKT 任一越限即 scrap。rubric v1 第 4 条字面给的是 quarantine。
-    "S017": ("quarantine", "scrap", "阈值政策分歧"),
-    "S018": ("quarantine", "scrap", "阈值政策分歧"),
-    "S038": ("quarantine", "scrap", "阈值政策分歧"),
-    "S039": ("quarantine", "scrap", "阈值政策分歧"),
-    "S040": ("quarantine", "scrap", "阈值政策分歧"),
-    # ── 规范缺口（13 条）──────────────────────────────────────────────
-    # 两人答案**完全相同**，且**都与 rubric 不符**——责任在说明书，不在标注者。
-    "S019": ("quarantine", "scrap", "规范缺口"),
-    "S020": ("quarantine", "scrap", "规范缺口"),
-    "S021": ("quarantine", "scrap", "规范缺口"),
-    "S022": ("quarantine", "scrap", "规范缺口"),
-    "S023": ("quarantine", "scrap", "规范缺口"),
-    "S024": ("quarantine", "scrap", "规范缺口"),
+    # ── gold 侧待复核（3 条）──────────────────────────────────────────
     "S034": ("release", "quarantine", "规范缺口"),
     "S035": ("release", "quarantine", "规范缺口"),
-    "S041": ("quarantine", "scrap", "规范缺口"),
-    "S042": ("quarantine", "scrap", "规范缺口"),
     "S052": ("retest", "quarantine", "规范缺口"),
-    "S053": ("quarantine", "scrap", "规范缺口"),
-    "S056": ("quarantine", "scrap", "规范缺口"),
 }
 
 
@@ -70,7 +64,7 @@ def _event(row):
 
 
 def test_engine_matches_gold_outside_known_deviations():
-    """除冻结的 18 条外，引擎必须与 gold 一致。"""
+    """除冻结的 3 条外，引擎必须与 gold 一致。"""
     engine = RuleEngine()
     unexplained = []
     for row in _load_scenarios():
@@ -89,7 +83,7 @@ def test_engine_matches_gold_outside_known_deviations():
 
 
 def test_known_deviations_are_frozen():
-    """冻结的 18 条：引擎侧与 gold 侧都必须与登记值一致（任一侧漂移都要失败）。"""
+    """冻结的 3 条：引擎侧与 gold 侧都必须与登记值一致（任一侧漂移都要失败）。"""
     engine = RuleEngine()
     for row in _load_scenarios():
         sid = row["scenario_id"]
@@ -123,10 +117,12 @@ def test_deviation_freeze_matches_provenance():
 
 
 def test_gold_agreement_rate():
-    """把结论数字本身钉住：引擎 vs 终版 gold = 39/57 = 68.4%。
+    """把结论数字本身钉住：引擎 vs 终版 gold = 54/57 = 94.7%。
 
-    这个数字低不是失败——它是提案 §8.3 反循环设计**要测出来的东西**。
-    分母的变化必须是有意识的（改 rubric 后重测），不能是悄悄漂移。
+    分母的变化必须是**有意识的**（改 rubric 后同步更新），不能是悄悄漂移。
+    沿革：rubric v1 下为 39/57（68.4%）——那 18 条不是引擎的错，其中 15 条是
+    v1 第 4 条漏掉了「越限即报废」这条已确认政策。v1.1 补上后升至 54/57，
+    残留 3 条指向 gold 自身（见 KNOWN_GOLD_DEVIATIONS 的说明）。
     """
     engine = RuleEngine()
     rows = _load_scenarios()
@@ -134,9 +130,9 @@ def test_gold_agreement_rate():
         1 for r in rows
         if engine.evaluate(_event(r)).disposition.value == r["gold_label"]
     )
-    assert (agree, len(rows)) == (39, 57), (
+    assert (agree, len(rows)) == (54, 57), (
         f"引擎 vs gold 一致率变成 {agree}/{len(rows)}"
-        f"（登记值为 39/57）。见 docs/annotation_findings_v1.md。"
+        f"（登记值为 54/57）。见 docs/annotation_rubric_v1.1.md §0.1。"
     )
 
 
@@ -176,8 +172,13 @@ def test_new_products_load_and_evaluate():
     engine = RuleEngine()
     assert "insulin_2_8" in engine.specs
     assert "mrna_ultracold" in engine.specs
+    # rubric v1.1 第 4 条：时长 35 > 允许 30（严格大于）→ scrap（v1 为 quarantine）。
+    # 这里同时锁住档位与命中条款号，使「越限即报废、不设缓冲档」这条政策
+    # 一旦被改回就立刻失败，而不是等到 gold 一致率变化才被发现。
     insulin = engine.evaluate(ExcursionEvent("N1", "insulin_2_8", 11.0, 35, 10.8, "intact", "transit"))
-    assert insulin.disposition.value == "quarantine"
+    assert insulin.disposition.value == "scrap"
+    assert insulin.rule_no == 4
+    assert insulin.reshipment_required is True
     mrna = engine.evaluate(ExcursionEvent("N2", "mrna_ultracold", -30.0, 150, -35.0, "intact", "warehouse"))
     assert mrna.disposition.value == "scrap"
 

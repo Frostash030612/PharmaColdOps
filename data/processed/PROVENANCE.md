@@ -43,11 +43,12 @@
 | 文件（**仓库内路径**） | SHA-256（前 16 位） |
 |---|---|
 | `data/scenarios/gold_labels.csv` | `c62069d46e5aac0e` ⚠️ **已脱敏，见 §2.1** |
-| `scripts/evaluate_engine.py` | `ac8c597f7caa7375` ⚠️ **见 §2.2** |
-| `data/processed/agreement_stats.md` | `cf25aa8b5aea94b3` ⚠️ **见 §2.3** |
+| `scripts/evaluate_engine.py` | `5a1ed796abd9c056` ⚠️ **见 §2.2、§2.4** |
+| `data/processed/agreement_stats.md` | `241ba143f10567d9` ⚠️ **见 §2.3、§2.4** |
 | `docs/annotation_rubric_v1.md` | `a762ceed3ad725d4` |
+| `docs/annotation_rubric_v1.1.md` | `de9b8c815ebba268` ⚠️ **见 §2.4** |
 | `docs/annotation_split_v1.md` | `bd5f2a232b37f06a` |
-| `docs/annotation_findings_v1.md` | `6a3be07b2f1a67d1` |
+| `docs/annotation_findings_v1.md` | `5352d00300102cdb` ⚠️ **见 §2.4** |
 | `data/scenarios/annotation/README.md` | `eb8c6ff05ba7b114` |
 | `data/scenarios/annotation/input_v1.csv` | `6e8680263c0a75b2` |
 | `data/scenarios/annotation/answer_template.csv` | `aa48d27375cb2d56` |
@@ -134,6 +135,36 @@
 
 > ⚠️ **规矩**：凡编辑本表 §2 列出的入库件，**必须同一提交内更新指纹**，
 > 并在本文件留下改动说明。数字若也变了，需另行说明理由。
+
+### 2.4 ⚠️ rubric v1.1 落地后的指纹更新（2026-09-14）
+
+**起因**：`docs/annotation_rubric_v1.1.md` 新增，且 rubric 第 4 条由 `quarantine` 改为
+`scrap`，导致四个文件必须同批更新。决策记录见 `docs/annotation_rubric_v1.1.md` §0.1–§0.2，
+变更汇总见 `PROGRESS.md` 的 2026-09-14 一节。
+
+| 文件 | 原指纹 | 新指纹 | 改动性质 |
+|---|---|---|---|
+| `docs/annotation_rubric_v1.1.md` | — | `de9b8c815ebba268` | **新增入库件**（本表由 15 份变 16 份） |
+| `scripts/evaluate_engine.py` | `ac8c597f7caa7375` | `5a1ed796abd9c056` | `rubric_ref()` 第 4 条同步 + 注释/报告文字同步 |
+| `data/processed/agreement_stats.md` | `cf25aa8b5aea94b3` | `241ba143f10567d9` | 增 v1.1 行、更新自检与政策检查数字、政策项改为已决 |
+| `docs/annotation_findings_v1.md` | `6a3be07b2f1a67d1` | `5352d00300102cdb` | §3.2/§5.4/§6.4/§9/§10 口径同步（含更正 §10 的过头承诺） |
+
+**数字变化已在上表右侧注明理由**（本表规矩要求「数字若也变了，需另行说明理由」）：
+`rubric vs gold` 由 39/57（κ 0.5621）变为 54/57（κ 0.9097），政策检查 `rubric` 一栏由
+16/31 变为 31/31。**终版 gold 未改动**，故 `gold_labels.csv` 的指纹不变。
+
+> **两个刻意的「不更新」**：
+> 1. **`docs/annotation_rubric_v1.md` 一字未改，指纹仍为 `a762ceed3ad725d4`。**
+>    它是产出当前终版 gold 的那份凭证——v1.1 是**面向后续使用与重测的现行规格**，
+>    两者并存而不是覆盖。改 v1 会让「gold 是按哪版规范产出的」变得无法回答。
+> 2. **`data/scenarios/gold_labels.csv` 不动。** 本轮**没有重标**（无产品阈值数字被改），
+>    即使 rubric 第 4 条的处置档变了，那 15 条的 gold **本来就是 `scrap`**，
+>    与 v1.1 一致。改它会无谓地切断与 §1 原始作答指纹的对应关系。
+
+> 📌 **登记值统一取 LF 形态**（`annotation_rubric_v1.md` 是历史值、为 CRLF）。
+> 这是有意为之：校验器 `digests()` 同时接受 raw / LF / CRLF 三形态任一命中
+> （见 `scripts/check_provenance.py`），故三种登记都可通过；统一取 LF 是为了让
+> 在 Linux/macOS 上按 §1 所述方式（`sha256sum`）复核的人**直接对得上**。
 
 ## 3. 泄露校验（可复跑）
 

@@ -15,8 +15,11 @@ function pickRule(event, s) {
     return ["scrap", 2];
   if (event.duration_min >= 2 * s.allowable || event.mkt_c >= s.mktThreshold + 3.0)
     return ["scrap", 3];
+  /* rubric v1.1 (2026-09-14): clause 4 holds **no buffer band** — any overrun is
+     unacceptable, so this is scrap, not quarantine. Mirrors src/rule_engine/engine.py
+     and rubric docs/annotation_rubric_v1.1.md §4. */
   if (event.duration_min > s.allowable || event.mkt_c > s.mktThreshold)
-    return ["quarantine", 4];
+    return ["scrap", 4];
   if (s.retestable && (event.duration_min >= 0.8 * s.allowable || event.mkt_c >= s.mktThreshold - 0.5))
     return ["retest", 5];
   return ["release", 6];

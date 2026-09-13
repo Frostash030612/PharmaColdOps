@@ -33,8 +33,15 @@ PharmaColdOps 引擎评估脚本（9/19）
 为什么要四列对照
 ----------------
 只报「引擎 vs 金标准」会把说明书的负债算到引擎头上：
-终版 gold 有 18 条明确不跟随 rubric 字面（见 docs/annotation_findings_v1.md §3.2）。
-引擎若忠实实现说明书，在那 18 条上必然与 gold 不一致——
+
+    rubric v1   ：终版 gold 有 18 条不跟随 rubric 字面（见
+                  docs/annotation_findings_v1.md §3.2）——其中 15 条是 v1 第 4 条
+                  漏掉了「越限即报废」这条已确认政策，责任在说明书。
+    rubric v1.1 ：该 15 条随第 4 条改为 scrap 一次性消解，仅余 3 条；而这 3 条
+                  **指向 gold 自身**（S034/S035 为场景次序产物、S052 为 0.1 的边界），
+                  故 v1.1 之后不宜再把 A 类一律读作「责任在说明书」。
+
+引擎若忠实实现说明书，在上述条目上必然与 gold 不一致——
 看似引擎失分，实为规范与人工判读之间的既有分歧。
 本脚本把「引擎 vs gold」的总差异拆成三类（§3），使责任可归属。
 
@@ -58,14 +65,20 @@ LABELS = ["release", "retest", "quarantine", "scrap"]
 SEV = {"release": 0, "retest": 1, "quarantine": 2, "scrap": 3}
 
 # ---------------------------------------------------------------------------
-# rubric v1 §3 产品规格表 + §4 判定规则
+# rubric v1.1 §3 产品规格表 + §4 判定规则
 #
-# 这是 docs/annotation_rubric_v1.md §4 六条判定链的机械实现，用于把引擎结果
+# 这是 docs/annotation_rubric_v1.1.md §4 六条判定链的机械实现，用于把引擎结果
 # 与「说明书字面」对照。它**不是引擎**，也**不是真值**——它只回答
 # 「如果严格按说明书执行，这条应该是什么」。
 #
-# 效力：已对 rubric §5 全部 7 个官方工作示例验证通过（7/7）。
-# 若 rubric 升到 v1.1，本表与 rubric_ref() 必须同步更新，否则 §3 的归因会错。
+# 版本沿革：§3 的阈值数字在 v1 → v1.1 之间**逐格未变**；变的是 §4 第 4 条的
+# 处置档（quarantine → scrap）。故本函数相对 v1 的唯一行为差异就是第 4 条。
+# 终版 gold 由 **v1** 产出（原始作答指纹见 data/processed/PROVENANCE.md §1）；
+# v1.1 未触发重标，理由见 docs/annotation_rubric_v1.1.md §6.1。
+#
+# 效力：已对 rubric §5 全部 7 个官方工作示例验证通过（7/7；其中示例 D 在 v1.1
+# 下由 quarantine 变为 scrap，见该文档 §5）。任何一处规则文本改动都必须同步本
+# 表与 rubric_ref()，否则 §3 的归因会错。
 # ---------------------------------------------------------------------------
 PRODUCTS = {
     "vaccine_2_8":    dict(hi=8,   dur_max=30, dur_scrap=60,
@@ -89,7 +102,7 @@ def rubric_ref(pid, temp, dur, mkt, pack):
     if dur >= p["dur_scrap"] or mkt >= p["mkt_scrap"]:              # 3 严重超限
         return "scrap", 3
     if dur > p["dur_max"] or mkt > p["mkt_max"]:                    # 4 超过限值（严格大于）
-        return "quarantine", 4
+        return "scrap", 4        # v1.1：quarantine → scrap（政策：越限即报废，不设缓冲档）
     if p["retest"] and (dur >= 0.8 * p["dur_max"]
                         or mkt >= p["mkt_max"] - 0.5):              # 5 接近限值
         return "retest", 5
@@ -394,7 +407,7 @@ def main():
     w("> 生成脚本：`evaluate_engine.py`")
     w("> 引擎输出：`%s`　%s" % (args.engine or "（selftest）", engine_desc))
     w("> 对照来源：终版 `gold_labels.csv`、`gold_label_B(1).csv`、`gold_label_C.csv`、")
-    w("> 　　　　　以及 `docs/annotation_rubric_v1.md` §4 的机械实现（7/7 通过 §5 示例）")
+    w("> 　　　　　以及 `docs/annotation_rubric_v1.1.md` §4 的机械实现（7/7 通过 §5 示例）")
     w("")
     w("**读法提示**：本报告的主表是 §1 的四列对照，不是任何单一准确率。")
     w("单看「引擎 vs gold」会把说明书的负债算到引擎头上，原因见 §3。")
@@ -528,7 +541,9 @@ def main():
     w("")
     w("## 5. 争议档位专项")
     w("")
-    w("《标注诊断报告》§5 记录了 13 条 B、C 一致越过 rubric 的条目（统称争议档）。")
+    w("《标注诊断报告》§5 记录了 B、C 两人判读一致、却与 rubric 字面不同的那些条目（统称争议档）。")
+    w("⚠️ **条数取决于 rubric 版本**：v1 下为 13 条；v1.1 修好第 4 条后只剩 3 条"
+      "（S034/S035/S052，均为 gold 侧待复核）。下表按**当前** rubric v1.1 复算。")
     w("引擎在这个档位上的表现最容易暴露它是「照搬说明书」还是「学到了人工判读」：")
     w("")
     disp = [i for i in IDS if B[i] == C[i] != ref[i]]
@@ -570,8 +585,10 @@ def main():
                         for i in r["exceptions"]) if r["exceptions"] else "—")
         w("| %s | %d/%d | %s |" % (label, r["ok"], r["total"], ex))
     w("")
-    w("> `rubric` 一栏的例外是**设计如此**：rubric v1 在这一档给的是 `quarantine`。")
-    w("> 这正是 §9.1 要二选一的那件事，不是错误。")
+    w("> **rubric v1.1 已把该政策写进第 4 条**（`quarantine` → `scrap`），故 `rubric` 一栏")
+    w("> 在本版下**不再有例外**。v1 下这一栏有 15 条例外、全部落在第 4 条档位——")
+    w("> 那不是执行错误，而是 v1 文本漏掉了这条已确认政策，v1.1 已补上。")
+    w("> 决策记录见 `docs/annotation_rubric_v1.1.md` §0.1–§0.2。")
     w("")
 
     w("### 6.1 单调性检查（三轴）")
