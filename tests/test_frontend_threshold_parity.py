@@ -1,16 +1,21 @@
 """Frontend threshold constants must stay in lockstep with the engine's
 ``rules_config.json`` (DAILY_PLAN D 9/12 ③: one source, no drifting copies).
 
-A's 9/11 rules_config v1.0 hand-updated the JS literals in both frontends;
-this test pins that parity so a future threshold change that forgets the
-frontends fails here instead of showing stale numbers in the demo.
+A's 9/11 rules_config v1.0 hand-updated the JS literals; this test pins that
+parity so a future threshold change that forgets the front-end fails here
+instead of showing stale numbers in the demo.
+
+Scope narrowed on 2026-09-12 when the vanilla ``frontend/`` was retired: the
+Vue app is now the only client, so ``products.js`` is the only mirror left.
 
 2026-09-14 追加：**阈值有 parity，处置档原先没有**。rubric v1.1 把第 4 条由
-`quarantine` 改为 `scrap` 时，三份 JS 副本（两个静态页 + Vue 的 `lib/engine.js`）
-就静默地与 Python 引擎分了叉——离线模式（`?api=` 为空）说 quarantine、
-API 模式说 scrap，**演示里能同时看到两个答案，而没有任何测试会红**。
+`quarantine` 改为 `scrap` 时，各份 JS 副本（当时是两个静态页 + Vue 的
+`lib/engine.js`）就静默地与 Python 引擎分了叉——离线模式（`?api=` 为空）说
+quarantine、API 模式说 scrap，**演示里能同时看到两个答案，而没有任何测试会红**。
 ``test_clause4_disposition_matches_engine_in_all_js_copies`` 补上这个缺口：
-期望值直接向引擎索取，故以后改政策只需改一处，三份副本漏改会立刻失败。
+期望值直接向引擎索取，故以后改政策只需改一处，副本漏改会立刻失败。
+（静态页已随 vanilla ``frontend/`` 于 2026-09-12 退役，现只剩 Vue 的
+``lib/engine.js`` 一份副本；离线/在线分叉的风险与检查方式不变。）
 """
 from __future__ import annotations
 
@@ -24,15 +29,11 @@ from rule_engine.models import ExcursionEvent
 REPO = Path(__file__).resolve().parents[1]
 CONFIG = REPO / "src" / "rule_engine" / "rules_config.json"
 FRONTENDS = [
-    REPO / "frontend" / "index.html",
-    REPO / "frontend" / "index-zh.html",
     REPO / "frontend-vue" / "src" / "data" / "products.js",
 ]
 
-#: 三份 JS 副本里「第 4 条」返回处置档的写法（静态页用 decide()，Vue 用元组）。
+#: Vue 离线引擎里「第 4 条」返回处置档的写法（元组形式）。
 CLAUSE4_SITES = [
-    (REPO / "frontend" / "index.html", r'return\s+decide\("(\w+)",\s*4\)'),
-    (REPO / "frontend" / "index-zh.html", r'return\s+decide\("(\w+)",\s*4\)'),
     (REPO / "frontend-vue" / "src" / "lib" / "engine.js",
      r'return\s+\["(\w+)",\s*4\]'),
 ]

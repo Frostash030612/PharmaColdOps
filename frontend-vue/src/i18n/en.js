@@ -34,6 +34,22 @@ export default {
   "km": "km",
   "liveRoute": "Live route for this case",
   "demoRoute": "Fixed demo route",
+  "liveOperation": "Live delivery operation (real stock and vehicles)",
+  "dispatchStatus": "Dispatch status",
+  "ordersDelivered": "Delivered / orders",
+  "stockLeft": "Stock left",
+  "commitReshipment": "Add this resupply to the operation",
+  "closeAndDispatch": "Close case and dispatch resupply",
+  "depart": "Depart",
+  "simClock": "Sim clock",
+  "speedReal": "real",
+  "speedFast": "60x",
+  "speedFaster": "300x",
+  "needsApi": "This disposition needs a resupply; connect the backend (?api=) to dispatch.",
+  "noReshipment": "This disposition needs no resupply.",
+  "committing": "Checking stock and vehicles\u2026",
+  "committed": "\u2713 Resupply added to the operation",
+  "fromCase": "from case",
   "loadingRoute": "Calculating this case route…"
 },
   header: {
@@ -61,6 +77,7 @@ export default {
     sectionInputs: "Excursion inputs",
     product: "Product",
     stage: "Stage",
+    destination: "Resupply destination",
     packaging: "Packaging",
     randomize: "🎲 Randomize excursion",
     temp: "Excursion temp (°C)",
@@ -88,6 +105,17 @@ export default {
     qaSource_fallback: "Knowledge graph unavailable; showing offline guidance",
     qaSource_concept: "Offline keyword answer",
     qaSource_notice: "Archived case required",
+    qaStatus_no_case: "No record of this case in the knowledge graph.",
+    qaStatus_insufficient_evidence: "(The graph holds no regulation/SOP for this rule, so the answer follows the no-evidence-no-answer rule.)",
+    qaStatus_unsupported: "This question is outside the supported intents (why-disposition, audit chain, product requirements, disposition statistics).",
+    qaSource_insufficient: "Case exists, evidence missing",
+    qaSource_unsupported: "Unsupported question",
+    /* Evidence node-type labels — mirrors docs/KG_SCHEMA_v1.md §1. */
+    qaNode: {
+      Product: "Product", Regulation: "Regulation", SOP: "SOP", ExcursionEvent: "ExcursionEvent",
+      Disposition: "Disposition", Cause: "Cause", Facility: "Facility", Shipment: "Shipment",
+      ReshipmentOrder: "ReshipmentOrder",
+    },
   },
 
   audit: {

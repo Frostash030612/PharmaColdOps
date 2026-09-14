@@ -12,6 +12,7 @@ the client.
 """
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import json
 import logging
@@ -41,15 +42,19 @@ from rule_engine.models import ExcursionEvent, ProductSpec  # noqa: E402
 from knowledge_graph.writer import write_case  # noqa: E402
 from knowledge_graph import qa as kg_qa  # noqa: E402
 from optimisation.reshipment import (  # noqa: E402
+    build_delivery_order,
     build_reshipment_order,
     plan_reshipment_route,
 )
-from optimisation.singapore_export import routes_geojson  # noqa: E402
+from optimisation.singapore_export import routes_geojson, sequences_geojson  # noqa: E402
+from optimisation.tracking import LOADING_MIN, make_clock, simulated_now, vehicle_track  # noqa: E402
 from optimisation.singapore_loader import read_network  # noqa: E402
 from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot  # noqa: E402
-from optimisation.dispatch_planner import plan_delivery_orders  # noqa: E402
+from optimisation.dispatch_planner import DISPATCH_ORIGIN, plan_delivery_orders  # noqa: E402
 from optimisation.dispatch_state import accept_plan, deliver_next, depart, state_to_dict  # noqa: E402
-from optimisation.dispatch_repository import create_run, load_context, load_run, update_run  # noqa: E402
+from optimisation.dispatch_repository import (  # noqa: E402
+    create_run, list_dispatch_ids, load_context, load_run, update_context, update_run,
+)
 from optimisation.dynamic_problem import accept_emergency_order, preview_emergency_order  # noqa: E402
 from .schemas import DispatchCreateIn, DispatchPlanIn, EmergencyAcceptIn, EmergencyPreviewIn, EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
 
@@ -381,12 +386,17 @@ def batch_view(events: list) -> dict:
     return {"decisions": decisions}
 
 
-def route_view(req: RouteIn) -> dict:
-    """Find a closed case, derive its order, solve, and serialise the replan."""
-    record = next(
-        (item for item in list_runs()["runs"] if item["run_id"] == req.run_id),
+def find_run(run_id: str) -> dict | None:
+    """One archived case by id, or None when the id is unknown."""
+    return next(
+        (item for item in list_runs()["runs"] if item["run_id"] == run_id),
         None,
     )
+
+
+def route_view(req: RouteIn) -> dict:
+    """Find a closed case, derive its order, solve, and serialise the replan."""
+    record = find_run(req.run_id)
     if record is None:
         raise KeyError(req.run_id)
     order = build_reshipment_order(record)
@@ -498,20 +508,35 @@ def create_dispatch(req: DispatchCreateIn) -> dict:
         },
     }
     create_run(DISPATCH_DATABASE_URL, req.dispatch_id, state, context=context)
-    return {"dispatch_id": req.dispatch_id, **state_to_dict(state), **context}
+    return {"dispatch_id": req.dispatch_id,
+            "route_view": dispatch_route_view(state, context),
+            **state_to_dict(state), **context}
 
 
 def get_dispatch(dispatch_id: str) -> dict:
     state = load_run(DISPATCH_DATABASE_URL, dispatch_id)
-    return {"dispatch_id": dispatch_id, **state_to_dict(state), **load_context(DISPATCH_DATABASE_URL, dispatch_id)}
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    return {"dispatch_id": dispatch_id,
+            "route_view": dispatch_route_view(state, context),
+            **state_to_dict(state), **context}
 
 
-def depart_dispatch(dispatch_id: str, command_id: str) -> dict:
+def depart_dispatch(dispatch_id: str, command_id: str, speed: float | None = None) -> dict:
     old = load_run(DISPATCH_DATABASE_URL, dispatch_id)
     new = depart(old, command_id=command_id)
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
     if new is not old:
         update_run(DISPATCH_DATABASE_URL, dispatch_id, new, expected_version=old.version)
-    return {"dispatch_id": dispatch_id, **state_to_dict(new), **load_context(DISPATCH_DATABASE_URL, dispatch_id)}
+        # Departure starts the simulated clock at the operating-day minute the
+        # vehicles roll, so positions are reproducible from the record alone.
+        if not context.get("clock"):
+            start = min((item["earliest_min"] for item in context["input"]["orders"]),
+                        default=540)
+            context["clock"] = make_clock(start, speed or DEFAULT_CLOCK_SPEED)
+            update_context(DISPATCH_DATABASE_URL, dispatch_id, context)
+    return {"dispatch_id": dispatch_id,
+            "route_view": dispatch_route_view(new, context),
+            **state_to_dict(new), **context}
 
 
 def deliver_dispatch(dispatch_id: str, vehicle_id: str, command_id: str) -> dict:
@@ -519,7 +544,295 @@ def deliver_dispatch(dispatch_id: str, vehicle_id: str, command_id: str) -> dict
     new = deliver_next(old, vehicle_id, command_id=command_id)
     if new is not old:
         update_run(DISPATCH_DATABASE_URL, dispatch_id, new, expected_version=old.version)
-    return {"dispatch_id": dispatch_id, **state_to_dict(new), **load_context(DISPATCH_DATABASE_URL, dispatch_id)}
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    return {"dispatch_id": dispatch_id,
+            "route_view": dispatch_route_view(new, context),
+            **state_to_dict(new), **context}
+
+
+# One shared operation: every disposition-triggered resupply lands in the live
+# run so the map, the order list and the stock ledger always describe the same
+# thing. Two parallel routing stories were exactly the problem this removes.
+# Runs are numbered because a *completed* operation is history — the next
+# resupply opens the next one rather than reopening a finished delivery.
+RESHIPMENT_DISPATCH_PREFIX = "RESHIPMENTS"
+
+
+def _run_sequence(dispatch_id: str) -> int:
+    tail = dispatch_id.rsplit("-", 1)[-1]
+    return int(tail) if tail.isdigit() else 0
+
+
+def active_reshipment_run() -> tuple[str, object | None]:
+    """The live resupply operation, or the id the next one should take.
+
+    Returns ``(dispatch_id, state)`` with ``state`` None when nothing is open,
+    which is the signal to bootstrap rather than to insert.
+    """
+    known = list_dispatch_ids(DISPATCH_DATABASE_URL, RESHIPMENT_DISPATCH_PREFIX)
+    if known:
+        latest = max(known, key=_run_sequence)
+        state = load_run(DISPATCH_DATABASE_URL, latest)
+        if state.status != "completed":
+            return latest, state
+        return f"{RESHIPMENT_DISPATCH_PREFIX}-{_run_sequence(latest) + 1}", None
+    return f"{RESHIPMENT_DISPATCH_PREFIX}-1", None
+
+
+def get_active_reshipment_dispatch() -> dict:
+    """The live operation for the front-end; KeyError when none is open."""
+    dispatch_id, state = active_reshipment_run()
+    if state is None:
+        raise KeyError(dispatch_id)
+    return get_dispatch(dispatch_id)
+
+
+def _order_dump(order: DeliveryOrder) -> dict:
+    return {
+        "order_id": order.order_id, "product_id": order.product_id,
+        "destination_facility_id": order.destination_facility_id,
+        "quantity": order.quantity, "earliest_min": order.earliest_min,
+        "latest_min": order.latest_min, "temperature_zone": order.temperature_zone,
+        "source_run_id": order.source_run_id,
+    }
+
+
+def _lot_dump(lot: InventoryLot) -> dict:
+    return {
+        "lot_id": lot.lot_id, "product_id": lot.product_id,
+        "facility_id": lot.facility_id, "available_quantity": lot.available_quantity,
+        "temperature_zone": lot.temperature_zone, "status": lot.status,
+    }
+
+
+def _vehicle_dump(vehicle: DispatchVehicle) -> dict:
+    return {
+        "vehicle_id": vehicle.vehicle_id, "capacity": vehicle.capacity,
+        "temperature_zone": vehicle.temperature_zone,
+        "start_facility_id": vehicle.start_facility_id,
+        "available_from_min": vehicle.available_from_min, "status": vehicle.status,
+    }
+
+
+def _minute_of_day(timestamp: str | None) -> int:
+    """Case timestamp → minutes since midnight (the dispatch clock).
+
+    Falls back to the depot's opening minute rather than inventing "now", so a
+    replayed or imported record routes deterministically.
+    """
+    try:
+        moment = datetime.datetime.fromisoformat(timestamp or "")
+    except (TypeError, ValueError):
+        return 540
+    return moment.hour * 60 + moment.minute
+
+
+def _dispatch_clock(record: dict, order: DeliveryOrder) -> tuple[int, bool]:
+    """The minute-of-day to plan from, and whether that means the next day.
+
+    A case raised after the destination's receiving window has closed cannot be
+    delivered today. Reporting "no vehicle can deliver this" would be wrong —
+    vehicles exist, the day ended — so the resupply is planned from the next
+    opening instead, and the caller is told that is what happened. The model
+    carries minutes-of-day only, so a next-day delivery is expressed as that
+    day's window rather than an absolute timestamp.
+    """
+    now = _minute_of_day(record.get("created_at"))
+    if now <= order.latest_min:
+        return now, False
+    return order.earliest_min, True
+
+
+def dispatch_route_view(state, context: dict) -> dict:
+    """What the live dispatch state looks like on the map.
+
+    Built from the state's own vehicle queues — not from a re-solve — so the
+    map, the stop lists and the order table can never disagree. Delivered stops
+    stay in the sequence (flagged) because a route that silently drops what has
+    already been served is unreadable as an operation record.
+    """
+    network = read_network()
+    node_by_facility = {n["facility_id"]: n["node_id"] for n in network["nodes"]}
+    distance = network["matrix"]["distance_m"]
+    orders = {item["order_id"]: item for item in context["input"]["orders"]}
+
+    sequences: dict[str, list[int]] = {}
+    routes = []
+    for vehicle_id, vehicle in sorted(state.vehicles.items()):
+        pending, stops = [], []
+        for order_id in (*vehicle.delivered_order_ids, *vehicle.remaining_order_ids):
+            order = orders.get(order_id)
+            if order is None:  # an order the context never recorded: skip, don't guess
+                continue
+            node_id = node_by_facility[order["destination_facility_id"]]
+            delivered = order_id in vehicle.delivered_order_ids
+            if not delivered:
+                pending.append(node_id)
+            stops.append({
+                "node_id": node_id, "order_id": order_id,
+                "quantity": order["quantity"], "delivered": delivered,
+                "earliest_min": order["earliest_min"], "latest_min": order["latest_min"],
+                "source_run_id": order.get("source_run_id"),
+            })
+        if not stops:
+            continue
+        legs = (0, *[stop["node_id"] for stop in stops], 0)
+        total = sum(distance[a][b] for a, b in zip(legs, legs[1:])) / 1000
+        sequences[vehicle_id] = pending
+        routes.append({
+            "vehicle_id": vehicle_id, "status": vehicle.status,
+            "customer_ids": [stop["node_id"] for stop in stops],
+            "stops": stops,
+            "total_load": sum(stop["quantity"] for stop in stops
+                              if not stop["delivered"]),
+            "total_distance": round(total, 2),
+        })
+    clock = context.get("clock")
+    sim_now = simulated_now(clock) if clock else None
+    if sim_now is not None:
+        depart_min = clock["sim_start_min"]
+        for route in routes:
+            if route["status"] != "in_transit" or not route["stops"]:
+                continue
+            # The schedule must span the WHOLE sequence, delivered stops
+            # included: timing the remainder as if the vehicle had just left
+            # the depot would place it further along the road than it is.
+            whole = [stop["node_id"] for stop in route["stops"]]
+            route["track"] = vehicle_track(network, whole, depart_min + LOADING_MIN, sim_now)
+    return {
+        "routes": routes,
+        "clock": clock,
+        "sim_now_min": None if sim_now is None else round(sim_now, 2),
+        "geojson": sequences_geojson(network, sequences),
+        "metrics": {
+            "vehicles_used": len(routes),
+            "total_distance": round(sum(r["total_distance"] for r in routes), 2),
+            "orders_total": len(state.orders),
+            "orders_delivered": sum(item.status == "delivered"
+                                    for item in state.orders.values()),
+            "stock_remaining": sum(state.available_by_lot.values()),
+        },
+    }
+
+
+# The demo fleet is deliberately larger than network.json's 3: each resupply
+# currently takes its own spare (see docs/C_配送模块.md D1), so a short demo runs out
+# of vehicles and starts consolidating before the operator meant it to.
+FLEET_SIZE = 6
+
+# One real second = one simulated minute. Real time (speed 1) stays available
+# for honesty, but a 25-minute drive is unwatchable at 1x.
+DEFAULT_CLOCK_SPEED = 60.0
+ALLOWED_CLOCK_SPEEDS = (1.0, 60.0, 300.0)
+
+
+def _bootstrap_fleet(zone: str) -> tuple[DispatchVehicle, ...]:
+    """The demo fleet for one temperature zone, sized from the committed network.
+
+    Fleet size and capacity come from ``network.json`` (the same numbers the
+    Solomon-style demo instance already documents as simulated) rather than
+    invented constants. Sizing a vehicle to one order's quantity would leave
+    zero free capacity, so the next resupply could never join the run.
+    """
+    network = read_network()
+    return tuple(
+        DispatchVehicle(f"VEH-{zone}-{index}", network["capacity"], zone, DISPATCH_ORIGIN)
+        for index in range(1, FLEET_SIZE + 1)
+    )
+
+
+def route_reshipment(record: dict) -> dict:
+    """Route ONE closed reshipment case through the live dispatch system.
+
+    The first such case bootstraps the shared run; every later case is inserted
+    into that same run as an emergency order, so a resupply is always checked
+    against real stock and real vehicle capacity instead of being routed by a
+    parallel preview that reserves nothing.
+    """
+    order = build_delivery_order(record)
+    if order is None:
+        raise ValueError(f"case {record['run_id']} does not require reshipment")
+    clock, next_day = _dispatch_clock(record, order)
+    lot = InventoryLot(f"LOT-{order.order_id}", order.product_id, DISPATCH_ORIGIN,
+                       order.quantity, order.temperature_zone)
+    dispatch_id, state = active_reshipment_run()
+
+    if state is None:
+        vehicles = _bootstrap_fleet(order.temperature_zone)
+        plan = plan_delivery_orders((order,), (lot,), vehicles)
+        state = accept_plan(plan, (order,), (lot,), command_id=f"reship-{order.order_id}")
+        context = {
+            "plan": _dispatch_plan_response(plan, requested_algorithm="greedy"),
+            "input": {
+                "orders": [_order_dump(order)], "inventory": [_lot_dump(lot)],
+                "vehicles": [_vehicle_dump(v) for v in vehicles],
+            },
+        }
+        create_run(DISPATCH_DATABASE_URL, dispatch_id, state, context=context)
+        return {"dispatch_id": dispatch_id, "bootstrapped": True,
+                "scheduled_next_day": next_day,
+                "route_view": dispatch_route_view(state, context),
+                **state_to_dict(state), **context}
+
+    if order.order_id in state.orders:  # replaying the same case must not double-book
+        context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+        return {"dispatch_id": dispatch_id, "bootstrapped": False,
+                "scheduled_next_day": next_day,
+                "route_view": dispatch_route_view(state, context),
+                **state_to_dict(state), **context}
+
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    context["input"]["inventory"].append(_lot_dump(lot))
+    if not any(v["temperature_zone"] == order.temperature_zone
+               for v in context["input"]["vehicles"]):
+        # A product in a zone the run has no fleet for (e.g. the first frozen
+        # case on a chilled-only run) needs its own vehicles before it can ship.
+        context["input"]["vehicles"].extend(
+            _vehicle_dump(v) for v in _bootstrap_fleet(order.temperature_zone)
+        )
+    # The new lot is stock that did not exist when the run was accepted, so it
+    # must enter the ledger before the emergency check reads availability.
+    state = dataclasses.replace(
+        state, available_by_lot={**state.available_by_lot, lot.lot_id: lot.available_quantity},
+    )
+    kind, vehicle_id = _pick_candidate(state, context, order, clock)
+    new = accept_emergency_order(
+        state, context, order,
+        current_time_min=clock,
+        candidate_kind=kind, vehicle_id=vehicle_id,
+        command_id=f"reship-{order.order_id}",
+    )
+    # Context carries the order for later previews: without it, the next case's
+    # affected-order simulation cannot resolve this one's window.
+    context["input"]["orders"].append(_order_dump(order))
+    update_run(DISPATCH_DATABASE_URL, dispatch_id, new, expected_version=state.version)
+    update_context(DISPATCH_DATABASE_URL, dispatch_id, context)
+    return {"dispatch_id": dispatch_id, "bootstrapped": False,
+            "scheduled_next_day": next_day,
+            "route_view": dispatch_route_view(new, context),
+            **state_to_dict(new), **context}
+
+
+def _pick_candidate(state, context: dict, order: DeliveryOrder,
+                    clock: int) -> tuple[str, str]:
+    """The best on-time option the dispatch preview actually offers.
+
+    Delegating to the preview means the capacity, temperature-zone and
+    knock-on-lateness rules are enforced here too — this bridge never invents a
+    vehicle the optimiser would have rejected. Returns the candidate's kind as
+    well: picking its vehicle but assuming a kind would apply the wrong state
+    transition (a spare vehicle starts a new task; an in-transit one detours).
+    """
+    preview = preview_emergency_order(
+        state, context, order, current_time_min=clock,
+    )
+    candidate = preview.get("selected_candidate")
+    if candidate is None or not candidate["on_time"]:
+        raise ValueError(
+            f"no vehicle can deliver resupply {order.order_id} within its window "
+            f"({preview.get('reason', 'no on-time candidate')})"
+        )
+    return candidate["kind"], candidate["vehicle_id"]
 
 
 def emergency_dispatch_preview(dispatch_id: str, req: EmergencyPreviewIn) -> dict:
@@ -536,20 +849,105 @@ def emergency_dispatch_preview(dispatch_id: str, req: EmergencyPreviewIn) -> dic
 def accept_emergency_dispatch(dispatch_id: str, req: EmergencyAcceptIn) -> dict:
     old = load_run(DISPATCH_DATABASE_URL, dispatch_id)
     context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    order = DeliveryOrder(**req.order.model_dump())
     new = accept_emergency_order(
-        old, context, DeliveryOrder(**req.order.model_dump()),
+        old, context, order,
         current_time_min=req.current_time_min,
         candidate_kind=req.candidate_kind,
         vehicle_id=req.vehicle_id,
         command_id=req.command_id,
     )
     if new is not old:
+        # The accepted order must join the context, not just the state: the
+        # next emergency preview simulates every remaining order's arrival by
+        # looking its window up here, and would fail on an order it cannot see.
+        known = {item["order_id"] for item in context["input"]["orders"]}
+        if order.order_id not in known:
+            context["input"]["orders"].append(_order_dump(order))
         update_run(DISPATCH_DATABASE_URL, dispatch_id, new, expected_version=old.version)
-    return {"dispatch_id": dispatch_id, **state_to_dict(new), **context}
+        update_context(DISPATCH_DATABASE_URL, dispatch_id, context)
+    return {"dispatch_id": dispatch_id,
+            "route_view": dispatch_route_view(new, context),
+            **state_to_dict(new), **context}
+
+
+def set_dispatch_speed(dispatch_id: str, speed: float) -> dict:
+    """Change how fast simulated time runs, without moving the vehicles.
+
+    The clock is re-based on the current simulated minute, so switching from
+    60x to 1x continues from where the trucks are instead of teleporting them
+    back to the departure time.
+    """
+    if speed not in ALLOWED_CLOCK_SPEEDS:
+        raise ValueError(f"speed must be one of {ALLOWED_CLOCK_SPEEDS}")
+    state = load_run(DISPATCH_DATABASE_URL, dispatch_id)
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    clock = context.get("clock")
+    if clock is None:
+        raise ValueError("the operation has not departed yet")
+    context["clock"] = make_clock(simulated_now(clock), speed)
+    update_context(DISPATCH_DATABASE_URL, dispatch_id, context)
+    return {"dispatch_id": dispatch_id,
+            "route_view": dispatch_route_view(state, context),
+            **state_to_dict(state), **context}
+
+
+def tick_dispatch(dispatch_id: str) -> dict:
+    """Apply the deliveries the simulated clock says have already happened.
+
+    The clock decides *when*; the audited state machine still decides *what* —
+    each arrival becomes a normal deliver_next command, keyed by its order so
+    repeated ticks are idempotent. Polling this is therefore safe.
+    """
+    state = load_run(DISPATCH_DATABASE_URL, dispatch_id)
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    clock = context.get("clock")
+    if clock is None or state.status != "in_transit":
+        return {"dispatch_id": dispatch_id,
+                "route_view": dispatch_route_view(state, context),
+                **state_to_dict(state), **context}
+
+    network = read_network()
+    node_by_facility = {n["facility_id"]: n["node_id"] for n in network["nodes"]}
+    sim_now = simulated_now(clock)
+    base_version = state.version          # several arrivals may land in one tick
+    # Re-read progress each pass: delivering one order shifts the next one's
+    # place in the queue, so a single pass could only ever land one arrival.
+    for _ in range(64):
+        due = None
+        for vehicle_id, vehicle in sorted(state.vehicles.items()):
+            if vehicle.status != "in_transit" or not vehicle.remaining_order_ids:
+                continue
+            sequence = [node_by_facility[state.orders[oid].destination_facility_id]
+                        for oid in (*vehicle.delivered_order_ids, *vehicle.remaining_order_ids)]
+            track = vehicle_track(network, sequence, clock["sim_start_min"] + LOADING_MIN,
+                                  sim_now)
+            # Arrivals already recorded must not count again, or the next stop
+            # would be delivered the moment the previous one was.
+            if track["reached_stops"] > len(vehicle.delivered_order_ids):
+                due = (vehicle_id, vehicle.remaining_order_ids[0])
+                break
+        if due is None:
+            break
+        vehicle_id, order_id = due
+        state = deliver_next(state, vehicle_id, command_id=f"auto-{order_id}")
+    if state.version != base_version:
+        update_run(DISPATCH_DATABASE_URL, dispatch_id, state,
+                   expected_version=base_version)
+    return {"dispatch_id": dispatch_id,
+            "route_view": dispatch_route_view(state, context),
+            **state_to_dict(state), **context}
 
 
 def qa_view(req: QAIn) -> dict:
-    """Route one structured question to KG queries; hide DB/query failures."""
+    """Route one structured question to KG queries; hide DB/query failures.
+
+    An intent outside :data:`knowledge_graph.qa.QUESTION_TYPES` is answered with
+    ``status="unsupported"`` instead of a 4xx, so the front-end renders one
+    localised notice per outcome class (proposal §6.5: no case / insufficient
+    evidence / unsupported question / database failure). A graph failure is
+    raised as ``RuntimeError`` and becomes HTTP 503.
+    """
     try:
         if req.question_type == "why_disposition":
             return kg_qa.why_disposition(req.run_id)
@@ -557,7 +955,11 @@ def qa_view(req: QAIn) -> dict:
             return kg_qa.audit_chain(req.run_id)
         if req.question_type == "product_requirements":
             return kg_qa.product_requirements(req.product_id)
-        return kg_qa.disposition_stats()
+        if req.question_type == "cause_context":
+            return kg_qa.cause_context(req.run_id, req.cause_code)
+        if req.question_type == "disposition_stats":
+            return kg_qa.disposition_stats()
+        return kg_qa.unsupported_response(req.question_type)
     except Exception as exc:
         log.warning("qa query failed: %s", exc, exc_info=True)
         raise RuntimeError("knowledge graph unavailable") from exc

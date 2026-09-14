@@ -7,7 +7,7 @@
     </marker>
   </defs>
   <text x="40" y="42" font-size="24" font-weight="700" fill="#202b33">Decision support capabilities and project scope</text>
-  <text x="40" y="80" font-size="16" fill="#33414b">Verified example and research scope as of 2026-09-12</text>
+  <text x="40" y="80" font-size="16" fill="#33414b">Verified example and research scope as of 2026-09-13</text>
   <rect x="40" y="108" width="880" height="42" fill="#e8edf0"/>
   <text x="56" y="135" font-size="17" fill="#202b33" font-weight="700">Capability</text>
   <text x="300" y="135" font-size="17" fill="#202b33" font-weight="700">Commercial example</text>
@@ -23,13 +23,13 @@
   <text x="620" y="258" font-size="16" fill="#33414b">Greedy and Routing Solver</text>
   <text x="56" y="283" font-size="16" fill="#33414b"/>
   <text x="300" y="283" font-size="16" fill="#33414b"/>
-  <text x="620" y="283" font-size="16" fill="#33414b">Event integration pending</text>
+  <text x="620" y="283" font-size="16" fill="#33414b">Event-triggered solving</text>
   <text x="56" y="334" font-size="16" fill="#33414b">Evidence</text>
   <text x="300" y="334" font-size="16" fill="#33414b">Vendor capabilities require</text>
   <text x="620" y="334" font-size="16" fill="#33414b">Stored case and source links</text>
   <text x="56" y="359" font-size="16" fill="#33414b"/>
   <text x="300" y="359" font-size="16" fill="#33414b">product-specific verification</text>
-  <text x="620" y="359" font-size="16" fill="#33414b">Frontend queries pending</text>
+  <text x="620" y="359" font-size="16" fill="#33414b">Live graph QA in frontend</text>
   <text x="56" y="410" font-size="16" fill="#33414b">Validation</text>
   <text x="300" y="410" font-size="16" fill="#33414b">Not benchmarked here</text>
   <text x="620" y="410" font-size="16" fill="#33414b">57 human-labelled cases</text>

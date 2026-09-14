@@ -4,8 +4,8 @@ Run from the repo root::
 
     uvicorn --app-dir src api.main:app --port 8000
 
-Open the demo against it:  ``frontend/index.html?api=http://127.0.0.1:8000``
-(CORS is open so the demo also works from ``file://``).
+Open the demo against it:  ``frontend-vue`` served with
+``?api=http://127.0.0.1:8000`` (CORS is open for local development).
 
 The route endpoint bridges closed reshipment cases to the fixed Singapore
 VRPTW demo. The QA endpoint exposes structured knowledge-graph queries.
@@ -19,7 +19,8 @@ from . import service
 from .schemas import (
     BatchIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
     EmergencyAcceptIn, EmergencyPreviewIn,
-    DispatchDeliverIn, DispatchPlanIn, GridIn, QAIn, RouteIn, RouteOut,
+    DispatchDeliverIn, DispatchPlanIn, DispatchSpeedIn, GridIn, QAIn, QAOut,
+    RouteIn, RouteOut,
 )
 
 app = FastAPI(
@@ -127,12 +128,41 @@ def dispatch_plan(req: DispatchPlanIn):
         raise HTTPException(status_code=422, detail=str(exc))
 
 
+@app.post("/api/dispatch/reshipments")
+def route_reshipment_case(req: RouteIn):
+    """Commit one closed reshipment case into the shared dispatch operation.
+
+    Unlike ``/api/route`` (a stateless preview that reserves nothing) this
+    reserves stock and assigns a vehicle, so the resupply becomes part of the
+    same operation the dispatch console and the map show.
+    """
+    record = service.find_run(req.run_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"unknown run_id {req.run_id!r}")
+    try:
+        return service.route_reshipment(record)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
 @app.post("/api/dispatch/runs")
 def create_dispatch_run(req: DispatchCreateIn):
     try:
         return service.create_dispatch(req)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.get("/api/dispatch/active")
+def get_active_dispatch():
+    """The resupply operation currently open, if any.
+
+    404 means nothing is in progress — a normal empty state, not a failure.
+    """
+    try:
+        return service.get_active_reshipment_dispatch()
+    except KeyError:
+        raise HTTPException(status_code=404, detail="no active dispatch operation")
 
 
 @app.get("/api/dispatch/runs/{dispatch_id}")
@@ -151,6 +181,30 @@ def depart_dispatch_run(dispatch_id: str, req: DispatchCommandIn):
         raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/tick")
+def tick_dispatch_run(dispatch_id: str):
+    """Advance the operation to the simulated clock: record arrivals that are due.
+
+    Safe to poll — each arrival is applied as a normal, idempotent delivery
+    command, so ticking twice records nothing twice.
+    """
+    try:
+        return service.tick_dispatch(dispatch_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/speed")
+def set_dispatch_speed(dispatch_id: str, req: DispatchSpeedIn):
+    """Switch between real time and accelerated playback mid-run."""
+    try:
+        return service.set_dispatch_speed(dispatch_id, req.speed)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @app.post("/api/dispatch/runs/{dispatch_id}/deliver-next")
@@ -184,7 +238,7 @@ def accept_emergency_dispatch(dispatch_id: str, req: EmergencyAcceptIn):
         raise HTTPException(status_code=409, detail=str(exc))
 
 
-@app.post("/api/qa")
+@app.post("/api/qa", response_model=QAOut)
 def qa(req: QAIn):
     try:
         return service.qa_view(req)

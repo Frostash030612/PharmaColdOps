@@ -3,7 +3,7 @@
 The uniqueness guarantees behind the writer's idempotency must live at the
 DB level, not just in MERGE logic: re-running ensure_constraints is a
 no-op, and a duplicate key is rejected by Neo4j itself.
-Skipped when the dev Neo4j container (``pharmaneo``) is unreachable.
+Skipped when the dev Neo4j (``docker compose up -d``) is unreachable.
 """
 from __future__ import annotations
 

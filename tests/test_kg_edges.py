@@ -4,7 +4,7 @@ Both edge sets must mirror their sources exactly — the Facility layer
 recomputes nothing from C's network.json (matrix parity check), and the
 Product→SOP edges must equal an independent recomputation from the shared
 RULE_TO_* maps (so static and runtime derivations can never disagree).
-Skipped when the dev Neo4j container (``pharmaneo``) is unreachable.
+Skipped when the dev Neo4j (``docker compose up -d``) is unreachable.
 """
 from __future__ import annotations
 

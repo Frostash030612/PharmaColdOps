@@ -2,12 +2,12 @@
 
 > 依据：提案 §10.2 周计划（9/13 提案截止 · 10/25 终提交）、PROGRESS.md「四成员下一步分工」、docs/ARCHITECTURE.md（M1–M7）。
 > 角色：**A** 项目负责人/规则引擎/报告 · **B** 数据与机器学习 · **C** 配送优化 VRPTW · **D** 知识图谱/问答/API/UI/视频。
-> 已生效决策：Neo4j 从 W1 起为 KG 主线（本地容器 `pharmaneo`）；ML 分数不进 API（只进报告）；前端双模式（静态兜底 + API_BASE 切后端）；环境统一 conda `cold-chain`（Python 3.12）。
+> 已生效决策：Neo4j 从 W1 起为 KG 主线（本地容器 `docker compose up -d`，容器名 `pharmacoldops-neo4j-1`）；ML 分数不进 API（只进报告）；前端双模式（静态兜底 + API_BASE 切后端）；环境统一 conda `cold-chain`（Python 3.12）。
 
 > **2026-09-13 重排说明**（本计划制定于 9/9，以下为按实际进度的修订，不是原计划的执行结果）：
 > 1. **提案已于 9/13 提交**（英文 PDF）。提交后源稿又做了一轮调度界面口径修正，差异逐条登记在 `proposal/README.md`「提交件与源稿的差异」。
 > 2. **A 侧「收标注 → 算 κ → 两批仲裁 → gold 替换」整块已于 9/12 提前完成**：gold 入库 `ae3ec61`，B↔C 一致 44/57、**κ = 0.6434**（已定案，不为此修订 rubric 重测），引擎 vs gold = 39/57（**9/14 起为 54/57**，见重排说明 #7）。故 A 的 W1 不再含仲裁任务。
-> 3. **C 侧已越过 W1 甚至 W2 的目标**：订单驱动调度（`/api/dispatch/*`）、状态机与持久化、贪心基线 + Routing Solver、OSMnx 新加坡路网与矩阵全部已落地。W1/W2 改为按 **`docs/C_代码实施计划.md` 的批次**推进（第 1–3 批已完成，第 4 批做了一半）。
+> 3. **C 侧已越过 W1 甚至 W2 的目标**：订单驱动调度（`/api/dispatch/*`）、状态机与持久化、贪心基线 + Routing Solver、OSMnx 新加坡路网与矩阵全部已落地。W1/W2 改为按 **`docs/C_配送模块.md` 的批次**推进（第 1–3 批已完成，第 4 批做了一半）。
 > 4. **术语订正**：原计划多处写「CP-SAT」，实际实现是 **OR-Tools Routing Solver + GUIDED_LOCAL_SEARCH**，提案 §6.4 已订正为 `not CP-SAT`（见 `docs/M5_singapore_handover.md`）。本文件已同步。
 > 5. **发现一处计划与实现相冲突的实质问题**：原 D 的 W1 9/15① 要求把 `scenarios.csv` 57 条加载成图谱节点，而 D 已于 9/11 明确把这些 AI 起草的演示事件**移出**图谱（`build_graph.py:537`，"no fabricated nodes"）。照原计划做会把编造事件变成"证据"，与硬约束「不杜撰」直接冲突。已改为把该决策写进 `KG_SCHEMA_v1.md` 并加断言锁死。
 > 6. **W0 栏保留为历史记录**（已完成项补 ☑）；**W1 栏已重排**，W2 栏只就地修正与实现矛盾之处（未整体重排）。
@@ -211,17 +211,17 @@
 
 ### W1（9/14–9/20）— 【已重排】第 4 批收尾（延误）→ 第 5 批（故障救援）
 
-> **为什么重排**：原 W1 的「贪心基线 + 指标 + pytest + `ReplanResult` 对齐」**四项全部已完成**（`greedy.py` 是确定性最近插入基线，`routing.py` 出指标，`tests/test_solomon_loader.py` 在跑）；原 W2 的新加坡路网也已落地（`data/optimisation/singapore/`，提案 §6.4 已按 1 depot + 10 医院 + 真实有向 OSM 矩阵写实）。因此 C 的 W1 改为按 **`docs/C_代码实施计划.md` 的批次**推进：第 1–3 批已完成，第 4 批做了一半，本栏补齐第 4 批余下并开第 5 批。**不要把已实现的紧急插单／库存扣减／运输状态再排一遍。**
+> **为什么重排**：原 W1 的「贪心基线 + 指标 + pytest + `ReplanResult` 对齐」**四项全部已完成**（`greedy.py` 是确定性最近插入基线，`routing.py` 出指标，`tests/test_solomon_loader.py` 在跑）；原 W2 的新加坡路网也已落地（`data/optimisation/singapore/`，提案 §6.4 已按 1 depot + 10 医院 + 真实有向 OSM 矩阵写实）。因此 C 的 W1 改为按 **`docs/C_配送模块.md` 的批次**推进：第 1–3 批已完成，第 4 批做了一半，本栏补齐第 4 批余下并开第 5 批。**不要把已实现的紧急插单／库存扣减／运输状态再排一遍。**
 
 - **9/14 周一**：① **第 4 批余下：延误处理**——现在 `dynamic_problem.py` 的候选里已有 `lateness_min`（ETA 相对 `latest_min`），但缺「延误作为事件触发重排」这一条路：定义延误来源（道路时间超时 / 装卸超时）、按车辆与订单算影响范围、给出重排或改派结论；② 明确每个时间要求是硬约束还是软目标（第 4 批验收项，写进模块 docstring）；③ **为 9/15 的「车载库存字段」决定先出一页纸**：补字段（在途车可直接插单）vs 固化「必须回仓取货」为 v1 口径，两条路各自的代价写清楚——**A/D 要会签，别等到 9/15 当天才提**。
   - **完成口径**：延误能**触发重排**（先跑通一个场景即可）；硬/软约束写进了 docstring。
   - **别做**：别再把紧急插单／库存扣减／运输状态排一遍——那三项**已实现**。
-- **9/15 周二**：① **在途插单的合法路径**：当前在途状态**没有「未分配的车载备用药」字段**，因此代码不编造直接插单，在途车辆必须回仓取货（`C_代码实施计划.md` 已如实记录）。本日决定是补车载库存字段，还是把「必须回仓取货」固化为 v1 口径——**若补字段，需先与 A/D 过契约**，不得自造别名；② 空车不得凭空补货，写成测试。
+- **9/15 周二**：① **在途插单的合法路径**：当前在途状态**没有「未分配的车载备用药」字段**，因此代码不编造直接插单，在途车辆必须回仓取货（`docs/C_配送模块.md` 已如实记录）。本日决定是补车载库存字段，还是把「必须回仓取货」固化为 v1 口径——**若补字段，需先与 A/D 过契约**，不得自造别名；② 空车不得凭空补货，写成测试。
 - **9/16 周三**：① 评审 A 的 `ReshipmentOrder` 草案（当天给出书面反馈）；② 确认 `dispatch_models.py` 里 `DeliveryOrder` / `InventoryLot` / `DispatchVehicle` 的字段与 A 草案无冲突（冲突处记入 9/21 终版清单）。
 - **9/17 周四**：① **第 5 批开工：`dispatch_events.py`**——区分「风险提示 / 确认故障 / 质量处置」；质量事件走 A 的现有接口，故障来源必须是明确标注的模拟设备或人工确认，**没有模型能力时不输出「ML 已确认故障」**；② 按车辆/批次/包装关联确定影响范围（原货安置与替换货配送是两件事，关联同一异常）。
 - **9/18 周五**：① 第 5 批：指定应急冷藏点、接替车辆、转运服务时间与接收能力；② **未建立合法转运路径时不生成救援方案**（这是设计上的诚实边界，不是缺陷——写进验收并让报告可引用）；救援无资源时明确失败，不返回「看似可行」的方案。
 - **9/19 周六**：① 补 `tests/test_dispatch_events.py`（现有 `test_dispatch_models/planner/state.py` 三个，缺事件与紧急插单全链）；② 隔离货不得进入正常交付、旧订单时限仍被检查——两条写成断言；③ 跑一次完整回归。
-- **9/20 周日**：① 周例会：演示紧急插单链路（中文静态页 `frontend/index-zh.html` 已能走「建单 → 发车 → 紧急订单 → 候选 → 确认」全流程，`63f75c6`）；② PROGRESS 更新；③ 把第 4/5 批已实现边界如实写进 `docs/C_代码实施计划.md` 进度栏。
+- **9/20 周日**：① 周例会：演示紧急插单链路（**Vue 客户端**已能走「结案 → 纳入配送作业 → 发车 → 紧急插单 → 逐单送达」全流程；旧中文静态页 `frontend/index-zh.html` 已于 2026-09-12 随 vanilla 前端退役，其「候选车对比卡片」在 Vue 版仍待补，见 `PROGRESS.md` 2026-09-12 一节）；② PROGRESS 更新；③ 把第 4/5 批已实现边界如实写进 `docs/C_配送模块.md` 进度栏。
 
 ### W2（9/21–9/27）— 【已重排】第 5 批收尾 → 第 6 批开工
 
@@ -277,29 +277,41 @@
 ## D —— 知识图谱（Neo4j）/ 问答 / API / UI / 视频
 
 ### W0 冲刺（9/9–9/13）· 历史记录，已完成项补 ☑
-- **9/9 周三**：① ☑ PROGRESS 填姓名认领（2026-09-13，`99555c0`）；② ☑ 仓库根写 `docker-compose.yml`（neo4j:5-community，密码走 `.env.example`），让队友一条命令拉起——实际完成于 9/12（`f72dfa5`，`docker compose config` 已验证）；③ **未核实**：本机 `pharmaneo` 容器与 neo4j driver 连通性只能在 D 本机验证（A 本机无 Neo4j/Docker，`test_kg_writer.py` 的链式用例在 A 机为 skipped，只有「图谱不可达不阻断 case_close」那层在跑）。**W1 内请 D 明确答一次是否连通**。
-- **9/10 周四**：① ☑ KG schema v1 文档（实体：Product/Regulation/SOP/ExcursionEvent/Disposition/Cause/Facility/ReshipmentOrder；关系：PRODUCT_HAS_REQUIREMENT、EVENT_CAUSED_BY、EVENT_LEADS_TO_DISPOSITION、DISPOSITION_CITED_BY 等，附属性表）。
-- **9/11 周五**：① ☑ `connect.py`（连接工厂：NEO4J_* 环境变量 / .env / pharmaneo 默认，build/writer/qa/schema 统一走它）+ `schema.py`（10 唯一约束 + 3 索引，幂等 `IF NOT EXISTS`，build 重建前自动 ensure）；② ☑ **提前完成（原 9/24 ①，也即原 W1 9/18①）**：case_close→KG writer（`writer.py` 幂等 MERGE，已接入 `close_case`）+ `qa.py` 查询切 `run_id` 形态 + `test_kg_writer.py`；③ ☑ Facility 路网边（`CONNECTS` 55 条全带 OSMnx 路线几何，来自 C `network.json` 矩阵/leg_geometry）+ Product→SOP 静态边（`FOLLOWS_PROCEDURE`，映射推导，待 A/C 评审）+ `test_kg_edges.py`；④ ☑ writer 预留 facility 边分支（`EVENT_OCCURRED_AT`/`RESHIPS_TO`，字段名占位：`event.facility_id` / `destination_facility_id`，待 A 9/12 会议 / C 9/21 契约定稿后自动生效）。
-- **9/12 周六**：① ☑ 提案冲刺：demo 截图 2 张（`proposal/figures/demo-rule-engine-en.png` 决策沙盒 + `demo-route-qa-en.png` 路线/问答）+ 合规问答定位口径写入提案 §6.5（实体清单对齐 KG_SCHEMA v1、真查询 vs 概念示意、无证据不回答，EN/ZH 同步，两图已引用）；② ☑ 「无证据不回答」边界文案已写入提案风险表（"查无证据时明确回答『无记录』"）——该措辞**已随 9/13 提交的英文 PDF 一并交出**，A 侧的确认以提交行为准；③ ☑ A 的 `rules_config v1.0` 与 3 处前端常量（`frontend/index.html`、`index-zh.html`、`frontend-vue/src/data/products.js`）核对一致，新增 `test_frontend_threshold_parity.py` 锁定同源；④ ☑ 补 9/9 遗留：仓库根 `docker-compose.yml` + `.env.example`（与 `pharmaneo` 同配置，`docker compose config` 验证通过）。
-- **9/13 周日**：① ☑ 提案提交（英文 PDF）；② 周例会。
+
+- **9/9 周三**：① ☑ PROGRESS 填姓名认领（2026-09-13，`99555c0`）；② ☑ 仓库根写 `docker-compose.yml`（neo4j:5-community，密码走 `.env.example`），让队友一条命令拉起——**实际完成于 9/12**（`f72dfa5`，`docker compose config` 已验证）；9/13 复核时又修掉全局 `container_name` 冲突（改为顶层 `name:`），并实测「全新队友」流程（`down -v` → `up -d` → 载图 → 测试全绿）；③ ☑ **连通性已于 9/13 答实**：本机 compose 起的 `pharmacoldops-neo4j-1` 与 neo4j driver 连通，且完成端到端（载图 + 57 场景实跑）。
+- **9/10 周四**：① ☑ KG schema v1 文档（实体：Product/Regulation/SOP/ExcursionEvent/Disposition/Cause/Facility/ReshipmentOrder；关系：PRODUCT_HAS_REQUIREMENT、EVENT_CAUSED_BY、EVENT_LEADS_TO_DISPOSITION、DISPOSITION_CITED_BY 等，附属性表）。**9/13 复核**：文档在；关系名已与实现对齐（`PRODUCT_HAS_REQUIREMENT` → `REGULATED_BY`；`DISPOSITION_CITED_BY` → 案例级 `CITES`，见 §3），§6 未决项已逐条复核状态。
+- **9/11 周五**：① ☑ `connect.py`（连接工厂：NEO4J_* 环境变量 / .env / compose 默认，build/writer/qa/schema 统一走它）+ `schema.py`（10 唯一约束 + 3 索引，幂等 `IF NOT EXISTS`，build 重建前自动 ensure）；② ☑ **提前完成（原 9/24①，也即原 W1 9/18①）**：case_close→KG writer（`writer.py` 幂等 MERGE，已接入 `close_case`）+ `qa.py` 查询切 `run_id` 形态 + `test_kg_writer.py`；③ ☑ Facility 路网边（`CONNECTS` 55 条全带 OSMnx 路线几何，来自 C `network.json` 矩阵/leg_geometry）+ Product→SOP 静态边（`FOLLOWS_PROCEDURE`，映射推导，待 A/C 评审）+ `test_kg_edges.py`；④ ☑ writer 预留 facility 边分支（`EVENT_OCCURRED_AT`/`RESHIPS_TO`，字段名占位：`event.facility_id` / `destination_facility_id`）。**9/13 复核**：①②③④ 均 ☑；④ **已生效**：`EventIn` 已带 `facility_id`/`destination_facility_id`，`audit_chain` 的证据与答案含真实补发目的地（**结案表单尚未传异常地点**）。
+- **9/12 周六**：① ☑ 提案冲刺：demo 截图 2 张（`proposal/figures/demo-rule-engine-en.png` 决策沙盒 + `demo-route-qa-en.png` 路线/问答）+ 合规问答定位口径写入提案 §6.5（实体清单对齐 KG_SCHEMA v1、真查询 vs 概念示意、无证据不回答，EN/ZH 同步，两图已引用）；② ☑ 「无证据不回答」边界文案已写入提案风险表（"查无证据时明确回答『无记录』"）——该措辞**已随 9/13 提交的英文 PDF 一并交出**；**9/13 复核**：「无证据不回答」**已实现**（`status=insufficient_evidence`），与 A 的口径确认仍未做；③ ☑ A 的 `rules_config v1.0` 与前端常量核对一致，新增 `test_frontend_threshold_parity.py` 锁定同源（**9/12 起旧 vanilla 前端退役，校验范围收窄到 Vue 的 `products.js` / `lib/engine.js`**）；④ ☑ 补 9/9 遗留：仓库根 `docker-compose.yml` + `.env.example`（`docker compose config` 验证通过）。
+- **9/13 周日**：① ☑ 提案 ZH/EN/Word 已按实测更新（§1/§5.1/§6.4/§6.5/§6.6 + 5 张配图）；**提案提交本身属团队动作**；② 周例会属团队动作。
 
 ### W1（9/14–9/20）— 【已重排】KG 建库核对 + 问答边界
 
 > **为什么重排**：原 W1 的「加载脚本」三项里有两项**已经落地或已被人为否决**——`build_graph.py` 已把 rules_config 阈值、法规/SOP、C 的设施与 11×11 CONNECTS 边、11 类真实根因、真实 shipment 全部加载；`/api/qa` 真实现也已在 9/11 提前完成。更关键的是 **9/15① 与已实施的决策直接冲突**：`scenarios.csv` 那 57 条是 AI 起草的演示事件，**已被 D 于 9/11 明确从图谱里移除**（"no fabricated nodes"，见 `build_graph.py:537` 起）。按原计划把它加载回去，等于把编造的事件变成"证据"。本栏据此重排。
+>
+> **9/13 复核（原 W1 各条的去向）**：9/14① ☑ 加载脚本已落地（`build_graph.py`，9/11–9/12）且已跑通可查询（Neo4j Browser `:7474`），**可视化截图当日待补**；9/15① **已被 9/11 决策取代**——`scenarios.csv` **不入图**（AI 起草的演示数据不得作为证据），改由运行时 `case_close` 逐案写入，评测需要时按需结案（`scripts/evaluate_qa.py` 就是这么做的）；9/15② ☑ 关系齐全性由 `schema.py`（10 约束 + 3 索引）与 `test_kg_edges.py` 保证；9/16① **口径已调整**：未按 ES 抽样，设施用 C 的真实新加坡 11 节点、运输用 Kaggle 8,000 条（`verified` 注明疑似合成，且不与设施/产品连边）、根因用 B 的 11 类词表；9/16② ☑ 法规 8 条带 `source_url`+`verified`，SOP 已于 9/11 换真实公共指引；9/17① ☑ **已完成（9/13）**：`why_disposition` / `audit_chain` / `product_requirements` / `cause_context`（「该原因最常见场景」，默认取本案例主因码再聚合 stage/product 分布）/ `disposition_stats` 全部实现；9/17② 快照存档以 `data/processed/qa_eval_report.json` 替代；9/18① ☑ `/api/qa` 真实现（9/12，四态 9/13），② ☑ 无证据明确回答（`no_case` / `insufficient_evidence`）；9/19① ☑ **可视化截图已完成（9/13）**：`proposal/figures/kg-neo4j-browser.png`（Neo4j Browser 实拍案例链路，顶部即实际查询语句），已作为**图 4b** 嵌入提案 ZH/EN 并随 Word 重建；9/19② ☑ schema v1 已复核定稿（§1/§3/§6）；9/20 例会属团队动作，② ☑ PROGRESS 已持续更新。
 
-- **9/14 周一**：① 核对 `build_graph.py` 实际加载的每一类节点**来源可追溯**：products/thresholds（`rules_config.json`）、regulations（WHO TRS 961 / EU GDP / ICH / HSA，**文档级 + `source_url` + `verified`**）、SOP（只取公开程序性指引，公司内部 SOP 不用——决策记在 `docs/ARCHITECTURE.md` §6）、facilities（C 的 `network.json`，1 depot + 10 家公立医院）、真实 shipment（**故意不建 Facility/Product 边**，因为 zone 代号映射不到新加坡设施，硬连是编造地理）；② 把 `build_graph.py` docstring 里自陈的遗留项**「ICH Q1A(R2) 条款级措辞仍待 A 核实」正式转给 A**（A 的 W1 9/14 有对应位）；③ **答一次 Neo4j 连通状态**（W0 9/9③ 至今标"未核实"）——连不上就写"未连通"。
+- **9/14 周一**：① 核对 `build_graph.py` 实际加载的每一类节点**来源可追溯**：products/thresholds（`rules_config.json`）、regulations（WHO TRS 961 / EU GDP / ICH / HSA，**文档级 + `source_url` + `verified`**）、SOP（只取公开程序性指引，公司内部 SOP 不用——决策记在 `docs/ARCHITECTURE.md` §6）、facilities（C 的 `network.json`，1 depot + 10 家公立医院）、真实 shipment（**故意不建 Facility/Product 边**，因为 zone 代号映射不到新加坡设施，硬连是编造地理）；② 把 `build_graph.py` docstring 里自陈的遗留项**「ICH Q1A(R2) 条款级措辞仍待 A 核实」正式转给 A**（A 的 W1 9/14 有对应位；**A 已于 9/14 完成条款级核实**，见 `PROGRESS.md` 顶部 2026-09-14 一节）；③ Neo4j 连通状态**已于 9/13 答实**（见 W0 9/9③ 复核）。
   - **完成口径**：`build_graph.py` 每一类节点都能逐个指到**文件或 URL**。
   - **别做**：**别把 `data/scenarios/scenarios.csv` 加载进图谱**——9/11 已明确否决（那 57 条是 AI 起草的演示事件，装进去会把编造事件变成"证据"）。本日只把这层决策落到文档，不动加载代码。
-- **9/15 周二**：① ~~加载 `scenarios.csv` 57 条 → ExcursionEvent/Disposition~~ **不做**：那 57 条是 M3 的标注/评估材料（提案 §8.3），装进 Neo4j 会变成假证据。本日改为把这条**决策写进 `docs/KG_SCHEMA_v1.md`**（附原因），并在 `build_graph.py` 的注释旁确认已生效；② 加一条断言/测试锁死：`scenarios.csv` 的任何行都不得出现在图谱写入路径上（防止将来有人"顺手加回去"）。
+- **9/15 周二**：① ~~加载 `scenarios.csv` 57 条 → ExcursionEvent/Disposition~~ **不做**：那 57 条是 M3 的标注/评估材料（提案 §8.3），装进 Neo4j 会变成假证据。改为把这条**决策写进 `docs/KG_SCHEMA_v1.md`**（附原因），并在 `build_graph.py` 的注释旁确认已生效；② 加一条断言/测试锁死：`scenarios.csv` 的任何行都不得出现在图谱写入路径上（防止将来有人"顺手加回去"）。
 - **9/16 周三**：① 抽样与来源说明的书面记录：11 类真实根因（ES `vaccine-cold-chain`）的许可、抽样方式、抽样量写进 KG schema 文档；② 法规节点复核——**文档级引用，不写条款号**（编造条款号是硬约束里明令禁止的）。
 - **9/17 周四**：① Cypher 查询集 v1：`qa.py` 现有 `why_disposition` / `audit_chain` / `product_requirements` / `disposition_stats` 四类，本日补**统计类**查询（如「该原因最常见于哪些场景」）；② 每个查询存一份结果快照，供报告引用。
 - **9/18 周五**：① `/api/qa` 真实现 v1 —— **9/11 已完成**，本日改做**边界测试**：模板覆盖不到的问题必须回「无记录」，不得由任何兜底逻辑编造；② 初步测「无证据不回答率」。
-- **9/19 周六**：① KG 可视化截图（Neo4j Browser 图）作为报告/提案素材；② KG schema v1 文档定稿（并入 9/15–9/16 的决策与来源说明）。
-- **9/20 周日**：① 周例会：演示 KG 查询；② PROGRESS 更新；③ **明确答一次** W0 9/9③ 的 Neo4j 连通状态（未连通就写"未连通"，别写"已验证"）。
+- **9/19 周六**：① KG 可视化截图（Neo4j Browser 图）作为报告/提案素材——**9/13 已提前完成**；② KG schema v1 文档定稿（并入 9/15–9/16 的决策与来源说明）。
+- **9/20 周日**：① 周例会：演示 KG 查询；② PROGRESS 更新；③ Neo4j 连通状态**已于 9/13 答实**，无需再答。
 
 ### W2（9/21–9/27）— 【已重排】问答 v1 + 前端接线
 
 > 原 9/24①「决策链集成」9/11 已完成；原 9/25① 里 `/api/qa` 已真实现、`/api/route` 已是真实端点（不再返回 501）。已就地标注。
+>
+> **9/13 复核（本段几乎全部提前完成）**：
+> - 9/21 ① ☑ 评估集已提前交付：`data/qa/intent_labels.csv`（37 条问句，取自既有 i18n 关键词表）+ 57 场景派生评测；**`expected_intent` 列留空待人工标注**；② ☑ 评估脚本 `scripts/evaluate_qa.py`（证据覆盖率 / 答案一致性 / 阈值一致 / 四态 / 跨案例隔离）；**意图分类准确率待标注后补**。
+> - 9/22 ① ☑ 评估还真发现并修掉一个缺陷：`CITES` 原挂共享 `Disposition` 节点导致同处置案例串证据（已改案例级 + 回归测试）；② ☑ 指标 v1：57 场景派生检查通过——**9/13 口径为 466/466**（取代本节早先记录的 409/409）。
+> - 9/23 ① ☑ 前端问答框已接 `/api/qa`（双模式，9/12）；② ☑ 联调完成（真实 API 实测 + `pnpm build` 通过）。
+> - 9/24 ① ☑ 已于 9/11 提前完成（原行已勾）；② ☑ 前端显示依据节点（证据列表 + 9/13 节点类型本地化）。
+> - 9/25 ① ☑ 契约测试补齐（`test_api_contract.py` 含四态；`/api/route` 真实现）；② **部分**：审计日志已实现（`_audit` + `runs.jsonl`），CORS 仍为开发期全开，**上云前需收紧**。
+> - 9/26 ① ☑ 前端路线可视化（Leaflet + 演示数据）；② **未做**：审计报告视图 v1（现有问答证据列表 + 结案历史面板；ARCHITECTURE M6 的「审计报告」产物口径待定）。
+> - 9/27 例会属团队动作；PROGRESS ☑。
 
 - **9/21 周一**：① 问答评估集 20 条（覆盖 5 类问题：为何隔离/依据/根因/统计/边界）；② 评估脚本（准确率/证据覆盖率/无证据不回答率）。
 - **9/22 周二**：① `/api/qa` 按评估结果修模板与查询；② 指标 v1。
@@ -310,6 +322,8 @@
 - **9/27 周日**：① 周例会；② PROGRESS 更新。
 
 ### W3（9/28–10/4）— 最小闭环
+
+> **9/13 复核（仅列 D 侧）**：9/29 ② ☑ 端到端最小闭环已走通（9/13 实测：结案 → 图谱写链 → `/api/route` 真实求解 → `/api/qa` 按触发规则给证据）；9/30 ② ☑ Leaflet 已接真实路线（9/12）；10/1 ① 审计报告视图 v2 **未做**（口径待与 A 定）；10/1 ② 双模式打磨 **部分**（9/13 补 QA 四态与节点类型本地化）；10/2 ① 全站中英文案核对 **部分**（问答面板已完成）；10/3–10/4 预演/彩排属团队动作。
 - **9/28 周一**：① 与 A 联调 `/api/decide` 全场景；② 准备 `/api/route` 契约测试样例（C 当天实现完即可跑）。
 - **9/29 周二**：① 与 C 联调 `/api/route`（契约样例跑通）；② 端到端最小闭环：一次异常 → 处置 → 补发 → 路线 → 问答全走通；③ 问题清单。
 - **9/30 周三**：① 修闭环问题；② Leaflet 接 C 的真实路线数据。
@@ -319,6 +333,8 @@
 - **10/4 周日**：① 周例会 + 端到端 v1 全员彩排；② PROGRESS 更新。
 
 ### W4（10/5–10/11）— 问答评估 + 上云
+
+> **9/13 复核（仅列 D 侧）**：10/5 ① KG 问答评估 **已提前部分交付**（57 场景 409/409 派生检查通过；意图分类准确率待人工标注 `data/qa/intent_labels.csv`）；10/5 ② 问题样本 **已交付 37 条**（超过 30 条目标）；10/6 ② 评估表进报告待定稿时补（数字已就绪）；10/8 ① 根目录 `Dockerfile` **未做**（仓库内无任何 Dockerfile，属 D 侧、无需他人确认，但需实构建验证）；10/7、10/9–10/11 的静态兜底上线与上云需账号/团队决策，未做。
 - **10/5 周一**：① KG 问答 v1 正式评估（20+ 条问答集，指标表）；② 问题样本扩到 30 条。
 - **10/6 周二**：① 「为何隔离」「依据哪条规则」演示脚本打磨；② 评估表进报告。
 - **10/7 周三**：① Level 0 静态兜底上线：`frontend/` 推 GitHub Pages / Vercel；② 验证离线模式。

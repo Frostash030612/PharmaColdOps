@@ -29,7 +29,7 @@ PPT exports are retained as older reference files until the team synchronises th
 
 Two front-end trees share one dual-mode behaviour (`?api=` → FastAPI backend; offline → built-in JS
 engine, byte-identical results). New work goes in **`frontend-vue/`** (Vue 3 + Vite); the older
-zero-dependency **`frontend/`** stays available untouched.
+the zero-build `frontend/` was retired on 2026-09-12; `frontend-vue/` is the only client.
 
 **Vue app (`frontend-vue/`, recommended)** — needs Node.js LTS (see below). Uses **pnpm**;
 with Node ≥ 16.9 run `corepack enable pnpm` once (no global install needed) and install from the
@@ -43,7 +43,7 @@ pnpm dev                       # http://localhost:5173          (offline)
 # http://localhost:5173/?api=http://127.0.0.1:8000               (backend mode)
 ```
 
-**Zero-build app (`frontend/`, switch-over still pending)**:
+**Retired (2026-09-12): zero-build `frontend/`** — replaced by `frontend-vue/`:
 
 ```bash
 python -m http.server 5500 -d frontend
@@ -59,7 +59,7 @@ Backend (terminal 1, either case):
 **Where the code lives**
 
 - 🖥️ **Front-end (Vue)** — [`frontend-vue/`](frontend-vue/): Vue 3 + Vite SFCs (plain JS), `src/components/`, `src/stores/`, `src/lib/`, `src/i18n/`; data is the generated `src/data/realData.mjs`.
-- 🖥️ **Front-end (zero-build legacy)** — [`frontend/`](frontend/): `index.html` (EN), `index-zh.html` (ZH), `real_data.js` (data). Usable until the demo switches over.
+- 🖥️ **Front-end** — [`frontend-vue/`](frontend-vue/): the single Vue 3 + Vite client (EN/ZH, offline fallback + `?api=` backend mode).
 - 🌐 **Back-end service** — [`src/api/`](src/api/): FastAPI + Uvicorn routes.
 - 🧠 **Decision core** (what the back-end calls) — [`src/rule_engine/`](src/rule_engine/); behaviour is driven by [`rules_config.json`](src/rule_engine/rules_config.json).
 - 🔗 **Contract tests** — [`tests/test_api_contract.py`](tests/test_api_contract.py): change `front-end ↔ back-end` fields together with this file.
@@ -99,7 +99,7 @@ Vue front-end (`frontend-vue/`) additionally needs **Node.js LTS** (`node -v`; W
 
 ```bash
 .venv/Scripts/python.exe scripts/export_demo_data.py \
-  --out frontend/real_data.js --out-esm frontend-vue/src/data/realData.mjs
+  --out-esm frontend-vue/src/data/realData.mjs
 ```
 
 ## ML experiments (`src/ml/`)

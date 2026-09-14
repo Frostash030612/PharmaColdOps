@@ -192,11 +192,23 @@ def test_route_unknown_run_is_404():
 
 
 def test_qa_routes_structured_question(monkeypatch):
-    expected = {"answer": "release: 2", "evidence": []}
+    expected = {"status": "ok", "answer": "release: 2", "evidence": []}
     monkeypatch.setattr(service.kg_qa, "disposition_stats", lambda: expected)
     response = client.post("/api/qa", json={"question_type": "disposition_stats"})
     assert response.status_code == 200
     assert response.json() == expected
+
+
+def test_qa_unsupported_type_returns_structured_status():
+    # An intent outside the four supported ones is *answered*, not rejected, so
+    # the front-end can render one localised notice per outcome class
+    # (proposal §6.5). Needs no graph: the router short-circuits.
+    response = client.post("/api/qa", json={"question_type": "what_is_the_weather"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "unsupported"
+    assert body["evidence"] == []
+    assert "unsupported question type" in body["answer"]
 
 
 def test_qa_requires_identifier_for_question_type():

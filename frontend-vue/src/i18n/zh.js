@@ -33,6 +33,22 @@ export default {
   "km": "公里",
   "liveRoute": "当前案例真实路线",
   "demoRoute": "固定演示路线",
+  "liveOperation": "当前配送作业（真实库存与车辆）",
+  "dispatchStatus": "调度状态",
+  "ordersDelivered": "已送达 / 订单",
+  "stockLeft": "仓库余量",
+  "commitReshipment": "把本次补发纳入配送作业",
+  "closeAndDispatch": "结案并纳入配送作业",
+  "depart": "确认发车",
+  "simClock": "模拟时刻",
+  "speedReal": "真实",
+  "speedFast": "60×",
+  "speedFaster": "300×",
+  "needsApi": "本次处置需要补发；连接后端（?api=）后可派车。",
+  "noReshipment": "本次处置无需补发。",
+  "committing": "正在核对库存与车辆…",
+  "committed": "✓ 本次补发已纳入配送作业",
+  "fromCase": "来自案例",
   "loadingRoute": "正在计算当前案例路线…"
 },
   header: {
@@ -60,6 +76,7 @@ export default {
     sectionInputs: "超限输入",
     product: "产品",
     stage: "阶段",
+    destination: "补发收货医院",
     packaging: "包装",
     randomize: "🎲 随机超限事件",
     temp: "超限温度（°C）",
@@ -87,6 +104,17 @@ export default {
     qaSource_fallback: "知识图谱不可用，已使用离线示意",
     qaSource_concept: "离线关键词回答",
     qaSource_notice: "需要已归档案例",
+    qaStatus_no_case: "知识图谱中查无此案例记录。",
+    qaStatus_insufficient_evidence: "（图谱中该规则没有对应法规/SOP，按“无证据不回答”处理。）",
+    qaStatus_unsupported: "这类问题不在当前支持范围内（仅支持：为何这样判定、审计链、产品要求、处置统计）。",
+    qaSource_insufficient: "案例存在但证据不足",
+    qaSource_unsupported: "不支持的问题",
+    /* 证据节点类型标签：取自 docs/KG_SCHEMA_v1.md §1 实体总览的「现实对应」列 */
+    qaNode: {
+      Product: "产品", Regulation: "法规", SOP: "SOP", ExcursionEvent: "超限事件",
+      Disposition: "处置", Cause: "主因", Facility: "设施", Shipment: "发运",
+      ReshipmentOrder: "补发单",
+    },
   },
 
   audit: {

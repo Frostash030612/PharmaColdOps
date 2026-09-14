@@ -143,6 +143,12 @@ class DispatchCommandIn(BaseModel):
     command_id: str
 
 
+class DispatchSpeedIn(BaseModel):
+    """How fast simulated time runs: 1 = real time, 60 = a minute per second."""
+
+    speed: float = Field(gt=0)
+
+
 class DispatchDeliverIn(DispatchCommandIn):
     vehicle_id: str
 
@@ -158,14 +164,26 @@ class EmergencyAcceptIn(EmergencyPreviewIn):
     command_id: str
 
 
-class QAIn(BaseModel):
-    """Structured KG query; natural-language classification is client-side."""
+class EvidenceOut(BaseModel):
+    """One evidence node exactly as the front-end renders it."""
 
-    question_type: Literal[
-        "why_disposition", "audit_chain", "product_requirements", "disposition_stats"
-    ]
+    node_type: str
+    node_id: str
+    summary: str
+
+
+class QAIn(BaseModel):
+    """Structured KG query; natural-language classification is client-side.
+
+    ``question_type`` is a plain string so an unsupported intent comes back as a
+    contract-shaped ``status="unsupported"`` answer instead of a 4xx — the
+    front-end can then render one localised notice per outcome class.
+    """
+
+    question_type: str
     run_id: Optional[str] = None
     product_id: Optional[str] = None
+    cause_code: Optional[str] = None
 
     @model_validator(mode="after")
     def require_query_identifier(self):
@@ -173,4 +191,21 @@ class QAIn(BaseModel):
             raise ValueError(f"run_id is required for {self.question_type}")
         if self.question_type == "product_requirements" and not self.product_id:
             raise ValueError("product_id is required for product_requirements")
+        if self.question_type == "cause_context" and not (self.run_id or self.cause_code):
+            raise ValueError("run_id or cause_code is required for cause_context")
         return self
+
+
+class QAOut(BaseModel):
+    """One KG answer plus the evidence nodes that back it.
+
+    ``status`` distinguishes the outcome classes the front-end must not conflate
+    (proposal §6.5): ``ok``, ``no_case``, ``insufficient_evidence``,
+    ``unsupported``. A database failure is reported as HTTP 503 instead (the
+    ``db_error`` class); ``answer`` and ``evidence`` text quotes the source
+    documents verbatim.
+    """
+
+    status: Literal["ok", "no_case", "insufficient_evidence", "unsupported"]
+    answer: str
+    evidence: list[EvidenceOut]

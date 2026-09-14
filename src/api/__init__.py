@@ -1,7 +1,7 @@
 """FastAPI decision service for PharmaColdOps.
 
 Serves the *real* Python rule engine (``src/rule_engine``) to the static demo
-(``frontend/index.html`` / ``index-zh.html``). The demo stays fully offline by
+(``frontend-vue`` / ``index-zh.html``). The demo stays fully offline by
 default and opts into this backend with ``?api=http://host:port``.
 
 Contract boundary: this service is authoritative about decision *semantics*

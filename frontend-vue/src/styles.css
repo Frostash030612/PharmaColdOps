@@ -213,6 +213,10 @@ html[lang="zh"] .ev-row .k { width: 100px; }
 .qa-source { margin-top: 6px; font-size: 10.5px; color: #64748b; }
 .qa-source.live { color: #0f766e; font-weight: 700; }
 .qa-source.fallback { color: #b45309; }
+/* Outcome classes from the /api/qa status field (2026-09-13). */
+.qa-source.notice { color: #92610a; }
+.qa-source.insufficient { color: #b45309; font-weight: 700; }
+.qa-source.unsupported { color: #64748b; font-weight: 700; }
 .qa-evidence { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 .qa-evidence li { padding: 7px 9px; border: 1px solid #dbeafe; border-radius: 7px; background: #f8fafc; font-size: 11px; color: #475569; }
 .qa-evidence b, .qa-evidence span { display: block; overflow-wrap: anywhere; }

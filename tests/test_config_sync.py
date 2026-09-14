@@ -1,7 +1,7 @@
 """Single-source guard: the front-ends' default product specs must not drift.
 
 Product thresholds are authoritative in ``src/rule_engine/rules_config.json``
-(Python). In offline mode the vanilla and Vue front-ends evaluate with their
+(Python). In offline mode the Vue front-end evaluates with its
 *own* embedded default spec (``PRODUCTS`` / ``PRODUCT_NUM``), which is a
 second copy that can silently drift when the config is edited (A re-verifies
 thresholds against WHO/GDP sources around 9/11 — any change there must land in
@@ -21,8 +21,6 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "src" / "rule_engine" / "rules_config.json"
 # (label, file with the per-product default spec literal)
 SPEC_SOURCES = (
-    ("vanilla EN", ROOT / "frontend" / "index.html"),
-    ("vanilla ZH", ROOT / "frontend" / "index-zh.html"),
     ("vue", ROOT / "frontend-vue" / "src" / "data" / "products.js"),
 )
 # JS field → rules_config.json key

@@ -8,7 +8,7 @@ Two layers:
   (ExcursionEvent → Disposition via ``EVENT_LEADS_TO_DISPOSITION`` edge
   facts, Cause, cited Regulations, followed SOPs, a ReshipmentOrder only
   when flagged), idempotent under replay — skipped when the dev Neo4j
-  container (``pharmaneo``) is unreachable.
+  (``docker compose up -d``) is unreachable.
 """
 from __future__ import annotations
 
@@ -102,8 +102,7 @@ def test_write_case_builds_schema_chain_and_is_idempotent():
 
     cited = _query(
         """
-        MATCH (:ExcursionEvent {run_id: $rid})-[:EVENT_LEADS_TO_DISPOSITION]->()
-              <-[:CITES]-(r:Regulation)
+        MATCH (:ExcursionEvent {run_id: $rid})-[:CITES]->(r:Regulation)
         RETURN r.clause_id AS cid
         """,
         rid=RUN_ID,

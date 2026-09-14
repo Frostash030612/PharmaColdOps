@@ -35,8 +35,8 @@
   <rect x="650" y="387" width="270" height="95" rx="5" fill="#f0f7f6" stroke="#397d73"/>
   <text x="666" y="415" font-size="18" fill="#202b33" font-weight="700">ReshipmentOrder</text>
   <text x="666" y="442" font-size="15" fill="#33414b">Created when flagged</text>
-  <text x="666" y="465" font-size="15" fill="#33414b">Solving state tracked in dispatch runs</text>
-  <text x="40" y="538" font-size="14" fill="#596771">Case explanations also use Regulation and SOP evidence. This is a conceptual view.</text>
-  <text x="40" y="567" font-size="14" fill="#596771">Graph writing is best-effort. The frontend calls graph QA online, keyword fallback offline.</text>
-  <text x="40" y="596" font-size="14" fill="#596771">Answers are evidence-shaped per question type; their evaluation remains planned work.</text>
+  <text x="666" y="465" font-size="15" fill="#33414b">Linked to route solving</text>
+  <text x="40" y="538" font-size="14" fill="#596771">Case explanations query Regulation and SOP evidence from the graph.</text>
+  <text x="40" y="567" font-size="14" fill="#596771">Graph writing is best-effort. The frontend queries the graph live.</text>
+  <text x="40" y="596" font-size="14" fill="#596771">Remaining: the case-close form does not send the occurrence facility id yet.</text>
 </svg>

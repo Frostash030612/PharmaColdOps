@@ -1,28 +1,28 @@
 <?xml version="1.0" ?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 680" font-family="Arial, Helvetica, sans-serif" role="img" aria-label="Current architecture and pending integration">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 680" font-family="Arial, Helvetica, sans-serif" role="img" aria-label="Current architecture: integrated online workflow">
   <rect width="960" height="680" fill="#ffffff"/>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#52606d"/>
     </marker>
   </defs>
-  <text x="40" y="42" font-size="24" font-weight="700" fill="#202b33">Current architecture and pending integration</text>
+  <text x="40" y="42" font-size="24" font-weight="700" fill="#202b33">Current architecture: integrated online workflow</text>
   <rect x="40" y="83" width="880" height="93" rx="5" fill="#f0f7f6" stroke="#397d73"/>
   <text x="56" y="111" font-size="18" fill="#202b33" font-weight="700">Vue frontend</text>
-  <text x="56" y="138" font-size="15" fill="#33414b">Rule sandbox, case history, precomputed routes, live route and graph QA</text>
+  <text x="56" y="138" font-size="15" fill="#33414b">Rule sandbox, case history, live case routes, live graph QA and the live delivery operation (offline fallback)</text>
   <text x="56" y="161" font-size="15" fill="#33414b">Online Python rules or offline JS port; the risk index is heuristic</text>
   <line x1="200" y1="176" x2="200" y2="224" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
-  <line x1="745" y1="176" x2="745" y2="224" stroke="#52606d" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+  <line x1="745" y1="176" x2="745" y2="224" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
   <rect x="40" y="224" width="410" height="124" rx="5" fill="#f0f7f6" stroke="#397d73"/>
   <text x="56" y="252" font-size="18" fill="#202b33" font-weight="700">FastAPI rule service</text>
   <text x="56" y="279" font-size="15" fill="#33414b">decide, grid, batch, case_close, runs</text>
   <text x="56" y="302" font-size="15" fill="#33414b">Rules and input/specification snapshots</text>
   <text x="56" y="325" font-size="15" fill="#33414b">Implemented online decision path</text>
-  <rect x="490" y="224" width="430" height="124" rx="5" fill="#fff8ed" stroke="#a66c19" stroke-dasharray="6 4"/>
-  <text x="506" y="252" font-size="18" fill="#202b33" font-weight="700">Interfaces without a frontend</text>
-  <text x="506" y="279" font-size="15" fill="#33414b">/api/route and /api/qa respond over HTTP</text>
-  <text x="506" y="302" font-size="15" fill="#33414b">/api/dispatch/*: orders, inventory, vehicles</text>
-  <text x="506" y="325" font-size="15" fill="#33414b">The Vue app has no dispatch screen yet</text>
+  <rect x="490" y="224" width="430" height="124" rx="5" fill="#f0f7f6" stroke="#397d73"/>
+  <text x="506" y="252" font-size="18" fill="#202b33" font-weight="700">Implemented HTTP interfaces</text>
+  <text x="506" y="279" font-size="15" fill="#33414b">/api/route: per-case reshipment route</text>
+  <text x="506" y="302" font-size="15" fill="#33414b">/api/qa: 5 structured graph queries</text>
+  <text x="506" y="325" font-size="15" fill="#33414b">Frontend live; dispatch runs via /api/dispatch/*</text>
   <line x1="245" y1="348" x2="245" y2="368" stroke="#52606d" stroke-width="2" marker-end="url(#arrow)"/>
   <rect x="40" y="368" width="410" height="96" rx="5" fill="#f0f7f6" stroke="#397d73"/>
   <text x="56" y="396" font-size="18" fill="#202b33" font-weight="700">Persistence</text>
@@ -31,10 +31,10 @@
   <rect x="490" y="368" width="430" height="96" rx="5" fill="#f0f7f6" stroke="#397d73"/>
   <text x="506" y="396" font-size="18" fill="#202b33" font-weight="700">Independent routing module</text>
   <text x="506" y="423" font-size="15" fill="#33414b">Greedy + OR-Tools Routing Solver</text>
-  <text x="506" y="446" font-size="15" fill="#33414b">Singapore export feeds static frontend data</text>
+  <text x="506" y="446" font-size="15" fill="#33414b">Per-case solves online; export feeds offline data</text>
   <rect x="40" y="506" width="880" height="100" rx="5" fill="#f0f7f6" stroke="#397d73"/>
   <text x="56" y="534" font-size="18" fill="#202b33" font-weight="700">Offline ML research</text>
   <text x="56" y="561" font-size="15" fill="#33414b">Public datasets -&gt; risk / candidate-cause experiments -&gt; metrics and SHAP</text>
   <text x="56" y="584" font-size="15" fill="#33414b">No ML score enters the decision API. No automatic feedback training is implemented.</text>
-  <text x="40" y="648" font-size="14" fill="#596771">Solid connector: implemented path. Dashed connector: integration still required.</text>
+  <text x="40" y="648" font-size="14" fill="#596771">Solid connector: implemented path. Online mode solves routes and queries the graph live.</text>
 </svg>

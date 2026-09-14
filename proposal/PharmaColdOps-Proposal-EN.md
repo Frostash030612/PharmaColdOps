@@ -13,7 +13,7 @@ PharmaColdOps supports temperature-excursion assessment in pharmaceutical transp
 
 The project covers four IRS technique groups: decision automation, resource optimisation, knowledge discovery and data mining, and cognitive systems. The delivery objective is a minimal integrated workflow in a controlled Singapore scenario: temperature event → disposition recommendation → reshipment order → delivery plan → evidence query. Risk and candidate-cause classification remain offline experiments and do not enter the disposition API.
 
-By now, the rule engine, bilingual interface, independently annotated scenarios, offline ML baselines, Singapore routing, order-driven reshipment solving and KG case-write code have been developed. The frontend calls the live routing and graph QA endpoints for archived reshipment cases. An order-driven dispatch console exists in the Chinese static page in API mode; wiring it to a case disposition, matching it in the English and Vue interfaces, and expanding the destination pool remain to be built. This prototype does not replace final quality approval or claim production or regulatory validation.
+The project now has a rule engine, bilingual interface, independently annotated scenarios, offline ML baselines, Singapore routing, order-driven reshipment solving, KG case-write code and a single Vue client (the legacy vanilla static pages were retired on 2026-09-12, so Vue is the only client). In online mode the client solves and displays the reshipment route of a closed case, queries the graph for case-specific evidence, and commits that case into the live delivery operation — reserving stock, assigning a vehicle, departing, tracking on a simulated clock and delivering order by order. The graph path was verified end-to-end against a compose-managed Neo4j on 2026-09-13. Sending the occurrence-facility field from the case-close form and expanding the candidate destination pool remain to be built. This prototype does not replace final quality approval or claim production or regulatory validation.
 
 ## 2. Problem Definition
 
@@ -71,8 +71,8 @@ People retain responsibility for final approval and delivery execution. The proj
 1. Enter an event with a known product category. Current inputs are forms or demonstration data; sequence parsing is a subsequent data task.
 2. Return one of four dispositions, a reshipment flag, rule number, reason and evidence states.
 3. Have quality staff review the recommendation. Current closure stores inputs and the system recommendation; fields for final human decisions and approvers remain to be designed, while dispatch run state separately records acceptance, departure and per-order delivery.
-4. For replacement cases, submit a simulated order with destination, quantity and time window under the agreed contract and solve it with the single-depot solver. The contract, solver and run persistence are implemented and tested; a dispatch console in the Chinese static page drives planning, departure and emergency insertion through those endpoints, but it is not triggered by a case disposition, and the English and Vue interfaces have no equivalent screen.
-5. Link the case and route, display stops, distance, schedules and unserved orders, and query case-specific graph evidence. Archived reshipment cases already fetch live routes and case-specific graph answers; a screen for choosing destinations and quantities remains to be built.
+4. For replacement cases, submit a simulated order with destination, quantity and time window under the agreed contract and solve it with the single-depot solver. The contract, solver and run persistence are implemented and tested; the case → order → route connection landed on 2026-09-12 and was reviewed end-to-end on 2026-09-13. The Vue client drives planning, departure, simulated-clock tracking and emergency insertion through the `/api/dispatch/*` endpoints, and a closed reshipment case can be committed into that live operation with stock reservation and vehicle assignment.
+5. Link the case and route, display stops, distance, schedules and unserved orders, and query case-specific graph evidence. The case → order → route → evidence association and the front-end query wiring landed on 2026-09-12 (offline mode keeps the fixed demo route and keyword QA as a fallback); a screen for choosing destinations and quantities remains to be built.
 
 Archiving a case does not establish its real-world outcome. Automatic feedback learning is outside the MVP.
 
@@ -84,9 +84,9 @@ Archiving a case does not establish its real-world outcome. Automatic feedback l
 | M2 Event generation | Demo export available with single-reading MKT approximation | Sequence windows, MKT implementation and validation |
 | M3 Rule engine | Four category prototypes, six rules, API, human gold for 57 cases | Domain review, disagreement analysis and formal evaluation |
 | M4 Risk and causes | LR/LGBM/XGB, SHAP and ten-class cause experiment available | Multi-fold evaluation, feature availability and failure analysis |
-| M5 Routing | Greedy solver, Routing Solver, real road network, reshipment/dispatch solving and run persistence available | Connecting the dispatch console to a case disposition; English and Vue parity; expanded destination pool |
-| M6 Graph and QA | Schema, loading, closure writing, query functions, HTTP endpoints and frontend answers available | Evidence evaluation and relevance scoring |
-| M7 Integration | Bilingual Vue, offline/API modes and case history available | Integrated acceptance and failure-state checks |
+| M5 Routing | Greedy solver, Routing Solver, real road network, reshipment/dispatch solving and run persistence available; a closed case is committed into the live delivery operation from the Vue client | Expanded candidate destination pool, alternative-stock selection and multi-compartment objectives |
+| M6 Graph and QA | Schema, loading, closure writing, query functions, HTTP endpoints, machine-readable four-state QA status, frontend answers and a 57-scenario QA evaluation set available; database path verified end-to-end 9/13 | Evidence evaluation and relevance scoring; intent-classification accuracy awaits human labels |
+| M7 Integration | Bilingual Vue, offline/API modes, case history and the close → route → evidence → dispatch loop connected 9/12–9/13 | Integrated acceptance, failure-state refinement and clean-environment reproduction |
 
 ## 6. Technical Approach and IRS Mapping
 
@@ -127,7 +127,7 @@ The model is a single-depot VRPTW with equal vehicle capacities, customer servic
 
 Six Solomon instances support standard comparisons. The Singapore case uses one depot, ten hospitals and real directed OSM matrices, measured in km and min. Travel times estimate free flow and exclude live congestion. Demands, fleet and service windows are simulated and do not imply actual commercial relationships among the facilities.
 
-Vue shows precomputed routes for demonstration cases and fetches live routes for archived reshipment cases; temperature edits do not trigger solving. Single-depot reshipment solving is implemented over HTTP for an ordered set of destinations, quantities and windows. Alternative-stock selection, multiple temperature compartments, carbon and wastage-loss objectives are extensions. A genetic algorithm may be considered after integrated acceptance, but is not a mandatory deliverable.
+In online mode the Vue app solves and displays the route per closed case, falling back to the precomputed demo route offline or before a case is closed; temperature edits themselves do not trigger re-solving. The single-depot reshipment-order-to-solver mapping landed on 2026-09-12 and is reachable over HTTP for an ordered set of destinations, quantities and windows. Alternative-stock selection, multiple temperature compartments, carbon and wastage-loss objectives are extensions. A genetic algorithm may be considered after integrated acceptance, but is not a mandatory deliverable.
 
 ![Figure 3 Singapore routing case](figures/en/fig3-vrptw-replan.svg)
 
@@ -137,13 +137,17 @@ Vue shows precomputed routes for demonstration cases and fetches live routes for
 
 Neo4j entities include Product, Regulation, SOP, ExcursionEvent, Disposition, Cause, Facility, Shipment and ReshipmentOrder. Regulations, public procedural guidance, product configurations, Singapore facilities and dataset records retain source semantics. The approximately 8,000 Kaggle shipment records have unconfirmed real-world provenance and are suspected synthetic; they are not described as verified pharmaceutical shipments. Anonymous zones cannot be directly mapped to Singapore hospitals.
 
-case_close records a case and attempts a graph write; decide previews are not archived. Cause currently represents the API heuristic code, not an ML prediction or investigated root cause. A reshipment node records an order; whether that order was solved and executed is tracked by dispatch run state, not by the graph node. Log and graph persistence are best-effort and do not provide validated audit-grade durability.
+case_close records a case and attempts a graph write; decide previews are not archived. Cause currently represents the API heuristic code, not an ML prediction or investigated root cause. A reshipment node records an order; whether that order was solved and executed is tracked by dispatch run state, not by the graph node, and no step in this workflow implies that physical transport occurred. Log and graph persistence are best-effort and do not provide validated audit-grade durability.
 
-Python query functions support run_id-based explanations, audit chains, product requirements and statistics. /api/qa is implemented as bounded intent recognition over parameterised Cypher and returns case-specific evidence, distinguishing missing cases, insufficient evidence, unsupported questions and database failure; this is structured question-type routing, not natural-language classification. The frontend calls it in API mode and falls back to a keyword template offline. Evidence must support the particular rule, rather than merely provide a regulatory link. An LLM is not required for the MVP.
+Python query functions support run_id-based explanations, audit chains, product requirements and statistics. `/api/qa` is implemented as bounded intent recognition over parameterised Cypher and returns case-specific evidence, distinguishing missing cases, insufficient evidence, unsupported questions and database failure; this is structured question-type routing, not natural-language classification. The Vue client calls it in online mode and falls back to a keyword template offline. Completed 2026-09-13: the endpoint returns a machine-readable `status` (`ok` / no case / insufficient evidence / unsupported question; database failure remains HTTP 503) with one localised notice per class in the client; the reshipment order and its destination are in the audit chain's evidence list and answer; the cause-context question aggregates the case's own cause code across every closed case by stage/product; and a scoping defect was fixed — `CITES` used to hang off the shared `Disposition` node, so cases sharing a disposition inherited each other's regulations, and citations are now attached per case (`(ExcursionEvent)-[:CITES]->(Regulation)`). A question-answering evaluation set and script ship in `data/qa/` and `scripts/evaluate_qa.py`: 466/466 derived checks pass over 57 scenarios (expectations come from the static mappings and `rules_config.json`, not from the implementation), while intent-classification accuracy still awaits human labels. The database path was verified end-to-end against a compose-managed Neo4j on 2026-09-13 (close case → graph write → per-case evidence, with the evidence set matching the fired rule's regulation/SOP mapping item by item). Still outstanding: the case-close form does not send the occurrence facility id (the destination id is sent), and repeated closure is not de-duplicated. Evidence must support the particular rule, rather than merely provide a regulatory link. An LLM is not required for the MVP.
 
 ![Figure 4 Graph concepts and writing boundary](figures/en/fig4-knowledge-graph.svg)
 
-**Figure 4:** Conceptual case chain. Facility, shipment and route associations depend on the input contracts.
+**Figure 4:** Case chain. Facility, shipment and route associations are given by the input contracts (the destination facility field is sent by the case-close form; the occurrence facility field is defined but not sent yet).
+
+![Figure 4b Neo4j Browser capture: one closed case's graph chain](figures/kg-neo4j-browser.png)
+
+**Figure 4b:** Live Neo4j Browser capture (2026-09-13) of one closed case's chain (9 nodes / 8 relationship types): excursion event → cause and disposition + the regulations and SOPs its rule cites → occurrence facility and reshipment destination. The query actually executed is shown at the top (reproducible) and the right panel lists the node/relationship types with their counts.
 
 ![Demo Decision sandbox](figures/demo-rule-engine-en.png)
 
@@ -151,21 +155,21 @@ Python query functions support run_id-based explanations, audit chains, product 
 
 ![Demo Routes and QA](figures/demo-route-qa-en.png)
 
-**Demo, 2026-09-13:** Precomputed routes for the demonstration case and an archived case fetching a live route and a case-specific graph answer. The dispatch console is not shown: it exists only in the Chinese static page in API mode and is not driven by a case disposition, so this is not evidence of a completed integrated workflow.
+**Demo, 2026-09-12 screenshot; reviewed 2026-09-13:** In online mode both routes and answers are computed live by the backend (`/api/route` solves the case's reshipment route, `/api/qa` queries the real graph and returns evidence). The screenshot predates the Vue client's ability to commit a closed case into the live delivery operation, so it shows routes and answers only; the connected workflow is evidenced by the 2026-09-13 end-to-end review, not by this image.
 
 ### 6.6 Architecture and Interfaces
 
-The frontend uses Vue 3, Vite, Pinia and Leaflet, with a legacy static demo retained. Online mode calls the Python engine through FastAPI/Uvicorn; offline mode uses a JS port. JSONL stores case history and Neo4j stores graph knowledge. Training and route-export scripts run separately.
+The frontend uses Vue 3, Vite, Pinia and Leaflet; the legacy vanilla static demo was retired on 2026-09-12, so Vue is the only client. Online mode calls the Python engine through FastAPI/Uvicorn; offline mode uses a JS port. JSONL stores case history and Neo4j stores graph knowledge. Training and route-export scripts run separately.
 
 ![Figure 5 Current architecture](figures/en/fig5-system-architecture.svg)
 
-**Figure 5:** Online rules, offline experiments, precomputed routes and HTTP interfaces not yet wired to a screen are shown separately.
+**Figure 5:** Online rules, offline experiments, route solving and graph QA, with their wiring state; as of 2026-09-13 case-triggered route solving, live graph QA and committing a closed case into the live delivery operation are connected in the Vue client.
 
-Cross-member contracts must fix the association among run_id, order_id, product, destination, quantity, time windows, temperature compatibility and ReplanResult, and handle infeasible routes, repeated closures and storage failures. The API now carries order destination, quantity, time windows, temperature zone and route results, with defined responses for infeasible routes and infeasible windows and a version-checked store for repeated commands; what remains on the contract is the dispatch screen in the English and Vue interfaces and its wiring to a case disposition.
+Cross-member contracts must fix the association among run_id, order_id, product, destination, quantity, time windows, temperature compatibility and ReplanResult, and handle infeasible routes, repeated closures and storage failures. The API now carries order destination, quantity, time windows, temperature zone and route results, with defined responses for infeasible routes and infeasible windows and a version-checked store for repeated commands; what remains on the contract is sending the occurrence facility id from the case-close form and de-duplicating repeated closure.
 
 ![Figure 6 Minimal integrated workflow](figures/en/fig6-pipeline.svg)
 
-**Figure 6:** W3 integration acceptance target. Core modules exist, while connections remain to be implemented.
+**Figure 6:** W3 integration acceptance target. Core modules and the main connections (close → order → route → evidence) were wired on 2026-09-12/13; human review/approval fields remain open.
 
 ## 7. Data Collection and Preparation
 

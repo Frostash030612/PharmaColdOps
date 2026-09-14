@@ -2,7 +2,7 @@
 """Export REAL downloaded data into the demo's JS data blocks.
 
 Reads the datasets under ``data/`` and emits a self-contained JS snippet
-(``frontend/real_data.js``) that ``frontend/index.html`` / ``frontend/index-zh.html`` load:
+(``frontend-vue/src/data/realData.mjs``) that the Vue app loads:
 
   * ``SCENARIOS``  — real temperature-excursion events (from the
     Kaggle ``vaccine-distribution-with-temperature-logging`` dataset), mapped
@@ -21,7 +21,7 @@ Honesty notes (also printed in the generated file):
   * Product class is inferred from the temperature band (the source has no
     ``product_id``).
 
-Usage:  python scripts/export_demo_data.py [--out frontend/real_data.js]
+Usage:  python scripts/export_demo_data.py [--out frontend-vue/src/data/realData.mjs]
 """
 from __future__ import annotations
 
@@ -322,7 +322,7 @@ def render(esm: bool = False) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(ROOT / "frontend" / "real_data.js"))
+    ap.add_argument("--out", default=str(ROOT / "frontend-vue" / "src" / "data" / "realData.mjs"))
     ap.add_argument("--out-esm", default=None, metavar="PATH",
                     help="also write the ESM mirror (frontend-vue/src/data/realData.mjs)")
     args = ap.parse_args()

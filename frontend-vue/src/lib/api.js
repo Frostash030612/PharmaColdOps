@@ -22,6 +22,7 @@ export function eventPayload(current) {
     mkt_c: current.mkt_c,
     packaging: current.packaging,
     stage: current.stage,
+    destination_facility_id: current.destination_facility_id || null,
   };
 }
 

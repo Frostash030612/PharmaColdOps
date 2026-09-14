@@ -141,10 +141,10 @@
 | `REGULATED_BY` | `(:Product)-[r]->(:Regulation)` | Product 1—N Regulation | 产品的稳定要求由哪篇法规施加（build_graph 实际实现名，原计划名 `PRODUCT_HAS_REQUIREMENT`） | `vaccine_2_8` → `R-WHO-TRS961-FREEZE`（冻敏原则） |
 | `EVENT_CAUSED_BY` | `(:ExcursionEvent)-[]->(:Cause)` | Event N—1 Cause | 本次事件主因 | 冻结事件 → `frozen` |
 | `EVENT_LEADS_TO_DISPOSITION` | `(:ExcursionEvent)-[d]->(:Disposition)` | Event N—1 Disposition | **决策链实例**：边属性存现场（见下） | `run_id=…` → `quarantine` |
-| `DISPOSITION_CITED_BY` | `(:Disposition)<-[:CITES]-(:Regulation)` | 反向语义=处置被文档引用 | 某处置类别依据哪篇文档 | `quarantine` ← `WHO TRS 961 / EU GDP（hold for assessment）` |
-| ✚ `EVENT_OCCURRED_AT` | `(:ExcursionEvent)-[]->(:Facility)` | Event N—1 Facility | 事件发生在哪个设施（stage 词 → facility.role）；writer 已预留：`event.facility_id` 可选字段（A 契约未加前恒空） | `warehouse` 事件 → 对应 depot |
+| `CITES` | `(:ExcursionEvent)-[:CITES]->(:Regulation)` | Event N—M Regulation | **本次案例**引用了哪条法规（由本次触发的 `rule_no` 经 `RULE_TO_REGULATIONS` 映射）。2026-09-13 修正：原先挂在共享的 `Disposition` 节点上（`DISPOSITION_CITED_BY`），导致同处置、不同规则的案例互相串证据；现与 `FOLLOWS` 一样挂在案例上 | `run_id=…` → `R-WHO-TRS961-EXCURSION` |
+| ✚ `EVENT_OCCURRED_AT` | `(:ExcursionEvent)-[]->(:Facility)` | Event N—1 Facility | 事件发生在哪个设施（stage 词 → facility.role）；`EventIn.facility_id` 已于 9/12 进契约并落边，结案表单尚未传参（9/13） | `warehouse` 事件 → 对应 depot |
 | ✚ `TRIGGERS_RESHIPMENT` | `(:ExcursionEvent)-[]->(:ReshipmentOrder)` | Event 0—1 Order | 判定需补发 → 生成补发单（M3→M5 锚点） | `scrap`/`quarantine` 事件 → 补发单 |
-| ✚ `RESHIPS_TO` | `(:ReshipmentOrder)-[]->(:Facility)` | Order 0—1 Facility | 补发单目的地（**占位，待 C 9/21 契约定语义**；writer 已预留 `destination_facility_id`） | `RO-…` → `H-NUH` |
+| ✚ `RESHIPS_TO` | `(:ReshipmentOrder)-[]->(:Facility)` | Order 0—1 Facility | 补发单目的地；`destination_facility_id` 已进契约，9/13 起该目的地同时进入 `audit_chain` 的证据列表 | `RO-…` → `H-NUH` |
 | ✚ `FOLLOWS` | `(:ExcursionEvent)-[]->(:SOP)` | Event N—M SOP | 本次结案依循的操作流程（由 `rule_no` 经 `RULE_TO_SOPS` 映射；2026-09-11 随 writer 落地，**待 A/C 评审**；实现与 §4 问答路径均用 `FOLLOWS`，2026-09-12 命名对齐） | `run_id=…` → `SOP-GDP-001` |
 | ✚ `CONNECTS` | `(:Facility)-[r]-(:Facility)` | Facility 全对全 55 条（无向） | 真实路网最短路径（C `network.json` 矩阵 + 逐对路线几何）：`distance_m` / `duration_s` / `geometry`（JSON 字符串，`[lon,lat]` GeoJSON 序——Neo4j 不支持嵌套列表故序列化）/ `source`；与 M5 求解器同一份矩阵 | `W-KN-PIONEER` ↔ `H-NUH` 13.0 km |
 | ✚ `FOLLOWS_PROCEDURE` | `(:Product)-[]->(:SOP)` | Product 1—N SOP | 产品处置所依循的 SOP（由 产品条款 → `RULE_TO_REGULATIONS` → `RULE_TO_SOPS` 推导，与运行时 writer 同表；**待 A/C 评审**） | `vaccine_2_8` → `SOP-GDP-001/002/003` |
@@ -156,9 +156,9 @@
 | 问题 | 路径 |
 |---|---|
 | 为何隔离/报废 | `(e:ExcursionEvent{run_id})-[d:EVENT_LEADS_TO_DISPOSITION]->(dis:Disposition)` → 返回 `dis.disposition + d.reason + d.rule_path` |
-| 依据哪条法规 | 上一条后 `(dis)<-[:CITES]-(reg:Regulation)` 或走 `d.regulation` 句 → 返回 `reg` 节点 |
-| 依据哪条 SOP | `(e:ExcursionEvent{run_id})-[:FOLLOWS]->(sop:SOP)`（writer 由 `rule_no` 映射） → 无节点则答「该环节 SOP 未录入」，**无证据不回答** |
-| 该原因最常见场景 | `(c:Cause)<-[:EVENT_CAUSED_BY]-(e)` 聚合 `e.stage / e.product_id` 分布 |
+| 依据哪条法规 | `(e:ExcursionEvent{run_id})-[:CITES]->(reg:Regulation)`（本次规则映射，9/13 起为案例级） 或走 `d.regulation` 句 → 返回 `reg` 节点 |
+| 依据哪条 SOP | `(e:ExcursionEvent{run_id})-[:FOLLOWS]->(sop:SOP)`（writer 由 `rule_no` 映射） → 无节点时返回 `status=insufficient_evidence`（「无证据不回答」已于 9/13 在 `qa.py` 落地） |
+| 该原因最常见场景 | ✅ 已实现 `qa.cause_context`：默认取**本案例**的 `EVENT_CAUSED_BY` 主因码，再聚合全部结案案例的 `e.stage / e.product_id` 分布（`/api/qa` 的 `cause_context` 意图） |
 
 ## 5. 约束/索引（✅ 已由 `schema.py` 落地，2026-09-11）
 
@@ -166,13 +166,14 @@
 - 唯一约束：`Product.product_id` · `ExcursionEvent.run_id` · `Cause.cause_code` · `Disposition.disposition` · `Regulation.clause_id` · `Facility.facility_id` · `SOP.sop_id` · `ReshipmentOrder.order_id` · `Shipment.shipment_id` · `RootCause.cause_id`（后两者不在 9 实体 schema 内，但图内存在，约束保证运行时 writer 的 MERGE 安全）。
 - 索引：`ExcursionEvent.product_id` / `stage` / `created_at`（问答聚合与「按产品查历史」用）。
 
-## 6. 未决项（W1 定稿前评审）
+## 6. 未决项（状态复核于 2026-09-13）
 
-1. **Requirement 是否独立成实体**：v1 采纳「`Product` 属性承载 spec + `PRODUCT_HAS_REQUIREMENT` 边锚到施加文档」；若问答需要「某产品允许超限时长多少」这类单点查询，再考虑拆 `Requirement` 节点（9/20 前定）。
-2. **条款级引用**：本 schema 禁存；A 阈值证据表 9/11 出来后同步补 `Regulation` 的证据属性。
-3. **ReshipmentOrder 全字段**：9/21 A+C 终版后补属性表（D 评审）。
-4. **Facility 坐标 & role↔stage 词表**：✅ 坐标已解决（C `network.json` 2026-09-10，比计划提前）；role↔stage 词表对齐待 C 扩充设施表（药房/诊所等）时进行。
-5. **SOP 属性表**为 D 起草占位，请 A/C 评审用词（避免与规则引擎/补发单字段撞名）。
+1. **Requirement 是否独立成实体** —— ✅ **已决：不拆**。触发条件「若问答需要『某产品允许超限时长多少』这类单点查询」已满足且由 `Product` 属性直接回答（`qa.product_requirements`，4 产品通过 `tests/test_kg_qa.py` 与 `scripts/evaluate_qa.py`）。
+2. **条款级引用** —— ⏳ **仍等 A**：A 的阈值证据表尚未落地（仓库内无该文件）；现状每个 `Regulation` 已带 `source_url` + `verified`（文档级），条款级 `evidence_url` 待 A 的表出来再补。
+3. **ReshipmentOrder 全字段** —— ✅ **已落地**：`src/optimisation/models.py` 的 `ReshipmentOrder` 已含 `order_id / run_id / product_id / origin_facility_id / destination_facility_id / demand_units / priority / requested_at`，writer 写出 `TRIGGERS_RESHIPMENT` + `RESHIPS_TO`；9/13 起目的地同时进入审计链证据与答案。
+4. **Facility 坐标 & role↔stage 词表** —— 坐标 ✅ 已解决（C `network.json`）；role↔stage 词表 ⏳ 待 C 扩充设施表（药房/诊所等）时对齐。
+5. **SOP 属性表** —— ✅ 已换真实文档级来源（9/11，决策见 ARCHITECTURE §6：CDC 清单 / WHO shake test / EU GDP，步骤逐字引用）；「用词评审」若 A/C 仍要做，属评审动作，不再是数据未决。
+6. **9/13 复核补充**：`CITES` 由「挂在共享 `Disposition` 节点」改为**案例级**（`(ExcursionEvent)-[:CITES]->(Regulation)`，见 §3），修复同处置不同规则案例互相串证据；`/api/qa` 增加机器可读 `status` 四态（§4「无证据不回答」据此落地）；问答评估集见 `data/qa/`、评测脚本 `scripts/evaluate_qa.py`（57 场景 409/409 派生检查通过）。
 
 ---
 变更记录：9/10 初稿 v1（D）· 基线：ARCHITECTURE M6 / 前后端契约 / A 引擎 `models.py` + `rules_config.json` + `service.py risk_score`。
@@ -181,3 +182,4 @@
 · 2026-09-11（同日）：writer 预留 facility 边分支（`EVENT_OCCURRED_AT` / `RESHIPS_TO`）——字段名为占位（`event.facility_id` / `destination_facility_id`），A 9/12 / C 9/21 契约到位后自动生效；qa 审计链顺带读出事件设施。
 · 2026-09-11（同日）：9/11 ① 完成——`connect.py`（连接工厂，build/writer/qa/schema 统一走它）+ `schema.py`（§5 约束/索引落地）；发现 9/9 计划的仓库根 `docker-compose.yml`/`.env.example` 缺失，已记入 DAILY_PLAN 9/12 ④。
 · 2026-09-12：SOP 节点换真实文档级来源（a8a531f：CDC 清单 / WHO shake test / EU GDP，步骤逐字引用出处）、Facility 整体改用 C `network.json`（虚构坐标设施移除）、新增 RootCause 11 类（B 词表）；§1 SOP 行与 §3 `FOLLOWS` 命名对齐实现；9/12 ④ 补齐 `docker-compose.yml` + `.env.example`。
+· 2026-09-13：`CITES` 改案例级（修同处置串证据）、`/api/qa` 四态 `status` 落地、补发目的地进审计链证据、新增问答评估集 `data/qa/` + `scripts/evaluate_qa.py`；§6 未决项逐条复核状态。

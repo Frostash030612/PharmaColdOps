@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .dispatch_models import DeliveryOrder
 from .greedy import solve_greedy
 from .models import ReplanResult, ReshipmentOrder
 from .ortools_solver import solve_ortools
@@ -14,6 +15,16 @@ from .singapore_loader import (
 )
 
 DEPOT_FACILITY_ID = "W-KN-PIONEER"
+
+# A resupply must travel in the temperature zone its product actually needs;
+# defaulting everything to "chilled" would let a frozen product be matched to a
+# chilled vehicle, which dispatch_models is specifically meant to prevent.
+PRODUCT_TEMPERATURE_ZONE = {
+    "vaccine_2_8": "chilled",
+    "insulin_2_8": "chilled",
+    "frozen_m20": "frozen",
+    "mrna_ultracold": "ultracold",
+}
 
 
 def build_reshipment_order(record: dict) -> ReshipmentOrder | None:
@@ -43,6 +54,48 @@ def build_reshipment_order(record: dict) -> ReshipmentOrder | None:
         demand_units=demand,
         priority=record["disposition"],
         requested_at=record["created_at"],
+    )
+
+
+def build_delivery_order(record: dict) -> DeliveryOrder | None:
+    """Derive a dispatch ``DeliveryOrder`` from one ``close_case()`` record.
+
+    This is the bridge that keeps resupply on ONE pathway: the order carries
+    ``source_run_id`` so it stays traceable to the disposition that caused it,
+    and because it is an ordinary ``DeliveryOrder`` it goes through the same
+    inventory / vehicle / temperature-zone checks as any manually entered
+    order.  ``build_reshipment_order`` above remains for the stateless
+    ``/api/route`` preview, which never reserves anything.
+
+    Returns ``None`` when the case does not require reshipment.
+    """
+    if not record["reshipment_required"]:
+        return None
+    event = record["event"]
+    network = read_network()
+    customers = [node for node in network["nodes"] if node["role"] == "customer"]
+    if not customers:  # validate_network normally prevents this in practice.
+        raise ValueError("Singapore network has no customer nodes")
+    destination = event.get("destination_facility_id") or customers[0]["facility_id"]
+    node = next((item for item in customers if item["facility_id"] == destination), None)
+    if node is None:
+        raise ValueError(
+            f"destination facility {destination!r} is not in Singapore demo customers"
+        )
+    product_id = event["product_id"]
+    try:
+        zone = PRODUCT_TEMPERATURE_ZONE[product_id]
+    except KeyError as exc:
+        raise ValueError(f"no temperature zone mapped for product {product_id!r}") from exc
+    return DeliveryOrder(
+        order_id=f"RO-{record['run_id']}",
+        product_id=product_id,
+        destination_facility_id=destination,
+        quantity=node["demand"],
+        earliest_min=node["earliest_min"],
+        latest_min=node["latest_min"],
+        temperature_zone=zone,
+        source_run_id=record["run_id"],
     )
 
 

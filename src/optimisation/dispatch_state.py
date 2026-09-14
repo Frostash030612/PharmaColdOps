@@ -140,12 +140,26 @@ def accept_plan(
 
 
 def depart(state: DispatchState, *, command_id: str) -> DispatchState:
+    """Send every vehicle that is still waiting at the depot.
+
+    ``in_transit`` is accepted as a starting status too: an emergency spare can
+    put one vehicle on the road before the main fleet leaves, and the rest must
+    still be able to depart afterwards. Only vehicles still ``reserved`` (and
+    orders still ``planned``) are promoted, so anything already delivered or
+    under way is left exactly as it is.
+    """
     if command_id in state.applied_commands:
         return state
-    if state.status != "accepted":
+    if state.status not in {"accepted", "in_transit"}:
         raise ValueError("dispatch must be accepted before departure")
-    vehicles = {key: replace(value, status="in_transit") for key, value in state.vehicles.items()}
-    orders = {key: replace(value, status="in_transit") for key, value in state.orders.items()}
+    vehicles = {
+        key: replace(value, status="in_transit") if value.status == "reserved" else value
+        for key, value in state.vehicles.items()
+    }
+    orders = {
+        key: replace(value, status="in_transit") if value.status == "planned" else value
+        for key, value in state.orders.items()
+    }
     return replace(state, version=state.version + 1, status="in_transit",
                    vehicles=vehicles, orders=orders,
                    applied_commands=(*state.applied_commands, command_id))

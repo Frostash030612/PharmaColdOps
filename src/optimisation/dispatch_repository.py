@@ -102,6 +102,49 @@ def load_context(target: str | Path, dispatch_id: str) -> dict:
     return _load_json(target, dispatch_id, "context_json")
 
 
+def list_dispatch_ids(target: str | Path, prefix: str) -> list[str]:
+    """Every dispatch id starting with ``prefix`` (used to find the live one)."""
+    pattern = f"{prefix}%"
+    if _is_postgres(target):
+        with _postgres_connect(target) as db, db.cursor() as cursor:
+            cursor.execute(
+                "SELECT dispatch_id FROM dispatch_runs WHERE dispatch_id LIKE %s", (pattern,))
+            rows = cursor.fetchall()
+    else:
+        with _sqlite_connect(target) as db:
+            rows = db.execute(
+                "SELECT dispatch_id FROM dispatch_runs WHERE dispatch_id LIKE ?", (pattern,)
+            ).fetchall()
+    return [row[0] for row in rows]
+
+
+def update_context(target: str | Path, dispatch_id: str, context: dict) -> None:
+    """Persist a revised context (e.g. a newly inserted order/lot/vehicle).
+
+    Unlike ``update_run`` this carries no optimistic-concurrency check: context
+    is reference data for previews (order/lot/vehicle dumps), not the
+    authoritative execution state, so the only invariant that matters is that
+    it is written in the same request as the ``update_run``/``create_run``
+    call that changed it.
+    """
+    context_json = json.dumps(context)
+    if _is_postgres(target):
+        with _postgres_connect(target) as db, db.cursor() as cursor:
+            cursor.execute(
+                "UPDATE dispatch_runs SET context_json = %s::jsonb WHERE dispatch_id = %s",
+                (context_json, dispatch_id),
+            )
+            changed = cursor.rowcount
+    else:
+        with _sqlite_connect(target) as db:
+            changed = db.execute(
+                "UPDATE dispatch_runs SET context_json = ? WHERE dispatch_id = ?",
+                (context_json, dispatch_id),
+            ).rowcount
+    if changed != 1:
+        raise KeyError(dispatch_id)
+
+
 def update_run(target: str | Path, dispatch_id: str, state: DispatchState, *, expected_version: int) -> None:
     """Persist only if nobody changed the run after it was read."""
     state_json = json.dumps(state_to_dict(state))
