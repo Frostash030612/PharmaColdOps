@@ -107,7 +107,7 @@ Inputs are product category, excursion temperature, duration in minutes, MKT, pa
 
 Rules run in priority order, stopping at the first match: freezing risk, compromised packaging with overtemperature, severe duration/MKT excursion, ordinary duration/MKT excursion, near-limit conditions for retestable products, and the remaining cases. Outputs are release / quarantine / retest / scrap. The current policy sets reshipment_required to true for quarantine or scrap; this logistics default requires separate evaluation.
 
-rules_config.json and the Python engine define behaviour, with a semantic port for offline use. Sandbox overrides apply only to the current request and are saved at closure. Known limitations include low-temperature excursions for non-freeze-sensitive categories, approximating tiered stability with single thresholds, and the unresolved quarantine/scrap policy for rule 4. Rules or labels will not be changed merely to increase gold agreement.
+rules_config.json and the Python engine define behaviour, with a semantic port for offline use. Sandbox overrides apply only to the current request and are saved at closure. Known limitations include low-temperature excursions for non-freeze-sensitive categories and approximating tiered stability with single thresholds; the rule 4 disposition was quarantined-or-scrapped until rubric v1.1 (2026-09-14) settled it as scrap for both the rubric and the engine, but the low-temperature evidence gap behind that band remains open and quarantine is no longer produced by either. Rules or labels will not be changed merely to increase gold agreement.
 
 ![Figure 2 Rule and output semantics](figures/en/fig2-rule-engine-flow.svg)
 
@@ -245,17 +245,17 @@ B and C independently labelled all 57 synthetic cases using only the written rub
 | Measure | Current result |
 |---|---|
 | Original B/C agreement | 44/57 |
-| Inter-annotator Cohen's κ | 0.6434, below the original 0.80 target |
-| Current engine agreement with gold | 39/57, 68.4% |
-| Eighteen differences | 15 engine quarantine/gold scrap; 2 engine release/gold quarantine; 1 engine retest/gold quarantine |
+| Inter-annotator Cohen's κ | 0.6434, below the original 0.80 target (measures B↔C only; rubric v1.1 did not re-annotate, so it is unchanged) |
+| Current engine agreement with gold | 54/57, 94.7% (rubric v1.1, 2026-09-14; 39/57, 68.4% under rubric v1) |
+| Remaining differences | 3 gold-side cases under review (S034/S035/S052: gold quarantine; engine release, release, retest). Rubric v1.1 resolved the former 15 engine-quarantine/gold-scrap cases at once |
 | Gold support | Release 13, retest 8, quarantine 3, scrap 33 |
-| High-consequence class recall | Quarantine 0/3; scrap 18/33, 54.5% |
+| High-consequence class recall | Quarantine 0/3; scrap 33/33, 100% |
 
-The team decided to report κ=0.6434 without revising and repeating the rubric exercise merely to increase κ, and to retain the three gold quarantine cases. Rule 4's quarantine/scrap choice remains an unresolved domain-policy question requiring product evidence. With only three gold quarantine cases, report support alongside metrics and avoid stable population-performance claims.
+The team decided to report κ=0.6434 without revising and repeating the rubric exercise merely to increase κ, and to retain the three gold quarantine cases. Rule 4 was settled as scrap by rubric v1.1 on 2026-09-14, with the engine and its frozen tests changed in the same batch, so the quarantine/scrap choice is no longer an open policy question; the low-temperature evidence gap behind that band is still open, and quarantine is now unreachable as an output in both the rubric and the engine while the three historical gold values are retained. With only three gold quarantine cases, report support alongside metrics and avoid stable population-performance claims.
 
-There are three evaluation levels: unit checks establish fidelity to frozen rules; human gold measures differences between written rules and team judgement; domain validity requires applicable product documents or external review. Tests freeze the eighteen known differences. Passing tests does not mean 100% gold agreement or prove all differences should be resolved by changing the engine.
+There are three evaluation levels: unit checks establish fidelity to frozen rules; human gold measures differences between written rules and team judgement; domain validity requires applicable product documents or external review. Tests freeze the three remaining differences. Passing tests does not mean 100% gold agreement or prove all differences should be resolved by changing the engine.
 
-This revision directly checked the real engine's 39/57 agreement and confusion counts. The selftest mode of evaluate_engine.py substitutes rubric outputs for an engine and validates the evaluation script only. Formal evaluation still needs a complete macro-F1, per-class precision/recall, κ and coverage table with version information. [Annotation statistics](../data/processed/agreement_stats.md), [Findings](../docs/annotation_findings_v1.md), [Engine checks](../tests/test_rule_engine.py)
+This revision directly checked the real engine's 54/57 agreement under rubric v1.1 and the corresponding confusion counts. The selftest mode of evaluate_engine.py substitutes rubric outputs for an engine and validates the evaluation script only. Formal evaluation still needs a complete macro-F1, per-class precision/recall, κ and coverage table with version information. [Annotation statistics](../data/processed/agreement_stats.md), [Findings](../docs/annotation_findings_v1.md), [Engine checks](../tests/test_rule_engine.py)
 
 External product-level review is optional and has not been completed. Evidence-driven rule revisions should be versioned and assessed on independent new cases; tuning to the same gold set is not fresh independent validation.
 
@@ -305,7 +305,7 @@ Start from work completed by 2026-09-12 and retain the original deadlines. The a
 | Risk | Mitigation and disclosure |
 |---|---|
 | Engineering thresholds mistaken for stability limits | Identify evidence level, product scope and assumptions; retain human review |
-| Annotation disagreement and unresolved policy | Report κ, confusion and small-sample limits; revise based on domain evidence |
+| Annotation disagreement and rule-policy revision | Report κ, confusion and small-sample limits; revise based on domain evidence (rule 4 settled as scrap on 2026-09-14) |
 | Synthetic data and mismatched grain undermine generalisation | Define tasks per dataset and check observation time and grouped leakage |
 | Weak cause Top-1 | Retain the majority baseline and analyse rankings and available features |
 | Standalone modules without business integration | A/C/D prioritise order, destination, quantity, windows and case association |

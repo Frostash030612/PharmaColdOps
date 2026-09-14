@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-09-14 — 合并远程 9/13 一批（`b01c0d5`）+ 提案口径对齐 rubric v1.1
+
+- **合并**：本地 13 个提交与远程 9 个提交（`6c879b8`）自分叉点 `76b67f2` 起各自演进，形成 13 个内容冲突 + 2 个删除/修改冲突。逐项按**合并后的实际代码**解决：日志类冲突（两边都在顶部追加条目）**保留双方全部条目**；分工表取本地姓名 + 远程更新的 D 行；提案 EN/ZH 各 7 处不是文字分歧而是两条时间线的叙事，逐条核实后重写；4 张英文 SVG 采用远程版并修正过期数字；`frontend/index.html` / `index-zh.html` 接受远程删除（旧 vanilla 前端 9/12 整体退役）。兜底分支 `backup/main-8a2221d`。
+- **三处口径反转（不要再引用旧说法）**：① 调度台现在在 **Vue（唯一前端）**，且**已由结案案例驱动**——远程 `frontend-vue/src/stores/dispatch.js` 的 `commitReshipment(runId)` 发 `POST /api/dispatch/reshipments`，把已结案案例提交进实时配送作业（预留库存 + 分配车辆），另有发车／模拟时钟跟踪／逐单送达／紧急插单；故「调度台只在中文静态页」「不由案例处置结论触发」「英文与 Vue 界面无对应界面」三条作废。② 旧 `frontend/` 与 `scripts/check_demo_js.py` 已删除。③ C 的 5 份文档已并入 `docs/C_配送模块.md`，全仓断链引用已改指（`PROGRESS.md`、`docs/DAILY_PLAN.md`、`docs/前后端技术栈与连接说明.md`、`frontend-vue/src/stores/sandbox.js`、`src/api/service.py`）。
+- **提案口径对齐（原「有意留待」项提前做掉）**：§6.2 的「第 4 条政策未决」改为**已由 rubric v1.1 定为 `scrap`**（该档背后的低温条证据缺口仍未闭合，rubric 与引擎均不再产出 `quarantine`）；§8.3 由 **39/57、18 条差异、报废召回 18/33** 改为 **54/57（94.7%）、残留 3 条（S034/S035/S052）、报废召回 33/33（100%）**；κ 仍是 **0.6434**（B↔C 指标，v1.1 未重标）。中英文同改。数字由当前引擎直接复算，与 `tests/test_rule_engine.py` 的冻结值一致。
+- **中文 Word 已重建**：二进制无法像文本那样合并，按「两边内容都写进去」从**合并＋对齐后**的中文 md 用 `scripts/build_proposal_docx.py` 重新生成（10 张图含图 4b 的 Neo4j 实拍；组名／成员／学号在；依 HANDOFF §5.3 已核中文 docx 零处手改，重建不丢人工修改）。
+- **`proposal/README.md` 的「提交件与源稿差异」表已重做**：10 组差异逐条列出并标注来源（远程 9/13 一批／本地 9/14／本次实测重写）；中文侧经句子级比对确认 Word 与源稿**逐句一致**；新增可复跑脚本 `scripts/diff_proposal_vs_docx.py`。英文提交件（PDF 与 EN docx）仍是**冻结口径**，终稿阶段按该表决定取哪一版并重建。
+- 验证：全量 `pytest` **128 passed / 20 skipped / 0 failed**（沙箱内先出 35 个 `tmp_path` error，提权后全绿）；`scripts/check_provenance.py` 离线**全绿（§2 指纹 16/16 一致）**；`frontend-vue` `pnpm build` **通过**（63 modules）。`scripts/evaluate_engine.py --selftest` 因缺 `--private-package`（标注包按红线不入库）无法运行，**非合并问题**。
+- `HANDOFF.md`（未跟踪）已按合并后事实同步：新增「合并记录」一节，改写 §2／§3／§5.4／§5.10／§5.14／§6.6／§7／§8。
+
+---
+
 ## 2026-09-14 — 阈值证据表 v1 独立成文 + 条款级来源核实（**发现 3 处引用归属不成立**）
 
 - **新增 `docs/阈值证据表_v1.md`**（DAILY_PLAN A 的 9/14 ①）：4 产品 × storage / freeze_sensitive / allowable / MKT 逐字段摊开**出处等级**，判定分五级（`VERIFIED` / `PARTIAL` / `UNVERIFIED` / `CONTRADICTED` + 粒度），并给出原文片段与「必须降级」清单。
