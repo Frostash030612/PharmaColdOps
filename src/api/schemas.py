@@ -143,6 +143,12 @@ class DispatchCommandIn(BaseModel):
     command_id: str
 
 
+class DispatchSpeedIn(BaseModel):
+    """How fast simulated time runs: 1 = real time, 60 = a minute per second."""
+
+    speed: float = Field(gt=0)
+
+
 class DispatchDeliverIn(DispatchCommandIn):
     vehicle_id: str
 

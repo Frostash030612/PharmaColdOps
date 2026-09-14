@@ -7,11 +7,21 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { PRODUCT_NUM, DEFAULT_EVENT, TEMP_RANGE } from "../data/products.js";
 import { genProfile } from "../lib/timeline.js";
+import singaporeRoutes from "../data/singaporeRoutes.json";
+
+/* Receiving facilities a resupply can be sent to — the same 10 hospitals the
+   router knows. Which one a real excursion should resupply is a contract
+   question still open with A (see docs/C_问题待解决.md B0); until the event
+   carries it, the operator picks, and the dice picks at random. */
+export const DESTINATIONS = singaporeRoutes.nodes.filter((n) => n.role === "customer");
+const randomDestination = () =>
+  DESTINATIONS[Math.floor(Math.random() * DESTINATIONS.length)].facility_id;
 
 export const useSandboxStore = defineStore("sandbox", () => {
   /* ---- state ---- */
   const spec = ref({ ...PRODUCT_NUM.vaccine_2_8 });
-  const current = ref({ product_id: "vaccine_2_8", ...DEFAULT_EVENT.vaccine_2_8 });
+  const current = ref({ product_id: "vaccine_2_8", ...DEFAULT_EVENT.vaccine_2_8,
+                      destination_facility_id: randomDestination() });
 
   const nowTime = ref(0);
   const playing = ref(false);
@@ -61,6 +71,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
       product_id: sc.product_id, excursion_temp_c: sc.excursion_temp_c,
       duration_min: sc.duration_min, mkt_c: sc.mkt_c,
       packaging: sc.packaging, stage: sc.stage,
+      destination_facility_id: randomDestination(),
     };
     spec.value = { ...PRODUCT_NUM[sc.product_id] };
     nowTime.value = 0;
@@ -68,6 +79,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
   }
 
   /* ---- event input mutations ---- */
+  function setDestination(v) { currentRunId.value = null; current.value.destination_facility_id = v; }
   function setStage(v) { currentRunId.value = null; current.value.stage = v; }
   function setPackaging(v) { currentRunId.value = null; current.value.packaging = v; }
   function setTemp(v) { currentRunId.value = null; current.value.excursion_temp_c = v; }
@@ -89,6 +101,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
     current.value.duration_min = Math.round(Math.random() * 2.5 * spec.value.allowable);
     current.value.mkt_c = Math.round((spec.value.mktThreshold - 4 + Math.random() * 10) * 10) / 10;
     current.value.packaging = Math.random() < 0.15 ? "compromised" : "intact";
+    current.value.destination_facility_id = randomDestination();
     nowTime.value = 0;
     activeId.value = null;
   }
@@ -110,6 +123,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
       mkt_c: ev.mkt_c != null ? ev.mkt_c : base.mktThreshold,
       packaging: ev.packaging || "intact",
       stage: ev.stage || "transit",
+      destination_facility_id: ev.destination_facility_id || randomDestination(),
     };
     spec.value = {
       ...base,
@@ -139,7 +153,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
   return {
     spec, current, nowTime, playing, routeMode, selectedPharm, activeId, currentRunId, auditRows,
     switchProduct, applyScenario, restoreCase,
-    setStage, setPackaging, setTemp, setDur, setMkt,
+    setStage, setPackaging, setTemp, setDur, setMkt, setDestination,
     setAllowable, setMktThreshold, setRetestable, resetCfg, randomize,
     toggleTimeline, stopTimeline, scrubTo,
     setRouteMode, togglePharm, pushAudit,

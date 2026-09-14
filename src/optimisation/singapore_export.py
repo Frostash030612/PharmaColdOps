@@ -2,6 +2,35 @@
 from .models import ReplanResult
 
 
+def sequences_geojson(network: dict, sequences: dict[str, list[int]]) -> dict:
+    """Road geometry for depot→…→depot, from plain per-vehicle node sequences.
+
+    ``routes_geojson`` below draws a freshly solved ``ReplanResult``; this draws
+    what the *live dispatch state* says each vehicle still has to do, so the map
+    shows the operation actually in progress rather than a detached re-solve.
+    """
+    features = []
+    for vehicle_id, node_ids in sorted(sequences.items()):
+        if not node_ids:
+            continue
+        order = (0, *node_ids, 0)
+        coords: list = []
+        for a, b in zip(order, order[1:]):
+            segment = network['leg_geometry'][f'{a}:{b}']
+            if len(segment) < 2:
+                raise ValueError(f'missing road geometry for {a}:{b}')
+            coords.extend(segment if not coords else segment[1:])
+        features.append({
+            'type': 'Feature',
+            'geometry': {'type': 'LineString', 'coordinates': coords},
+            'properties': {'vehicle_id': vehicle_id, 'node_order': list(order)},
+        })
+    return {
+        'type': 'FeatureCollection', 'features': features,
+        'attribution': network.get('provenance', {}).get('attribution', ''),
+    }
+
+
 def routes_geojson(network: dict, result: ReplanResult) -> dict:
     features = []
     for route in result.routes:

@@ -1,9 +1,12 @@
 """Frontend threshold constants must stay in lockstep with the engine's
 ``rules_config.json`` (DAILY_PLAN D 9/12 ③: one source, no drifting copies).
 
-A's 9/11 rules_config v1.0 hand-updated the JS literals in both frontends;
-this test pins that parity so a future threshold change that forgets the
-frontends fails here instead of showing stale numbers in the demo.
+A's 9/11 rules_config v1.0 hand-updated the JS literals; this test pins that
+parity so a future threshold change that forgets the front-end fails here
+instead of showing stale numbers in the demo.
+
+Scope narrowed on 2026-09-12 when the vanilla ``frontend/`` was retired: the
+Vue app is now the only client, so ``products.js`` is the only mirror left.
 """
 from __future__ import annotations
 
@@ -14,8 +17,6 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 CONFIG = REPO / "src" / "rule_engine" / "rules_config.json"
 FRONTENDS = [
-    REPO / "frontend" / "index.html",
-    REPO / "frontend" / "index-zh.html",
     REPO / "frontend-vue" / "src" / "data" / "products.js",
 ]
 

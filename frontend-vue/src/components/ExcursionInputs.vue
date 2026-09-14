@@ -5,7 +5,7 @@
    bind()'s link(); the number box may hold a value outside the slider's range,
    in which case the slider thumb sits at the clamped bound (as the browser does). */
 import { computed } from "vue";
-import { useSandboxStore } from "../stores/sandbox.js";
+import { useSandboxStore, DESTINATIONS } from "../stores/sandbox.js";
 import { useDecisionsStore } from "../stores/decisions.js";
 import {
   PRODUCT_IDS, STAGE_IDS, PACKAGING_IDS, TEMP_RANGE,
@@ -51,6 +51,7 @@ function onMktNum(e) {
 }
 
 /* 🎲 randomize + audit row (the only moment the vanilla page logs a row) */
+function onDestination(e) { sandbox.setDestination(e.target.value); }
 function randomize() {
   sandbox.randomize();
   sandbox.pushAudit(auditRowHtml(sandbox.current, decisions.decisionFor, L.value));
@@ -66,6 +67,14 @@ function randomize() {
       </select>
     </div>
     <div class="ctl">
+      <label>{{ L.center.destination }}</label>
+      <select :value="sandbox.current.destination_facility_id" @change="onDestination">
+        <option v-for="node in DESTINATIONS" :key="node.facility_id" :value="node.facility_id">
+          {{ node.name }}
+        </option>
+      </select>
+    </div>
+    <div>
       <label>{{ L.center.stage }}</label>
       <select :value="sandbox.current.stage" @change="onStage">
         <option v-for="id in STAGE_IDS" :key="id" :value="id">{{ L.stages[id] }}</option>

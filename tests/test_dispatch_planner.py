@@ -103,7 +103,11 @@ def test_dispatch_run_persists_and_advances_idempotently():
     assert delivered.status_code == 200
     assert sum(o["status"] == "delivered" for o in delivered.json()["orders"].values()) == 1
     restored = client.get("/api/dispatch/runs/DSP-1")
-    assert restored.json() == delivered.json()
+    # The persisted operation must survive a reload untouched. `route_view` is
+    # deliberately excluded: once a run has departed it carries the simulated
+    # clock's position, which moves between two calls by design.
+    persistent = lambda body: {k: v for k, v in body.items() if k != "route_view"}
+    assert persistent(restored.json()) == persistent(delivered.json())
 
 
 def test_emergency_preview_compares_spare_vehicle_and_return_to_depot():
