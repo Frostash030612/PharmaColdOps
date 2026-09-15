@@ -269,7 +269,8 @@ function drawVehicles() {
     const track = route.track;
     if (!track || !track.position) return;
     live.add(route.vehicle_id);
-    const leg = registry.get(legKey(route.vehicle_id, track.leg_from, track.leg_to));
+    const key = legKey(route.vehicle_id, track.leg_from, track.leg_to);
+    const leg = registry.get(key);
     const target = pointAlong(leg, track.leg_fraction);
     const latLng = target ? L.latLng(target[1], target[0])
       : L.latLng(track.position[1], track.position[0]);
@@ -284,15 +285,20 @@ function drawVehicles() {
         }),
       }).bindTooltip(route.vehicle_id, { direction: "top" }).addTo(vehicleLayer);
       marker.on("click", () => emit("selectVehicle", route.vehicle_id));
-      entry = { marker, t0: 0, leg: null, fromFraction: 0, toFraction: 0,
-                fromPoint: latLng, toPoint: latLng };
+      entry = { marker, t0: 0, leg: leg, legKey: key, fromFraction: 0,
+                toFraction: track.leg_fraction, fromPoint: latLng, toPoint: latLng };
       markers.set(route.vehicle_id, entry);
     } else {
-      // Animate the leg FRACTION, not the position: same leg → ride its road;
-      // new leg → glide across the join (short, and only once per stop).
+      // Animate the leg FRACTION, not the position: same leg → carry on from
+      // where the marker already is; new leg → glide across the join.
+      // The comparison MUST be by key, not by array identity: every poll brings
+      // freshly parsed arrays, so an identity check is never true and the marker
+      // would be yanked back to the start of its leg once a second.
+      const sameLeg = entry.legKey === key && !!entry.leg;
       entry.fromPoint = entry.marker.getLatLng();
-      entry.fromFraction = entry.leg === leg ? entry.toFraction : 0;
+      entry.fromFraction = sameLeg ? entry.toFraction : 0;
       entry.leg = leg;
+      entry.legKey = key;
       entry.toFraction = track.leg_fraction;
       entry.toPoint = latLng;
       entry.t0 = performance.now();

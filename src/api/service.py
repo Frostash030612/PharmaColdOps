@@ -50,7 +50,8 @@ from optimisation.singapore_export import (  # noqa: E402
     leg_geojson, routes_geojson, sequence_distance_m, sequence_geojson, sequences_geojson,
 )
 from optimisation.tracking import (  # noqa: E402
-    LOADING_MIN, make_clock, schedule_origin, simulated_now, vehicle_track,
+    LOADING_MIN, advance_clock, make_clock, schedule_origin, simulated_now, vehicle_track,
+    watched_now,
 )
 from optimisation.singapore_loader import read_network  # noqa: E402
 from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot  # noqa: E402
@@ -816,7 +817,7 @@ def dispatch_route_view(state, context: dict) -> dict:
             "total_distance": round(total, 2),
         })
     clock = context.get("clock")
-    sim_now = simulated_now(clock) if clock else None
+    sim_now = watched_now(clock) if clock else None
     if sim_now is not None:
         # The schedule runs from the minute the fleet rolled, not from whenever
         # the speed was last changed (see tracking.schedule_origin).
@@ -1120,7 +1121,7 @@ def set_dispatch_speed(dispatch_id: str, speed: float) -> dict:
     clock = context.get("clock")
     if clock is None:
         raise ValueError("the operation has not departed yet")
-    context["clock"] = make_clock(simulated_now(clock), speed,
+    context["clock"] = make_clock(watched_now(clock), speed,
                                   depart_min=schedule_origin(clock))
     update_context(DISPATCH_DATABASE_URL, dispatch_id, context)
     return {"dispatch_id": dispatch_id,
@@ -1145,7 +1146,11 @@ def tick_dispatch(dispatch_id: str) -> dict:
 
     network = read_network()
     node_by_facility = {n["facility_id"]: n["node_id"] for n in network["nodes"]}
-    sim_now = simulated_now(clock)
+    # Charge this tick only for the time somebody was actually watching, so an
+    # operation nobody is looking at waits instead of racing to the end of the
+    # day (tracking.advance_clock).
+    context["clock"] = advance_clock(clock)
+    sim_now = simulated_now(context["clock"])
     base_version = state.version          # several arrivals may land in one tick
     # Re-read progress each pass: delivering one order shifts the next one's
     # place in the queue, so a single pass could only ever land one arrival.
@@ -1170,6 +1175,9 @@ def tick_dispatch(dispatch_id: str) -> dict:
     if state.version != base_version:
         update_run(DISPATCH_DATABASE_URL, dispatch_id, state,
                    expected_version=base_version)
+    # The advanced clock is part of the context: persisting it is what makes the
+    # next tick resume from here rather than from the wall clock.
+    update_context(DISPATCH_DATABASE_URL, dispatch_id, context)
     return {"dispatch_id": dispatch_id,
             "route_view": dispatch_route_view(state, context),
             **state_to_dict(state), **context}

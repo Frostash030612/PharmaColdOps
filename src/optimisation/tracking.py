@@ -69,6 +69,51 @@ def simulated_now(clock: dict, real_now: datetime.datetime | None = None) -> flo
     return clock["sim_start_min"] + elapsed_real_min * clock["speed"]
 
 
+#: How much real time one tick may account for. Polling is once a second, so
+#: this never bites while somebody is watching; it only stops a demo that nobody
+#: is watching from racing through the whole day between two polls.
+MAX_TICK_SECONDS = 30.0
+
+
+def watched_now(clock: dict, real_now: datetime.datetime | None = None) -> float:
+    """Simulated time as anyone can actually observe it.
+
+    The uncapped value is what the wall clock would say, but no tick will ever
+    charge more than :data:`MAX_TICK_SECONDS` of it, so a view that used the
+    uncapped number would briefly show a truck near the end of its route and then
+    snap back when the first tick landed. Capping here keeps the drawn position
+    and the ticked ledger telling the same story.
+    """
+    if not clock:
+        return 0.0
+    ceiling = (clock["sim_start_min"]
+               + MAX_TICK_SECONDS * clock["speed"] / 60.0)
+    return min(simulated_now(clock, real_now), ceiling)
+
+
+def advance_clock(clock: dict, real_now: datetime.datetime | None = None) -> dict:
+    """Move simulated time on by however long was actually watched.
+
+    Simulated time is wall-clock derived, so an operation left alone advances by
+    itself — a demo opened in the morning and looked at in the afternoon is over.
+    Charging each tick at most :data:`MAX_TICK_SECONDS` makes the clock wait for
+    its audience: leaving the page (or the whole app) pauses the day, and coming
+    back resumes from where it was instead of jumping to the end. Speed 0 still
+    means a full freeze.
+    """
+    now = real_now or datetime.datetime.now()
+    started = datetime.datetime.fromisoformat(clock["started_real"])
+    watched = min(max((now - started).total_seconds(), 0.0), MAX_TICK_SECONDS)
+    return {
+        **clock,
+        "sim_start_min": clock["sim_start_min"] + watched * clock["speed"] / 60.0,
+        # Microseconds, not seconds: this anchor is re-read immediately by
+        # ``simulated_now``, and truncating it would add up to a second of
+        # unearned time on every tick (5 simulated minutes at 300x).
+        "started_real": now.isoformat(),
+    }
+
+
 def _leg(network: dict, a: int, b: int) -> tuple[list, float]:
     """Road polyline and free-flow minutes for one depot/facility leg.
 

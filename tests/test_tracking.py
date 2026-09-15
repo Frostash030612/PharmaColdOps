@@ -159,6 +159,24 @@ def test_deliveries_follow_the_schedule_after_a_speed_change(day_plan):
     assert ticked["route_view"]["routes"][0]["stops"][0]["delivered"] is True
 
 
+def test_an_unwatched_operation_does_not_race_through_the_day(day_plan):
+    """Simulated time is charged for what was WATCHED, not for however long the
+    application sat idle.
+
+    Without the cap, two hours away at 300x threw the operation 36,000 simulated
+    minutes forward: a demo opened in the morning and looked at after lunch was
+    simply over, which is what happened to the user.
+    """
+    dispatch_id = day_plan(hospitals=1)
+    service.depart_dispatch(dispatch_id, "go", speed=300.0)
+    _age_clock(dispatch_id, minutes_ago=120)          # two hours of real idleness
+
+    ticked = service.tick_dispatch(dispatch_id)
+
+    # At most MAX_TICK_SECONDS (30 s) is charged: 30 s × 300 / 60 = 150 sim-min.
+    assert 540 < ticked["route_view"]["sim_now_min"] <= 540 + 151
+
+
 def test_speed_zero_freezes_simulated_time_rather_than_the_refresh(day_plan):
     """The transport view's pause has to stop TIME, not just polling.
 
