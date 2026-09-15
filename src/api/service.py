@@ -566,8 +566,35 @@ RESHIPMENT_DISPATCH_PREFIX = "RESHIPMENTS"
 DAILY_PLAN_DISPATCH_PREFIX = "PLAN"
 
 
+def _resolve_daily_seed(seed: int | str | None) -> int | None:
+    """``None`` → the fixed demo set; ``"today"`` → today's date; else the integer.
+
+    ``"today"`` is the offline stand-in for a company's daily delivery feed: the
+    batch is reproducible within the day (so a rehearsal or the report can replay
+    it) and changes by itself tomorrow (so the demo does not show the same numbers
+    forever).  Nothing here reaches out to a real order source — there is none in
+    an offline prototype, and pretending otherwise would be the kind of claim this
+    project's rules forbid.
+    """
+    if seed is None:
+        return None
+    if isinstance(seed, str):
+        text = seed.strip().lower()
+        if text in {"", "none"}:
+            return None
+        if text == "today":
+            return int(datetime.date.today().strftime("%Y%m%d"))
+        try:
+            return int(text)
+        except ValueError as exc:
+            raise ValueError(
+                f"seed must be an integer or 'today', got {seed!r}"
+            ) from exc
+    return int(seed)
+
+
 def daily_plan_request(
-    *, hospitals: int = 4, seed: int | None = None, temperature_zone: str = "chilled"
+    *, hospitals: int = 4, seed: int | str | None = None, temperature_zone: str = "chilled"
 ) -> dict:
     """A simulated order batch plus a ready-to-post planning body.
 
@@ -576,12 +603,13 @@ def daily_plan_request(
     feasibility, and only ``POST /api/dispatch/runs`` creates the operation —
     the sequence doc §4.1 asks for ("操作员看方案 → 确认发车").
     """
+    resolved_seed = _resolve_daily_seed(seed)
     orders, inventory, vehicles = daily_delivery_batch(
-        hospitals=hospitals, seed=seed, temperature_zone=temperature_zone
+        hospitals=hospitals, seed=resolved_seed, temperature_zone=temperature_zone
     )
     return {
         "note": DAILY_PLAN_ASSUMPTIONS,
-        "seed": seed,
+        "seed": resolved_seed,
         "hospitals": hospitals,
         "temperature_zone": temperature_zone,
         # Exactly the body /api/dispatch/plan accepts; /runs additionally needs

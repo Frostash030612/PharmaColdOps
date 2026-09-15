@@ -170,13 +170,16 @@ def get_active_dispatch():
 
 
 @app.get("/api/dispatch/daily-orders")
-def get_daily_orders(hospitals: int = 4, seed: int | None = None,
+def get_daily_orders(hospitals: int = 4, seed: str | None = None,
                      temperature_zone: str = "chilled"):
     """A simulated batch of ordinary hospital orders for today's plan.
 
-    The response is shaped like the body of ``POST /api/dispatch/plan`` (or
-    ``/api/dispatch/runs``), so the client previews it and then confirms it
-    without reshaping anything.  Everything is simulated — see
+    ``seed`` is an integer for a reproducible draw, the literal ``today`` for
+    "the batch belonging to today's date" (reproducible within the day, different
+    tomorrow — the offline stand-in for a daily delivery feed), or omitted for the
+    fixed demo set.  The response is shaped like the body of
+    ``POST /api/dispatch/plan`` (or ``/runs``), so the client previews it and then
+    confirms it without reshaping anything.  Everything is simulated — see
     ``optimisation.daily_orders.ASSUMPTIONS``, which travels in the response.
     """
     try:

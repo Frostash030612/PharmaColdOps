@@ -51,10 +51,13 @@ export default {
   "committed": "\u2713 Resupply added to the operation",
   "fromCase": "from case",
   "loadingRoute": "Calculating this case route…",
-  "dailyPlan": "🎲 Generate today's delivery plan",
+  "dailyPlan": "🎲 Today's batch (by date)",
   "dailyCreating": "Planning…",
   "dailyPreview": "Plan preview",
   "dailyConfirm": "Confirm plan and create the operation",
+  "dailyOneClick": "⚡ Generate and create in one click",
+  "dailyReroll": "🔀 Reroll a random batch",
+  "dailySeed": "seed",
   "dailySimulated": "Simulated data: hospitals and receiving windows come from the committed road network, but the daily demand and fleet are this project's demo assumptions, not hospital orders."
 },
   header: {

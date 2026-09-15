@@ -155,13 +155,16 @@ function clock(minutes) {
          order, so a vehicle served one hospital; a *batch* is what makes the
          multi-stop planner do its job. Simulated, and it says so. -->
     <div v-if="online" class="sg-daily">
-      <button :disabled="dispatch.pending" @click="dispatch.loadDailyPlan()">
+      <button :disabled="dispatch.pending" @click="dispatch.loadDailyPlan('today')">
         {{ dispatch.pending ? text.dailyCreating : text.dailyPlan }}
+      </button>
+      <button :disabled="dispatch.pending" @click="dispatch.oneClickDailyPlan()">
+        {{ text.dailyOneClick }}
       </button>
       <template v-if="dispatch.dailyPreview && dispatch.dailyPreview.zones.length">
         <p class="sg-note">{{ text.dailySimulated }}</p>
         <p class="sg-source">
-          {{ text.dailyPreview }}:
+          {{ text.dailyPreview }}<template v-if="dispatch.dailyBatch && dispatch.dailyBatch.seed != null"> · {{ text.dailySeed }} {{ dispatch.dailyBatch.seed }}</template>:
           <b>{{ dispatch.dailyPreview.zones[0].total_distance.toFixed(2) }}</b> {{ text.km }} ·
           <b>{{ dispatch.dailyPreview.zones[0].routes.length }}</b> {{ text.vehicles }} ·
           {{ dispatch.dailyPreview.zones[0].served_facilities }}/{{ dispatch.dailyPreview.zones[0].target_facilities }} {{ text.served }}
@@ -174,6 +177,9 @@ function clock(minutes) {
         </ul>
         <button :disabled="dispatch.pending" @click="dispatch.confirmDailyPlan()">
           {{ text.dailyConfirm }}
+        </button>
+        <button :disabled="dispatch.pending" @click="dispatch.rerollDailyPlan()">
+          {{ text.dailyReroll }}
         </button>
       </template>
       <p v-if="dispatch.dailyError" class="sg-error" role="status">{{ dispatch.dailyError }}</p>

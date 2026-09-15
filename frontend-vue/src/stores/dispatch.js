@@ -113,8 +113,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     }
   }
 
-  async function confirmDailyPlan() {
-    if (!ready() || !dailyBatch.value) return null;
+  async function confirmDailyPlan() {    if (!ready() || !dailyBatch.value) return null;
     const dispatchId = `PLAN-${Math.floor(Date.now() / 1000)}`;
     pending.value = true;
     dailyError.value = "";
@@ -158,10 +157,27 @@ export const useDispatchStore = defineStore("dispatch", () => {
     vehicle_id: vehicleId, command_id: `deliver-${vehicleId}-${Date.now()}`,
   });
 
+  /* Testing/demo shortcut: one press = batch on screen AND an operation created.
+     Kept next to the two-step path rather than replacing it, because the demo
+     wants to *show* the plan before committing (doc §4.1) while a test run wants
+     data immediately. */
+  async function oneClickDailyPlan(seed = "today") {
+    const batch = await loadDailyPlan(seed);
+    if (!batch) return null;
+    return confirmDailyPlan();
+  }
+
+  /* A different batch from the same generator, for eyeballing several days'
+     worth quickly. Random seed only — replay it by passing the printed seed. */
+  function rerollDailyPlan() {
+    return loadDailyPlan(Math.floor(Math.random() * 1_000_000_000));
+  }
+
   return {
     run, pending, error, live, orders, vehicles, stock,
     refresh, commitReshipment, depart, deliverNext, setSpeed,
     tick, watchClock, stopClock,
-    dailyBatch, dailyPreview, dailyError, loadDailyPlan, confirmDailyPlan,
+    dailyBatch, dailyPreview, dailyError,
+    loadDailyPlan, confirmDailyPlan, oneClickDailyPlan, rerollDailyPlan,
   };
 });

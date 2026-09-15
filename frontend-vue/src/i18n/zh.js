@@ -50,10 +50,13 @@ export default {
   "committed": "✓ 本次补发已纳入配送作业",
   "fromCase": "来自案例",
   "loadingRoute": "正在计算当前案例路线…",
-  "dailyPlan": "🎲 生成今日配送计划",
+  "dailyPlan": "🎲 生成今日批次（按日期）",
   "dailyCreating": "正在排线…",
   "dailyPreview": "排线预览",
   "dailyConfirm": "确认该计划并建立配送作业",
+  "dailyOneClick": "⚡ 一键生成并建作业",
+  "dailyReroll": "🔀 换随机一批",
+  "dailySeed": "种子",
   "dailySimulated": "模拟数据：医院与收货窗口来自已入库路网，但每日需求量与车队是本项目的演示假设，不是医院真实订单。"
 },
   header: {

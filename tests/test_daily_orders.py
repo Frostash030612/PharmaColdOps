@@ -14,6 +14,7 @@ otherwise an operator could build a plan and the panel would keep saying
 """
 from __future__ import annotations
 
+import datetime
 import sqlite3
 
 import pytest
@@ -149,6 +150,22 @@ def test_a_daily_plan_is_visible_to_the_active_endpoint():
     assert active.json()["dispatch_id"] == "PLAN-1"
     # and it carries what the map needs
     assert active.json()["route_view"]["routes"]
+
+
+def test_seed_today_resolves_to_the_date_and_stays_stable():
+    """``today`` is the offline stand-in for a daily delivery feed."""
+    first = client.get("/api/dispatch/daily-orders?seed=today")
+    assert first.status_code == 200
+    body = first.json()
+    assert body["seed"] == int(datetime.date.today().strftime("%Y%m%d"))
+    again = client.get("/api/dispatch/daily-orders?seed=today").json()
+    assert [order["order_id"] for order in again["plan"]["orders"]] == [
+        order["order_id"] for order in body["plan"]["orders"]
+    ]
+
+
+def test_unknown_seed_text_is_rejected():
+    assert client.get("/api/dispatch/daily-orders?seed=soon").status_code == 422
 
 
 def test_active_is_404_before_anything_exists():
