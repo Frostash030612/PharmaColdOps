@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-09-15 — 本地路网扩至 15 节点（1 仓库 + 14 接收点）：补 SGH/IMH、去 NHCS、加 3 家私立
+
+**起因**：核对「新加坡还有哪些医院节点可以加」。用仓库自己引用的权威来源 [SGDI 的 MOH 医院目录](https://www.sgdi.gov.sg/other-organisations/hospitals)（列 11 家）对照，发现网络只覆盖其中 **9** 家，缺 **Singapore General Hospital** 与 **Institute of Mental Health**；而 `M5_singapore_network_plan.md` 自定的规模是「depot + 10~15」，当时 10 家还有名额。
+
+- **SGH 取代 NHCS**：SGH 在 SGDI 名单上，NHCS 是专科中心、不在该名单（两者同在 Outram 院区，实测相距约 107 m，同时保留会出现两个几乎重合的停靠点）。⚠️ 但这**推翻了首版一个有记录的决定**——`singapore_network_assumptions.md` 原写「SGH 名称查询返回同名行政区域，故改选园区内的 NHCS」。复核后仍决定用 SGH：不带 `dedupe` 的查询显示 SGH 医院实体坐标与那个同名分区一致、距 NHCS 约 107 m，且 snap 偏移 110 m 落在既有范围内。实现上**不放松全局校验**：建网脚本默认仍要求 `type=hospital` + 名称匹配，只为该节点在 `facilities.json` 显式写 `geocoder_accept: ["hospital","administrative"]`，理由随节点 `note` 进入 `network.json`；**代价已记录**——该节点 `geocoder_type` 是 `administrative`，属已知例外。
+- **新增 IMH（按院区命名）**：OSM 里「Institute of Mental Health」这个名称只落在一个出租车站（`type=taxi`），医院本体映射为 Buangkok Green Medical Park（`type=hospital`）；IMH 地址就在该院区，故节点取院区实体并记录原因。
+- **Woodlands 必须改名（否则重建必失败）**：OSM 数据自 9/10 起变化，`Woodlands Health, Singapore` 的首条结果已变成「Woodlands Health Campus」公交站（`type=bus_stop`）——**即使什么都不改，重建也会报错**。改用 SGDI 官方名 `Woodlands Hospital`（`type=hospital`、名称匹配）。
+- **新增 3 家私立医院**：Mount Elizabeth、Mount Alvernia、Parkway East。选点按「地理覆盖有无空白 + 地理编码是否干净」筛；**否决** Mount Elizabeth Novena（距 TTSH 283 m）、Thomson Medical（732 m）、Farrer Park（835 m）——太近只是同一片区域多点；Gleneagles 的查询落在 Napier Road 一个出租车站，按原则不用。**来源强度弱于公立**：私立不在政府目录里，`source_url` 用各自官网（Mount Alvernia 的域名取自 OSM 该医院的 `website` 标签 `mtalvernia.sg`），官网对自动化抓取返回 403，故只在域名层面核实存在、未取得正文。
+- **重建**：先装 `osmnx`（连带 geopandas/shapely/pyogrio/pyproj；`requirements.txt` 早已声明但 `.venv` 一直没装——此前 pip 卡死的原因是**沙箱拒绝其临时解包目录**，不是网络），再下 BBBike 的 74 MB OSM 抽取，按原口径重跑 `build_singapore_network.py`。新路由核心 **23,825 节点 / 45,586 边**（原 23,815 / 45,557，OSM 数据自然演进）。
+- **产物**：`network.json` 由 11 节点 / 11×11 / 110 条几何变为 **15 节点 / 15×15 / 210 条**；snap 偏移 45.0–295.1 m（原 61.9–295.1）；矩阵全部有限、对角为 0。**15 节点算例仍可行且对比更明显**：贪心 3 车 / 205.47 km，OR-Tools（10s）3 车 / **176.86 km**（14/14 全服务、0 违规）。
+- **同步改到的地方**（节点数在多处写死）：`tests/test_kg_edges.py` 的 `assert len(edges) == 55` → **105**；`docs/singapore_network_assumptions.md`（设施清单、选点理由、SGH／Woodlands／IMH 三处说明、矩阵与偏移数字）；`docs/C_配送模块.md` §2；`docs/M5_singapore_handover.md`；`docs/M5_singapore_network_plan.md`；`build_graph.py` 两处 docstring；`frontend-vue/src/data/singaporeRoutes.json` 重新导出（它钉住 `network_sha256`，不同步会让前端数据与路网脱钩）。**提案 EN/ZH 的数据表**也随之改了，故 `proposal/README.md` 的「提交件与源稿差异」表**新增第 11 组**（提交件写 11 facilities，源稿现为 15）——终稿阶段要一并处理。
+- 知识图谱随之重建：**Facility 15、CONNECTS 105**（其余计数不变）；`network.json` 不在 `PROVENANCE.md` 指纹表内，无需更新指纹。
+- **回归修复（全量 pytest 抓出来的）**：`tests/test_dynamic_problem.py` 有 4 个用例把补发目的地写死为 `H-NHCS`，节点删掉后 `preview_emergency_order` 抛 `unknown destination`——即**删节点会打穿下游**。改为 `H-SGH`（同院区、语义不变）。前端补发目的地下拉框用的是 `DESTINATIONS = singaporeRoutes.nodes.filter(role==='customer')`，随重新导出的数据源自动从 10 家变 **14 家**，无需改动。
+
+---
+
 ## 2026-09-14 — 今日配送计划（§4.1 第一层）落地：批量订单 → 一车串多站
 
 - **起因**：核实「路线能不能自动经过多家医院」时发现——**引擎会、应用不会**。`plan_delivery_orders()` 本来就会一车串多站（实测 4 单 1 车 → `3→4→5→2`，75.19 km），但 `service.route_reshipment()` 每次只规划**一张**单（`plan_delivery_orders((order,), …)`，`service.py:762`），而且前端**从未调用过** `/api/dispatch/plan` 与建单的 `/api/dispatch/runs`（grep 零命中）。于是运行时每辆车只去一家医院，多站排线**从未被触发过**——这也是一单一车导致「三算法解相同」的根源（`docs/C_配送模块.md` §3.2）。

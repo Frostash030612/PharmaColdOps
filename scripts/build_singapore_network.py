@@ -115,8 +115,21 @@ def main():
         lat, lon = float(match['lat']), float(match['lon'])
         expected_name = facility['name'].lower().replace('’', "'")
         matched_name = str(match['display_name']).split(',')[0].lower().replace('’', "'")
-        if facility['role'] == 'customer' and (match['type'] != 'hospital' or expected_name not in matched_name):
-            raise ValueError(f'Expected hospital, got {match["type"]}: {match["display_name"]}')
+        # A customer must geocode to a hospital AND the matched name must start
+        # with the facility name.  A node may widen the accepted types explicitly
+        # via ``geocoder_accept`` for cases like Singapore General Hospital,
+        # where OSM's hospital entity is outranked by a same-named subzone under
+        # the ``dedupe=0`` protocol OSMnx uses (see the H-SGH note in
+        # facilities.json).  The default stays strict on purpose: a wrong POI
+        # (the taxi stand that answers to "Institute of Mental Health", the bus
+        # stop at "Woodlands Health Campus") must still fail loudly.
+        accepted_types = set(facility.get('geocoder_accept', ['hospital']))
+        if facility['role'] == 'customer' and (
+            match['type'] not in accepted_types or expected_name not in matched_name
+        ):
+            raise ValueError(
+                f'Expected {sorted(accepted_types)}, got {match["type"]}: {match["display_name"]}'
+            )
         if not (1.1 <= lat <= 1.5 and 103.5 <= lon <= 104.2):
             raise ValueError(f'Geocoder result outside Singapore: {facility["name"]}')
         # Projected nearest_nodes uses scipy KDTree, not optional scikit-learn.

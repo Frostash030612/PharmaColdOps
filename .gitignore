@@ -42,3 +42,10 @@ Thumbs.db
 # Node / Vite (frontend-vue) — dependency & build output stay out of git
 frontend-vue/node_modules/
 frontend-vue/dist/
+
+# Tool scratch dirs (all regenerable, none is a deliverable)
+.pytest_cache/
+.pytest_tmp/
+.pytmp/
+# OSMnx/Nominatim geocoder response cache written by the road-network build
+cache/

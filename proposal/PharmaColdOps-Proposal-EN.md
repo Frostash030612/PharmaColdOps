@@ -182,7 +182,7 @@ Cross-member contracts must fix the association among run_id, order_id, product,
 | [Electric Sheep Africa vaccine-cold-chain](https://huggingface.co/datasets/electricsheepafrica/vaccine-cold-chain) | 3 × 10,000 × 46; facility-month | Candidate causes | Simulation; CC BY 4.0 |
 | [Africa Synth Immunization](https://huggingface.co/datasets/electricsheepafrica/africa-synth-immunization-vaccine-quality-cold-chain-all) | Approximately 30,000 rows | Optional quality-risk supplement | Synthetic; CC BY 4.0 |
 | [Solomon / CVRPLIB](http://vrp.atd-lab.inf.puc-rio.br/index.php/en/) | Six committed instances | Standard VRPTW comparison | Abstract benchmark, preserve attribution |
-| [OpenStreetMap](https://www.openstreetmap.org/copyright) Singapore | 11 facilities, 11×11 matrices, 110 directed paths | Local routing case | Real roads, simulated operations; ODbL |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) Singapore | 15 facilities, 15×15 matrices, 210 directed paths | Local routing case | Real roads, simulated operations; ODbL |
 | Authored scenarios and human gold | 57 cases, four dispositions | Rule evaluation | Synthetic scenarios, independent annotation and arbitration |
 
 Licence verification is recorded in the [data dictionary](../data/ml/DATA_DICTIONARY.md). Preserve Electric Sheep Africa attribution and licence information and the applicable OSM attribution. Other small-sample or cybersecurity datasets are not core benchmarks.

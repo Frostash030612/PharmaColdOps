@@ -1,6 +1,6 @@
 # M5 新加坡配送网络接入方案 —— 执行说明（写给负责实现的 AI）
 
-> **状态：已执行完毕（2026-09-13 标注）**。本方案当年是写给实现者的一次性作业单，**其中的内容现已全部落地**：`data/optimisation/singapore/{facilities.json,network.json}` 已入库（1 depot + 10 家公立医院、11×11 真实有向 OSM 矩阵）、`osm_extract.py` / `singapore_loader.py` / `singapore_export.py` 已在 `src/optimisation/`。**下面 §0.1 的「未提交改动清单」是 9/10 的历史快照，那批代码早已按本文建议拆成多个 commit 提交**——不要照它再提交一遍。留档价值：几何/矩阵构建口径与来源说明（报告要引）。
+> **状态：已执行完毕（2026-09-13 标注）**。本方案当年是写给实现者的一次性作业单，**其中的内容现已全部落地**：`data/optimisation/singapore/{facilities.json,network.json}` 已入库（**2026-09-15 由 1 depot + 10 家公立医院扩至 1 depot + 14 个接收点：11 公立 + 3 私立，15×15 真实有向 OSM 矩阵**）、`osm_extract.py` / `singapore_loader.py` / `singapore_export.py` 已在 `src/optimisation/`。**下面 §0.1 的「未提交改动清单」是 9/10 的历史快照，那批代码早已按本文建议拆成多个 commit 提交**——不要照它再提交一遍。留档价值：几何/矩阵构建口径与来源说明（报告要引）。
 >
 > 目的：把这份文档喂给另一个能操作这个代码仓库的 AI（或工程师），它不需要再问 Mia 任何背景问题，照着做就能把"新加坡真实路网"接入现有 VRPTW 求解器。
 > 仓库：`https://github.com/Frostash030612/PharmaColdOps`（本地路径示例：`/Users/wang/Desktop/PharmaColdOps`，以实际 clone 路径为准）。

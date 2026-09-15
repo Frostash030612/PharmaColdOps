@@ -18,9 +18,10 @@ Sources, per docs/ARCHITECTURE.md M6:
   (decision recorded in docs/ARCHITECTURE.md §6, 2026-09-11).
 - facilities           : C's Singapore routing table (M5) —
   ``data/optimisation/singapore/network.json`` node list (1 cold-chain depot
-  + 10 public hospitals), loaded verbatim with geocoded coordinates,
+  + 14 receiving sites: 11 public hospital sites and 3 private hospitals),
+  loaded verbatim with geocoded coordinates,
   addresses and per-node ``source_url``; ``type`` is derived from C's
-  ``role`` (v1 customers are all public hospitals). The same file's 11×11
+  ``role``. The same file's 15×15
   OSMnx shortest-path matrix becomes undirected ``CONNECTS`` edges
   (distance/duration + real route geometry per pair) for the frontend to
   draw.
@@ -375,7 +376,7 @@ def load_real_shipments(driver) -> None:
 def load_facility_links(driver) -> None:
     """Facility ↔ Facility road links from C's Singapore network (M5).
 
-    The 11×11 OSMnx shortest-path matrix in ``network.json`` becomes
+    The 15×15 OSMnx shortest-path matrix in ``network.json`` becomes
     undirected ``CONNECTS`` edges (``distance_m`` / ``duration_s``) — every
     pair also carries its real route geometry (``geometry`` as a
     JSON-encoded string of ``[lon, lat]`` GeoJSON-order coordinate pairs —

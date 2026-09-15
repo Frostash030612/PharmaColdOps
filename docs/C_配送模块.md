@@ -68,7 +68,7 @@ pytest -q            # 全量回归
 | 静态求解 | 贪心（最近邻+时间窗插入）、OR-Tools Routing | `greedy.py` / `ortools_solver.py` |
 | **GA（2026-09-14 新增）** | 遗传算法：客户排列编码 + 顺序交叉 + 短程变异 + **最优 split 解码**（DP），输出同一个 `ReplanResult` | `ga_solver.py` |
 | **多站环线规划** | 按订单排线，**一辆车串多站**（实测 4 医院 1 车 → 75.19 km 环线） | `dispatch_planner.plan_delivery_orders()` |
-| 真实路网 | 新加坡 1 仓库 + 10 医院，11×11 距离/时间矩阵 + 110 条道路几何 | `data/optimisation/singapore/network.json` |
+| 真实路网 | 新加坡 1 仓库 + 14 个接收点（11 公立医院站点 + 3 私立），15×15 距离/时间矩阵 + 210 条道路几何（2026-09-15 由 11 节点扩至 15） | `data/optimisation/singapore/network.json` |
 | 业务模型 | 订单 / 库存批次 / 车辆能力（温层、容量、起点、状态） | `dispatch_models.py` |
 | **今日配送计划（2026-09-14 新增）** | 一批日常订单 → 一车串多站环线 → 操作员预览 → 确认建作业；订单来源＝固定演示集或 `?seed=` 随机 | `daily_orders.py` + `GET /api/dispatch/daily-orders`，界面在 `ReroutePanel.vue` |
 | 状态机 | 接单→发车→逐站送达→完成，命令幂等、frozen dataclass | `dispatch_state.py` |

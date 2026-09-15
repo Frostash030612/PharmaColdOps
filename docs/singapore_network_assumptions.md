@@ -15,17 +15,36 @@ OR-Tools 实现是 **Routing Solver + Guided Local Search**，不是 CP-SAT，�
 ## 真实位置与模拟业务
 
 首版 `facilities.json` 为 1 仓库 + 10 医院，符合 DAILY_PLAN 9/23 的起步规模；20–50 节点是后续扩展目标。
+**2026-09-15 扩展为 1 仓库 + 14 个接收点**（11 个公立医院站点 + 3 家私立医院），仍在 `M5_singapore_network_plan.md` 自定的「depot + 10~15」规模内。
 
 - 演示仓库：Kuehne+Nagel Singapore Logistics Hub，10 Pioneer Crescent。
   [官方地址](https://home.kuehne-nagel.com/locations?query=singapore%2F1000)；
   [官方冷藏设施说明](https://www.kuehne-nagel.com/sg/services/warehousing/singapore-logistics-hub)。
-- 医院：NHCS、NUH、KKH、TTSH、CGH、SKH、NTFGH、Alexandra、KTPH、Woodlands Health。
-  [政府医院目录](https://www.sgdi.gov.sg/other-organisations/hospitals)。
-- SGH 名称查询实际返回同名行政区域，首版改选 SGH 园区内的 NHCS，地址以[官方页面](https://www.nhcs.com.sg/patient-services/contact-us)为准；不会把错误地理编码当成医院。
+- 公立医院站点（11）：SGH、NUH、KKH、TTSH、CGH、SKH、NTFGH、Alexandra、KTPH、Woodlands Hospital、Buangkok Green Medical Park。
+  前 9 家的来源为[政府医院目录](https://www.sgdi.gov.sg/other-organisations/hospitals)；SGH 与 Woodlands Hospital 用该目录各自的条目
+  （[sgh](https://www.sgdi.gov.sg/ministries/moh/others/sgh)、[wh](https://www.sgdi.gov.sg/ministries/moh/others/wh)）。
+- 私立医院（3）：Mount Elizabeth Hospital、Mount Alvernia Hospital、Parkway East Hospital。
+  **来源强度弱于公立**：不在政府目录里，`source_url` 用各自官网（Mount Alvernia 的域名取自 OSM 该医院的 `website` 标签 `mtalvernia.sg`）；
+  官网对自动化抓取返回 403，故只在**域名层面**核实存在，未取得正文核实。加入理由见下一条。
+- **选点理由（2026-09-15）**：先按「地理覆盖是否有空白」筛，再按地理编码是否干净决定。实测（Nominatim）：
+  Parkway East 距最近节点约 5.3 km（Marine Parade 一带原本没有节点）✔；Mount Alvernia 约 2.5 km、Mount Elizabeth 约 1.4 km ✔。
+  被**否决**的私立候选：Mount Elizabeth Novena（距 TTSH 仅 283 m）、Thomson Medical Centre（距 TTSH 732 m）、Farrer Park（距 KKH 835 m）——
+  都太近，加进去只是同一片区域多几个点；Gleneagles 的查询结果落在 Napier Road 的一个出租车站（`geocoder type=taxi`），按下面的原则不用。
+- **SGH 的决定被复核并改写（2026-09-15）**：首版记录「SGH 名称查询返回同名行政区域，故改选园区内的 NHCS」。复核后改为**直接用 SGH**，理由：
+  ① SGH 在 SGDI 的 MOH 医院名单上，而 NHCS 是专科中心、不在该名单，用它代表 Outram 院区在口径上更站得住；
+  ② 用不带 `dedupe` 的查询交叉核对，SGH 的医院实体坐标为 (1.27945, 103.83627)，与那个同名分区一致，且距 NHCS 仅约 107 m——
+  即两者是同一个院区，不会把点位放到别处；③ 该节点的 snap 偏移 110 m，落在全表 45–295 m 的既有范围内。
+  实现上**不放松全局校验**：建网脚本仍要求 customer 必须命中 `type=hospital` 且名称匹配，只在 `facilities.json` 里为这一个节点显式写
+  `geocoder_accept: ["hospital","administrative"]`，原因与坐标核对过程随该节点的 `note` 一并进入 `network.json`。
+  ⚠️ 代价要说清：该节点的 `geocoder_type` 在入库文件里是 `administrative` 而不是 `hospital`，是**已知且有记录**的例外。
+- 同理，**Woodlands 节点改名**：原名 Woodlands Health 现在的首条查询结果是「Woodlands Health Campus」公交站（`type=bus_stop`），
+  建网校验会拒绝；改用 SGDI 的官方名称 Woodlands Hospital（`type=hospital`、名称匹配）。
+- 同理，**IMH 节点按院区命名**：OSM 里「Institute of Mental Health」这个名称只落在一个出租车站上（`type=taxi`），医院本体映射为
+  Buangkok Green Medical Park（`type=hospital`）；IMH 的地址就在该院区（10 Buangkok View），故节点取院区实体并在此记录。
 - 设施经纬度由 Nominatim 实际查询产生，保留查询串；映射至可互相到达的主路网最近节点，并记录偏移距离。
   偏移超过 1000 米即停止。点位代表设施附近道路，不等同已核验的货运入口。
-- **模拟假设**：3 辆车，每辆容量 200 配送单位；每家医院需求 30 单位；客户服务窗口 09:00–17:00，服务 15 分钟；仓库 08:00–18:00。
-  单位不宣称为实际疫苗剂数。选择这些设施不意味着其有真实业务关系、库存或发运记录。
+- **模拟假设**：3 辆车，每辆容量 200 配送单位；每个接收点需求 30 单位；客户服务窗口 09:00–17:00，服务 15 分钟；仓库 08:00–18:00。
+  单位不宣称为实际疫苗剂数。选择这些设施（含私立医院）不意味着其有真实业务关系、库存或发运记录。
 
 ## 道路与时间含义
 
@@ -38,7 +57,7 @@ OSMnx 以道路 maxspeed/同类道路速度估计缺失速度，最终兜底 30 
 不可达路径直接报错，禁止无穷值、NaN 或虚构直线距离替代。
 
 原始图与 HTTP 缓存保存在 `data/processed/singapore_cache/`，不入 Git。
-已生成并随代码提交的 `network.json` 保存 11×11 矩阵、设施、110 条有向设施间道路折线及来源元信息，支持全离线求解和导出。
+已生成并随代码提交的 `network.json` 保存 15×15 矩阵、设施、210 条有向设施间道路折线及来源元信息，支持全离线求解和导出。
 `provenance` 记录 OSMnx 版本、建图日期、图规模、源文件与设施配置 SHA256、速度假设。
 实际源文件 SHA256：`41350c08ebb8c777213d904e56ae32643ec005ff7750c36b852db047ddd3f84c`；
 发布方 MD5 `93c87c18dc5f07d3618fe5df6bbc64eb` 已核对匹配。源发布页显示 XML 文件更新于 2026-09-06。
@@ -88,7 +107,7 @@ GeoJSON 使用 `[longitude, latitude]`，设施表使用 `lat` / `lon`，D 的 `
 
 - **82 passed，0 skipped**，包括真实网络集成以及 6 个 Solomon 贪心实例回归。
 - 可往返路网：23,815 个节点、45,557 条有向边；筛选前最大弱连通图为 24,270 节点、46,187 边。
-- 11 个设施全部可达；匹配道路节点的偏移距离 61.9–295.1 米。矩阵全部有限，55 对设施的正反向距离均不同。
+- 15 个设施全部可达；匹配道路节点的偏移距离 45.0–295.1 米。矩阵全部有限，105 对设施的正反向距离均不同。
 - 已实跑 `export_singapore_routes.py --time-limit 10`，生成两份道路 GeoJSON 与两份完整排程 JSON。
 
 | 算法 | 车辆 | 服务客户 | 总距离 km | 合计路线时长 min | 违规/未服务 |

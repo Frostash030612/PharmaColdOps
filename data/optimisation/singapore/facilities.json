@@ -3,7 +3,7 @@
   "instance": "SINGAPORE_DEMO",
   "vehicle_nr": 3,
   "capacity": 200,
-  "assumptions": "Demonstration only: depot assignment, 3 vehicles, capacity 200 units, each hospital demand 30 units, 09:00–17:00 service windows, 15-minute service, depot 08:00–18:00. No commercial relationship or actual shipment data implied.",
+  "assumptions": "Demonstration only: depot assignment, 3 vehicles, capacity 200 units, each receiving site demand 30 units, 09:00–17:00 service windows, 15-minute service, depot 08:00–18:00. Receiving sites are 11 public hospital sites and 3 private hospitals; the demand, fleet and windows are project assumptions, not orders from these institutions. No commercial relationship or actual shipment data implied.",
   "nodes": [
     {
       "facility_id": "W-KN-PIONEER",
@@ -17,15 +17,17 @@
       "service_min": 0
     },
     {
-      "facility_id": "H-NHCS",
-      "name": "National Heart Centre Singapore",
-      "query": "National Heart Centre Singapore, 5 Hospital Drive, Singapore",
+      "facility_id": "H-SGH",
+      "name": "Singapore General Hospital",
+      "query": "Singapore General Hospital, Singapore",
       "role": "customer",
-      "source_url": "https://www.nhcs.com.sg/patient-services/contact-us",
+      "source_url": "https://www.sgdi.gov.sg/ministries/moh/others/sgh",
       "demand": 30,
       "earliest_min": 540,
       "latest_min": 1020,
-      "service_min": 15
+      "service_min": 15,
+      "geocoder_accept": ["hospital", "administrative"],
+      "note": "2026-09-15 取代 National Heart Centre Singapore：SGH 在 SGDI 的 MOH 医院名单上（NHCS 是专科中心、不在该名单），且两者同在 Outram 院区、实测相距仅约 107 m，同时保留会让地图上出现两个几乎重合的停靠点。⚠️ 该节点需要 geocoder_accept 例外：OSMnx 的 geocoder 用 dedupe=0 时，「Singapore General Hospital」的首条结果是同名分区（type=administrative，即医院所在分区），换过 Outram Road / Hospital Drive / Block 1 等多种说法均无法拿到 type=hospital 的医院实体（Hospital Drive 那条返回的是 NHCS）。另用不带 dedupe 的查询交叉核对，医院实体坐标 (1.27945, 103.83627) 与分区一致、距 NHCS 约 107 m，故位置可信。"
     },
     {
       "facility_id": "H-NUH",
@@ -117,14 +119,63 @@
     },
     {
       "facility_id": "H-WH",
-      "name": "Woodlands Health",
-      "query": "Woodlands Health, Singapore",
+      "name": "Woodlands Hospital",
+      "query": "Woodlands Hospital, Singapore",
       "role": "customer",
-      "source_url": "https://www.sgdi.gov.sg/other-organisations/hospitals",
+      "source_url": "https://www.sgdi.gov.sg/ministries/moh/others/wh",
       "demand": 30,
       "earliest_min": 540,
       "latest_min": 1020,
-      "service_min": 15
+      "service_min": 15,
+      "note": "2026-09-15 改名与改查询式：原为「Woodlands Health / Woodlands Health, Singapore」，但 OSM 现在把该名称的首条结果给了「Woodlands Health Campus」公交站（geocoder type=bus_stop），建网脚本的医院类型校验会拒绝；改用 SGDI 的官方名称 Woodlands Hospital，地理编码返回 type=hospital 且名称匹配。"
+    },
+    {
+      "facility_id": "H-BGMP",
+      "name": "Buangkok Green Medical Park",
+      "query": "Buangkok Green Medical Park, Singapore",
+      "role": "customer",
+      "source_url": "https://www.sgdi.gov.sg/ministries/moh/others/imh",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15,
+      "note": "节点指向 Institute of Mental Health（IMH）所在院区：IMH 的地址是 10 Buangkok View, Buangkok Green Medical Park，而 OSM 里「Institute of Mental Health」这个名称只落在院区的一个出租车站上（geocoder type=taxi），医院本体映射为院区实体（type=hospital）。建网脚本会拒绝非 hospital 的地理编码结果，故按实体命名并在此记录原因。"
+    },
+    {
+      "facility_id": "H-PEH",
+      "name": "Parkway East Hospital",
+      "query": "Parkway East Hospital, Singapore",
+      "role": "customer",
+      "source_url": "https://www.parkwayeast.com.sg/",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15,
+      "note": "私立医院。来源为官网（域名已核实存在；官网对自动化抓取返回 403，未取得正文核实，与公立医院引 SGDI 条目的核实强度不同）。加入理由：Marine Parade 一带距最近的现有节点约 5.3 km，是本次补充中唯一显著扩大地理覆盖的站点。"
+    },
+    {
+      "facility_id": "H-MEH",
+      "name": "Mount Elizabeth Hospital",
+      "query": "Mount Elizabeth Hospital, Singapore",
+      "role": "customer",
+      "source_url": "https://www.mountelizabeth.com.sg/",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15,
+      "note": "私立医院。来源为官网（域名已核实存在；官网对自动化抓取返回 403，未取得正文核实）。加入理由：Orchard 一带有现有节点覆盖空白，实测距最近节点约 1.4 km。"
+    },
+    {
+      "facility_id": "H-MAH",
+      "name": "Mount Alvernia Hospital",
+      "query": "Mount Alvernia Hospital, Thomson Road, Singapore",
+      "role": "customer",
+      "source_url": "https://mtalvernia.sg/",
+      "demand": 30,
+      "earliest_min": 540,
+      "latest_min": 1020,
+      "service_min": 15,
+      "note": "私立医院。官网域名取自 OSM 该医院的 website 标签（mtalvernia.sg）；先前手工猜测的两个域名均不存在。加入理由：Thomson/Braddell 一带距最近节点约 2.5 km，且地理编码 type=hospital、匹配干净。"
     }
   ]
 }

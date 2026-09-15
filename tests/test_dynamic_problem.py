@@ -61,7 +61,7 @@ def test_in_transit_vehicle_without_free_capacity_is_not_a_candidate():
     context = _context([onboard])
     # Vehicle's rated capacity (40) alone would fit this order (20), but only
     # 10 units are actually free (40 - 30 already on board).
-    emergency = DeliveryOrder("URG-1", "vaccine_2_8", "H-NHCS", 20, 540, 1200, "chilled")
+    emergency = DeliveryOrder("URG-1", "vaccine_2_8", "H-SGH", 20, 540, 1200, "chilled")
 
     result = preview_emergency_order(state, context, emergency, current_time_min=600)
 
@@ -73,7 +73,7 @@ def test_in_transit_vehicle_with_enough_free_capacity_is_offered():
     onboard = DeliveryOrder("DO-1", "vaccine_2_8", "H-CGH", 10, 540, 1200, "chilled")
     state = _state(onboard, onboard_quantity=10)
     context = _context([onboard])
-    emergency = DeliveryOrder("URG-1", "vaccine_2_8", "H-NHCS", 20, 540, 1200, "chilled")
+    emergency = DeliveryOrder("URG-1", "vaccine_2_8", "H-SGH", 20, 540, 1200, "chilled")
 
     result = preview_emergency_order(state, context, emergency, current_time_min=600)
 
@@ -89,7 +89,7 @@ def test_detour_that_makes_a_remaining_order_late_is_not_on_time():
     onboard = DeliveryOrder("DO-1", "vaccine_2_8", "H-CGH", 5, 540, latest_min, "chilled")
     state = _state(onboard, onboard_quantity=5)
     context = _context([onboard])
-    emergency = DeliveryOrder("URG-1", "vaccine_2_8", "H-NHCS", 5, 540, 1200, "chilled")
+    emergency = DeliveryOrder("URG-1", "vaccine_2_8", "H-SGH", 5, 540, 1200, "chilled")
 
     result = preview_emergency_order(state, context, emergency, current_time_min=600)
 
@@ -104,7 +104,7 @@ def test_already_late_remaining_order_is_not_blamed_on_the_detour():
     onboard = DeliveryOrder("DO-1", "vaccine_2_8", "H-CGH", 5, 540, 601, "chilled")
     state = _state(onboard, onboard_quantity=5)
     context = _context([onboard])
-    emergency = DeliveryOrder("URG-1", "vaccine_2_8", "H-NHCS", 5, 540, 1200, "chilled")
+    emergency = DeliveryOrder("URG-1", "vaccine_2_8", "H-SGH", 5, 540, 1200, "chilled")
 
     # H-NUH -> H-CGH alone already takes well past minute 601.
     result = preview_emergency_order(state, context, emergency, current_time_min=600)

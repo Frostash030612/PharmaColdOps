@@ -184,7 +184,7 @@ Python 已有按 run_id 查询处置理由、审计链、产品要求及统计�
 | [Electric Sheep Africa vaccine-cold-chain](https://huggingface.co/datasets/electricsheepafrica/vaccine-cold-chain) | 3 × 10,000 × 46；设施月度 | 候选原因分类 | 仿真；CC BY 4.0 |
 | [Africa Synth Immunization](https://huggingface.co/datasets/electricsheepafrica/africa-synth-immunization-vaccine-quality-cold-chain-all) | 约 30,000 行 | 可选质量风险补充 | 合成；CC BY 4.0 |
 | [Solomon / CVRPLIB](http://vrp.atd-lab.inf.puc-rio.br/index.php/en/) | 已纳入 6 实例 | VRPTW 标准对照 | 抽象基准，保留来源 |
-| [OpenStreetMap](https://www.openstreetmap.org/copyright) 新加坡 | 11 设施、11×11 矩阵、110 条有向路径 | 本地配送算例 | 真实道路、模拟业务；ODbL |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) 新加坡 | 15 设施、15×15 矩阵、210 条有向路径 | 本地配送算例 | 真实道路、模拟业务；ODbL |
 | 自建场景与人工 gold | 57 场景、4 类处置 | 规则评估 | 合成场景、独立标注与仲裁 |
 
 许可核实记录见 [数据字典](../data/ml/DATA_DICTIONARY.md)。保留 Electric Sheep Africa 署名与许可信息，以及 OSM 的相应署名。其他小样本或网络安全数据不作为核心基准。

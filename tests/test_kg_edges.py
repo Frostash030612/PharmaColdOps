@@ -49,10 +49,10 @@ def test_connects_edges_match_network_matrix():
         RETURN a.facility_id AS a, b.facility_id AS b, r
         """
     )
-    # 11 facilities → 55 unordered pairs, exactly once each
-    assert len(edges) == 55
+    # 15 facilities → 105 unordered pairs, exactly once each
+    assert len(edges) == 105
     pairs = {frozenset((e["a"], e["b"])) for e in edges}
-    assert len(pairs) == 55
+    assert len(pairs) == 105
 
     for e in edges:
         r = e["r"]

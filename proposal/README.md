@@ -30,7 +30,7 @@
 
 **中文侧：无遗留差异。** 句子级比对（`scripts/diff_proposal_vs_docx.py`）显示中文 Word 与中文源稿**逐句一致**，仅剩生成器固有的排版归一化（首部数行合并为一段、加粗串后的空格、图注冒号后的空格）。中文 Word 从未作为提交件交出（提交件只有英文 PDF），终稿阶段可直接以它为中文底稿。
 
-**英文源稿与提交件的差异（10 组）**
+**英文源稿与提交件的差异（11 组）**
 
 | 位置 | 提交件（冻结口径） | 当前源稿 | 来源 |
 |---|---|---|---|
@@ -47,6 +47,7 @@
 | §8.3 指标与判断句 | “Current engine agreement with gold 39/57, 68.4%”；“Eighteen differences …”；“scrap 18/33, 54.5%”；“Rule 4's quarantine/scrap choice remains an unresolved domain-policy question…”；“Tests freeze the eighteen known differences.” | **54/57，94.7%**（rubric v1.1；v1 下为 39/57）；残留 **3 条**（S034/S035/S052，gold 均为隔离，引擎分别为放行／放行／复检）；高后果召回**隔离 0/3、报废 33/33（100%）**；第 4 条已决为 `scrap`、不再是未决政策；测试冻结 3 条 | **本次**（本地 rubric v1.1 对齐；数字由当前引擎直接复算） |
 | §10.2 W0–W5 分工行 | W0 止于“Review and submission due 9/13;”，W1–W5 未列 B/C 的具体项 | W0 补“组名、成员姓名与学号已填入”；W1 补 B（task spec／多折风险）、C（order mapping）；W2 补 B（原因与切分对比）；W4 补 B（实验／失败分析）、C（Solomon 与新加坡对比）；W5 补 D（视频） | 本地 9/13–9/14 一轮 |
 | §11 风险表四行 | 缓解措施较短（如“Identify evidence level, product scope and assumptions;”、“Report κ, confusion and small-sample limits;”） | 分别补“retain human review”、“revise based on domain evidence”、“no audit-grade durability claim”、“keep personal annotations private”等 | 提交后、分叉前的 9/13 例行修订（两侧同源） |
+| §7.1 数据表 OSM 新加坡行 | “11 facilities, 11×11 matrices, 110 directed paths”（中文：“11 设施、11×11 矩阵、110 条有向路径”） | “**15 facilities, 15×15 matrices, 210 directed paths**”（中文：“15 设施、15×15 矩阵、210 条有向路径”）——2026-09-15 把本地路网由 1 仓库 + 10 公立医院扩至 **1 仓库 + 14 个接收点**（11 公立医院站点 + 3 私立医院），理由与取舍见 `docs/singapore_network_assumptions.md` | **本次**（本地扩网，与远程无关） |
 
 **已还原一致的部分**：英文 Word 头部的 4 处人工修改（删副标题行、Course 行简化、组名与成员拆两行、`As of 2026-09-13` → `By now`）已回写进英文源稿，故英文 Markdown 与英文 Word 在头部逐句一致。
 
