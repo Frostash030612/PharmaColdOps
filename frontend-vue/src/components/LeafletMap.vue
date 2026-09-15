@@ -353,13 +353,18 @@ onMounted(() => {
   observer.observe(el.value);
 });
 watch(() => props.plan, (next, prev) => {
-  // A pure position update must not re-fit the map, or it would fight the
-  // user's pan/zoom every second; only a changed route set re-frames.
+  // Only a changed route SET re-frames the map, or it would fight the user's
+  // pan/zoom every second. The drawing itself must happen on every update
+  // though: delivering a stop does not change the shape of the route (the stop
+  // list keeps delivered stops), so skipping the redraw left the map showing the
+  // original all-pending colours for the whole run — the truck moved, the
+  // "already driven" grey never appeared.
   const sameRoutes = prev && next && prev.routes?.length === next.routes?.length &&
     (prev.routes || []).every((r, i) => r.vehicle_id === next.routes[i]?.vehicle_id &&
       r.customer_ids?.length === next.routes[i]?.customer_ids?.length);
-  if (sameRoutes) { drawVehicles(); followVehicle(); return; }
-  redraw(); fit();
+  redraw();
+  if (!sameRoutes) fit();
+  followVehicle();
 });
 watch(() => props.overlays, drawOverlays, { deep: true });
 watch(() => props.branchNodeIds, redraw, { deep: true });
