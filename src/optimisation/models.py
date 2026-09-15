@@ -1,6 +1,7 @@
 """Unified in-memory data classes for the Solomon VRPTW instances.
 
-One shape for every algorithm downstream (greedy → CP-SAT → GA), regardless of
+One shape for every algorithm downstream (greedy → OR-Tools Routing Solver → GA),
+regardless of
 the on-disk JSON key names. Field semantics follow the classic Solomon format:
 node ``0`` is the depot (demand 0, no service), customers carry a demand, a
 service time and a hard [earliest, latest] time window.

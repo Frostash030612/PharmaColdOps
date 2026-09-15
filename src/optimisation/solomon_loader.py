@@ -9,7 +9,9 @@ constant: 90 in C-class, 10 in R/RC-class; 0 for the depot) and is exposed as
 
 Canonical source: the classic Solomon (1987) instances (as distributed, e.g.
 in CVRPLIB). ``c101``'s best-known total distance is 828.94, which the team
-docs already cite as the reference for W2 CP-SAT error checks.
+docs already cite as the reference anchor for solver error checks; the full set
+of reference values for all six committed instances is in
+``scripts/run_routing_baselines.py``.
 """
 from __future__ import annotations
 
