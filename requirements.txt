@@ -21,8 +21,10 @@ seaborn>=0.13
 ortools>=9.15
 osmnx>=2.1
 networkx>=3.6
-deap>=1.4
 folium>=0.20
+# 注：deap 原先在此声明但从未被使用，且 deap 1.4.4 还硬依赖 moocore。
+# GA 求解器（src/optimisation/ga_solver.py）只用标准库实现，不需要任何 EA 包，
+# 详见 docs/C_配送模块.md §5 A1。
 
 # M6 知识图谱 / 问答
 neo4j>=6.3

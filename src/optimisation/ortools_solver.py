@@ -14,12 +14,39 @@ def solve_ortools(
     leg_fn: LegFn = euclidean_leg,
     distance_scale: int = 1000,
     time_scale: int = 1000,
+    first_solution: str = "PATH_CHEAPEST_ARC",
+    drop_penalty: int = 0,
+    minimize_vehicles: bool = False,
 ) -> ReplanResult:
     """Solve with hard capacity/windows and a distance objective.
 
     Scales are independent: for km/min inputs defaults resolve 1m/0.06s.
     Travel time rounds upward; returned schedules use original precision.
     Guided local search is time-bounded, not an optimality certificate.
+
+    ``first_solution`` and ``drop_penalty`` exist because the default
+    configuration cannot solve every instance: on ``r101``/``rc101`` the
+    cheapest-arc construction finds **no** feasible first solution, so guided
+    local search has nothing to improve and the call returns an empty result
+    after burning its whole budget (measured at 10s, 30s and 60s — this is not
+    a too-short time limit, it is a construction failure).  Setting
+    ``drop_penalty > 0`` adds a per-customer disjunction measured in distance
+    units: the model then always has a solution, customers the constraints
+    cannot cover come back as ``unserved_customer_ids`` (the same currency
+    greedy and the GA report), and the penalty is large enough that dropping one
+    is only worth it when no feasible placement exists.
+
+    ``minimize_vehicles`` adds a fixed cost per used vehicle, which turns the
+    distance-only objective into Solomon's official hierarchical objective
+    (1: fewest vehicles, 2: shortest distance) so the three algorithms are
+    compared on the same quantity.
+
+    Reproducibility limit: OR-Tools 9.15's ``RoutingSearchParameters`` has no
+    random-seed field (checked against the full field list; the only seed lives
+    in the CP-SAT sub-parameters, which this model does not use), so an OR-Tools
+    result can only be pinned down to "same configuration and same time budget".
+    The GA additionally records its seed. Both are anytime algorithms, so
+    iteration counts still vary with machine speed.
     """
     if time_limit_seconds < 1:
         raise ValueError("time_limit_seconds must be >= 1")
@@ -30,6 +57,18 @@ def solve_ortools(
 
     if any(type(s) is not int or s < 1 for s in (distance_scale, time_scale)):
         raise ValueError("distance_scale and time_scale must be positive")
+    if drop_penalty > 0 and minimize_vehicles:
+        # Measured: a dominant per-vehicle fixed cost plus a disjunction penalty
+        # makes the solver return no solution at all on every committed
+        # instance (the two large cost terms overflow an internal accumulator).
+        # Refusing loudly beats silently reporting an empty result as "no
+        # feasible plan".
+        raise ValueError(
+            "drop_penalty and minimize_vehicles cannot be combined: the two cost "
+            "terms together make OR-Tools return no solution on every committed "
+            "instance. Use minimise_vehicles alone with a first-solution strategy "
+            "that can construct a feasible start (e.g. PARALLEL_CHEAPEST_INSERTION)."
+        )
 
     nodes = instance.nodes
     manager = pywrapcp.RoutingIndexManager(
@@ -45,6 +84,17 @@ def solve_ortools(
 
     distance_index = routing.RegisterTransitCallback(distance)
     routing.SetArcCostEvaluatorOfAllVehicles(distance_index)
+
+    if minimize_vehicles:
+        # Any single route costs at most (n+1) arcs, so a fixed cost this large
+        # is never worth paying just to shorten one: the solver removes a
+        # vehicle whenever the constraints allow it.
+        widest = max(
+            leg_fn(a, b)[0] for a in nodes for b in nodes
+        )
+        routing.SetFixedCostOfAllVehicles(
+            int(4 * (instance.n_customers + 1) * widest * distance_scale) + 1
+        )
 
     def demand(from_index: int) -> int:
         return nodes[manager.IndexToNode(from_index)].demand
@@ -97,9 +147,18 @@ def solve_ortools(
             time_dimension.CumulVar(routing.End(vehicle_id))
         )
 
+    if drop_penalty > 0:
+        # Without this the model is unsatisfiable for the solver's construction
+        # heuristic on some instances; with it, a customer the constraints
+        # cannot place is dropped and reported as unserved instead of taking the
+        # whole solution down.
+        penalty = drop_penalty * distance_scale
+        for node_index in range(1, len(nodes)):
+            routing.AddDisjunction([manager.NodeToIndex(node_index)], penalty)
+
     search = pywrapcp.DefaultRoutingSearchParameters()
-    search.first_solution_strategy = (
-        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+    search.first_solution_strategy = getattr(
+        routing_enums_pb2.FirstSolutionStrategy, first_solution
     )
     search.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH

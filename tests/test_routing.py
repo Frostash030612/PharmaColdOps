@@ -128,3 +128,54 @@ def test_plan_reshipment_route_rejects_unknown_destination():
     order = build_reshipment_order(_closed_record(destination="H-NOT-REAL"))
     with pytest.raises(ValueError, match="H-NOT-REAL"):
         plan_reshipment_route(order)
+
+
+# --- OR-Tools configuration regressions (doc A2 root cause, 2026-09-14) -------
+#
+# docs/C_配送模块.md §5 A2 recorded "OR-Tools finds no solution on r101/rc101"
+# and blamed `--time-limit 2`.  Measured at 10s, 30s and 60s that diagnosis is
+# wrong: the default PATH_CHEAPEST_ARC construction cannot build a feasible
+# first solution on those two instances, so guided local search never starts.
+# The tests below pin the configuration that does work and the reason the
+# vehicle fixed cost matters for comparability.
+
+
+def test_ortools_parallel_insertion_solves_r101_within_a_short_budget():
+    from optimisation.solomon_loader import load_dir
+
+    result = solve_ortools(
+        load_dir()["R101"],
+        time_limit_seconds=2,
+        first_solution="PARALLEL_CHEAPEST_INSERTION",
+    )
+    assert result.metrics.unserved_customer_ids == ()
+    assert result.metrics.served_customers == 100
+    assert result.metrics.violation_count == 0
+
+
+def test_ortools_vehicle_fixed_cost_never_increases_the_fleet():
+    """Solomon's published objective is hierarchical: vehicles first, then distance."""
+    from optimisation.solomon_loader import load_dir
+
+    instance = load_dir()["R201"]
+    free = solve_ortools(
+        instance, time_limit_seconds=2, first_solution="PARALLEL_CHEAPEST_INSERTION"
+    )
+    costly = solve_ortools(
+        instance, time_limit_seconds=2, first_solution="PARALLEL_CHEAPEST_INSERTION",
+        minimize_vehicles=True,
+    )
+    assert costly.metrics.vehicles_used <= free.metrics.vehicles_used
+    assert costly.metrics.unserved_customer_ids == ()
+    assert costly.metrics.violation_count == 0
+
+
+def test_ortools_refuses_the_option_combination_that_returns_nothing():
+    """Fixed cost plus a drop penalty silently produced no solution at all."""
+    from optimisation.solomon_loader import load_dir
+
+    with pytest.raises(ValueError, match="cannot be combined"):
+        solve_ortools(
+            load_dir()["C101"], time_limit_seconds=1, drop_penalty=1000,
+            minimize_vehicles=True,
+        )

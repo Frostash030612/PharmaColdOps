@@ -226,11 +226,13 @@
 ### W2（9/21–9/27）— 【已重排】第 5 批收尾 → 第 6 批开工
 
 > 原 W2 的 **OSMnx 新加坡路网、全对全矩阵、算例组装、给 D 的可视化数据均已提前完成**（`osm_extract.py` / `singapore_loader.py` / `singapore_export.py`，`data/optimisation/singapore/{facilities.json,network.json}`，9/11 提交）。本栏不再排这些。
+>
+> **9/14 复核（A 侧代做）**：原 9/22①「第 6 批开工 `ga_solver.py`（deap）」**已完成，但实现方式改了**——GA 落在 `src/optimisation/ga_solver.py`，**只用标准库**（deap 从未被使用，且 deap 1.4.4 硬依赖 `moocore`，已从 `requirements.txt` 移除该声明）；原 9/24① 的三方对比表也已产出并可复现。详见 `docs/C_配送模块.md` §5 A1–A3。
 
 - **9/21 周一**：① 与 A 敲定 `ReshipmentOrder` / `ReplanResult` 字段终版（C 主笔 `ReplanResult`），写入 `docs/接口契约.md`；② 第 5 批收尾：事件→方案的可追溯字段（D 要能追溯）。
-- **9/22 周二**：① 第 6 批开工：`ga_solver.py`（deap，已在 `requirements.txt`）复用静态模型与统一校验层；② **三算法先做共同静态问题比较**，不把「GA 跑通静态算例」宣称为支持全部动态功能。
+- **9/22 周二**：① ~~第 6 批开工：`ga_solver.py`（deap，已在 `requirements.txt`）~~ ☑ **9/14 已完成**（纯标准库实现，见上）；② **三算法先做共同静态问题比较**，不把「GA 跑通静态算例」宣称为支持全部动态功能。
 - **9/23 周三**：① 实验脚本统一：同输入、同约束、同时间预算与适用 seed，记录环境；② Solomon 与动态场景**分别出表**，不混在一张表里。
-- **9/24 周四**：① 贪心 / Routing Solver（GLS）/ GA 对比表 v1（6 个 Solomon 实例）；② 已知最优解对照（c101 = 828.94）。
+- **9/24 周四**：① ☑ **9/14 已完成**：贪心 / Routing Solver（GLS）/ GA 对比表（6 个 Solomon 实例 + 新加坡算例，10/30/60s 三档预算）→ `data/processed/routing_comparison.md`，复现命令见文件头；② ☑ 已知最优解对照已扩到全部 6 个实例（[SINTEF 官方榜单](https://www.sintef.no/projectweb/top/vrptw/100-customers/)，c101 = 828.94）。
 - **9/25 周五**：① 动态场景指标表（紧急订单准时完成、未服务量、额外距离、原订单受影响数、计算时间）；② 静态指标沿用现有 `ReplanMetrics`。
 - **9/26 周六**：① 与 D 对齐 `/api/route`、`/api/dispatch/*` 的契约测试样例；② 统一 OR-Tools 名称（全仓不得再写 CP-SAT，见 W1 说明）。
 - **9/27 周日**：① 周例会；② PROGRESS 更新。
