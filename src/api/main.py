@@ -155,14 +155,36 @@ def create_dispatch_run(req: DispatchCreateIn):
 
 @app.get("/api/dispatch/active")
 def get_active_dispatch():
-    """The resupply operation currently open, if any.
+    """The delivery operation currently open, whichever pathway created it.
+
+    Originally reshipment-only; a "today's delivery plan" created through
+    ``POST /api/dispatch/runs`` is a first-class operation too, and the panel has
+    to be able to show it (docs/C_配送模块.md §4.1).
 
     404 means nothing is in progress — a normal empty state, not a failure.
     """
     try:
-        return service.get_active_reshipment_dispatch()
+        return service.get_active_dispatch()
     except KeyError:
         raise HTTPException(status_code=404, detail="no active dispatch operation")
+
+
+@app.get("/api/dispatch/daily-orders")
+def get_daily_orders(hospitals: int = 4, seed: int | None = None,
+                     temperature_zone: str = "chilled"):
+    """A simulated batch of ordinary hospital orders for today's plan.
+
+    The response is shaped like the body of ``POST /api/dispatch/plan`` (or
+    ``/api/dispatch/runs``), so the client previews it and then confirms it
+    without reshaping anything.  Everything is simulated — see
+    ``optimisation.daily_orders.ASSUMPTIONS``, which travels in the response.
+    """
+    try:
+        return service.daily_plan_request(
+            hospitals=hospitals, seed=seed, temperature_zone=temperature_zone
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 @app.get("/api/dispatch/runs/{dispatch_id}")

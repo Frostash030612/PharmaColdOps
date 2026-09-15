@@ -29,6 +29,14 @@ def _sqlite_connect(target: str | Path) -> sqlite3.Connection:
     columns = {row[1] for row in connection.execute("PRAGMA table_info(dispatch_runs)")}
     if "context_json" not in columns:
         connection.execute("ALTER TABLE dispatch_runs ADD COLUMN context_json TEXT NOT NULL DEFAULT '{}'")
+    if "updated_at" not in columns:
+        # The Postgres schema has carried updated_at since the beginning; the
+        # local SQLite one did not, which made "which operation was touched
+        # last" unanswerable there (and ``latest_dispatch_id`` returned no such
+        # column).  SQLite refuses a non-constant DEFAULT on ALTER TABLE, so the
+        # column is added nullable and written explicitly on insert/update;
+        # back-filled rows stay NULL and therefore sort after new ones.
+        connection.execute("ALTER TABLE dispatch_runs ADD COLUMN updated_at TEXT")
     return connection
 
 
@@ -74,7 +82,8 @@ def create_run(target: str | Path, dispatch_id: str, state: DispatchState, *, co
     with _sqlite_connect(target) as db:
         try:
             db.execute(
-                "INSERT INTO dispatch_runs (dispatch_id, version, state_json, context_json) VALUES (?, ?, ?, ?)",
+                "INSERT INTO dispatch_runs (dispatch_id, version, state_json, context_json, updated_at) "
+                "VALUES (?, ?, ?, ?, datetime('now'))",
                 (dispatch_id, state.version, state_json, context_json),
             )
         except sqlite3.IntegrityError as exc:
@@ -118,6 +127,29 @@ def list_dispatch_ids(target: str | Path, prefix: str) -> list[str]:
     return [row[0] for row in rows]
 
 
+def latest_dispatch_id(target: str | Path) -> str | None:
+    """The most recently updated dispatch id, or ``None`` when the store is empty.
+
+    ``list_dispatch_ids`` filters by prefix, which is right for the reshipment
+    pathway but wrong for the front-end view: a "today's delivery plan" created
+    through ``POST /api/dispatch/runs`` has its own id, and the panel must be
+    able to find whichever operation was touched last regardless of which
+    pathway created it.
+    """
+    query = (
+        "SELECT dispatch_id FROM dispatch_runs "
+        "ORDER BY updated_at DESC, dispatch_id DESC LIMIT 1"
+    )
+    if _is_postgres(target):
+        with _postgres_connect(target) as db, db.cursor() as cursor:
+            cursor.execute(query)
+            row = cursor.fetchone()
+    else:
+        with _sqlite_connect(target) as db:
+            row = db.execute(query).fetchone()
+    return None if row is None else row[0]
+
+
 def update_context(target: str | Path, dispatch_id: str, context: dict) -> None:
     """Persist a revised context (e.g. a newly inserted order/lot/vehicle).
 
@@ -159,7 +191,8 @@ def update_run(target: str | Path, dispatch_id: str, state: DispatchState, *, ex
     else:
         with _sqlite_connect(target) as db:
             changed = db.execute(
-                "UPDATE dispatch_runs SET version = ?, state_json = ? WHERE dispatch_id = ? AND version = ?",
+                "UPDATE dispatch_runs SET version = ?, state_json = ?, updated_at = datetime('now') "
+                "WHERE dispatch_id = ? AND version = ?",
                 (state.version, state_json, dispatch_id, expected_version),
             ).rowcount
     if changed != 1:

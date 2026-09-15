@@ -53,8 +53,11 @@ from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, Invento
 from optimisation.dispatch_planner import DISPATCH_ORIGIN, plan_delivery_orders  # noqa: E402
 from optimisation.dispatch_state import accept_plan, deliver_next, depart, state_to_dict  # noqa: E402
 from optimisation.dispatch_repository import (  # noqa: E402
-    create_run, list_dispatch_ids, load_context, load_run, update_context, update_run,
+    create_run, latest_dispatch_id, list_dispatch_ids, load_context, load_run,
+    update_context, update_run,
 )
+from optimisation.daily_orders import ASSUMPTIONS as DAILY_PLAN_ASSUMPTIONS  # noqa: E402
+from optimisation.daily_orders import daily_delivery_batch  # noqa: E402
 from optimisation.dynamic_problem import accept_emergency_order, preview_emergency_order  # noqa: E402
 from .schemas import DispatchCreateIn, DispatchPlanIn, EmergencyAcceptIn, EmergencyPreviewIn, EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
 
@@ -557,6 +560,41 @@ def deliver_dispatch(dispatch_id: str, vehicle_id: str, command_id: str) -> dict
 # resupply opens the next one rather than reopening a finished delivery.
 RESHIPMENT_DISPATCH_PREFIX = "RESHIPMENTS"
 
+#: Ids for "today's delivery plan" operations (doc §4.1).  Reshipments keep
+#: their own prefix so the bootstrap rule below stays deterministic; this one
+#: marks an operation planned from a batch of ordinary hospital orders.
+DAILY_PLAN_DISPATCH_PREFIX = "PLAN"
+
+
+def daily_plan_request(
+    *, hospitals: int = 4, seed: int | None = None, temperature_zone: str = "chilled"
+) -> dict:
+    """A simulated order batch plus a ready-to-post planning body.
+
+    Nothing is persisted: the client previews the batch through
+    ``POST /api/dispatch/plan``, the operator looks at distance / vehicles /
+    feasibility, and only ``POST /api/dispatch/runs`` creates the operation —
+    the sequence doc §4.1 asks for ("操作员看方案 → 确认发车").
+    """
+    orders, inventory, vehicles = daily_delivery_batch(
+        hospitals=hospitals, seed=seed, temperature_zone=temperature_zone
+    )
+    return {
+        "note": DAILY_PLAN_ASSUMPTIONS,
+        "seed": seed,
+        "hospitals": hospitals,
+        "temperature_zone": temperature_zone,
+        # Exactly the body /api/dispatch/plan accepts; /runs additionally needs
+        # dispatch_id + command_id, which the client generates (see the front-end
+        # store) so two clients cannot collide on the same id.
+        "plan": {
+            "algorithm": "greedy",
+            "orders": [_order_dump(order) for order in orders],
+            "inventory": [_lot_dump(lot) for lot in inventory],
+            "vehicles": [_vehicle_dump(vehicle) for vehicle in vehicles],
+        },
+    }
+
 
 def _run_sequence(dispatch_id: str) -> int:
     tail = dispatch_id.rsplit("-", 1)[-1]
@@ -585,6 +623,27 @@ def get_active_reshipment_dispatch() -> dict:
     if state is None:
         raise KeyError(dispatch_id)
     return get_dispatch(dispatch_id)
+
+
+def get_active_dispatch() -> dict:
+    """The live operation for the front-end, whichever pathway created it.
+
+    ``get_active_reshipment_dispatch`` above deliberately only sees the
+    ``RESHIPMENTS-`` stream, because that prefix rule is what makes reshipment
+    bootstrapping deterministic.  The panel, however, must also be able to show
+    a "today's delivery plan" built from a batch of ordinary orders
+    (``PLAN-…`` via ``POST /api/dispatch/runs``) — without this, an operator
+    could create a plan and the panel would keep saying "no active dispatch
+    operation".  KeyError when nothing is open; a *completed* operation counts
+    as nothing open, matching the reshipment rule.
+    """
+    latest = latest_dispatch_id(DISPATCH_DATABASE_URL)
+    if latest is None:
+        raise KeyError("no dispatch run has ever been created")
+    state = load_run(DISPATCH_DATABASE_URL, latest)
+    if state.status == "completed":
+        raise KeyError(latest)
+    return get_dispatch(latest)
 
 
 def _order_dump(order: DeliveryOrder) -> dict:

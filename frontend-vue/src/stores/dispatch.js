@@ -73,7 +73,65 @@ export const useDispatchStore = defineStore("dispatch", () => {
       .finally(() => { pending.value = false; });
   }
 
-  const depart = () => command("depart", { command_id: `depart-${Date.now()}` });
+  function depart() { return command("depart", { command_id: `depart-${Date.now()}` }); }
+
+  /* ---- today's delivery plan (doc §4.1) --------------------------------
+     A *batch* of ordinary hospital orders is the only input that exercises the
+     multi-stop planner. Committing a reshipment case always plans exactly one
+     order (the backend calls plan_delivery_orders((order,), …)), so every
+     vehicle served exactly one hospital and greedy / OR-Tools / GA had nothing
+     to disagree about — the structural problem in docs/C_配送模块.md §3.2.
+
+     Two read-only steps, then one write:
+       loadDailyPlan()   → GET  /api/dispatch/daily-orders  (nothing persisted)
+                         → POST /api/dispatch/plan         (nothing reserved)
+       confirmDailyPlan()→ POST /api/dispatch/runs          (reserves stock + vehicles)
+  */
+  const dailyBatch = ref(null);     // { note, plan: {orders, inventory, vehicles} }
+  const dailyPreview = ref(null);   // POST /api/dispatch/plan response
+  const dailyError = ref("");
+
+  async function loadDailyPlan(seed = null) {
+    if (!ready()) return null;
+    pending.value = true;
+    dailyError.value = "";
+    try {
+      const query = seed === null ? "" : `?seed=${encodeURIComponent(seed)}`;
+      const response = await fetch(
+        `${decisions.apiBase}/api/dispatch/daily-orders${query}`);
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const batch = await response.json();
+      dailyBatch.value = batch;
+      dailyPreview.value = await postJson(
+        `${decisions.apiBase}/api/dispatch/plan`, batch.plan);
+      return batch;
+    } catch (e) {
+      dailyError.value = String(e.message || e);
+      return null;
+    } finally {
+      pending.value = false;
+    }
+  }
+
+  async function confirmDailyPlan() {
+    if (!ready() || !dailyBatch.value) return null;
+    const dispatchId = `PLAN-${Math.floor(Date.now() / 1000)}`;
+    pending.value = true;
+    dailyError.value = "";
+    try {
+      const data = await postJson(`${decisions.apiBase}/api/dispatch/runs`, {
+        ...dailyBatch.value.plan,
+        dispatch_id: dispatchId,
+        command_id: `create-${dispatchId}`,
+      });
+      return apply(data);
+    } catch (e) {
+      dailyError.value = String(e.message || e);
+      return null;
+    } finally {
+      pending.value = false;
+    }
+  }
   const setSpeed = (speed) => command("speed", { speed });
 
   /* Advance the operation to the simulated clock. The backend applies any
@@ -104,5 +162,6 @@ export const useDispatchStore = defineStore("dispatch", () => {
     run, pending, error, live, orders, vehicles, stock,
     refresh, commitReshipment, depart, deliverNext, setSpeed,
     tick, watchClock, stopClock,
+    dailyBatch, dailyPreview, dailyError, loadDailyPlan, confirmDailyPlan,
   };
 });

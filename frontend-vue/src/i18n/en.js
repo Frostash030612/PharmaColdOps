@@ -50,7 +50,12 @@ export default {
   "committing": "Checking stock and vehicles\u2026",
   "committed": "\u2713 Resupply added to the operation",
   "fromCase": "from case",
-  "loadingRoute": "Calculating this case route…"
+  "loadingRoute": "Calculating this case route…",
+  "dailyPlan": "🎲 Generate today's delivery plan",
+  "dailyCreating": "Planning…",
+  "dailyPreview": "Plan preview",
+  "dailyConfirm": "Confirm plan and create the operation",
+  "dailySimulated": "Simulated data: hospitals and receiving windows come from the committed road network, but the daily demand and fleet are this project's demo assumptions, not hospital orders."
 },
   header: {
     sub: "Cold-chain temperature-excursion disposition & delivery re-routing",

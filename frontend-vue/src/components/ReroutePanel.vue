@@ -151,6 +151,34 @@ function clock(minutes) {
       <div><b>{{ plan.metrics.time_window_violations + plan.metrics.capacity_violations + plan.metrics.depot_return_violations + plan.metrics.vehicle_limit_violations }}</b><span>{{ text.violations }}</span></div>
     </div>
 
+    <!-- Today's delivery plan (doc §4.1). A reshipment case always plans ONE
+         order, so a vehicle served one hospital; a *batch* is what makes the
+         multi-stop planner do its job. Simulated, and it says so. -->
+    <div v-if="online" class="sg-daily">
+      <button :disabled="dispatch.pending" @click="dispatch.loadDailyPlan()">
+        {{ dispatch.pending ? text.dailyCreating : text.dailyPlan }}
+      </button>
+      <template v-if="dispatch.dailyPreview && dispatch.dailyPreview.zones.length">
+        <p class="sg-note">{{ text.dailySimulated }}</p>
+        <p class="sg-source">
+          {{ text.dailyPreview }}:
+          <b>{{ dispatch.dailyPreview.zones[0].total_distance.toFixed(2) }}</b> {{ text.km }} ·
+          <b>{{ dispatch.dailyPreview.zones[0].routes.length }}</b> {{ text.vehicles }} ·
+          {{ dispatch.dailyPreview.zones[0].served_facilities }}/{{ dispatch.dailyPreview.zones[0].target_facilities }} {{ text.served }}
+        </p>
+        <ul class="sg-daily-stops">
+          <li v-for="route in dispatch.dailyPreview.zones[0].routes" :key="route.vehicle_id">
+            <b>{{ route.vehicle_id }}</b>:
+            {{ route.customer_ids.map((id) => names[id] || id).join(" → ") }}
+          </li>
+        </ul>
+        <button :disabled="dispatch.pending" @click="dispatch.confirmDailyPlan()">
+          {{ text.dailyConfirm }}
+        </button>
+      </template>
+      <p v-if="dispatch.dailyError" class="sg-error" role="status">{{ dispatch.dailyError }}</p>
+    </div>
+
     <!-- The bridge: this case's resupply joins the same operation, checked
          against real stock and real vehicle capacity. Always says what the
          next action is (or why there is none) — a decision that needs a
@@ -236,6 +264,12 @@ function clock(minutes) {
 .sg-metrics > div { padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
 .sg-metrics b { display: block; font-size: 18px; color: #0f172a; }
 .sg-metrics span { color: #64748b; font-size: 11px; }
+.sg-daily { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+.sg-daily > button { background: #0f172a; color: #fff; border: 0; border-radius: 7px; padding: 6px 11px; cursor: pointer; font-size: 12px; font-weight: 600; }
+.sg-daily > button:disabled { opacity: .6; cursor: default; }
+.sg-daily > button + button { margin-left: 8px; background: #0d9488; }
+.sg-daily-stops { list-style: none; padding: 0; margin: 6px 0 9px; color: #475569; line-height: 1.7; }
+.sg-daily-stops b { color: #0f172a; }
 .sg-commit { margin-top: 10px; }
 .sg-commit button { background: #0d9488; color: #fff; border: 1px solid #0d9488; border-radius: 7px; padding: 7px 11px; cursor: pointer; font-size: 12px; font-weight: 600; }
 .sg-commit button:disabled { opacity: .6; cursor: default; }

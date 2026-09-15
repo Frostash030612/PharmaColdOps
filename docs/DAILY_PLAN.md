@@ -228,6 +228,8 @@
 > 原 W2 的 **OSMnx 新加坡路网、全对全矩阵、算例组装、给 D 的可视化数据均已提前完成**（`osm_extract.py` / `singapore_loader.py` / `singapore_export.py`，`data/optimisation/singapore/{facilities.json,network.json}`，9/11 提交）。本栏不再排这些。
 >
 > **9/14 复核（A 侧代做）**：原 9/22①「第 6 批开工 `ga_solver.py`（deap）」**已完成，但实现方式改了**——GA 落在 `src/optimisation/ga_solver.py`，**只用标准库**（deap 从未被使用，且 deap 1.4.4 硬依赖 `moocore`，已从 `requirements.txt` 移除该声明）；原 9/24① 的三方对比表也已产出并可复现。详见 `docs/C_配送模块.md` §5 A1–A3。
+>
+> **同日再补一条**：`docs/C_配送模块.md` §4 的**第 1 层「今日配送计划」也已落地**——批量订单来源（`daily_orders.py` + `GET /api/dispatch/daily-orders`）、界面按钮与排线预览、以及 `/api/dispatch/active` 原先只认 `RESHIPMENTS-` 前缀的可见性修复。本栏不必再排「建立今日配送」；仍未做的是 §4 第 2 层（补发改为扰动）与第 3 层（扰动前后对比）。
 
 - **9/21 周一**：① 与 A 敲定 `ReshipmentOrder` / `ReplanResult` 字段终版（C 主笔 `ReplanResult`），写入 `docs/接口契约.md`；② 第 5 批收尾：事件→方案的可追溯字段（D 要能追溯）。
 - **9/22 周二**：① ~~第 6 批开工：`ga_solver.py`（deap，已在 `requirements.txt`）~~ ☑ **9/14 已完成**（纯标准库实现，见上）；② **三算法先做共同静态问题比较**，不把「GA 跑通静态算例」宣称为支持全部动态功能。

@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-09-14 — 今日配送计划（§4.1 第一层）落地：批量订单 → 一车串多站
+
+- **起因**：核实「路线能不能自动经过多家医院」时发现——**引擎会、应用不会**。`plan_delivery_orders()` 本来就会一车串多站（实测 4 单 1 车 → `3→4→5→2`，75.19 km），但 `service.route_reshipment()` 每次只规划**一张**单（`plan_delivery_orders((order,), …)`，`service.py:762`），而且前端**从未调用过** `/api/dispatch/plan` 与建单的 `/api/dispatch/runs`（grep 零命中）。于是运行时每辆车只去一家医院，多站排线**从未被触发过**——这也是一单一车导致「三算法解相同」的根源（`docs/C_配送模块.md` §3.2）。
+- **新增订单来源**：`src/optimisation/daily_orders.py` + `GET /api/dispatch/daily-orders`（默认**固定演示集**，`?seed=N` 给可复现随机批次，响应带**模拟数据声明**）。医院身份／收货窗口／服务时长／需求取自已入库的 `network.json`；产品组合与车队规模为本项目假设，文案与 `note` 都写明。
+- **前端**：配送面板新增「🎲 生成今日配送计划」→ 预览（里程／车辆数／服务设施数／每车站序）→「确认该计划并建立配送作业」→ 发车；中英双语文案同步。前端此前没有任何入口能触发多站排线。
+- **关键可见性修复**：`/api/dispatch/active` 原先**只认 `RESHIPMENTS-` 前缀**，手工建的 `PLAN-…` 作业对它不可见（实测返回 404，即"建了计划但面板永远看不到"）。改为按「最近被写入的作业」解析，两条路径建的作业都能显示；`active_reshipment_run()` 的 bootstrap 规则**保持不变**，不动既有语义与测试。
+- **顺带修掉一个真实缺陷**：本地 SQLite 表**从来没有 `updated_at` 列**（只有 Postgres 的建表语句里有），导致「哪个作业最近被动过」在本地根本无法回答。已按 `context_json` 的同一套轻量迁移补上（`PRAGMA table_info` + `ALTER TABLE`），迁移前的旧行该列为 NULL 并排在后面。
+- 实测：4 家医院 1 辆车 → 单车站序 `3 → 4 → 1 → 2`（51.03 km，4/4 服务）；`?seed=11` 下 → `8 → 4 → 9 → 10`（70.64 km）。`route_view` 带 `geojson`，地图直接可画环线。
+- 测试：新增 `tests/test_daily_orders.py`（13 条），其中两条是本次的核心回归——「一批订单必须排成**单车多站**」与「**计划对 `/api/dispatch/active` 可见**」；另有仓储迁移用例（旧 SQLite 文件仍可读）。全量 `pytest` **174 passed / 0 failed / 0 skipped**。
+- 文档：`docs/C_配送模块.md`（§2 补能力行、§4 第 1 层标记实施并附实施记录、§4.4-1 完成、§4.5 记录已拍板）、`docs/接口契约.md`（新增 §9：端点契约、模拟数据边界、`active` 语义变更与迁移说明）、`docs/DAILY_PLAN.md` C 栏。
+
+---
+
 ## 2026-09-14 — C 模块欠账推进：GA 求解器 + 三方对比表 + 修正 OR-Tools 封装的实质缺陷
 
 - **A1 GA 求解器落地**（`src/optimisation/ga_solver.py`，**纯标准库**）：客户排列编码 + 顺序交叉（OX）+ 段反转／relocate／交换变异 + 锦标赛选择 + 精英保留；**解码用前缀 DP 的最优 split**（目标 `(unserved, vehicles, distance)`），输出同一个 `ReplanResult`。

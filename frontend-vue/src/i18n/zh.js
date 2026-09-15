@@ -49,7 +49,12 @@ export default {
   "committing": "正在核对库存与车辆…",
   "committed": "✓ 本次补发已纳入配送作业",
   "fromCase": "来自案例",
-  "loadingRoute": "正在计算当前案例路线…"
+  "loadingRoute": "正在计算当前案例路线…",
+  "dailyPlan": "🎲 生成今日配送计划",
+  "dailyCreating": "正在排线…",
+  "dailyPreview": "排线预览",
+  "dailyConfirm": "确认该计划并建立配送作业",
+  "dailySimulated": "模拟数据：医院与收货窗口来自已入库路网，但每日需求量与车队是本项目的演示假设，不是医院真实订单。"
 },
   header: {
     sub: "冷链药品温度超限处置与配送重新规划",
