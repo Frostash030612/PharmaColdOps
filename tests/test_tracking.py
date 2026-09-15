@@ -33,16 +33,6 @@ def _age_clock(dispatch_id, *, minutes_ago):
     service.update_context(service.DISPATCH_DATABASE_URL, dispatch_id, context)
 
 
-def case(run_id, destination="H-NUH"):
-    return {
-        "run_id": run_id, "created_at": "2026-09-12T09:30:00",
-        "disposition": "scrap", "reshipment_required": True,
-        "event": {"product_id": "vaccine_2_8", "excursion_temp_c": 20.0,
-                  "duration_min": 90, "mkt_c": 19.0, "packaging": "intact",
-                  "stage": "transit", "destination_facility_id": destination},
-    }
-
-
 def test_speed_turns_real_seconds_into_simulated_minutes():
     started = datetime.datetime(2026, 9, 12, 9, 0, 0)
     clock = make_clock(540, 60, started.isoformat())
@@ -76,9 +66,27 @@ def test_vehicle_waits_at_the_depot_then_moves_then_arrives():
     assert arrived["reached_stops"] == 1
 
 
-def test_clock_starts_on_departure_and_ticks_record_the_arrival():
-    service.route_reshipment(case("R1"))
-    dispatch_id, _ = service.active_reshipment_run()
+def test_a_repeated_stop_is_a_zero_length_leg_not_a_crash():
+    """Found by driving the live API: a branch order for a hospital the vehicle
+    was already due to visit put that node twice in a row in its queue, and the
+    track builder looked up a leg ("2:2") that the network does not store —
+    every response containing that route failed with a 500."""
+    sequence = [1, 1, 2]
+    track = vehicle_track(NETWORK, sequence, 0, sim_now=1_000_000)
+
+    assert track["reached_stops"] == len(sequence)
+    assert track["finished"] is True
+    # Stops are still counted once each: passing the same node twice is two
+    # deliveries, even though no distance is covered between them.
+    assert len(track["arrivals"]) == len(sequence)
+    assert track["arrivals"][1] == track["arrivals"][0]
+
+
+def test_clock_starts_on_departure_and_ticks_record_the_arrival(day_plan):
+    # A one-order day plan is the smallest real operation: the clock tests need
+    # a run that can actually finish, and since 2026-09-15 a branch event can no
+    # longer create an operation of its own (docs/C_配送模块.md §4.4-2).
+    dispatch_id = day_plan(hospitals=1)
     departed = service.depart_dispatch(dispatch_id, "go", speed=300.0)
     assert departed["clock"]["speed"] == 300.0
 
@@ -93,9 +101,8 @@ def test_clock_starts_on_departure_and_ticks_record_the_arrival():
     assert ticked["status"] == "completed"
 
 
-def test_ticking_twice_records_one_delivery():
-    service.route_reshipment(case("R1"))
-    dispatch_id, _ = service.active_reshipment_run()
+def test_ticking_twice_records_one_delivery(day_plan):
+    dispatch_id = day_plan(hospitals=1)
     service.depart_dispatch(dispatch_id, "go", speed=300.0)
     _age_clock(dispatch_id, minutes_ago=5)
 
@@ -106,9 +113,8 @@ def test_ticking_twice_records_one_delivery():
     assert second["route_view"]["metrics"]["orders_delivered"] == 1
 
 
-def test_changing_speed_does_not_teleport_the_vehicles():
-    service.route_reshipment(case("R1"))
-    dispatch_id, _ = service.active_reshipment_run()
+def test_changing_speed_does_not_teleport_the_vehicles(day_plan):
+    dispatch_id = day_plan(hospitals=1)
     service.depart_dispatch(dispatch_id, "go", speed=300.0)
     before = service.get_dispatch(dispatch_id)["route_view"]["sim_now_min"]
 
@@ -117,9 +123,8 @@ def test_changing_speed_does_not_teleport_the_vehicles():
     assert after == pytest.approx(before, abs=1.0)   # continues, not restarts
 
 
-def test_speed_must_be_one_of_the_offered_rates():
-    service.route_reshipment(case("R1"))
-    dispatch_id, _ = service.active_reshipment_run()
+def test_speed_must_be_one_of_the_offered_rates(day_plan):
+    dispatch_id = day_plan(hospitals=1)
     service.depart_dispatch(dispatch_id, "go")
     with pytest.raises(ValueError, match="speed must be one of"):
         service.set_dispatch_speed(dispatch_id, 7.5)

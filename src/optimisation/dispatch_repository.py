@@ -150,6 +150,39 @@ def latest_dispatch_id(target: str | Path) -> str | None:
     return None if row is None else row[0]
 
 
+def latest_open_dispatch_id(
+    target: str | Path, prefix: str | None = None
+) -> tuple[str, DispatchState] | None:
+    """The most recently updated run that has NOT completed, with its state.
+
+    Ordering is by ``updated_at`` — what was touched last — and deliberately not
+    by the numeric tail of the id. Id schemes differ between pathways and even
+    between runs of the same pathway (``PLAN-<epoch seconds>`` from the console
+    versus ``PLAN-<yyyymmdd>`` from the daily-batch button), so "biggest number"
+    is not "most recent"; picking that way attached branch events to a stale,
+    already-finished operation while the panel showed a live one.
+
+    Returns ``(dispatch_id, state)`` or ``None`` when nothing is open.
+    """
+    pattern = f"{prefix}%" if prefix else None
+    where = "WHERE dispatch_id LIKE ? " if pattern else ""
+    query = (f"SELECT dispatch_id, state_json FROM dispatch_runs {where}"
+             "ORDER BY updated_at DESC, dispatch_id DESC")
+    if _is_postgres(target):
+        query = query.replace("?", "%s")
+        with _postgres_connect(target) as db, db.cursor() as cursor:
+            cursor.execute(query, (pattern,) if pattern else ())
+            rows = cursor.fetchall()
+    else:
+        with _sqlite_connect(target) as db:
+            rows = db.execute(query, (pattern,) if pattern else ()).fetchall()
+    for dispatch_id, state_json in rows:
+        state = state_from_dict(json.loads(state_json))
+        if state.status != "completed":
+            return dispatch_id, state
+    return None
+
+
 def update_context(target: str | Path, dispatch_id: str, context: dict) -> None:
     """Persist a revised context (e.g. a newly inserted order/lot/vehicle).
 

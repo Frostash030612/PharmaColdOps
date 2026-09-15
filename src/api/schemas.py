@@ -76,10 +76,25 @@ class BatchIn(BaseModel):
 
 
 class RouteIn(BaseModel):
-    """Route a reshipment attached to one already-closed case."""
+    """Route a reshipment attached to one already-closed case.
+
+    ``candidate_kind``/``vehicle_id`` are optional: given, the bridge applies
+    exactly that option (the operator's pick from the comparison card); omitted,
+    it takes the best one under ``policy``.
+    """
 
     run_id: str
     algorithm: Literal["greedy", "ortools"] = "greedy"
+    candidate_kind: Optional[CandidateKind] = None
+    vehicle_id: Optional[str] = None
+    policy: CandidatePolicy = "minimize_disruption"
+
+
+class BranchPolicyIn(BaseModel):
+    """Read-only branch preview: which case, ranked how."""
+
+    run_id: str
+    policy: CandidatePolicy = "minimize_disruption"
 
 
 class RouteOut(BaseModel):
@@ -118,6 +133,14 @@ class InventoryLotIn(BaseModel):
     status: Literal["available", "reserved", "quarantine", "scrap"] = "available"
 
 
+class OnboardSpareIn(BaseModel):
+    """Stock a vehicle carries beyond its assigned orders (a load assumption)."""
+
+    product_id: str
+    temperature_zone: Literal["chilled", "frozen", "ultracold"]
+    quantity: int = Field(gt=0)
+
+
 class DispatchVehicleIn(BaseModel):
     vehicle_id: str
     capacity: int = Field(gt=0)
@@ -125,6 +148,19 @@ class DispatchVehicleIn(BaseModel):
     start_facility_id: str
     available_from_min: int = Field(default=0, ge=0)
     status: Literal["available", "in_transit", "failed"] = "available"
+    onboard_spare: List[OnboardSpareIn] = Field(default_factory=list)
+
+
+#: Every way a branch order can be served. Previously this literal listed only
+#: two of the three implemented kinds, so the API answered 422 for the
+#: ``load_before_departure`` candidate it had just offered in a preview.
+CandidateKind = Literal[
+    "add_stop_in_transit", "load_before_departure", "return_to_depot", "spare_vehicle",
+]
+
+#: How candidates are ranked. A business choice (protect running orders vs
+#: protect the fleet), so it travels with the request and is echoed back.
+CandidatePolicy = Literal["minimize_disruption", "minimize_vehicles"]
 
 
 class DispatchPlanIn(BaseModel):
@@ -156,10 +192,11 @@ class DispatchDeliverIn(DispatchCommandIn):
 class EmergencyPreviewIn(BaseModel):
     order: DispatchOrderIn
     current_time_min: int = Field(ge=0)
+    policy: CandidatePolicy = "minimize_disruption"
 
 
 class EmergencyAcceptIn(EmergencyPreviewIn):
-    candidate_kind: Literal["spare_vehicle", "return_to_depot"]
+    candidate_kind: CandidateKind
     vehicle_id: str
     command_id: str
 

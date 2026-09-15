@@ -37,10 +37,22 @@ ZONE_PRODUCT = {
     "ultracold": "mrna_ultracold",
 }
 
+#: Spare stock carried on every vehicle, in units, as one hospital order's worth.
+#:
+#: It exists so an in-transit vehicle can serve a branch event from what it
+#: already carries instead of driving back to the depot — the
+#: ``add_stop_in_transit`` option. One order's worth (30 units, the receiving
+#: site demand in the committed network) is the smallest spare that can serve a
+#: whole replacement order; it occupies load, so the planner subtracts it from
+#: the usable capacity.
+SPARE_UNITS = 30
+
 #: What the batch means, in the words the UI and report should reuse.
 ASSUMPTIONS = (
     "模拟数据：医院名称、收货窗口与服务时长取自已入库的新加坡路网（真实设施），"
     "但每日需求量、产品组合与车队规模是本项目的演示假设，不是医院真实订单。"
+    f"另外每辆车按演示假设随车携带 {SPARE_UNITS} 单位同温区备用量（用于途中支线事件，"
+    "如货损补送或临时加急），该备用量占用车辆额定载重，因此排线可用载重为额定载重减去备用量。"
 )
 
 DEFAULT_HOSPITALS = 4
@@ -120,7 +132,13 @@ def daily_delivery_batch(
             capacity=capacity,
             temperature_zone=temperature_zone,
             start_facility_id=depot["facility_id"],
+            onboard_spare=((product_id, temperature_zone, SPARE_UNITS),),
         )
-        for index in range(1, math.ceil(total_demand / capacity) + 1)
+        # One spare vehicle beyond what the demand needs, so the demo can show
+        # BOTH ways of serving a branch event: redirect a truck that is already
+        # rolling, or send the spare. Without it "send another vehicle" would
+        # never be on the table and the comparison would be a foregone
+        # conclusion. The planner still uses the fewest vehicles it can.
+        for index in range(1, math.ceil(total_demand / capacity) + 2)
     )
     return orders, inventory, vehicles

@@ -67,6 +67,17 @@ def plan_delivery_orders(
         capacities = {vehicle.capacity for vehicle in zone_vehicles}
         if len(capacities) != 1:
             raise ValueError(f"vehicles in zone {zone} must currently share one capacity")
+        # Onboard spare occupies space, so the planner must not fill a vehicle to
+        # its rated capacity and then also claim it carries spare stock. The
+        # solver model has one fleet-wide capacity, so all vehicles in a zone must
+        # currently carry the same spare.
+        spares = {sum(qty for _, _, qty in vehicle.onboard_spare)
+                  for vehicle in zone_vehicles}
+        if len(spares) != 1:
+            raise ValueError(f"vehicles in zone {zone} must currently share one onboard spare")
+        usable_capacity = next(iter(capacities)) - next(iter(spares))
+        if usable_capacity <= 0:
+            raise ValueError(f"onboard spare leaves no usable capacity in zone {zone}")
         demands: dict[str, int] = {}
         windows: dict[str, tuple[int, int]] = {}
         orders_by_facility: dict[str, list[str]] = {}
@@ -88,7 +99,7 @@ def plan_delivery_orders(
 
         instance, leg_fn, source_ids = load_singapore_subset(
             demands, network_path,
-            vehicle_nr=len(zone_vehicles), capacity=next(iter(capacities)),
+            vehicle_nr=len(zone_vehicles), capacity=usable_capacity,
             facility_windows=windows,
         )
         if algorithm == "greedy":

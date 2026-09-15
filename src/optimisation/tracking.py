@@ -46,7 +46,16 @@ def simulated_now(clock: dict, real_now: datetime.datetime | None = None) -> flo
 
 
 def _leg(network: dict, a: int, b: int) -> tuple[list, float]:
-    """Road polyline and free-flow minutes for one depot/facility leg."""
+    """Road polyline and free-flow minutes for one depot/facility leg.
+
+    A leg from a node to itself has no geometry (the committed network stores one
+    polyline per distinct pair) and no travel time: it happens when a branch
+    order is added for a hospital the vehicle is already due to visit, so the
+    queue holds that node twice in a row. The truck simply does not move — that
+    is a zero-length leg, not a missing-data error.
+    """
+    if a == b:
+        return [], 0.0
     coords = network["leg_geometry"][f"{a}:{b}"]
     minutes = network["matrix"]["duration_s"][a][b] / 60.0
     return coords, minutes
@@ -103,8 +112,16 @@ def vehicle_track(network: dict, node_sequence: list[int], depart_min: float,
         arrive = clock + minutes
         if b != 0:
             arrivals.append(arrive)
+        if minutes <= 0:
+            # A zero-length leg (the same node twice in a row): the truck does
+            # not move, so the marker stays where it is. There is no geometry to
+            # interpolate and no time passes beyond the stop's own service.
+            if sim_now >= arrive:
+                leg_from, leg_to, fraction = a, b, 1.0
+            clock = arrive + (SERVICE_MIN if b != 0 else 0)
+            continue
         if clock <= sim_now < arrive:
-            fraction = (sim_now - clock) / minutes if minutes else 1.0
+            fraction = (sim_now - clock) / minutes
             leg_from, leg_to = a, b
             position = point_along(coords, fraction)
         elif sim_now >= arrive:

@@ -4,6 +4,77 @@
 
 ---
 
+## 2026-09-15 — 支线闭环：把「日常配送=主线、异常=支线」真正接起来（A+B+C+D）
+
+**起因**：用户把 C 模块的目标形态讲清楚了——**一辆车在每日固定时段按主线跑，途中出支线（货损、加急等），
+系统要判断"改这辆车的路线还是另派一辆"**。核对代码后发现：这个判断的后端比较器**早就写好了**
+（`preview_emergency_order()`），但它**从来没有作用在主线上**，而且**界面上看不见**。本批把这条闭环补完。
+
+### A. 支线不再自己开作业（§4.4-2）
+- **病因**：`service.route_reshipment()` 只看 `RESHIPMENTS-` 前缀，没找到就**自己 bootstrap 一条只有一单的作业**
+  ——这正是 `docs/C_配送模块.md` §3.2「把路径优化系统用成一对一派车器」的根源。
+- **改法**：改为挂到**进行中的今日计划**上（`active_plan_run()`）；没有计划 → **409**「no daily delivery plan is open…」，
+  既不静默造作业也不死锁。`RESHIPMENTS-` 前缀、`active_reshipment_run()`、`_bootstrap_fleet()` 一并删除
+  （原 bootstrap 用的演示车队改名 `_zone_fleet()`，只用于"当天计划还没有该温区车队"时就地补齐）。
+- **响应契约变更**：`bootstrapped` → **`inserted`**，并回显 `candidate_kind` / `vehicle_id`。
+- **测试改写（有意识的行为变更）**：`tests/test_reshipment_bridge.py` 三处 bootstrap 断言改写为"挂到当天计划"，
+  新增「没有计划必须被拒且不留下作业」；`tests/test_tracking.py` 四个时钟用例改用 1 家医院的当日计划
+  （它们本来只是要一个能跑完的作业，不必经过补发）。`tests/conftest.py` 新增共享 fixture `day_plan`。
+- 前端：`postJson()` 现在把服务端的 `detail` 与 `status` 带进异常（以前只有 `HTTP 409`），
+  409 会转成一句可操作的中文提示。
+
+### B. 第四种候选：在途车用车上余货顺路加一站（§5 B4）
+- 新增 `DispatchVehicle.onboard_spare`（契约字段）与 `VehicleProgress.onboard_spare`（状态字段，旧状态缺字段按"无余货"载入）。
+  演示批次每车带 **30 单位同温区备用量**（＝一家医院一次的需求量），**占用额定载重**，故排线可用载重 = 额定载重 − 备用量
+  （`dispatch_planner` 里显式扣除，避免"装满货还说车上有余量"）。
+- 新候选 `add_stop_in_transit`：不回仓库，**必须同产品同温区**（冻货余量补冷藏订单会被拒）。
+  容量门槛也按方案分开：用余货**不新增载荷**（只看余货够不够），返仓/派车/装货前带上才受剩余载重约束。
+- 接受该方案时**不动仓库台账**，订单的预留记为 `ONBOARD-<车号>` 伪批次；`limitations` 里那句
+  "在途车只能返仓，因为不记录车上未分配余货"已随之改写为"除非车上余货够本次订单"。
+- 顺手修正一处建模错误：`return_to_depot` 的**连带迟到重算**原先从**仓库**起算剩余行程，
+  而车实际是在应急点卸完货，现改为从应急目的地起算（`tests/test_dynamic_problem.py` 相关用例仍绿）。
+
+### C. 候选比较界面（§5 D3）
+- 后端算好但界面从来没调用过 `/emergency-preview`、`/emergency-accept`——**这个判断在演示里是不可见的**。
+- 新增只读端点 `POST /api/dispatch/reshipments/preview`（由案例派生订单 + 全部候选，含里程/ETA/迟到/受影响订单，
+  字段统一，`spare_vehicle` 也给空数组而不是缺字段）；`POST /api/dispatch/reshipments` 接受可选的
+  `candidate_kind` + `vehicle_id`（操作员的选定，仍会重新校验）。
+- 前端 `ReroutePanel.vue` 新增「支线处置」区：一键预览 → 表格对比（方案/车辆/里程/ETA/受影响订单与"因此变迟/本来就迟"）
+  → 逐行「采用此方案」；`stores/dispatch.js` 新增 `previewBranch/commitReshipment(choice)/setPolicy`；i18n 中英各 24 条。
+- **顺带修一个真缺陷**：`EmergencyAcceptIn.candidate_kind` 的字面量只列了两种，导致
+  **预览给出 `load_before_departure`、接受时回 422**（已按四种补齐，并有回归用例）。
+
+### D. 排序口径可切换（§5 D1）
+- `preview_emergency_order(..., policy=...)`：`minimize_disruption`（默认，原行为）与
+  `minimize_vehicles`（把 `starts_new_vehicle` 提到受影响订单数之前＝优先复用已在跑的车）。
+  口径随请求传入并在响应回显（可追溯），界面上是一个下拉框；切换会**重新排序当前预览**。
+
+### 驱动真实 API 时抓到的三个问题（单测没覆盖到，都已有回归用例）
+12. **"进行中的计划"选错 → 支线全被拒**：原按 id 末尾数字取最大，而两条路径命名口径不同
+    （`PLAN-<epoch 秒>` ≈ 1.7e9 vs `PLAN-<yyyymmdd>` ≈ 2.0e7），于是一条**已完成**的计划遮住了在跑的，
+    界面显示有作业、预览却回 409。改为按 `updated_at` 取最近被动过且未完成的那条
+    （新增 `dispatch_repository.latest_open_dispatch_id`），与 `/api/dispatch/active` 口径一致。
+13. **支线目的地就在当天路线上的那一站 → 整条响应 500**：车辆队列出现连续两个相同节点，
+    `tracking._leg()` 与 `singapore_export` 去查 `leg_geometry["2:2"]`（网络里没有"从某地到它自己"的几何）而崩。
+    两处按"零长度腿"处理：车不动、不画线，但**站点照记两次**（两笔订单都要送）。
+14. **备用车一上路就丢掉车上余货**：建 `VehicleProgress` 时没带上声明的余货，那辆车之后再也用不了"顺路加一站"。
+    已保留，并把未开工车辆声明的余货计入载重占用。
+
+### 实测（本机 API 真实驱动，非单测）
+- 无计划时支线预览/提交 → **409**；建好当日计划后 → **200**，`dispatch_id` 就是那条计划。
+- 同一张案例、同一时刻，两种口径给出**不同首选**：默认口径选「另派一辆备用车」（不影响任何在途订单），
+  省运力口径选「发车前装货时带上」（复用当天那辆车）。
+- 车已发车后用**同产品**案例预览：`add_stop_in_transit` ETA **550** ＜ `return_to_depot` **565** ＝ `spare_vehicle` **565**，
+  即"顺路加一站"省掉一次回仓（15 分钟）；提交后余货 30→**0**，仓库批次**未动**，预留记为 `ONBOARD-V-CHILLED-1`。
+- 换成**别的冷藏产品**的案例时该候选**不出现**（余货是 `vaccine_2_8`）——冷链接口纪律按设计生效，不是 bug。
+
+### 验证
+- 全量 pytest：**192 passed / 0 failed / 0 skipped**（本机 Neo4j 在跑；本批新增 16 条，含新文件
+  `tests/test_branch_events.py` 8 条）。`pnpm build` 通过（63 modules，546 kB）。
+- 前端改动经 Vite 构建验证；无 JS 测试套件，故界面行为靠后端契约测试 + 真实 API 驱动佐证。
+
+---
+
 ## 2026-09-15 — 本地路网扩至 15 节点（1 仓库 + 14 接收点）：补 SGH/IMH、去 NHCS、加 3 家私立
 
 **起因**：核对「新加坡还有哪些医院节点可以加」。用仓库自己引用的权威来源 [SGDI 的 MOH 医院目录](https://www.sgdi.gov.sg/other-organisations/hospitals)（列 11 家）对照，发现网络只覆盖其中 **9** 家，缺 **Singapore General Hospital** 与 **Institute of Mental Health**；而 `M5_singapore_network_plan.md` 自定的规模是「depot + 10~15」，当时 10 家还有名额。

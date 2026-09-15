@@ -48,3 +48,34 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "needs_db" in item.keywords:
             item.add_marker(skip)
+
+
+@pytest.fixture
+def day_plan():
+    """Create "today's delivery plan" the way the API does, and return its id.
+
+    Branch events (a closed excursion case, an urgent order) attach to the OPEN
+    daily plan — there is no longer any fallback that starts a one-order operation
+    of its own (``docs/C_配送模块.md`` §4.4-2). Tests that exercise a branch
+    therefore have to establish the main line first, which is exactly what an
+    operator does: build today's plan, confirm it, then handle what goes wrong.
+    """
+    from api import service
+    from api.schemas import DispatchCreateIn
+    from optimisation.daily_orders import daily_delivery_batch
+
+    def _make(dispatch_id: str = "PLAN-TEST-1", *, hospitals: int = 4,
+              seed: int = 1, algorithm: str = "greedy") -> str:
+        orders, inventory, vehicles = daily_delivery_batch(
+            hospitals=hospitals, seed=seed)
+        response = service.create_dispatch(DispatchCreateIn(
+            dispatch_id=dispatch_id, command_id=f"create-{dispatch_id}",
+            algorithm=algorithm,
+            orders=[service._order_dump(order) for order in orders],
+            inventory=[service._lot_dump(lot) for lot in inventory],
+            vehicles=[service._vehicle_dump(vehicle) for vehicle in vehicles],
+        ))
+        assert response["dispatch_id"] == dispatch_id
+        return dispatch_id
+
+    return _make

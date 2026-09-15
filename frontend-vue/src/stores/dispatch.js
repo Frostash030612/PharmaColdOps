@@ -50,16 +50,68 @@ export const useDispatchStore = defineStore("dispatch", () => {
       .catch(() => { error.value = ""; return null; });
   }
 
-  /* Commit one closed reshipment case into the operation: reserves stock and
-     assigns a vehicle, unlike the stateless /api/route preview. */
-  function commitReshipment(runId) {
+  /* Commit one closed reshipment case into the day's plan as a BRANCH event:
+     reserves stock and assigns a vehicle, unlike the stateless /api/route
+     preview. `choice` ({ candidate_kind, vehicle_id }) applies the option the
+     operator picked from the comparison card; without it the backend takes the
+     best option under the current policy.
+
+     There is no longer any bootstrap: with no open daily plan the backend
+     answers 409 and `needsDailyPlan` is set, so the panel can tell the operator
+     what to do instead of showing "HTTP 409". */
+  function commitReshipment(runId, choice = null) {
     if (!ready() || !runId) return Promise.resolve(null);
     pending.value = true;
     error.value = "";
-    return postJson(`${decisions.apiBase}/api/dispatch/reshipments`, { run_id: runId })
-      .then(apply)
-      .catch((e) => { error.value = String(e.message || e); return null; })
+    needsDailyPlan.value = false;
+    const body = { run_id: runId, policy: policy.value };
+    if (choice) Object.assign(body, choice);
+    return postJson(`${decisions.apiBase}/api/dispatch/reshipments`, body)
+      .then((data) => { branch.value = null; return apply(data); })
+      .catch((e) => {
+        needsDailyPlan.value = e.status === 409;
+        error.value = String(e.message || e);
+        return null;
+      })
       .finally(() => { pending.value = false; });
+  }
+
+  /* ---- branch events: what could be done, before committing to anything ----
+     Read-only. This is the decision the whole module is about — change the route
+     of a vehicle that is already rolling, or send another one — so the operator
+     sees every option's distance, ETA and knock-on delays and picks one
+     (docs/C_配送模块.md §4.2, §5 D3). */
+  const branch = ref(null);          // preview response: order + candidates
+  const branchError = ref("");
+  const needsDailyPlan = ref(false); // last branch action was refused for 409
+  const policy = ref("minimize_disruption");
+  const POLICIES = ["minimize_disruption", "minimize_vehicles"];
+
+  function previewBranch(runId, nextPolicy = policy.value) {
+    if (!ready() || !runId) return Promise.resolve(null);
+    if (POLICIES.includes(nextPolicy)) policy.value = nextPolicy;
+    pending.value = true;
+    branchError.value = "";
+    needsDailyPlan.value = false;
+    return postJson(`${decisions.apiBase}/api/dispatch/reshipments/preview`, {
+      run_id: runId, policy: policy.value,
+    })
+      .then((data) => { branch.value = data; return data; })
+      .catch((e) => {
+        branch.value = null;
+        needsDailyPlan.value = e.status === 409;
+        branchError.value = String(e.message || e);
+        return null;
+      })
+      .finally(() => { pending.value = false; });
+  }
+
+  /* Switching the ranking must re-rank what is already on screen, or the policy
+     selector would look like it did something when it did not. */
+  function setPolicy(next) {
+    policy.value = next;
+    const runId = branch.value?.run_id || null;
+    return runId ? previewBranch(runId, next) : Promise.resolve(null);
   }
 
   function command(path, body) {
@@ -177,6 +229,8 @@ export const useDispatchStore = defineStore("dispatch", () => {
     run, pending, error, live, orders, vehicles, stock,
     refresh, commitReshipment, depart, deliverNext, setSpeed,
     tick, watchClock, stopClock,
+    branch, branchError, needsDailyPlan, policy, POLICIES,
+    previewBranch, setPolicy,
     dailyBatch, dailyPreview, dailyError,
     loadDailyPlan, confirmDailyPlan, oneClickDailyPlan, rerollDailyPlan,
   };

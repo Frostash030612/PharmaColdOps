@@ -12,6 +12,35 @@ from typing import Literal
 
 TemperatureZone = Literal["chilled", "frozen", "ultracold"]
 
+#: What a vehicle carries beyond its assigned orders, as
+#: ``(product_id, temperature_zone, quantity)`` triples.
+#:
+#: This is a **model assumption about the load**, not a depot lot: the demo puts
+#: a small safety margin on every vehicle so an in-transit truck can serve a
+#: branch event without driving back to the depot. It deliberately does not
+#: appear in ``available_by_lot`` (the loading step is not modelled), which is
+#: why an order served from it is recorded against an ``ONBOARD-…`` reserve.
+OnboardSpare = tuple[tuple[str, str, int], ...]
+
+
+def normalise_onboard_spare(value: object) -> OnboardSpare:
+    """Canonicalise onboard spare stock from tuples, lists or dicts.
+
+    The API layer parses JSON objects while the optimiser builds tuples; both
+    must land in one shape, or a state written by one and reloaded by the other
+    would silently disagree about what is on the truck.
+    """
+    items: list[tuple[str, str, int]] = []
+    for raw in value or ():  # type: ignore[union-attr]
+        if isinstance(raw, dict):
+            item = (raw["product_id"], raw["temperature_zone"], int(raw["quantity"]))
+        else:
+            item = (raw[0], raw[1], int(raw[2]))  # type: ignore[index]
+        if item[2] < 0:
+            raise ValueError("onboard spare quantity cannot be negative")
+        items.append(item)
+    return tuple(items)
+
 
 @dataclass(frozen=True)
 class DeliveryOrder:
@@ -57,12 +86,18 @@ class DispatchVehicle:
     start_facility_id: str
     available_from_min: int = 0
     status: Literal["available", "in_transit", "failed"] = "available"
+    onboard_spare: OnboardSpare = ()
 
     def __post_init__(self) -> None:
         if not self.vehicle_id or not self.start_facility_id:
             raise ValueError("vehicle and start facility IDs are required")
         if self.capacity <= 0 or self.available_from_min < 0:
             raise ValueError("vehicle capacity/time is invalid")
+        # Frozen dataclass: normalise through object.__setattr__ so every caller
+        # (API dicts, optimiser tuples, a reloaded state) sees one shape.
+        object.__setattr__(
+            self, "onboard_spare", normalise_onboard_spare(self.onboard_spare)
+        )
 
 
 def validate_dispatch_inputs(

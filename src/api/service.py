@@ -53,12 +53,14 @@ from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, Invento
 from optimisation.dispatch_planner import DISPATCH_ORIGIN, plan_delivery_orders  # noqa: E402
 from optimisation.dispatch_state import accept_plan, deliver_next, depart, state_to_dict  # noqa: E402
 from optimisation.dispatch_repository import (  # noqa: E402
-    create_run, latest_dispatch_id, list_dispatch_ids, load_context, load_run,
+    create_run, latest_dispatch_id, latest_open_dispatch_id, load_context, load_run,
     update_context, update_run,
 )
 from optimisation.daily_orders import ASSUMPTIONS as DAILY_PLAN_ASSUMPTIONS  # noqa: E402
 from optimisation.daily_orders import daily_delivery_batch  # noqa: E402
-from optimisation.dynamic_problem import accept_emergency_order, preview_emergency_order  # noqa: E402
+from optimisation.dynamic_problem import (  # noqa: E402
+    DEFAULT_POLICY, accept_emergency_order, preview_emergency_order,
+)
 from .schemas import DispatchCreateIn, DispatchPlanIn, EmergencyAcceptIn, EmergencyPreviewIn, EventIn, GridIn, QAIn, RouteIn, SpecOverride  # noqa: E402
 
 # Loaded once; used both as the source of stock thresholds and to keep the
@@ -500,7 +502,8 @@ def create_dispatch(req: DispatchCreateIn) -> dict:
     """Plan, accept and atomically persist one dispatch run."""
     orders, inventory, vehicles = _dispatch_inputs(req)
     plan = plan_delivery_orders(orders, inventory, vehicles, algorithm=req.algorithm)
-    state = accept_plan(plan, orders, inventory, command_id=req.command_id)
+    state = accept_plan(plan, orders, inventory, command_id=req.command_id,
+                        vehicles=vehicles)
     plan_view = _dispatch_plan_response(plan, requested_algorithm=req.algorithm)
     context = {
         "plan": plan_view,
@@ -556,14 +559,25 @@ def deliver_dispatch(dispatch_id: str, vehicle_id: str, command_id: str) -> dict
 # One shared operation: every disposition-triggered resupply lands in the live
 # run so the map, the order list and the stock ledger always describe the same
 # thing. Two parallel routing stories were exactly the problem this removes.
-# Runs are numbered because a *completed* operation is history — the next
-# resupply opens the next one rather than reopening a finished delivery.
-RESHIPMENT_DISPATCH_PREFIX = "RESHIPMENTS"
+#
+# 2026-09-15 (docs/C_配送模块.md §4.4-2): a resupply is a BRANCH of the day's
+# delivery plan, not an operation of its own. The old code bootstrapped a
+# one-order run out of a closed case the moment there was nothing to attach to,
+# which is precisely how the multi-stop planner got reduced to a one-order
+# vehicle dispatcher (§3.2). There is no bootstrap any more: no open plan means
+# the branch is refused and the operator is told to create today's plan first.
 
-#: Ids for "today's delivery plan" operations (doc §4.1).  Reshipments keep
-#: their own prefix so the bootstrap rule below stays deterministic; this one
-#: marks an operation planned from a batch of ordinary hospital orders.
+#: Ids for "today's delivery plan" operations (doc §4.1) — the main line that
+#: branch events attach to.
 DAILY_PLAN_DISPATCH_PREFIX = "PLAN"
+
+
+class NoActiveDeliveryPlan(ValueError):
+    """A branch event arrived with no open daily plan to attach it to.
+
+    Separate from a plain ``ValueError`` so the API can answer 409 (a state
+    conflict the operator can fix) instead of 422 (a malformed request).
+    """
 
 
 def _resolve_daily_seed(seed: int | str | None) -> int | None:
@@ -624,33 +638,33 @@ def daily_plan_request(
     }
 
 
-def _run_sequence(dispatch_id: str) -> int:
-    tail = dispatch_id.rsplit("-", 1)[-1]
-    return int(tail) if tail.isdigit() else 0
+def active_plan_run() -> tuple[str | None, object | None]:
+    """The open daily delivery plan — the main line branch events attach to.
 
+    Returns ``(dispatch_id, state)``, or ``(None, None)`` when there is nothing
+    to attach to: either no plan was ever created, or every plan has already
+    completed (a finished operation is history, not something to reopen). There
+    is deliberately no "start a one-order operation instead" fallback — that
+    fallback is what turned the multi-stop planner into a one-order vehicle
+    dispatcher (``docs/C_配送模块.md`` §3.2, §4.4-2).
 
-def active_reshipment_run() -> tuple[str, object | None]:
-    """The live resupply operation, or the id the next one should take.
-
-    Returns ``(dispatch_id, state)`` with ``state`` None when nothing is open,
-    which is the signal to bootstrap rather than to insert.
+    "Open" is decided by ``updated_at`` in the repository, so it is the same
+    operation the panel shows as active — not whichever id sorts highest, which
+    is how a branch event once attached itself to a stale finished plan.
     """
-    known = list_dispatch_ids(DISPATCH_DATABASE_URL, RESHIPMENT_DISPATCH_PREFIX)
-    if known:
-        latest = max(known, key=_run_sequence)
-        state = load_run(DISPATCH_DATABASE_URL, latest)
-        if state.status != "completed":
-            return latest, state
-        return f"{RESHIPMENT_DISPATCH_PREFIX}-{_run_sequence(latest) + 1}", None
-    return f"{RESHIPMENT_DISPATCH_PREFIX}-1", None
+    found = latest_open_dispatch_id(DISPATCH_DATABASE_URL, DAILY_PLAN_DISPATCH_PREFIX)
+    return found if found is not None else (None, None)
 
 
-def get_active_reshipment_dispatch() -> dict:
-    """The live operation for the front-end; KeyError when none is open."""
-    dispatch_id, state = active_reshipment_run()
+def _require_plan() -> tuple[str, object]:
+    dispatch_id, state = active_plan_run()
     if state is None:
-        raise KeyError(dispatch_id)
-    return get_dispatch(dispatch_id)
+        raise NoActiveDeliveryPlan(
+            "no daily delivery plan is open: create today's delivery plan before "
+            "routing a branch event (see POST /api/dispatch/daily-orders and "
+            "POST /api/dispatch/runs)"
+        )
+    return dispatch_id, state
 
 
 def get_active_dispatch() -> dict:
@@ -698,6 +712,12 @@ def _vehicle_dump(vehicle: DispatchVehicle) -> dict:
         "temperature_zone": vehicle.temperature_zone,
         "start_facility_id": vehicle.start_facility_id,
         "available_from_min": vehicle.available_from_min, "status": vehicle.status,
+        # Spare stock the vehicle carries beyond its assigned orders. It is a
+        # load assumption, not a depot lot, so it never enters the ledger.
+        "onboard_spare": [
+            {"product_id": product_id, "temperature_zone": zone, "quantity": quantity}
+            for product_id, zone, quantity in vehicle.onboard_spare
+        ],
     }
 
 
@@ -813,7 +833,7 @@ DEFAULT_CLOCK_SPEED = 60.0
 ALLOWED_CLOCK_SPEEDS = (1.0, 60.0, 300.0)
 
 
-def _bootstrap_fleet(zone: str) -> tuple[DispatchVehicle, ...]:
+def _zone_fleet(zone: str) -> tuple[DispatchVehicle, ...]:
     """The demo fleet for one temperature zone, sized from the committed network.
 
     Fleet size and capacity come from ``network.json`` (the same numbers the
@@ -828,90 +848,127 @@ def _bootstrap_fleet(zone: str) -> tuple[DispatchVehicle, ...]:
     )
 
 
-def route_reshipment(record: dict) -> dict:
-    """Route ONE closed reshipment case through the live dispatch system.
+def _prepare_branch(state, context: dict, order: DeliveryOrder):
+    """Add a case's replacement stock — and a fleet if its zone has none — in memory.
 
-    The first such case bootstraps the shared run; every later case is inserted
-    into that same run as an emergency order, so a resupply is always checked
-    against real stock and real vehicle capacity instead of being routed by a
-    parallel preview that reserves nothing.
+    A closed case's replacement stock is NEW stock: it did not exist when the
+    plan was accepted, so it must enter the ledger before any candidate is
+    judged, or every option would be refused for "insufficient inventory". Both
+    the read-only preview and the committing call run through here, so what the
+    operator was shown and what is then applied cannot disagree.
+    """
+    lot = InventoryLot(f"LOT-{order.order_id}", order.product_id, DISPATCH_ORIGIN,
+                       order.quantity, order.temperature_zone)
+    inventory = [*context["input"]["inventory"], _lot_dump(lot)]
+    vehicles = list(context["input"]["vehicles"])
+    if not any(item["temperature_zone"] == order.temperature_zone for item in vehicles):
+        # A product in a zone the plan has no fleet for (e.g. the first frozen
+        # case on a chilled-only plan) needs vehicles before it can ship.
+        vehicles.extend(_vehicle_dump(v) for v in _zone_fleet(order.temperature_zone))
+    context = {
+        **context,
+        "input": {**context["input"], "inventory": inventory, "vehicles": vehicles},
+    }
+    state = dataclasses.replace(
+        state,
+        available_by_lot={**state.available_by_lot, lot.lot_id: lot.available_quantity},
+    )
+    return state, context, lot
+
+
+def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dict:
+    """Every way this closed case could be served — read-only, nothing reserved.
+
+    The operator looks at the options (which vehicle, how far, how late, who else
+    is affected) and picks one; :func:`route_reshipment` then revalidates and
+    applies exactly that choice. Deriving the order happens here too, so the UI
+    never has to guess a destination or a quantity.
+    """
+    order = build_delivery_order(record)
+    if order is None:
+        raise ValueError(f"case {record['run_id']} does not require reshipment")
+    dispatch_id, state = _require_plan()
+    clock, next_day = _dispatch_clock(record, order)
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    state, context, _ = _prepare_branch(state, context, order)
+    if order.order_id in state.orders:  # already committed: show it, don't re-judge
+        return {"dispatch_id": dispatch_id, "order_id": order.order_id,
+                "already_committed": True, "scheduled_next_day": next_day,
+                "order": _order_dump(order), "policy": policy, "candidates": []}
+    return {
+        "dispatch_id": dispatch_id,
+        "order_id": order.order_id,
+        "already_committed": False,
+        "scheduled_next_day": next_day,
+        "order": _order_dump(order),
+        **preview_emergency_order(state, context, order,
+                                  current_time_min=clock, policy=policy),
+    }
+
+
+def route_reshipment(record: dict, *, candidate_kind: str | None = None,
+                     vehicle_id: str | None = None,
+                     policy: str = DEFAULT_POLICY) -> dict:
+    """Attach ONE closed reshipment case to the day's plan as a branch event.
+
+    The case becomes a real ``DeliveryOrder`` and is inserted into the operation
+    that is already running, so a resupply is always checked against real stock,
+    real capacity and the orders already on board. With no open plan there is
+    nothing to branch from: the case is refused rather than quietly promoted into
+    an operation of its own (``docs/C_配送模块.md`` §4.4-2).
     """
     order = build_delivery_order(record)
     if order is None:
         raise ValueError(f"case {record['run_id']} does not require reshipment")
     clock, next_day = _dispatch_clock(record, order)
-    lot = InventoryLot(f"LOT-{order.order_id}", order.product_id, DISPATCH_ORIGIN,
-                       order.quantity, order.temperature_zone)
-    dispatch_id, state = active_reshipment_run()
-
-    if state is None:
-        vehicles = _bootstrap_fleet(order.temperature_zone)
-        plan = plan_delivery_orders((order,), (lot,), vehicles)
-        state = accept_plan(plan, (order,), (lot,), command_id=f"reship-{order.order_id}")
-        context = {
-            "plan": _dispatch_plan_response(plan, requested_algorithm="greedy"),
-            "input": {
-                "orders": [_order_dump(order)], "inventory": [_lot_dump(lot)],
-                "vehicles": [_vehicle_dump(v) for v in vehicles],
-            },
-        }
-        create_run(DISPATCH_DATABASE_URL, dispatch_id, state, context=context)
-        return {"dispatch_id": dispatch_id, "bootstrapped": True,
-                "scheduled_next_day": next_day,
-                "route_view": dispatch_route_view(state, context),
-                **state_to_dict(state), **context}
+    dispatch_id, state = _require_plan()
 
     if order.order_id in state.orders:  # replaying the same case must not double-book
         context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
-        return {"dispatch_id": dispatch_id, "bootstrapped": False,
+        return {"dispatch_id": dispatch_id, "inserted": False,
                 "scheduled_next_day": next_day,
                 "route_view": dispatch_route_view(state, context),
                 **state_to_dict(state), **context}
 
     context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
-    context["input"]["inventory"].append(_lot_dump(lot))
-    if not any(v["temperature_zone"] == order.temperature_zone
-               for v in context["input"]["vehicles"]):
-        # A product in a zone the run has no fleet for (e.g. the first frozen
-        # case on a chilled-only run) needs its own vehicles before it can ship.
-        context["input"]["vehicles"].extend(
-            _vehicle_dump(v) for v in _bootstrap_fleet(order.temperature_zone)
-        )
-    # The new lot is stock that did not exist when the run was accepted, so it
-    # must enter the ledger before the emergency check reads availability.
-    state = dataclasses.replace(
-        state, available_by_lot={**state.available_by_lot, lot.lot_id: lot.available_quantity},
-    )
-    kind, vehicle_id = _pick_candidate(state, context, order, clock)
+    state, context, _ = _prepare_branch(state, context, order)
+    if candidate_kind is None or vehicle_id is None:
+        kind, carrier = _pick_candidate(state, context, order, clock, policy)
+    else:
+        # An explicit choice from the comparison card: revalidated by
+        # accept_emergency_order, never trusted as given.
+        kind, carrier = candidate_kind, vehicle_id
     new = accept_emergency_order(
         state, context, order,
         current_time_min=clock,
-        candidate_kind=kind, vehicle_id=vehicle_id,
+        candidate_kind=kind, vehicle_id=carrier,
         command_id=f"reship-{order.order_id}",
+        policy=policy,
     )
     # Context carries the order for later previews: without it, the next case's
     # affected-order simulation cannot resolve this one's window.
     context["input"]["orders"].append(_order_dump(order))
     update_run(DISPATCH_DATABASE_URL, dispatch_id, new, expected_version=state.version)
     update_context(DISPATCH_DATABASE_URL, dispatch_id, context)
-    return {"dispatch_id": dispatch_id, "bootstrapped": False,
+    return {"dispatch_id": dispatch_id, "inserted": True,
+            "candidate_kind": kind, "vehicle_id": carrier,
             "scheduled_next_day": next_day,
             "route_view": dispatch_route_view(new, context),
             **state_to_dict(new), **context}
 
 
-def _pick_candidate(state, context: dict, order: DeliveryOrder,
-                    clock: int) -> tuple[str, str]:
+def _pick_candidate(state, context: dict, order: DeliveryOrder, clock: int,
+                    policy: str = DEFAULT_POLICY) -> tuple[str, str]:
     """The best on-time option the dispatch preview actually offers.
 
-    Delegating to the preview means the capacity, temperature-zone and
-    knock-on-lateness rules are enforced here too — this bridge never invents a
-    vehicle the optimiser would have rejected. Returns the candidate's kind as
+    Delegating to the preview means the capacity, temperature-zone, onboard-spare
+    and knock-on-lateness rules are enforced here too — this bridge never invents
+    a vehicle the optimiser would have rejected. Returns the candidate's kind as
     well: picking its vehicle but assuming a kind would apply the wrong state
     transition (a spare vehicle starts a new task; an in-transit one detours).
     """
     preview = preview_emergency_order(
-        state, context, order, current_time_min=clock,
+        state, context, order, current_time_min=clock, policy=policy,
     )
     candidate = preview.get("selected_candidate")
     if candidate is None or not candidate["on_time"]:
@@ -930,6 +987,7 @@ def emergency_dispatch_preview(dispatch_id: str, req: EmergencyPreviewIn) -> dic
         context,
         DeliveryOrder(**req.order.model_dump()),
         current_time_min=req.current_time_min,
+        policy=req.policy,
     )
 
 
@@ -943,6 +1001,7 @@ def accept_emergency_dispatch(dispatch_id: str, req: EmergencyAcceptIn) -> dict:
         candidate_kind=req.candidate_kind,
         vehicle_id=req.vehicle_id,
         command_id=req.command_id,
+        policy=req.policy,
     )
     if new is not old:
         # The accepted order must join the context, not just the state: the

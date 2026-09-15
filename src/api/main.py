@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import service
 from .schemas import (
-    BatchIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
+    BatchIn, BranchPolicyIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
     EmergencyAcceptIn, EmergencyPreviewIn,
     DispatchDeliverIn, DispatchPlanIn, DispatchSpeedIn, GridIn, QAIn, QAOut,
     RouteIn, RouteOut,
@@ -128,19 +128,49 @@ def dispatch_plan(req: DispatchPlanIn):
         raise HTTPException(status_code=422, detail=str(exc))
 
 
-@app.post("/api/dispatch/reshipments")
-def route_reshipment_case(req: RouteIn):
-    """Commit one closed reshipment case into the shared dispatch operation.
+@app.post("/api/dispatch/reshipments/preview")
+def preview_reshipment_case(req: BranchPolicyIn):
+    """Every way this closed case could be served, before committing to one.
 
-    Unlike ``/api/route`` (a stateless preview that reserves nothing) this
-    reserves stock and assigns a vehicle, so the resupply becomes part of the
-    same operation the dispatch console and the map show.
+    Read-only: nothing is reserved and no state changes. The operator compares
+    the options (reuse a running vehicle's own spare, fetch from the depot, load
+    before departure, or send another vehicle), picks one, and posts that choice
+    to ``/api/dispatch/reshipments``.
+
+    409 means there is no open daily plan to branch from — create today's plan
+    first; a branch event is not an operation of its own.
     """
     record = service.find_run(req.run_id)
     if record is None:
         raise HTTPException(status_code=404, detail=f"unknown run_id {req.run_id!r}")
     try:
-        return service.route_reshipment(record)
+        return service.reshipment_branch_plan(record, policy=req.policy)
+    except service.NoActiveDeliveryPlan as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/dispatch/reshipments")
+def route_reshipment_case(req: RouteIn):
+    """Commit one closed reshipment case into the day's delivery plan.
+
+    Unlike ``/api/route`` (a stateless preview that reserves nothing) this
+    reserves stock and assigns a vehicle, so the resupply becomes part of the
+    same operation the dispatch console and the map show. It attaches to the
+    OPEN daily plan; without one this answers 409 rather than starting a
+    one-order operation of its own (docs/C_配送模块.md §4.4-2).
+    """
+    record = service.find_run(req.run_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"unknown run_id {req.run_id!r}")
+    try:
+        return service.route_reshipment(
+            record, candidate_kind=req.candidate_kind,
+            vehicle_id=req.vehicle_id, policy=req.policy,
+        )
+    except service.NoActiveDeliveryPlan as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 

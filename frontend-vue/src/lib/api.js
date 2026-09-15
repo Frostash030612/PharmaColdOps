@@ -39,7 +39,21 @@ export function postJson(path, body) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  }).then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+  }).then(async (r) => {
+    if (r.ok) return r.json();
+    // Keep the server's own words and status on the error: a refusal like
+    // "no daily delivery plan is open" is something the operator can act on,
+    // while "HTTP 409" on its own is not.
+    let detail = "";
+    try {
+      const payload = await r.json();
+      detail = typeof payload?.detail === "string" ? payload.detail : "";
+    } catch { /* not a JSON error body: fall back to the status line */ }
+    const error = new Error(detail || ("HTTP " + r.status));
+    error.status = r.status;
+    error.detail = detail;
+    throw error;
+  });
 }
 
 export function checkHealth(base) {

@@ -117,6 +117,18 @@ function clock(minutes) {
   const total = Math.round(minutes);
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
+
+/* Which way of serving the branch event this row is. The backend names the
+   kinds; the wording is local, like every other decision in this app. */
+const KIND_LABELS = {
+  add_stop_in_transit: "branchKindAddStop",
+  load_before_departure: "branchKindLoadFirst",
+  return_to_depot: "branchKindReturn",
+  spare_vehicle: "branchKindSpare",
+};
+function kindLabel(kind) {
+  return text.value[KIND_LABELS[kind]] || kind;
+}
 </script>
 
 <template>
@@ -185,10 +197,10 @@ function clock(minutes) {
       <p v-if="dispatch.dailyError" class="sg-error" role="status">{{ dispatch.dailyError }}</p>
     </div>
 
-    <!-- The bridge: this case's resupply joins the same operation, checked
-         against real stock and real vehicle capacity. Always says what the
-         next action is (or why there is none) — a decision that needs a
-         resupply must never dead-end in a banner. -->
+    <!-- The bridge: this case's resupply joins the SAME operation the day's plan
+         created, checked against real stock and real vehicle capacity. Always
+         says what the next action is (or why there is none) — a decision that
+         needs a resupply must never dead-end in a banner. -->
     <div class="sg-commit">
       <button v-if="canCloseAndDispatch" :disabled="busy || dispatch.pending"
         @click="closeAndDispatch()">
@@ -201,6 +213,68 @@ function clock(minutes) {
       <span v-else-if="alreadyCommitted" class="done">{{ text.committed }}</span>
       <span v-else-if="needsReshipment && !online" class="hint">{{ text.needsApi }}</span>
       <span v-else class="hint">{{ text.noReshipment }}</span>
+    </div>
+
+    <!-- Branch event: change a running vehicle's route, or send another one.
+         The backend already ranks the options; this is the operator's view of
+         that decision — distance, ETA and who else gets delayed (doc §4.2, §5 D3). -->
+    <div v-if="canDispatchArchived" class="sg-branch">
+      <strong>{{ text.branchTitle }}</strong>
+      <p class="sg-note">{{ text.branchHint }}</p>
+      <div class="sg-branch-actions">
+        <button :disabled="dispatch.pending"
+          @click="dispatch.previewBranch(sandbox.currentRunId)">
+          {{ dispatch.pending ? text.branchPreviewing : text.branchPreview }}
+        </button>
+        <label class="sg-branch-policy">
+          {{ text.branchPolicy }}
+          <select :value="dispatch.policy" :disabled="dispatch.pending"
+            @change="dispatch.setPolicy($event.target.value)">
+            <option value="minimize_disruption">{{ text.policyDisruption }}</option>
+            <option value="minimize_vehicles">{{ text.policyVehicles }}</option>
+          </select>
+        </label>
+      </div>
+      <p v-if="dispatch.needsDailyPlan" class="sg-error" role="status">{{ text.branchNeedsPlan }}</p>
+      <p v-else-if="dispatch.branchError" class="sg-error" role="status">{{ dispatch.branchError }}</p>
+
+      <table v-if="dispatch.branch?.candidates.length" class="sg-candidates">
+        <thead>
+          <tr>
+            <th>{{ text.branchOption }}</th>
+            <th>{{ text.branchVehicle }}</th>
+            <th>{{ text.branchDistance }}</th>
+            <th>{{ text.branchEta }}</th>
+            <th>{{ text.branchAffected }}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(c, index) in dispatch.branch.candidates" :key="`${c.kind}-${c.vehicle_id}`"
+            :class="{ chosen: index === 0, late: !c.on_time }">
+            <td>{{ kindLabel(c.kind) }}<em v-if="!c.on_time"> · {{ text.branchLateness }} {{ c.lateness_min }} {{ text.branchMinutes }}</em></td>
+            <td>{{ c.vehicle_id.replace(/^VEH-|^V-/, '') }}</td>
+            <td>{{ (c.distance_m / 1000).toFixed(2) }} {{ text.km }}</td>
+            <td>{{ clock(c.eta_min) }}</td>
+            <td>
+              <span v-if="!c.affected_orders.length">{{ text.branchNoAffected }}</span>
+              <span v-for="a in c.affected_orders" :key="a.order_id" class="sg-affected">
+                {{ a.order_id }} +{{ a.delay_min }} {{ text.branchMinutes }}
+                <em v-if="a.newly_late">（{{ text.branchNewlyLate }}）</em>
+                <em v-else-if="a.already_late">（{{ text.branchAlreadyLate }}）</em>
+              </span>
+            </td>
+            <td>
+              <button :disabled="dispatch.pending"
+                @click="dispatch.commitReshipment(sandbox.currentRunId,
+                  { candidate_kind: c.kind, vehicle_id: c.vehicle_id })">
+                {{ text.branchChoose }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else-if="dispatch.branch" class="sg-note">{{ text.branchNoAffected }}</p>
     </div>
     <p v-if="dispatch.error" class="sg-error" role="status">{{ dispatch.error }}</p>
 
@@ -300,4 +374,20 @@ function clock(minutes) {
 .sg-detail { background: #f8fafc; border-radius: 8px; padding: 10px; line-height: 1.7; color: #475569; }
 .sg-detail b { color: #0f172a; overflow-wrap: anywhere; }
 .sg-disclaimer { margin-bottom: 0; padding-top: 9px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 11px; line-height: 1.6; }
+.sg-branch { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+.sg-branch > strong { color: #0f172a; }
+.sg-branch-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.sg-branch-actions > button { background: #7c3aed; color: #fff; border: 0; border-radius: 7px; padding: 6px 11px; cursor: pointer; font-size: 12px; font-weight: 600; }
+.sg-branch-actions > button:disabled { opacity: .6; cursor: default; }
+.sg-branch-policy { color: #64748b; }
+.sg-branch-policy select { margin-left: 4px; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 5px; font-size: 11px; color: #334155; background: #fff; }
+.sg-candidates { width: 100%; border-collapse: collapse; margin-top: 4px; }
+.sg-candidates th { text-align: left; color: #64748b; font-size: 10px; font-weight: 700; padding: 4px 6px; border-bottom: 1px solid #e2e8f0; }
+.sg-candidates td { padding: 6px; border-bottom: 1px solid #f1f5f9; color: #475569; vertical-align: top; line-height: 1.5; }
+.sg-candidates tr.chosen td { background: #f0fdfa; }
+.sg-candidates tr.late td:first-child { color: #b91c1c; }
+.sg-candidates em { font-style: normal; color: #b45309; }
+.sg-candidates button { background: #0d9488; color: #fff; border: 0; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.sg-candidates button:disabled { opacity: .6; cursor: default; }
+.sg-affected { display: block; color: #475569; }
 </style>

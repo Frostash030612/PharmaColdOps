@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from .dispatch_models import DeliveryOrder, InventoryLot
+from .dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot
 from .dispatch_planner import DISPATCH_ORIGIN, DispatchPlan
 
 
@@ -24,6 +24,10 @@ class VehicleProgress:
     remaining_order_ids: tuple[str, ...]
     delivered_order_ids: tuple[str, ...] = ()
     status: str = "reserved"
+    #: Spare stock still on board, as ``(product_id, temperature_zone, quantity)``.
+    #: Consumed by the ``add_stop_in_transit`` candidate so an in-transit vehicle
+    #: can serve a branch event without returning to the depot.
+    onboard_spare: tuple[tuple[str, str, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -46,6 +50,7 @@ def state_to_dict(state: DispatchState) -> dict:
             **vars(value),
             "remaining_order_ids": list(value.remaining_order_ids),
             "delivered_order_ids": list(value.delivered_order_ids),
+            "onboard_spare": [list(part) for part in value.onboard_spare],
         } for key, value in state.vehicles.items()},
         "available_by_lot": state.available_by_lot,
         "reserved_by_order": {
@@ -64,7 +69,12 @@ def state_from_dict(raw: dict) -> DispatchState:
         vehicles={key: VehicleProgress(
             **{**value,
                "remaining_order_ids": tuple(value["remaining_order_ids"]),
-               "delivered_order_ids": tuple(value["delivered_order_ids"])}
+               "delivered_order_ids": tuple(value["delivered_order_ids"]),
+               # Absent in states persisted before onboard spare existed: default
+               # to "carries nothing extra" rather than failing the reload.
+               "onboard_spare": tuple(
+                   tuple(part) for part in value.get("onboard_spare", ())
+               )}
         ) for key, value in raw["vehicles"].items()},
         available_by_lot=dict(raw["available_by_lot"]),
         reserved_by_order={
@@ -81,8 +91,14 @@ def accept_plan(
     inventory: tuple[InventoryLot, ...],
     *,
     command_id: str,
+    vehicles: tuple[DispatchVehicle, ...] = (),
 ) -> DispatchState:
-    """Reserve stock and vehicles once a feasible preview is accepted."""
+    """Reserve stock and vehicles once a feasible preview is accepted.
+
+    ``vehicles`` is optional so existing callers keep working; when given, each
+    dispatched vehicle carries its onboard spare stock into the state, which is
+    what lets a later branch event be served without a depot return.
+    """
     if not command_id:
         raise ValueError("command_id is required")
     if not plan.feasible:
@@ -131,8 +147,10 @@ def accept_plan(
             order.quantity, assignments[order_id],
         ) for order_id, order in by_order.items()
     }
+    spare_by_vehicle = {vehicle.vehicle_id: vehicle.onboard_spare for vehicle in vehicles}
     vehicle_states = {
-        vehicle_id: VehicleProgress(vehicle_id, DISPATCH_ORIGIN, tuple(sequence))
+        vehicle_id: VehicleProgress(vehicle_id, DISPATCH_ORIGIN, tuple(sequence),
+                                    onboard_spare=spare_by_vehicle.get(vehicle_id, ()))
         for vehicle_id, sequence in sequences.items()
     }
     return DispatchState(1, "accepted", order_states, vehicle_states,

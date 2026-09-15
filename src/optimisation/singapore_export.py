@@ -16,6 +16,12 @@ def sequences_geojson(network: dict, sequences: dict[str, list[int]]) -> dict:
         order = (0, *node_ids, 0)
         coords: list = []
         for a, b in zip(order, order[1:]):
+            if a == b:
+                # The same node twice in a row — a branch order for a hospital
+                # that is already on this route. There is no road from a place
+                # to itself, so there is no segment to draw; the stop itself is
+                # still on the route (see the stop list, not the polyline).
+                continue
             segment = network['leg_geometry'][f'{a}:{b}']
             if len(segment) < 2:
                 raise ValueError(f'missing road geometry for {a}:{b}')
@@ -37,6 +43,8 @@ def routes_geojson(network: dict, result: ReplanResult) -> dict:
         order = (0, *route.customer_ids, 0)
         coords = []
         for a, b in zip(order, order[1:]):
+            if a == b:
+                continue          # zero-length leg: no geometry to draw
             segment = network['leg_geometry'][f'{a}:{b}']
             if len(segment) < 2:
                 raise ValueError(f'missing road geometry for {a}:{b}')
