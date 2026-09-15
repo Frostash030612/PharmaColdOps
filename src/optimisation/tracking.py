@@ -21,12 +21,20 @@ SERVICE_MIN = 0           # per-stop dwell; kept explicit, see limitations
 
 
 def make_clock(sim_start_min: float, speed: float,
-               started_real: str | None = None) -> dict:
+               started_real: str | None = None,
+               depart_min: float | None = None) -> dict:
     """A simulated clock: where it started, when that was, how fast it runs.
 
     ``speed = 0`` is a genuine pause, not a stopped refresh: simulated time is
     derived from the wall clock times the speed, so at 0 nothing advances, and
     resuming re-bases on the frozen minute instead of jumping forward.
+
+    ``depart_min`` is the minute the vehicles ROLLED, and it is deliberately
+    separate from ``sim_start_min``: changing the speed re-bases the arithmetic
+    (sim_start = "now", or time would jump) but must NOT move the schedule
+    origin, because positions are computed as "departure + elapsed time". Tying
+    the two together is what teleported every truck back to the depot whenever
+    the speed buttons were touched.
     """
     if speed < 0:
         raise ValueError("clock speed cannot be negative")
@@ -34,7 +42,18 @@ def make_clock(sim_start_min: float, speed: float,
         "sim_start_min": float(sim_start_min),
         "started_real": started_real or datetime.datetime.now().isoformat(timespec="seconds"),
         "speed": float(speed),
+        "depart_min": float(sim_start_min if depart_min is None else depart_min),
     }
+
+
+def schedule_origin(clock: dict) -> float:
+    """When the fleet rolled — the origin the vehicle schedule is measured from.
+
+    Falls back to ``sim_start_min`` for clocks written before the field existed;
+    those can only be speed-changed runs, and the fallback matches the old
+    (teleporting) behaviour rather than failing.
+    """
+    return float(clock.get("depart_min", clock["sim_start_min"]))
 
 
 def simulated_now(clock: dict, real_now: datetime.datetime | None = None) -> float:

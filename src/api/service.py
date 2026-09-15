@@ -49,14 +49,16 @@ from optimisation.reshipment import (  # noqa: E402
 from optimisation.singapore_export import (  # noqa: E402
     leg_geojson, routes_geojson, sequence_distance_m, sequence_geojson, sequences_geojson,
 )
-from optimisation.tracking import LOADING_MIN, make_clock, simulated_now, vehicle_track  # noqa: E402
+from optimisation.tracking import (  # noqa: E402
+    LOADING_MIN, make_clock, schedule_origin, simulated_now, vehicle_track,
+)
 from optimisation.singapore_loader import read_network  # noqa: E402
 from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot  # noqa: E402
 from optimisation.dispatch_planner import DISPATCH_ORIGIN, plan_delivery_orders  # noqa: E402
 from optimisation.dispatch_state import accept_plan, deliver_next, depart, state_to_dict  # noqa: E402
 from optimisation.dispatch_repository import (  # noqa: E402
     create_run, latest_dispatch_id, latest_open_dispatch_id, load_context, load_run,
-    update_context, update_run,
+    recent_runs, update_context, update_run,
 )
 from optimisation.daily_orders import ASSUMPTIONS as DAILY_PLAN_ASSUMPTIONS  # noqa: E402
 from optimisation.daily_orders import daily_delivery_batch  # noqa: E402
@@ -816,7 +818,9 @@ def dispatch_route_view(state, context: dict) -> dict:
     clock = context.get("clock")
     sim_now = simulated_now(clock) if clock else None
     if sim_now is not None:
-        depart_min = clock["sim_start_min"]
+        # The schedule runs from the minute the fleet rolled, not from whenever
+        # the speed was last changed (see tracking.schedule_origin).
+        depart_min = schedule_origin(clock)
         for route in routes:
             if route["status"] != "in_transit" or not route["stops"]:
                 continue
@@ -1070,6 +1074,38 @@ def accept_emergency_dispatch(dispatch_id: str, req: EmergencyAcceptIn) -> dict:
             **state_to_dict(new), **context}
 
 
+def recent_dispatch_runs(limit: int = 5) -> list[dict]:
+    """Recent operations, newest first — what the console can replay."""
+    return recent_runs(DISPATCH_DATABASE_URL, limit)
+
+
+def replay_dispatch(dispatch_id: str, *, speed: float | None = None,
+                    new_dispatch_id: str | None = None) -> dict:
+    """Run the SAME plan again from the beginning, as a new operation.
+
+    Replaying is not time travel: the finished operation is kept as history and
+    the identical batch (orders, stock, fleet — read back from the stored input)
+    is planned and dispatched afresh, so a demo can be watched again end to end
+    without inventing new data. The new run departs immediately at ``speed``
+    (its clock starts at the first receiving window, exactly as when the
+    operator pressed depart).
+    """
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    source = context.get("input") or {}
+    if not source.get("orders"):
+        raise ValueError(f"dispatch {dispatch_id!r} has no stored input to replay")
+    batch = DispatchCreateIn(
+        dispatch_id=new_dispatch_id or (
+            f"{DAILY_PLAN_DISPATCH_PREFIX}-{int(datetime.datetime.now().timestamp())}"),
+        command_id=f"replay-{dispatch_id}",
+        algorithm=(context.get("plan") or {}).get("algorithm", "greedy"),
+        orders=source["orders"], inventory=source["inventory"], vehicles=source["vehicles"],
+    )
+    created = create_dispatch(batch)
+    departed = depart_dispatch(created["dispatch_id"], f"replay-go-{dispatch_id}", speed=speed)
+    return {**departed, "replayed_from": dispatch_id}
+
+
 def set_dispatch_speed(dispatch_id: str, speed: float) -> dict:
     """Change how fast simulated time runs, without moving the vehicles.
 
@@ -1084,7 +1120,8 @@ def set_dispatch_speed(dispatch_id: str, speed: float) -> dict:
     clock = context.get("clock")
     if clock is None:
         raise ValueError("the operation has not departed yet")
-    context["clock"] = make_clock(simulated_now(clock), speed)
+    context["clock"] = make_clock(simulated_now(clock), speed,
+                                  depart_min=schedule_origin(clock))
     update_context(DISPATCH_DATABASE_URL, dispatch_id, context)
     return {"dispatch_id": dispatch_id,
             "route_view": dispatch_route_view(state, context),
@@ -1119,7 +1156,7 @@ def tick_dispatch(dispatch_id: str) -> dict:
                 continue
             sequence = [node_by_facility[state.orders[oid].destination_facility_id]
                         for oid in (*vehicle.delivered_order_ids, *vehicle.remaining_order_ids)]
-            track = vehicle_track(network, sequence, clock["sim_start_min"] + LOADING_MIN,
+            track = vehicle_track(network, sequence, schedule_origin(clock) + LOADING_MIN,
                                   sim_now)
             # Arrivals already recorded must not count again, or the next stop
             # would be delivered the moment the previous one was.

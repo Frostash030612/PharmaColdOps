@@ -225,7 +225,12 @@ export const useDispatchStore = defineStore("dispatch", () => {
         dispatch_id: dispatchId,
         command_id: `create-${dispatchId}`,
       });
-      return apply(data);
+      const applied = apply(data);
+      // The batch is only a plan until the fleet rolls, and an undeparted plan
+      // has no clock, no truck and no branch candidates — which looks exactly
+      // like "nothing happened". Depart as part of the same button.
+      await depart();
+      return applied;
     } catch (e) {
       dailyError.value = String(e.message || e);
       return null;
@@ -234,6 +239,70 @@ export const useDispatchStore = defineStore("dispatch", () => {
     }
   }
   const setSpeed = (speed) => command("speed", { speed });
+
+  /* Nobody watching → freeze.
+
+     Simulated time is derived from the wall clock, so a demo left open in a
+     background tab races through the whole day and is over before anyone looks
+     — which is exactly what a visitor is most likely to do. Pausing on hide and
+     resuming on show makes the clock wait for its audience; the pause is the
+     real one (speed 0), so the map does not silently keep moving either. */
+  let hiddenSpeed = null;
+  function watchVisibility() {
+    if (typeof document === "undefined") return;
+    document.addEventListener("visibilitychange", () => {
+      if (!run.value || run.value.status !== "in_transit") return;
+      if (document.hidden) {
+        hiddenSpeed = run.value.clock?.speed ?? 60;
+        if (hiddenSpeed > 0) setSpeed(0);
+      } else if (hiddenSpeed) {
+        const resume = hiddenSpeed;
+        hiddenSpeed = null;
+        setSpeed(resume);
+      }
+    });
+  }
+
+  /* ---- replaying an operation -------------------------------------------
+     A finished run is history, and the panel used to fall back to the demo plan
+     in silence, so a demo that ran to the end could not be watched again. Replay
+     plans the SAME stored batch afresh and departs it, so nothing has to be
+     invented to see it a second time. */
+  const recent = ref([]);          // recent operations: [{dispatch_id, status}]
+  const replayError = ref("");
+
+  async function loadRecent() {
+    if (!ready()) return null;
+    try {
+      const response = await fetch(`${decisions.apiBase}/api/dispatch/runs?limit=5`);
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      recent.value = (await response.json()).runs || [];
+      return recent.value;
+    } catch (e) {
+      replayError.value = String(e.message || e);
+      return null;
+    }
+  }
+
+  /// Replay the operation on screen, else the most recent one.
+  async function replay(dispatchId = null) {
+    const source = dispatchId || run.value?.dispatch_id || recent.value[0]?.dispatch_id;
+    if (!ready() || !source) return null;
+    pending.value = true;
+    replayError.value = "";
+    try {
+      const data = await postJson(
+        `${decisions.apiBase}/api/dispatch/runs/${source}/replay`,
+        { speed: run.value?.clock?.speed || 60 });
+      branch.value = null;
+      return apply(data);
+    } catch (e) {
+      replayError.value = String(e.message || e);
+      return null;
+    } finally {
+      pending.value = false;
+    }
+  }
 
   /* Advance the operation to the simulated clock. The backend applies any
      arrivals that are due (idempotently), so this is safe to poll. */
@@ -282,6 +351,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     branch, branchError, needsDailyPlan, policy, POLICIES,
     previewBranch, setPolicy,
     branchVehicle, branchCandidate, branchOverlays, branchNodeIds, incidentNodeId,
+    recent, replayError, loadRecent, replay, watchVisibility,
     dailyBatch, dailyPreview, dailyError,
     loadDailyPlan, confirmDailyPlan, oneClickDailyPlan, rerollDailyPlan,
   };

@@ -109,6 +109,9 @@ onBeforeUnmount(() => {
           <input type="checkbox" v-model="showComparison" :disabled="!branch?.candidates?.length">
           {{ text.transportCompare }}
         </label>
+        <button class="tv-replay" :disabled="dispatch.pending" @click="dispatch.replay()">
+          {{ text.replay }}
+        </button>
         <span v-if="branch?.candidates?.length && selectedVehicle" class="tv-hint">
           {{ text.transportCompareHint }}
         </span>
@@ -118,6 +121,7 @@ onBeforeUnmount(() => {
       <LeafletMap :nodes="nodes" :plan="plan" :text="text" :selected-id="null"
         :selected-vehicle="selectedVehicle" height="calc(100vh - 240px)" legend follow
         :overlays="overlays" :branch-node-ids="branchNodeIds" :incident-node-id="incidentNodeId"
+        :compare-vehicle="overlays.length ? dispatch.branchCandidate?.vehicle_id : null"
         @select-vehicle="pickVehicle" />
 
       <ul class="tv-vehicles">
@@ -150,6 +154,7 @@ onBeforeUnmount(() => {
 .tv-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 9px; font-size: 12px; color: #475569; }
 .tv-controls > button { background: #7c3aed; color: #fff; border: 0; border-radius: 7px; padding: 5px 11px; cursor: pointer; font-weight: 600; }
 .tv-controls > button.on { background: #b45309; }
+.tv-controls > button.tv-replay { background: #0f172a; margin-left: auto; }
 .tv-controls button:disabled { opacity: .5; cursor: default; }
 .tv-speeds button { border: 1px solid #cbd5e1; background: #fff; color: #475569; border-radius: 5px; padding: 3px 7px; font-size: 11px; cursor: pointer; }
 .tv-speeds button.on { border-color: #0d9488; color: #0f766e; background: #f0fdfa; }

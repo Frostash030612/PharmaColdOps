@@ -62,7 +62,11 @@ async function closeAndDispatch() {
     });
     sandbox.restoreCase(record);     // the page now shows an archived case
     history.refresh();
-    await dispatch.commitReshipment(record.run_id);
+    // Show HOW it could be handled instead of silently picking for the operator:
+    // this is the moment the branch event becomes visible on the map (the
+    // affected hospital and the stop it would add), and committing is then a
+    // deliberate choice. "把本次补发纳入配送作业" stays as the one-press default.
+    await dispatch.previewBranch(record.run_id);
   } catch (e) {
     dispatch.error = String(e.message || e);
   } finally {
@@ -90,15 +94,23 @@ watch(underway, (on) => { on ? dispatch.watchClock() : dispatch.stopClock(); },
       { immediate: true });
 onBeforeUnmount(() => dispatch.stopClock());
 
+/* …and stop the clock while the tab is in the background: a demo left open
+   would otherwise be over before anyone came back to it. */
+dispatch.watchVisibility();
+
 function simClock() {
   const minutes = dispatch.live?.sim_now_min;
   if (minutes == null) return "";
   return clock(((minutes % 1440) + 1440) % 1440);
 }
 
-/* Load the shared operation whenever the backend becomes reachable. */
-watch(() => [decisions.useApi, decisions.apiUp], () => { dispatch.refresh(); },
-      { immediate: true });
+/* Load the shared operation whenever the backend becomes reachable, and the
+   recent-operation list with it: after a run finishes nothing is "active" any
+   more, and the console offers to replay what just happened. */
+watch(() => [decisions.useApi, decisions.apiUp], () => {
+  dispatch.refresh();
+  dispatch.loadRecent();
+}, { immediate: true });
 
 const colors = ["#0d9488", "#7c3aed", "#d97706"];
 const color = (index) => colors[index % colors.length];
@@ -156,6 +168,7 @@ function kindLabel(kind) {
       :selected-vehicle="selectedVehicle"
       :overlays="dispatch.branchOverlays" :branch-node-ids="dispatch.branchNodeIds"
       :incident-node-id="dispatch.incidentNodeId"
+      :compare-vehicle="dispatch.branchOverlays.length ? dispatch.branchCandidate?.vehicle_id : null"
       @select="selectedId = $event" @select-vehicle="pickVehicle($event)" />
 
     <div v-if="isLive" class="sg-metrics">
@@ -251,7 +264,7 @@ function kindLabel(kind) {
           <tr>
             <th>{{ text.branchOption }}</th>
             <th>{{ text.branchVehicle }}</th>
-            <th>{{ text.branchDistance }}</th>
+            <th>{{ text.branchExtra }}</th>
             <th>{{ text.branchEta }}</th>
             <th>{{ text.branchAffected }}</th>
             <th></th>
@@ -262,7 +275,12 @@ function kindLabel(kind) {
             :class="{ chosen: index === 0, late: !c.on_time }">
             <td>{{ kindLabel(c.kind) }}<em v-if="!c.on_time"> · {{ text.branchLateness }} {{ c.lateness_min }} {{ text.branchMinutes }}</em></td>
             <td>{{ c.vehicle_id.replace(/^VEH-|^V-/, '') }}</td>
-            <td>{{ (c.distance_m / 1000).toFixed(2) }} {{ text.km }}</td>
+            <td>
+              <!-- What the option COSTS, not the length of its final hop: every
+                   option ends at the same hospital, so showing that leg made
+                   all three read "26.28 km" and look identical. -->
+              +{{ (c.added_distance_m / 1000).toFixed(2) }} {{ text.km }}
+            </td>
             <td>{{ clock(c.eta_min) }}</td>
             <td>
               <span v-if="!c.affected_orders.length">{{ text.branchNoAffected }}</span>
@@ -298,7 +316,24 @@ function kindLabel(kind) {
             @click="dispatch.setSpeed(s.value)">{{ text[s.key] }}</button>
         </span>
       </template>
+      <button class="sg-replay" :disabled="dispatch.pending" @click="dispatch.replay()">
+        {{ text.replay }}
+      </button>
     </div>
+
+    <!-- A finished operation is history, and the panel used to fall back to the
+         demo plan without saying so. Say it, and offer to run it again. -->
+    <div v-if="online && !isLive" class="sg-ops">
+      <span v-if="dispatch.recent.length" class="hint">
+        {{ text.lastRunOver }} <b>{{ dispatch.recent[0].dispatch_id }}</b>
+      </span>
+      <button v-if="dispatch.recent.length" :disabled="dispatch.pending"
+        @click="dispatch.replay(dispatch.recent[0].dispatch_id)">
+        {{ text.replayLast }}
+      </button>
+      <span v-else class="hint">{{ text.noRunYet }}</span>
+    </div>
+    <p v-if="dispatch.replayError" class="sg-error" role="status">{{ dispatch.replayError }}</p>
 
     <div v-for="(route, index) in plan.routes" :key="route.vehicle_id" class="sg-vehicle"
       :class="{ picked: selectedVehicle === route.vehicle_id }">
@@ -370,6 +405,9 @@ function kindLabel(kind) {
 .sg-error { color: #b91c1c; line-height: 1.5; }
 .sg-ops { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; }
 .sg-ops > button { background: #0f172a; color: #fff; border: 0; border-radius: 7px; padding: 6px 11px; cursor: pointer; font-size: 12px; font-weight: 600; }
+.sg-ops .sg-replay { background: #7c3aed; }
+.sg-ops .hint { color: #64748b; }
+.sg-ops .hint b { color: #0f172a; }
 .sg-ops .sim { font-variant-numeric: tabular-nums; color: #0f766e; font-weight: 700; }
 .sg-ops .speeds button { border: 1px solid #cbd5e1; background: #fff; color: #475569; border-radius: 5px; padding: 3px 7px; font-size: 10px; cursor: pointer; }
 .sg-ops .speeds button.on { border-color: #0d9488; color: #0f766e; background: #f0fdfa; }

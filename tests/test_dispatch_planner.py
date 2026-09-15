@@ -110,6 +110,44 @@ def test_dispatch_run_persists_and_advances_idempotently():
     assert persistent(restored.json()) == persistent(delivered.json())
 
 
+def test_recent_runs_are_listed_newest_first_with_their_status():
+    request = payload()
+    request.update(dispatch_id="DSP-OLD", command_id="create-old")
+    assert client.post("/api/dispatch/runs", json=request).status_code == 200
+    request.update(dispatch_id="DSP-NEW", command_id="create-new")
+    assert client.post("/api/dispatch/runs", json=request).status_code == 200
+
+    runs = client.get("/api/dispatch/runs?limit=5").json()["runs"]
+
+    assert [run["dispatch_id"] for run in runs][:2] == ["DSP-NEW", "DSP-OLD"]
+    assert {run["status"] for run in runs} == {"accepted"}
+
+
+def test_replaying_a_run_restarts_the_same_batch_as_a_new_operation():
+    """A finished demo could not be watched again: nothing was open, so the panel
+    silently fell back to the demo plan. Replay re-plans the SAME stored batch."""
+    request = payload()
+    request.update(dispatch_id="DSP-REPLAY", command_id="create-replay")
+    created = client.post("/api/dispatch/runs", json=request).json()
+
+    replayed = client.post("/api/dispatch/runs/DSP-REPLAY/replay",
+                           json={"speed": 300.0})
+
+    assert replayed.status_code == 200
+    body = replayed.json()
+    assert body["replayed_from"] == "DSP-REPLAY"
+    assert body["dispatch_id"] != "DSP-REPLAY"          # history is not overwritten
+    assert body["status"] == "in_transit"               # …and it is already rolling
+    assert body["clock"]["speed"] == 300.0
+    assert set(body["orders"]) == set(created["orders"])
+    assert client.get("/api/dispatch/runs?limit=5").json()["runs"][0]["dispatch_id"] \
+        == body["dispatch_id"]
+
+
+def test_replaying_an_unknown_run_is_refused():
+    assert client.post("/api/dispatch/runs/DSP-NOPE/replay", json={}).status_code == 404
+
+
 def test_emergency_preview_compares_spare_vehicle_and_return_to_depot():
     request = payload()
     request.update(dispatch_id="DSP-EMERGENCY", command_id="accept-emergency")

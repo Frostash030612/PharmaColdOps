@@ -177,12 +177,23 @@ class DispatchCreateIn(DispatchPlanIn):
 
 class DispatchCommandIn(BaseModel):
     command_id: str
+    #: Departure speed. Present here because the service has always accepted it
+    #: and silently dropping a field the caller sent is worse than honouring it;
+    #: omit to keep the default, 0 to leave the clock frozen at the start.
+    speed: Optional[float] = Field(default=None, ge=0)
 
 
 class DispatchSpeedIn(BaseModel):
     """How fast simulated time runs: 0 freezes it, 60 = a minute per second."""
 
     speed: float = Field(ge=0)
+
+
+class DispatchReplayIn(BaseModel):
+    """Run the same plan again, optionally at a given speed, optionally renamed."""
+
+    speed: float = Field(default=60.0, ge=0)
+    dispatch_id: Optional[str] = None
 
 
 class DispatchDeliverIn(DispatchCommandIn):

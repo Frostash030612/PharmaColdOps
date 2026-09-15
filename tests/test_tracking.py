@@ -114,13 +114,49 @@ def test_ticking_twice_records_one_delivery(day_plan):
 
 
 def test_changing_speed_does_not_teleport_the_vehicles(day_plan):
+    """The clock is re-based on "now", but the SCHEDULE origin must not move.
+
+    Positions are derived as "departure + elapsed time". Re-basing the origin
+    together with the clock arithmetic snapped every truck back to the depot the
+    moment a speed button was pressed — and the old version of this test only
+    compared the clock, so it passed while the trucks teleported.
+    """
     dispatch_id = day_plan(hospitals=1)
     service.depart_dispatch(dispatch_id, "go", speed=300.0)
-    before = service.get_dispatch(dispatch_id)["route_view"]["sim_now_min"]
+    _age_clock(dispatch_id, minutes_ago=3)          # the truck is well under way
+    before = service.get_dispatch(dispatch_id)
+    position = before["route_view"]["routes"][0]["track"]["position"]
+    assert before["route_view"]["routes"][0]["track"]["reached_stops"] >= 0
 
-    after = service.set_dispatch_speed(dispatch_id, 1.0)["route_view"]["sim_now_min"]
+    after = service.set_dispatch_speed(dispatch_id, 1.0)["route_view"]
 
-    assert after == pytest.approx(before, abs=1.0)   # continues, not restarts
+    assert after["sim_now_min"] == pytest.approx(before["route_view"]["sim_now_min"], abs=1.0)
+    # …and the truck is still where it was, not back at the depot.
+    assert after["routes"][0]["track"]["position"] == pytest.approx(position, abs=1e-6)
+    assert after["routes"][0]["track"]["leg_from"] == \
+        before["route_view"]["routes"][0]["track"]["leg_from"]
+
+
+def test_deliveries_follow_the_schedule_after_a_speed_change(day_plan):
+    """The tick and the map must agree about where the truck is.
+
+    Both derive arrival times from the schedule origin. When the tick used the
+    re-based ``sim_start_min`` instead, the map drew the truck past three stops
+    while the ledger still said 0 delivered — the state machine stopped
+    recording arrivals at all after any speed change.
+    """
+    dispatch_id = day_plan(hospitals=1)
+    service.depart_dispatch(dispatch_id, "go", speed=60.0)
+    service.set_dispatch_speed(dispatch_id, 300.0)    # re-bases the clock arithmetic
+    _age_clock(dispatch_id, minutes_ago=5)            # …and then five real minutes pass
+
+    ticked = service.tick_dispatch(dispatch_id)
+
+    assert ticked["route_view"]["metrics"]["orders_delivered"] == 1
+    # The single-order plan is finished by that delivery, so there is no track
+    # left to draw — what matters is that the LEDGER agrees with the schedule.
+    assert ticked["status"] == "completed"
+    assert ticked["route_view"]["routes"][0]["stops"][0]["delivered"] is True
 
 
 def test_speed_zero_freezes_simulated_time_rather_than_the_refresh(day_plan):

@@ -28,6 +28,9 @@ const props = defineProps({
   branchNodeIds: { type: Array, default: () => [] },
   /// The facility whose goods were affected, if any.
   incidentNodeId: { type: Number, default: null },
+  /// While a comparison is shown, this vehicle's own pending line is faded so
+  /// the two options ("before" grey / "after" red) are what the eye lands on.
+  compareVehicle: { type: String, default: null },
 });
 const emit = defineEmits(["select", "selectVehicle"]);
 const el = ref(null);
@@ -57,6 +60,7 @@ function routeStops(route) {
 
 /* One merged polyline per route when there is no leg geometry (demo plan). */
 function routeLines(route, index) {
+  const color = colors[index % colors.length];
   if (route.legs?.length) {
     const done = [], todo = [];
     route.legs.forEach((leg) => (leg.delivered ? done : todo).push(leg.coords));
@@ -64,13 +68,31 @@ function routeLines(route, index) {
       { coords: flatten(done), delivered: true },
       { coords: flatten(todo), delivered: false },
     ].filter((line) => line.coords.length > 1)
-      .map((line) => ({ ...line, color: colors[index % colors.length] }));
+      .map((line) => ({ ...line, color }));
   }
   const feature = (props.plan.geojson?.features || [])[index];
   const coords = feature?.geometry?.coordinates || [];
-  return coords.length > 1
-    ? [{ coords, delivered: false, color: colors[index % colors.length] }]
-    : [];
+  return coords.length > 1 ? [{ coords, delivered: false, color }] : [];
+}
+
+/* Driven and pending must not look alike. Grey-on-grey was the first attempt and
+   it read as "just another road" on the OSM basemap: the driven part is now a
+   darker solid grey and BOTH parts get a white casing, so each line separates
+   from the other and from the map underneath. */
+const DONE_COLOR = "#475569";
+
+function drawLine(line, dim) {
+  const color = line.delivered ? DONE_COLOR : line.color;
+  const weight = line.delivered ? 3.5 : 5;
+  L.polyline(toLatLngs(line.coords), {
+    color: "#ffffff", weight: weight + 4,
+    opacity: (line.delivered ? 0.55 : 0.9) * (dim ? 0.25 : 1),
+  }).addTo(layer);
+  L.polyline(toLatLngs(line.coords), {
+    color, weight,
+    opacity: (line.delivered ? 0.8 : 1) * (dim ? 0.25 : 1),
+    dashArray: line.delivered ? "9 7" : null,
+  }).addTo(layer);
 }
 
 function flatten(parts) {
@@ -112,14 +134,10 @@ function redraw() {
 
   const onRoute = new Set();
   (props.plan.routes || []).forEach((route, index) => {
-    const dim = dimmed(route.vehicle_id);
-    routeLines(route, index).forEach((line) => {
-      L.polyline(toLatLngs(line.coords), {
-        color: line.color, weight: line.delivered ? 3 : 4,
-        opacity: (line.delivered ? 0.45 : 0.9) * (dim ? 0.25 : 1),
-        dashArray: line.delivered ? "6 6" : null,
-      }).addTo(layer);
-    });
+    const comparing = props.overlays.length > 0
+      && props.compareVehicle === route.vehicle_id;
+    const dim = dimmed(route.vehicle_id) || comparing;
+    routeLines(route, index).forEach((line) => drawLine(line, dim));
     routeStops(route).forEach((stop) => {
       onRoute.add(stop.nodeId);
       drawStop(stop, index, dim);
@@ -148,12 +166,15 @@ function drawStop(stop, routeIndex, dim) {
     (stop.delivered ? ` — ${props.text.delivered}` : "");
   marker.bindTooltip(label, { direction: "top" });
   // The order number sits ON the stop, because "which stop comes next" is the
-  // question the map is supposed to answer at a glance.
+  // question the map is supposed to answer at a glance. A served stop gets a
+  // tick instead: its position in the sequence no longer matters.
   L.marker([node.lat, node.lon], {
     interactive: false, zIndexOffset: branch ? 400 : 200,
     icon: L.divIcon({
       className: "stop-num",
-      html: `<b style="background:${stop.delivered ? "#94a3b8" : color};opacity:${dim ? 0.4 : 1}">${stop.index}</b>`,
+      html: stop.delivered
+        ? `<b class="tick" style="opacity:${dim ? 0.4 : 1}">✓</b>`
+        : `<b style="background:${color};opacity:${dim ? 0.4 : 1}">${stop.index}</b>`,
       iconSize: [16, 16], iconAnchor: [-6, 18],
     }),
   }).addTo(layer);
@@ -189,6 +210,50 @@ function drawNodes(onRoute) {
   });
 }
 
+/* A point along a road polyline at ``fraction`` of its length.
+   Interpolating in a straight line between two polled positions cuts every
+   corner: at 60x a single poll covers up to a kilometre of winding road, so the
+   truck visibly left the street. Riding the leg's own polyline keeps it on it. */
+function pointAlong(coords, fraction) {
+  if (!coords?.length) return null;
+  if (coords.length === 1) return coords[0];
+  const spans = [];
+  let total = 0;
+  for (let i = 1; i < coords.length; i += 1) {
+    const [x1, y1] = coords[i - 1];
+    const [x2, y2] = coords[i];
+    const length = Math.hypot(x2 - x1, y2 - y1);
+    spans.push(length);
+    total += length;
+  }
+  if (total <= 0) return coords[0];
+  const clamped = Math.max(0, Math.min(1, fraction));
+  let target = total * clamped;
+  for (let i = 0; i < spans.length; i += 1) {
+    if (target <= spans[i] || i === spans.length - 1) {
+      const rest = spans[i] ? target / spans[i] : 0;
+      const [x1, y1] = coords[i];
+      const [x2, y2] = coords[i + 1];
+      return [x1 + (x2 - x1) * rest, y1 + (y2 - y1) * rest];
+    }
+    target -= spans[i];
+  }
+  return coords[coords.length - 1];
+}
+
+/// The road polyline of one leg, keyed the way the backend reports it.
+function legKey(vehicleId, from, to) { return `${vehicleId}|${from}:${to}`; }
+
+function legRegistry() {
+  const registry = new Map();
+  (props.plan.routes || []).forEach((route) => {
+    (route.legs || []).forEach((leg) => {
+      registry.set(legKey(route.vehicle_id, leg.from, leg.to), leg.coords);
+    });
+  });
+  return registry;
+}
+
 const TWEEN_MS = 1000;
 
 function ensureVehicleLayer() {
@@ -198,16 +263,19 @@ function ensureVehicleLayer() {
 function drawVehicles() {
   if (!map) return;
   ensureVehicleLayer();
+  const registry = legRegistry();
   const live = new Set();
   (props.plan.routes || []).forEach((route, i) => {
     const track = route.track;
     if (!track || !track.position) return;
     live.add(route.vehicle_id);
-    const [lon, lat] = track.position;
-    const target = L.latLng(lat, lon);
+    const leg = registry.get(legKey(route.vehicle_id, track.leg_from, track.leg_to));
+    const target = pointAlong(leg, track.leg_fraction);
+    const latLng = target ? L.latLng(target[1], target[0])
+      : L.latLng(track.position[1], track.position[0]);
     let entry = markers.get(route.vehicle_id);
     if (!entry) {
-      const marker = L.marker(target, {
+      const marker = L.marker(latLng, {
         zIndexOffset: 500,
         icon: L.divIcon({
           className: "veh-icon",
@@ -216,11 +284,17 @@ function drawVehicles() {
         }),
       }).bindTooltip(route.vehicle_id, { direction: "top" }).addTo(vehicleLayer);
       marker.on("click", () => emit("selectVehicle", route.vehicle_id));
-      entry = { marker, from: target, to: target, t0: 0 };
+      entry = { marker, t0: 0, leg: null, fromFraction: 0, toFraction: 0,
+                fromPoint: latLng, toPoint: latLng };
       markers.set(route.vehicle_id, entry);
     } else {
-      entry.from = entry.marker.getLatLng();
-      entry.to = target;
+      // Animate the leg FRACTION, not the position: same leg → ride its road;
+      // new leg → glide across the join (short, and only once per stop).
+      entry.fromPoint = entry.marker.getLatLng();
+      entry.fromFraction = entry.leg === leg ? entry.toFraction : 0;
+      entry.leg = leg;
+      entry.toFraction = track.leg_fraction;
+      entry.toPoint = latLng;
       entry.t0 = performance.now();
     }
     const el = entry.marker.getElement();
@@ -235,13 +309,20 @@ function drawVehicles() {
 function step(now) {
   raf = null;
   let moving = false;
-  for (const [id, entry] of markers.values()) {
+  for (const entry of markers.values()) {
     if (!entry.t0) continue;
     const k = Math.min(1, (now - entry.t0) / TWEEN_MS);
-    entry.marker.setLatLng(L.latLng(
-      entry.from.lat + (entry.to.lat - entry.from.lat) * k,
-      entry.from.lng + (entry.to.lng - entry.from.lng) * k,
-    ));
+    const onRoad = entry.leg
+      ? pointAlong(entry.leg, entry.fromFraction + (entry.toFraction - entry.fromFraction) * k)
+      : null;
+    if (onRoad) {
+      entry.marker.setLatLng(L.latLng(onRoad[1], onRoad[0]));
+    } else {
+      entry.marker.setLatLng(L.latLng(
+        entry.fromPoint.lat + (entry.toPoint.lat - entry.fromPoint.lat) * k,
+        entry.fromPoint.lng + (entry.toPoint.lng - entry.fromPoint.lng) * k,
+      ));
+    }
     if (k < 1) moving = true;
   }
   if (moving) raf = requestAnimationFrame(step);
@@ -320,9 +401,9 @@ onBeforeUnmount(() => {
 .sg-legend .dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #fff; box-shadow: 0 0 0 1px #cbd5e1; }
 .sg-legend .dot.depot { background: #0f172a; }
 .sg-legend .dot.hospital { background: #0d9488; }
-.sg-legend .dot.done { background: #94a3b8; }
-.sg-legend .line { width: 16px; height: 0; border-top: 3px solid #0d9488; }
-.sg-legend .line.done-line { border-top-style: dashed; border-top-color: #94a3b8; }
+.sg-legend .dot.done { background: #b8c0cc; }
+.sg-legend .line { width: 18px; height: 0; border-top: 4px solid #0d9488; box-shadow: 0 0 0 1.5px #fff; }
+.sg-legend .line.done-line { border-top: 3px dashed #475569; }
 .sg-legend .ring { width: 9px; height: 9px; border-radius: 50%; border: 2px dashed #dc2626; }
 :deep(.veh-icon) { transition: none; }
 :deep(.veh-icon.focus span) { outline: 3px solid #0f172a; transform: scale(1.18); }
@@ -332,5 +413,6 @@ onBeforeUnmount(() => {
 :deep(.stop-num b) { display: inline-flex; align-items: center; justify-content: center;
   width: 15px; height: 15px; border-radius: 50%; color: #fff; font-size: 9px; font-weight: 700;
   border: 1.5px solid #fff; box-shadow: 0 1px 3px rgba(15,23,42,.35); }
+:deep(.stop-num b.tick) { background: #64748b; font-size: 10px; }
 .sg-tile-note { font-size: 11px; line-height: 1.5; color: #64748b; margin: 6px 0; }
 </style>

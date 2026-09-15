@@ -19,7 +19,7 @@ from . import service
 from .schemas import (
     BatchIn, BranchPolicyIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
     EmergencyAcceptIn, EmergencyPreviewIn,
-    DispatchDeliverIn, DispatchPlanIn, DispatchSpeedIn, GridIn, QAIn, QAOut,
+    DispatchDeliverIn, DispatchPlanIn, DispatchReplayIn, DispatchSpeedIn, GridIn, QAIn, QAOut,
     RouteIn, RouteOut,
 )
 
@@ -231,7 +231,34 @@ def get_dispatch_run(dispatch_id: str):
 @app.post("/api/dispatch/runs/{dispatch_id}/depart")
 def depart_dispatch_run(dispatch_id: str, req: DispatchCommandIn):
     try:
-        return service.depart_dispatch(dispatch_id, req.command_id)
+        return service.depart_dispatch(dispatch_id, req.command_id, speed=req.speed)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.get("/api/dispatch/runs")
+def list_dispatch_runs(limit: int = 5):
+    """Recent operations, newest first: what can be replayed.
+
+    404-free by design — an empty list simply means nothing has been dispatched.
+    """
+    return {"runs": service.recent_dispatch_runs(limit)}
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/replay")
+def replay_dispatch_run(dispatch_id: str, req: DispatchReplayIn):
+    """Run the same plan again from the beginning, as a new operation.
+
+    Not time travel: the finished run stays as history and the identical batch is
+    planned and departed afresh. Answers 404 for an unknown run and 409 when the
+    stored input cannot be replayed; the response names the run it came from
+    (``replayed_from``) so the console can say which one is on screen.
+    """
+    try:
+        return service.replay_dispatch(dispatch_id, speed=req.speed,
+                                       new_dispatch_id=req.dispatch_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
     except ValueError as exc:

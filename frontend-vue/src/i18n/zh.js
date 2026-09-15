@@ -38,7 +38,7 @@ export default {
   "ordersDelivered": "已送达 / 订单",
   "stockLeft": "仓库余量",
   "commitReshipment": "把本次补发纳入配送作业",
-  "closeAndDispatch": "结案并纳入配送作业",
+  "closeAndDispatch": "结案并查看处置方案",
   "depart": "确认发车",
   "simClock": "模拟时刻",
   "speedReal": "真实",
@@ -72,6 +72,7 @@ export default {
   "branchKindSpare": "另派一辆备用车",
   "branchVehicle": "车辆",
   "branchDistance": "里程",
+  "branchExtra": "多跑",
   "branchEta": "预计送达",
   "branchLateness": "迟到",
   "branchAffected": "受影响订单",
@@ -98,7 +99,11 @@ export default {
   "transportNotRunning": "还没有在跑的作业：先生成今日批次并确认发车。",
   "stopsDone": "站已完成",
   "beforeRoute": "改道前",
-  "afterRoute": "改道后"
+  "afterRoute": "改道后",
+  "replay": "⏮ 重演这一批",
+  "replayLast": "⏮ 重演上一次作业",
+  "lastRunOver": "没有进行中的作业；上一次",
+  "noRunYet": "还没有建立过配送作业。"
 },
   header: {
     sub: "冷链药品温度超限处置与配送重新规划",

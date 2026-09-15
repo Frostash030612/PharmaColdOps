@@ -39,7 +39,7 @@ export default {
   "ordersDelivered": "Delivered / orders",
   "stockLeft": "Stock left",
   "commitReshipment": "Add this resupply to the operation",
-  "closeAndDispatch": "Close case and dispatch resupply",
+  "closeAndDispatch": "Close the case and compare the options",
   "depart": "Depart",
   "simClock": "Sim clock",
   "speedReal": "real",
@@ -73,6 +73,7 @@ export default {
   "branchKindSpare": "Send a spare vehicle",
   "branchVehicle": "Vehicle",
   "branchDistance": "Distance",
+  "branchExtra": "Extra",
   "branchEta": "ETA",
   "branchLateness": "Late",
   "branchAffected": "Affected orders",
@@ -99,7 +100,11 @@ export default {
   "transportNotRunning": "No operation is under way: generate today's batch and confirm it first.",
   "stopsDone": "stops done",
   "beforeRoute": "Before the change",
-  "afterRoute": "After the change"
+  "afterRoute": "After the change",
+  "replay": "⏮ Replay this run",
+  "replayLast": "⏮ Replay the last operation",
+  "lastRunOver": "No operation is running; the last one was",
+  "noRunYet": "No delivery operation has been created yet."
 },
   header: {
     sub: "Cold-chain temperature-excursion disposition & delivery re-routing",

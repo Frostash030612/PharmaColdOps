@@ -83,7 +83,7 @@ def create_run(target: str | Path, dispatch_id: str, state: DispatchState, *, co
         try:
             db.execute(
                 "INSERT INTO dispatch_runs (dispatch_id, version, state_json, context_json, updated_at) "
-                "VALUES (?, ?, ?, ?, datetime('now'))",
+                "VALUES (?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%f','now'))",
                 (dispatch_id, state.version, state_json, context_json),
             )
         except sqlite3.IntegrityError as exc:
@@ -127,6 +127,24 @@ def list_dispatch_ids(target: str | Path, prefix: str) -> list[str]:
     return [row[0] for row in rows]
 
 
+def _recent_first(target: str | Path) -> str:
+    """ORDER BY clause for "what was touched last", correct on both engines.
+
+    ``updated_at`` used to be written with second precision on SQLite, so two
+    operations created in the same second tied and the tie-break fell back to
+    ``dispatch_id`` — i.e. to the alphabet, which said "DSP-OLD is newer than
+    DSP-NEW". SQLite now stores milliseconds, and ``rowid`` (insertion order)
+    settles the remaining ties; Postgres timestamps are microsecond-accurate, so
+    the id is only ever a last resort there.
+    """
+    tie_break = "dispatch_id DESC" if _is_postgres(target) else "rowid DESC"
+    # SQLite: ``datetime()`` parses both spellings that exist in the column
+    # (the old 'YYYY-MM-DD HH:MM:SS' and the new ISO 'T' form), so a plain text
+    # comparison cannot put every re-written row after every legacy row.
+    column = "updated_at" if _is_postgres(target) else "datetime(updated_at)"
+    return f"ORDER BY {column} DESC, {tie_break}"
+
+
 def latest_dispatch_id(target: str | Path) -> str | None:
     """The most recently updated dispatch id, or ``None`` when the store is empty.
 
@@ -136,10 +154,7 @@ def latest_dispatch_id(target: str | Path) -> str | None:
     able to find whichever operation was touched last regardless of which
     pathway created it.
     """
-    query = (
-        "SELECT dispatch_id FROM dispatch_runs "
-        "ORDER BY updated_at DESC, dispatch_id DESC LIMIT 1"
-    )
+    query = f"SELECT dispatch_id FROM dispatch_runs {_recent_first(target)} LIMIT 1"
     if _is_postgres(target):
         with _postgres_connect(target) as db, db.cursor() as cursor:
             cursor.execute(query)
@@ -167,7 +182,7 @@ def latest_open_dispatch_id(
     pattern = f"{prefix}%" if prefix else None
     where = "WHERE dispatch_id LIKE ? " if pattern else ""
     query = (f"SELECT dispatch_id, state_json FROM dispatch_runs {where}"
-             "ORDER BY updated_at DESC, dispatch_id DESC")
+             f"{_recent_first(target)}")
     if _is_postgres(target):
         query = query.replace("?", "%s")
         with _postgres_connect(target) as db, db.cursor() as cursor:
@@ -181,6 +196,31 @@ def latest_open_dispatch_id(
         if state.status != "completed":
             return dispatch_id, state
     return None
+
+
+def recent_runs(target: str | Path, limit: int = 5) -> list[dict]:
+    """The most recently updated runs, newest first — with the status each ended in.
+
+    Used to offer "replay the last operation": after a run completes, nothing is
+    open any more, so the console needs a way to find what just happened without
+    keeping it in the browser.
+    """
+    query = ("SELECT dispatch_id, updated_at, state_json FROM dispatch_runs "
+             f"{_recent_first(target)} LIMIT ?")
+    if _is_postgres(target):
+        query = query.replace("?", "%s")
+        with _postgres_connect(target) as db, db.cursor() as cursor:
+            cursor.execute(query, (limit,))
+            rows = cursor.fetchall()
+    else:
+        with _sqlite_connect(target) as db:
+            rows = db.execute(query, (limit,)).fetchall()
+    return [
+        {"dispatch_id": dispatch_id,
+         "status": state_from_dict(json.loads(state_json)).status,
+         "updated_at": updated_at}
+        for dispatch_id, updated_at, state_json in rows
+    ]
 
 
 def update_context(target: str | Path, dispatch_id: str, context: dict) -> None:
@@ -224,7 +264,8 @@ def update_run(target: str | Path, dispatch_id: str, state: DispatchState, *, ex
     else:
         with _sqlite_connect(target) as db:
             changed = db.execute(
-                "UPDATE dispatch_runs SET version = ?, state_json = ?, updated_at = datetime('now') "
+                "UPDATE dispatch_runs SET version = ?, state_json = ?, "
+                "updated_at = strftime('%Y-%m-%dT%H:%M:%f','now') "
                 "WHERE dispatch_id = ? AND version = ?",
                 (state.version, state_json, dispatch_id, expected_version),
             ).rowcount
