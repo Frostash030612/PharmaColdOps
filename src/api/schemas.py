@@ -180,9 +180,9 @@ class DispatchCommandIn(BaseModel):
 
 
 class DispatchSpeedIn(BaseModel):
-    """How fast simulated time runs: 1 = real time, 60 = a minute per second."""
+    """How fast simulated time runs: 0 freezes it, 60 = a minute per second."""
 
-    speed: float = Field(gt=0)
+    speed: float = Field(ge=0)
 
 
 class DispatchDeliverIn(DispatchCommandIn):

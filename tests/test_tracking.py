@@ -123,6 +123,26 @@ def test_changing_speed_does_not_teleport_the_vehicles(day_plan):
     assert after == pytest.approx(before, abs=1.0)   # continues, not restarts
 
 
+def test_speed_zero_freezes_simulated_time_rather_than_the_refresh(day_plan):
+    """The transport view's pause has to stop TIME, not just polling.
+
+    Speed 0 makes ``simulated_now`` constant, so five real minutes later the
+    operation is still at the same minute — and resuming re-bases on that frozen
+    minute instead of jumping forward to where real time has got to.
+    """
+    dispatch_id = day_plan(hospitals=1)
+    service.depart_dispatch(dispatch_id, "go", speed=300.0)
+
+    paused = service.set_dispatch_speed(dispatch_id, 0.0)["route_view"]["sim_now_min"]
+    _age_clock(dispatch_id, minutes_ago=5)
+
+    assert service.get_dispatch(dispatch_id)["route_view"]["sim_now_min"] == paused
+
+    resumed = service.set_dispatch_speed(dispatch_id, 300.0)["route_view"]
+    assert resumed["clock"]["speed"] == 300.0
+    assert resumed["sim_now_min"] >= paused          # picked up where it stopped
+
+
 def test_speed_must_be_one_of_the_offered_rates(day_plan):
     dispatch_id = day_plan(hospitals=1)
     service.depart_dispatch(dispatch_id, "go")

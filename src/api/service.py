@@ -46,7 +46,9 @@ from optimisation.reshipment import (  # noqa: E402
     build_reshipment_order,
     plan_reshipment_route,
 )
-from optimisation.singapore_export import routes_geojson, sequences_geojson  # noqa: E402
+from optimisation.singapore_export import (  # noqa: E402
+    leg_geojson, routes_geojson, sequence_distance_m, sequence_geojson, sequences_geojson,
+)
 from optimisation.tracking import LOADING_MIN, make_clock, simulated_now, vehicle_track  # noqa: E402
 from optimisation.singapore_loader import read_network  # noqa: E402
 from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot  # noqa: E402
@@ -750,6 +752,12 @@ def _dispatch_clock(record: dict, order: DeliveryOrder) -> tuple[int, bool]:
     return order.earliest_min, True
 
 
+def _route_legs(network: dict, stops: list[dict]) -> list[dict]:
+    """Depot → every stop (delivered ones included) → depot, as separate legs."""
+    sequence = [0, *[stop["node_id"] for stop in stops], 0]
+    return leg_geojson(network, sequence)
+
+
 def dispatch_route_view(state, context: dict) -> dict:
     """What the live dispatch state looks like on the map.
 
@@ -790,6 +798,17 @@ def dispatch_route_view(state, context: dict) -> dict:
             "vehicle_id": vehicle_id, "status": vehicle.status,
             "customer_ids": [stop["node_id"] for stop in stops],
             "stops": stops,
+            # Legs, not one merged line: the map draws what has already been
+            # driven separately from what is left, so a route in progress is
+            # readable at a glance. Leg ``i`` ends at stop ``i``; the final leg
+            # is the way home, which serves no order.
+            "legs": [
+                {**leg,
+                 "node_id": stops[index]["node_id"] if index < len(stops) else 0,
+                 "order_id": stops[index]["order_id"] if index < len(stops) else None,
+                 "delivered": bool(index < len(stops) and stops[index]["delivered"])}
+                for index, leg in enumerate(_route_legs(network, stops))
+            ],
             "total_load": sum(stop["quantity"] for stop in stops
                               if not stop["delivered"]),
             "total_distance": round(total, 2),
@@ -829,8 +848,12 @@ FLEET_SIZE = 6
 
 # One real second = one simulated minute. Real time (speed 1) stays available
 # for honesty, but a 25-minute drive is unwatchable at 1x.
+#: 0 freezes simulated time (a real pause for the transport view). It is a
+#: genuine freeze, not a stopped refresh: simulated time is derived from the
+#: wall clock times the speed, so nothing advances while it is 0, and resuming
+#: re-bases the clock on the frozen minute instead of jumping forward.
 DEFAULT_CLOCK_SPEED = 60.0
-ALLOWED_CLOCK_SPEEDS = (1.0, 60.0, 300.0)
+ALLOWED_CLOCK_SPEEDS = (0.0, 1.0, 60.0, 300.0)
 
 
 def _zone_fleet(zone: str) -> tuple[DispatchVehicle, ...]:
@@ -876,6 +899,33 @@ def _prepare_branch(state, context: dict, order: DeliveryOrder):
     return state, context, lot
 
 
+def _with_candidate_geometry(network: dict, preview: dict) -> dict:
+    """Attach drawable geometry — and the extra distance — to every option.
+
+    "改道前 vs 改道后" is the figure this module exists to produce
+    (``docs/C_配送模块.md`` §4.3), and it cannot be drawn from ETAs alone. Each
+    candidate gets the line its vehicle would drive (``route_geojson``) and how
+    much further that is than simply continuing (``added_distance_m``); the
+    vehicle's current line comes back once per vehicle under ``baselines``.
+    """
+    baselines = preview.get("baselines", {})
+    for vehicle_id, baseline in baselines.items():
+        sequence = baseline.get("node_sequence") or []
+        baseline["route_geojson"] = sequence_geojson(
+            network, sequence, kind="baseline", vehicle_id=vehicle_id)
+        baseline["distance_m"] = round(sequence_distance_m(network, sequence), 1)
+    for item in preview.get("candidates", []):
+        sequence = item.get("node_sequence") or []
+        item["route_geojson"] = sequence_geojson(
+            network, sequence, kind=item["kind"], vehicle_id=item["vehicle_id"])
+        item["sequence_distance_m"] = round(sequence_distance_m(network, sequence), 1)
+        baseline = baselines.get(item["vehicle_id"], {}).get("node_sequence")
+        item["added_distance_m"] = round(
+            item["sequence_distance_m"]
+            - (sequence_distance_m(network, baseline) if baseline else 0.0), 1)
+    return preview
+
+
 def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dict:
     """Every way this closed case could be served — read-only, nothing reserved.
 
@@ -894,15 +944,17 @@ def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dic
     if order.order_id in state.orders:  # already committed: show it, don't re-judge
         return {"dispatch_id": dispatch_id, "order_id": order.order_id,
                 "already_committed": True, "scheduled_next_day": next_day,
-                "order": _order_dump(order), "policy": policy, "candidates": []}
+                "order": _order_dump(order), "policy": policy, "candidates": [],
+                "baselines": {}}
+    preview = preview_emergency_order(state, context, order,
+                                      current_time_min=clock, policy=policy)
     return {
         "dispatch_id": dispatch_id,
         "order_id": order.order_id,
         "already_committed": False,
         "scheduled_next_day": next_day,
         "order": _order_dump(order),
-        **preview_emergency_order(state, context, order,
-                                  current_time_min=clock, policy=policy),
+        **_with_candidate_geometry(read_network(), preview),
     }
 
 
@@ -982,13 +1034,14 @@ def _pick_candidate(state, context: dict, order: DeliveryOrder, clock: int,
 def emergency_dispatch_preview(dispatch_id: str, req: EmergencyPreviewIn) -> dict:
     state = load_run(DISPATCH_DATABASE_URL, dispatch_id)
     context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
-    return preview_emergency_order(
+    preview = preview_emergency_order(
         state,
         context,
         DeliveryOrder(**req.order.model_dump()),
         current_time_min=req.current_time_min,
         policy=req.policy,
     )
+    return _with_candidate_geometry(read_network(), preview)
 
 
 def accept_emergency_dispatch(dispatch_id: str, req: EmergencyAcceptIn) -> dict:

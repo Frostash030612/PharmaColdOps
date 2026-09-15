@@ -214,6 +214,37 @@ def preview_emergency_order(
             item["on_time"] = item["on_time"] and not any(a["newly_late"] for a in affected)
             candidates.append(item)
 
+    # What each option would make the vehicle drive, as network node ids, so the
+    # caller can draw "before vs after" on the map (docs/C_配送模块.md §4.3).
+    # The sequences start where the vehicle actually is, not at the depot: the
+    # cost being compared is the work that is still ahead of it.
+    baselines: dict[str, dict] = {}
+    for item in candidates:
+        progress = state.vehicles.get(item["vehicle_id"])
+        remaining: list[int] = []
+        if progress is not None:
+            for order_id in progress.remaining_order_ids:
+                known = order_lookup.get(order_id)
+                if known is not None:
+                    remaining.append(nodes[known["destination_facility_id"]])
+            current = nodes[progress.current_facility_id]
+            baselines.setdefault(item["vehicle_id"], {
+                "node_sequence": [current, *remaining, 0],
+                "current_node_id": current,
+                "has_work": bool(progress.remaining_order_ids),
+            })
+        else:
+            current = 0
+        destination = nodes[order.destination_facility_id]
+        if item["kind"] == "spare_vehicle":
+            item["node_sequence"] = [0, destination, 0]
+        elif item["kind"] == "load_before_departure":
+            item["node_sequence"] = [0, destination, *remaining, 0]
+        elif item["kind"] == "return_to_depot":
+            item["node_sequence"] = [current, 0, destination, *remaining, 0]
+        else:                                   # add_stop_in_transit
+            item["node_sequence"] = [current, destination, *remaining, 0]
+
     candidates.sort(key=lambda item: _rank(item, policy))
     return {
         "feasible": any(item["on_time"] for item in candidates),
@@ -223,6 +254,7 @@ def preview_emergency_order(
         "available_quantity": stock,
         "selected_candidate": candidates[0] if candidates else None,
         "candidates": candidates,
+        "baselines": baselines,
         "limitations": [
             "preview_only",
             "free_flow_travel_time",

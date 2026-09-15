@@ -13,6 +13,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { useDecisionsStore } from "./decisions.js";
 import { postJson } from "../lib/api.js";
+import data from "../data/singaporeRoutes.json";
 
 export const useDispatchStore = defineStore("dispatch", () => {
   const decisions = useDecisionsStore();
@@ -113,6 +114,55 @@ export const useDispatchStore = defineStore("dispatch", () => {
     const runId = branch.value?.run_id || null;
     return runId ? previewBranch(runId, next) : Promise.resolve(null);
   }
+
+  /* ---- what the map needs to draw a branch event -------------------------
+     Kept here rather than in each map so the small map and the transport view
+     cannot disagree about which lines and stops a branch event touches. */
+  const NODE_ID_BY_FACILITY = Object.fromEntries(
+    data.nodes.map((node) => [node.facility_id, node.node_id]));
+
+  /// Which vehicle the overlays are about: the focused one, else the top option.
+  const branchVehicle = ref(null);
+
+  /// The hospital whose goods were affected (the case names where they go).
+  const incidentNodeId = computed(() => {
+    const facility = branch.value?.order?.destination_facility_id;
+    return facility ? NODE_ID_BY_FACILITY[facility] ?? null : null;
+  });
+
+  const branchCandidate = computed(() => {
+    const candidates = branch.value?.candidates || [];
+    if (!candidates.length) return null;
+    const vehicle = branchVehicle.value;
+    return candidates.find((item) => item.vehicle_id === vehicle)
+      || branch.value.selected_candidate || candidates[0];
+  });
+
+  /// "改道前 vs 改道后" as two drawable lines; `labelKey` is an i18n key.
+  const branchOverlays = computed(() => {
+    const candidate = branchCandidate.value;
+    if (!candidate) return [];
+    const baseline = branch.value.baselines?.[candidate.vehicle_id];
+    const lines = [];
+    if (baseline?.route_geojson) {
+      lines.push({ id: "before", geojson: baseline.route_geojson,
+                   color: "#64748b", dashed: true, labelKey: "beforeRoute" });
+    }
+    if (candidate.route_geojson) {
+      lines.push({ id: "after", geojson: candidate.route_geojson,
+                   color: "#dc2626", weight: 5, labelKey: "afterRoute" });
+    }
+    return lines;
+  });
+
+  /// The stop a branch event introduces, plus the affected hospital.
+  const branchNodeIds = computed(() => {
+    const touched = new Set();
+    if (incidentNodeId.value !== null) touched.add(incidentNodeId.value);
+    const candidate = branchCandidate.value;
+    if (candidate?.node_sequence?.length > 1) touched.add(candidate.node_sequence[1]);
+    return [...touched];
+  });
 
   function command(path, body) {
     if (!run.value) return Promise.resolve(null);
@@ -231,6 +281,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     tick, watchClock, stopClock,
     branch, branchError, needsDailyPlan, policy, POLICIES,
     previewBranch, setPolicy,
+    branchVehicle, branchCandidate, branchOverlays, branchNodeIds, incidentNodeId,
     dailyBatch, dailyPreview, dailyError,
     loadDailyPlan, confirmDailyPlan, oneClickDailyPlan, rerollDailyPlan,
   };

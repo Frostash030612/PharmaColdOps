@@ -2,6 +2,41 @@
 from .models import ReplanResult
 
 
+def leg_geojson(network: dict, node_ids: list[int]) -> list[dict]:
+    """One entry per consecutive pair of ``node_ids``, with its road polyline.
+
+    The map needs the legs separately, not one merged line: a route drawn as a
+    single stroke cannot show which part has already been driven. A pair of equal
+    nodes (a branch order for a hospital already on the route) yields no leg —
+    there is no road from a place to itself.
+    """
+    legs = []
+    for a, b in zip(node_ids, node_ids[1:]):
+        if a == b:
+            continue
+        segment = network['leg_geometry'].get(f'{a}:{b}')
+        if not segment or len(segment) < 2:
+            raise ValueError(f'missing road geometry for {a}:{b}')
+        legs.append({'from': a, 'to': b, 'coords': segment})
+    return legs
+
+
+def sequence_distance_m(network: dict, node_ids: list[int]) -> float:
+    """Road distance along ``node_ids``, from the committed matrix."""
+    distance = network['matrix']['distance_m']
+    return float(sum(distance[a][b] for a, b in zip(node_ids, node_ids[1:])))
+
+
+def sequence_geojson(network: dict, node_ids: list[int], **properties) -> dict:
+    """A single LineString through ``node_ids``, for overlaying one option."""
+    coords: list = []
+    for leg in leg_geojson(network, node_ids):
+        coords.extend(leg['coords'] if not coords else leg['coords'][1:])
+    return {'type': 'Feature',
+            'geometry': {'type': 'LineString', 'coordinates': coords},
+            'properties': {**properties, 'node_order': list(node_ids)}}
+
+
 def sequences_geojson(network: dict, sequences: dict[str, list[int]]) -> dict:
     """Road geometry for depot→…→depot, from plain per-vehicle node sequences.
 

@@ -22,9 +22,14 @@ SERVICE_MIN = 0           # per-stop dwell; kept explicit, see limitations
 
 def make_clock(sim_start_min: float, speed: float,
                started_real: str | None = None) -> dict:
-    """A simulated clock: where it started, when that was, how fast it runs."""
-    if speed <= 0:
-        raise ValueError("clock speed must be positive")
+    """A simulated clock: where it started, when that was, how fast it runs.
+
+    ``speed = 0`` is a genuine pause, not a stopped refresh: simulated time is
+    derived from the wall clock times the speed, so at 0 nothing advances, and
+    resuming re-bases on the frozen minute instead of jumping forward.
+    """
+    if speed < 0:
+        raise ValueError("clock speed cannot be negative")
     return {
         "sim_start_min": float(sim_start_min),
         "started_real": started_real or datetime.datetime.now().isoformat(timespec="seconds"),

@@ -13,6 +13,7 @@ import { useHistoryStore } from "../stores/history.js";
 import { eventPayload, overridePayload, postJson } from "../lib/api.js";
 import data from "../data/singaporeRoutes.json";
 import LeafletMap from "./LeafletMap.vue";
+import TransportView from "./TransportView.vue";
 import { locale, bundle } from "../i18n/index.js";
 
 const decisions = useDecisionsStore();
@@ -23,6 +24,7 @@ const busy = ref(false);
 const text = computed(() => bundle(locale.value).singapore);
 const mode = ref("ortools");
 const selectedId = ref(null);
+const transportOpen = ref(false);
 
 const isLive = computed(() => !!dispatch.live);
 const nodes = data.nodes;                       // facility names/coords: same ids either way
@@ -77,6 +79,7 @@ const speed = computed(() => dispatch.run?.clock?.speed || 60);
 const selectedVehicle = ref(null);
 function pickVehicle(id) {
   selectedVehicle.value = selectedVehicle.value === id ? null : id;
+  dispatch.branchVehicle = selectedVehicle.value;
 }
 const underway = computed(() => dispatch.run?.status === "in_transit");
 const canDepart = computed(() =>
@@ -146,8 +149,13 @@ function kindLabel(kind) {
         :aria-pressed="mode === key" @click="mode = key">{{ text[key] }}</button>
     </div>
 
+    <div class="sg-map-head">
+      <button class="sg-expand" @click="transportOpen = true">{{ text.transportOpen }}</button>
+    </div>
     <LeafletMap :nodes="nodes" :plan="plan" :selected-id="selectedId" :text="text"
       :selected-vehicle="selectedVehicle"
+      :overlays="dispatch.branchOverlays" :branch-node-ids="dispatch.branchNodeIds"
+      :incident-node-id="dispatch.incidentNodeId"
       @select="selectedId = $event" @select-vehicle="pickVehicle($event)" />
 
     <div v-if="isLive" class="sg-metrics">
@@ -333,6 +341,9 @@ function kindLabel(kind) {
 
     <p class="sg-disclaimer">{{ text.assumption }}</p>
   </div>
+
+  <!-- The transport view: the same map, large, with a real pause. -->
+  <TransportView v-if="transportOpen" @close="transportOpen = false" />
 </template>
 
 <style scoped>
@@ -374,6 +385,9 @@ function kindLabel(kind) {
 .sg-detail { background: #f8fafc; border-radius: 8px; padding: 10px; line-height: 1.7; color: #475569; }
 .sg-detail b { color: #0f172a; overflow-wrap: anywhere; }
 .sg-disclaimer { margin-bottom: 0; padding-top: 9px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 11px; line-height: 1.6; }
+.sg-map-head { display: flex; justify-content: flex-end; margin-bottom: 5px; }
+.sg-expand { background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: 11px; color: #334155; font-weight: 600; }
+.sg-expand:hover { border-color: #0d9488; color: #0f766e; }
 .sg-branch { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
 .sg-branch > strong { color: #0f172a; }
 .sg-branch-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }

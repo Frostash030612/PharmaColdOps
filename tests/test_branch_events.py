@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from api import service
 from api.main import app
+from optimisation.singapore_loader import read_network
 
 client = TestClient(app)
 
@@ -154,6 +155,91 @@ def test_a_branch_order_for_a_stop_already_on_the_route_keeps_the_view_alive(clo
     assert len(order_ids) == 2                       # the branch and the plan's own
     assert route["total_distance"] >= 0
     assert body["vehicles"][body["vehicle_id"]]["onboard_spare"] == []
+
+
+def test_every_candidate_comes_back_drawable(closed_case):
+    """The comparison figure is a MAP: candidates must carry their own line.
+
+    ETAs and distances alone cannot be drawn, and without the per-vehicle
+    baseline there is nothing to compare against. Found while building the
+    "改道前 vs 改道后" overlay (docs/C_配送模块.md §4.3).
+    """
+    _create_plan()
+    closed_case()
+    preview = client.post("/api/dispatch/reshipments/preview",
+                          json={"run_id": "R1"}).json()
+
+    assert preview["candidates"] and preview["baselines"]
+    for candidate in preview["candidates"]:
+        line = candidate["route_geojson"]
+        assert line["geometry"]["type"] == "LineString"
+        assert len(line["geometry"]["coordinates"]) >= 2
+        assert line["properties"]["kind"] == candidate["kind"]
+        assert candidate["node_sequence"][-1] == 0        # every option ends at the depot
+        assert candidate["added_distance_m"] >= 0
+    for baseline in preview["baselines"].values():
+        assert baseline["route_geojson"]["geometry"]["coordinates"]
+        assert baseline["distance_m"] >= 0
+
+
+def test_the_onboard_option_is_cheaper_than_driving_back_for_stock(closed_case):
+    """The whole point of the fourth candidate, expressed in metres.
+
+    Driven from where the vehicle actually is: while the truck is still AT the
+    depot, fetching more stock costs nothing extra (it is already there), so the
+    option only becomes cheaper AFTER a delivery — which is the situation the
+    option exists for.
+    """
+    dispatch_id = "PLAN-METRES"
+    created = _create_plan(dispatch_id, hospitals=2)
+    assert client.post(f"/api/dispatch/runs/{dispatch_id}/depart",
+                       json={"command_id": "go"}).status_code == 200
+    vehicle = next(iter(created["orders"].values()))["vehicle_id"]
+    moved = client.post(f"/api/dispatch/runs/{dispatch_id}/deliver-next",
+                        json={"vehicle_id": vehicle, "command_id": "d1"}).json()
+    assert moved["vehicles"][vehicle]["current_facility_id"] != "W-KN-PIONEER"
+
+    network = read_network()
+    planned = {order["destination_facility_id"] for order in created["orders"].values()}
+    elsewhere = next(node["facility_id"] for node in network["nodes"]
+                     if node["role"] == "customer"
+                     and node["facility_id"] not in planned)
+    closed_case(destination=elsewhere)
+
+    preview = client.post("/api/dispatch/reshipments/preview", json={"run_id": "R1"}).json()
+    by_kind = {item["kind"]: item for item in preview["candidates"]}
+
+    assert {"add_stop_in_transit", "return_to_depot"} <= set(by_kind)
+    onboard, depot = by_kind["add_stop_in_transit"], by_kind["return_to_depot"]
+    assert onboard["added_distance_m"] < depot["added_distance_m"]
+    # …and the difference is exactly the depot detour the truck avoids.
+    distance = network["matrix"]["distance_m"]
+    current = preview["baselines"][onboard["vehicle_id"]]["current_node_id"]
+    destination = onboard["node_sequence"][1]
+    avoided = distance[current][0] + distance[0][destination] - distance[current][destination]
+    assert depot["sequence_distance_m"] - onboard["sequence_distance_m"] == pytest.approx(
+        avoided, abs=1.0)
+
+
+def test_route_view_exposes_legs_so_progress_can_be_drawn(day_plan):
+    """A route drawn as one stroke cannot show what has already been driven."""
+    dispatch_id = day_plan("PLAN-LEGS", hospitals=1)
+    service.depart_dispatch(dispatch_id, "depart")
+    created = service.get_dispatch(dispatch_id)
+    route = created["route_view"]["routes"][0]
+    order_id = route["stops"][0]["order_id"]
+
+    assert len(route["legs"]) == 2                       # depot → stop → depot
+    outbound, inbound = route["legs"]
+    assert outbound["order_id"] == order_id
+    assert outbound["delivered"] is False
+    assert outbound["coords"] and inbound["coords"]
+
+    delivered = service.deliver_dispatch(dispatch_id, route["vehicle_id"], "deliver-1")
+    legs = delivered["route_view"]["routes"][0]["legs"]
+    assert legs[0]["delivered"] is True                  # this stop is behind us
+    assert legs[0]["order_id"] == order_id
+    assert legs[1]["delivered"] is False                 # the way home is still ahead
 
 
 def test_the_open_plan_wins_over_a_finished_one_however_the_ids_sort(closed_case):
