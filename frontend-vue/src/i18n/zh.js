@@ -97,6 +97,7 @@ export default {
   "transportCompare": "显示改道对比",
   "transportCompareHint": "灰色虚线＝改道前，红色实线＝改道后（按左侧所选方案）",
   "transportNotRunning": "还没有在跑的作业：先生成今日批次并确认发车。",
+  "returning": "🚚 订单已全部送达，车队返程中",
   "stopsDone": "站已完成",
   "beforeRoute": "改道前",
   "afterRoute": "改道后",

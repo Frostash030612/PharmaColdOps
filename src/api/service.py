@@ -675,22 +675,26 @@ def _require_plan() -> tuple[str, object]:
 def get_active_dispatch() -> dict:
     """The live operation for the front-end, whichever pathway created it.
 
-    ``get_active_reshipment_dispatch`` above deliberately only sees the
-    ``RESHIPMENTS-`` stream, because that prefix rule is what makes reshipment
+    ``get_active_reshipment_dispatch`` above deliberately only saw the
+    ``RESHIPMENTS-`` stream, because that prefix rule is what made reshipment
     bootstrapping deterministic.  The panel, however, must also be able to show
     a "today's delivery plan" built from a batch of ordinary orders
     (``PLAN-…`` via ``POST /api/dispatch/runs``) — without this, an operator
     could create a plan and the panel would keep saying "no active dispatch
-    operation".  KeyError when nothing is open; a *completed* operation counts
-    as nothing open, matching the reshipment rule.
+    operation".  KeyError when nothing is open.
+
+    "Open" means *anything is still happening*: an operation whose orders are all
+    delivered is NOT over while its trucks are still driving home, and treating it
+    as over made the panel drop the operation (and the map lose the vehicle) at
+    the exact moment the last order was delivered.
     """
     latest = latest_dispatch_id(DISPATCH_DATABASE_URL)
     if latest is None:
         raise KeyError("no dispatch run has ever been created")
-    state = load_run(DISPATCH_DATABASE_URL, latest)
-    if state.status == "completed":
+    view = get_dispatch(latest)
+    if view["status"] == "completed" and not view["route_view"]["metrics"]["still_returning"]:
         raise KeyError(latest)
-    return get_dispatch(latest)
+    return view
 
 
 def _order_dump(order: DeliveryOrder) -> dict:
@@ -761,6 +765,41 @@ def _route_legs(network: dict, stops: list[dict]) -> list[dict]:
     return leg_geojson(network, sequence)
 
 
+def _legs_with_progress(network: dict, stops: list[dict], track: dict | None) -> list[dict]:
+    """The schedule's legs, each marked with whether the truck has DRIVEN it.
+
+    ``delivered`` (the stop's order is recorded as delivered) is not the same
+    question as "has the truck been here": the final leg back to the depot serves
+    no order at all, so judging progress by deliveries left that leg looking
+    "still ahead" for ever — the truck vanished at its last stop while a green
+    line still ran home. Progress comes from the schedule instead: every leg
+    before the one the truck is on is behind it, and the current leg counts once
+    it is fully covered.
+    """
+    schedule = [0, *[stop["node_id"] for stop in stops], 0]
+    current = None
+    if track:
+        for index, (a, b) in enumerate(zip(schedule, schedule[1:])):
+            if track.get("leg_from") == a and track.get("leg_to") == b:
+                current = index
+                break
+    fraction = (track or {}).get("leg_fraction", 0.0)
+    legs = []
+    for index, (leg, (a, b)) in enumerate(zip(_route_legs(network, stops),
+                                              zip(schedule, schedule[1:]))):
+        end = index + 1
+        legs.append({
+            **leg,
+            "node_id": stops[index]["node_id"] if index < len(stops) else 0,
+            "order_id": stops[index]["order_id"] if index < len(stops) else None,
+            "delivered": bool(index < len(stops) and stops[index]["delivered"]),
+            "driven": bool(current is not None and (
+                index < current or (index == current and fraction >= 1.0))),
+            "schedule_index": end,
+        })
+    return legs
+
+
 def dispatch_route_view(state, context: dict) -> dict:
     """What the live dispatch state looks like on the map.
 
@@ -776,6 +815,8 @@ def dispatch_route_view(state, context: dict) -> dict:
 
     sequences: dict[str, list[int]] = {}
     routes = []
+    clock = context.get("clock")
+    sim_now = watched_now(clock) if clock else None
     for vehicle_id, vehicle in sorted(state.vehicles.items()):
         pending, stops = [], []
         for order_id in (*vehicle.delivered_order_ids, *vehicle.remaining_order_ids):
@@ -794,42 +835,31 @@ def dispatch_route_view(state, context: dict) -> dict:
             })
         if not stops:
             continue
-        legs = (0, *[stop["node_id"] for stop in stops], 0)
-        total = sum(distance[a][b] for a, b in zip(legs, legs[1:])) / 1000
+        # The schedule spans the WHOLE sequence, delivered stops included, and
+        # runs from the minute the fleet rolled — not from whenever the speed was
+        # last changed (see tracking.schedule_origin).
+        whole = [stop["node_id"] for stop in stops]
+        track = None
+        if sim_now is not None:
+            track = vehicle_track(network, whole,
+                                  schedule_origin(clock) + LOADING_MIN, sim_now)
+        schedule = (0, *whole, 0)
+        total = sum(distance[a][b] for a, b in zip(schedule, schedule[1:])) / 1000
         sequences[vehicle_id] = pending
         routes.append({
             "vehicle_id": vehicle_id, "status": vehicle.status,
-            "customer_ids": [stop["node_id"] for stop in stops],
+            "customer_ids": list(whole),
             "stops": stops,
             # Legs, not one merged line: the map draws what has already been
             # driven separately from what is left, so a route in progress is
             # readable at a glance. Leg ``i`` ends at stop ``i``; the final leg
-            # is the way home, which serves no order.
-            "legs": [
-                {**leg,
-                 "node_id": stops[index]["node_id"] if index < len(stops) else 0,
-                 "order_id": stops[index]["order_id"] if index < len(stops) else None,
-                 "delivered": bool(index < len(stops) and stops[index]["delivered"])}
-                for index, leg in enumerate(_route_legs(network, stops))
-            ],
+            # is the way home, which serves no order and is still DRIVEN.
+            "legs": _legs_with_progress(network, stops, track),
+            "track": track,
             "total_load": sum(stop["quantity"] for stop in stops
                               if not stop["delivered"]),
             "total_distance": round(total, 2),
         })
-    clock = context.get("clock")
-    sim_now = watched_now(clock) if clock else None
-    if sim_now is not None:
-        # The schedule runs from the minute the fleet rolled, not from whenever
-        # the speed was last changed (see tracking.schedule_origin).
-        depart_min = schedule_origin(clock)
-        for route in routes:
-            if route["status"] != "in_transit" or not route["stops"]:
-                continue
-            # The schedule must span the WHOLE sequence, delivered stops
-            # included: timing the remainder as if the vehicle had just left
-            # the depot would place it further along the road than it is.
-            whole = [stop["node_id"] for stop in route["stops"]]
-            route["track"] = vehicle_track(network, whole, depart_min + LOADING_MIN, sim_now)
     return {
         "routes": routes,
         "clock": clock,
@@ -842,6 +872,11 @@ def dispatch_route_view(state, context: dict) -> dict:
             "orders_delivered": sum(item.status == "delivered"
                                     for item in state.orders.values()),
             "stock_remaining": sum(state.available_by_lot.values()),
+            # "All orders are delivered" is not "the fleet is back": the trucks
+            # still have to drive home, and the map should show that rather than
+            # making them disappear at the last stop.
+            "still_returning": sum(1 for r in routes
+                                   if r.get("track") and not r["track"]["finished"]),
         },
     }
 
@@ -1139,10 +1174,14 @@ def tick_dispatch(dispatch_id: str) -> dict:
     state = load_run(DISPATCH_DATABASE_URL, dispatch_id)
     context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
     clock = context.get("clock")
-    if clock is None or state.status != "in_transit":
+    if clock is None:
         return {"dispatch_id": dispatch_id,
                 "route_view": dispatch_route_view(state, context),
                 **state_to_dict(state), **context}
+    # A finished operation is still ticked: all orders may be delivered while the
+    # trucks are still driving home, and the map should keep moving them until
+    # they are back. There is nothing left to deliver, so the loop below simply
+    # finds no arrival to apply.
 
     network = read_network()
     node_by_facility = {n["facility_id"]: n["node_id"] for n in network["nodes"]}

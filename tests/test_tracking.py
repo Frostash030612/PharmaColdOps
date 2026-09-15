@@ -159,6 +159,62 @@ def test_deliveries_follow_the_schedule_after_a_speed_change(day_plan):
     assert ticked["route_view"]["routes"][0]["stops"][0]["delivered"] is True
 
 
+def test_an_operation_is_still_open_while_its_trucks_drive_home(day_plan):
+    """Delivering everything is not the same as being finished.
+
+    A completed operation whose fleet is still returning used to answer 404 from
+    /api/dispatch/active, so a refresh dropped the operation and the map lost the
+    vehicle at the exact moment the last order was delivered — while a green line
+    still ran home.
+    """
+    dispatch_id = day_plan(hospitals=1)
+    # 90x with the 30-second tick cap advances 45 simulated minutes per tick:
+    # enough for the one delivery, not enough to be home again.
+    service.depart_dispatch(dispatch_id, "go", speed=90.0)
+    _age_clock(dispatch_id, minutes_ago=3)
+    delivered = service.tick_dispatch(dispatch_id)          # the one order lands
+
+    assert delivered["status"] == "completed"
+    assert delivered["route_view"]["metrics"]["still_returning"] == 1
+    assert service.get_active_dispatch()["dispatch_id"] == dispatch_id   # not 404
+
+    service.set_dispatch_speed(dispatch_id, 300.0)          # +150 sim-min per tick
+    _age_clock(dispatch_id, minutes_ago=30)                 # …and now it is home
+    home = service.tick_dispatch(dispatch_id)
+
+    assert home["route_view"]["metrics"]["still_returning"] == 0
+    assert home["route_view"]["routes"][0]["track"]["finished"] is True
+    with pytest.raises(KeyError):
+        service.get_active_dispatch()
+
+
+def test_the_drive_home_counts_as_driven(day_plan):
+    """The last leg serves no order, so it used to look "still ahead" for ever.
+
+    Judging progress by "is this stop's order delivered" left the return leg
+    green even after the run finished: the truck vanished at its last stop while
+    a green line still ran home. Progress now comes from the schedule.
+    """
+    dispatch_id = day_plan(hospitals=1)
+    service.depart_dispatch(dispatch_id, "go", speed=300.0)
+
+    fresh = service.get_dispatch(dispatch_id)["route_view"]["routes"][0]
+    assert [leg["driven"] for leg in fresh["legs"]] == [False, False]
+    assert fresh["legs"][-1]["order_id"] is None          # the way home
+
+    _age_clock(dispatch_id, minutes_ago=3)
+    service.tick_dispatch(dispatch_id)                    # delivers the one order
+    driven = service.get_dispatch(dispatch_id)["route_view"]["routes"][0]
+
+    assert driven["stops"][0]["delivered"] is True
+    # Outbound is behind it; the way home is the leg it is on, so still ahead…
+    assert driven["legs"][0]["driven"] is True
+    # …and once the schedule is finished, everything is grey and the truck is home.
+    _age_clock(dispatch_id, minutes_ago=30)
+    finished = service.tick_dispatch(dispatch_id)["route_view"]["routes"][0]
+
+    assert all(leg["driven"] for leg in finished["legs"])
+    assert finished["track"]["finished"] is True
 def test_an_unwatched_operation_does_not_race_through_the_day(day_plan):
     """Simulated time is charged for what was WATCHED, not for however long the
     application sat idle.

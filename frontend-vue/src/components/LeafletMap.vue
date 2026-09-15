@@ -58,12 +58,18 @@ function routeStops(route) {
   }));
 }
 
-/* One merged polyline per route when there is no leg geometry (demo plan). */
+/* One merged polyline per route when there is no leg geometry (demo plan).
+   "Driven" comes from the schedule (has the truck been along this leg), not from
+   the stop's order being delivered: the last leg home serves no order and would
+   otherwise stay "still ahead" for ever. */
 function routeLines(route, index) {
   const color = colors[index % colors.length];
   if (route.legs?.length) {
     const done = [], todo = [];
-    route.legs.forEach((leg) => (leg.delivered ? done : todo).push(leg.coords));
+    route.legs.forEach((leg) => {
+      const driven = leg.driven ?? leg.delivered;
+      (driven ? done : todo).push(leg.coords);
+    });
     return [
       { coords: flatten(done), delivered: true },
       { coords: flatten(todo), delivered: false },
@@ -267,7 +273,9 @@ function drawVehicles() {
   const live = new Set();
   (props.plan.routes || []).forEach((route, i) => {
     const track = route.track;
-    if (!track || !track.position) return;
+    // A truck that is home is not on the road any more — but one whose orders
+    // are all delivered and is still driving back IS, and stays visible.
+    if (!track || !track.position || track.finished) return;
     live.add(route.vehicle_id);
     const key = legKey(route.vehicle_id, track.leg_from, track.leg_to);
     const leg = registry.get(key);

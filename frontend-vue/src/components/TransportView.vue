@@ -54,6 +54,9 @@ const simClock = computed(() => {
 });
 
 const underway = computed(() => dispatch.run?.status === "in_transit");
+/* The clock stays live while any truck is still on the road — the drive home
+   after the last delivery is part of the operation, not the end of it. */
+const running = computed(() => underway.value || dispatch.stillReturning);
 const SPEEDS = [
   { value: 1, key: "speedReal" },
   { value: 60, key: "speedFast" },
@@ -94,11 +97,11 @@ onBeforeUnmount(() => {
       </header>
 
       <div class="tv-controls">
-        <button :disabled="!underway" :class="{ on: paused }" @click="togglePause">
+        <button :disabled="!running" :class="{ on: paused }" @click="togglePause">
           {{ paused ? text.transportResume : text.transportPause }}
         </button>
         <span class="tv-speeds">
-          <button v-for="s in SPEEDS" :key="s.value" :disabled="!underway"
+          <button v-for="s in SPEEDS" :key="s.value" :disabled="!running"
             :class="{ on: !paused && (dispatch.run?.clock?.speed || 60) === s.value }"
             @click="setSpeed(s.value)">{{ text[s.key] }}</button>
         </span>
@@ -115,7 +118,10 @@ onBeforeUnmount(() => {
         <span v-if="branch?.candidates?.length && selectedVehicle" class="tv-hint">
           {{ text.transportCompareHint }}
         </span>
-        <span v-else-if="!underway" class="tv-hint">{{ text.transportNotRunning }}</span>
+        <span v-else-if="dispatch.stillReturning && !underway" class="tv-badge">
+          {{ text.returning }}
+        </span>
+        <span v-else-if="!running" class="tv-hint">{{ text.transportNotRunning }}</span>
       </div>
 
       <LeafletMap :nodes="nodes" :plan="plan" :text="text" :selected-id="null"
@@ -160,6 +166,7 @@ onBeforeUnmount(() => {
 .tv-speeds button.on { border-color: #0d9488; color: #0f766e; background: #f0fdfa; }
 .tv-check { display: inline-flex; align-items: center; gap: 4px; }
 .tv-hint { color: #64748b; }
+.tv-badge { background: #fef3c7; color: #92400e; border-radius: 999px; padding: 2px 8px; font-weight: 600; }
 .tv-vehicles { list-style: none; display: flex; gap: 14px; flex-wrap: wrap; margin: 9px 0 0; padding: 0; font-size: 11px; color: #475569; }
 .tv-vehicles li.picked { color: #0f172a; font-weight: 600; }
 .tv-vehicles button { background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; text-decoration: underline dotted; }

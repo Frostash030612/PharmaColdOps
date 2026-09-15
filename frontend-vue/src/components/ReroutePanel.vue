@@ -86,11 +86,14 @@ function pickVehicle(id) {
   dispatch.branchVehicle = selectedVehicle.value;
 }
 const underway = computed(() => dispatch.run?.status === "in_transit");
+/* Keep polling while anything is still on the road, which includes the drive
+   home after the last delivery (the run is already "completed" by then). */
+const moving = computed(() => underway.value || dispatch.stillReturning);
 const canDepart = computed(() =>
   dispatch.vehicles.some((v) => v.status === "reserved"));
 
 /* Keep the trucks moving while an operation is under way. */
-watch(underway, (on) => { on ? dispatch.watchClock() : dispatch.stopClock(); },
+watch(moving, (on) => { on ? dispatch.watchClock() : dispatch.stopClock(); },
       { immediate: true });
 onBeforeUnmount(() => dispatch.stopClock());
 

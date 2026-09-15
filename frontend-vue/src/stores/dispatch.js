@@ -306,8 +306,16 @@ export const useDispatchStore = defineStore("dispatch", () => {
 
   /* Advance the operation to the simulated clock. The backend applies any
      arrivals that are due (idempotently), so this is safe to poll. */
+  /// True while at least one truck is still on the road — including the drive
+  /// home after the last order is delivered, when the run is already "completed".
+  const stillReturning = computed(() =>
+    (run.value?.route_view?.routes || []).some((r) => r.track && !r.track.finished));
+
   function tick() {
-    if (!run.value || run.value.status !== "in_transit") return Promise.resolve(null);
+    if (!run.value) return Promise.resolve(null);
+    if (run.value.status !== "in_transit" && !stillReturning.value) {
+      return Promise.resolve(null);
+    }
     return postJson(
       `${decisions.apiBase}/api/dispatch/runs/${run.value.dispatch_id}/tick`, {})
       .then(apply).catch(() => null);
@@ -319,7 +327,10 @@ export const useDispatchStore = defineStore("dispatch", () => {
   function watchClock(intervalMs = 1000) {
     stopClock();
     timer = setInterval(() => {
-      if (!run.value || run.value.status !== "in_transit") { stopClock(); return; }
+      if (!run.value || (run.value.status !== "in_transit" && !stillReturning.value)) {
+        stopClock();
+        return;
+      }
       tick();
     }, intervalMs);
   }
@@ -347,7 +358,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
   return {
     run, pending, error, live, orders, vehicles, stock,
     refresh, commitReshipment, depart, deliverNext, setSpeed,
-    tick, watchClock, stopClock,
+    tick, watchClock, stopClock, stillReturning,
     branch, branchError, needsDailyPlan, policy, POLICIES,
     previewBranch, setPolicy,
     branchVehicle, branchCandidate, branchOverlays, branchNodeIds, incidentNodeId,

@@ -98,6 +98,7 @@ export default {
   "transportCompare": "Show the reroute comparison",
   "transportCompareHint": "Grey dashed = before, red solid = after (the option picked on the left)",
   "transportNotRunning": "No operation is under way: generate today's batch and confirm it first.",
+  "returning": "🚚 All orders delivered — the fleet is driving home",
   "stopsDone": "stops done",
   "beforeRoute": "Before the change",
   "afterRoute": "After the change",
