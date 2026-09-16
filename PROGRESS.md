@@ -4,6 +4,31 @@
 
 ---
 
+## 2026-09-16 — B6 第一半：报废救援接上「属于哪张订单」（并更正我先前的错误判断）
+
+**更正**：我先前写"彻底解决需 A 侧 `ExcursionEvent` 承载批次与收货方"——**这话说满了**。
+运行状态里 `assignments[order_id] → vehicle_id` 与 `reservations[order_id] → lot 分配`
+本来就有"订单 → 车 → 批次"的链路，缺的只是那把钥匙（订单 id）。而用户指出：
+**输入本身就是我们自己模拟的，钥匙应该随输入一起来**，不必等 A、也不必让人在界面上选。
+
+**口径**：报废默认**整单全损**，不区分坏几箱 → "补发多少"＝"该订单载了多少"。
+
+**改动**：`EventIn.order_id`（可选）；`service._linked_order()` 从进行中的作业解析它；
+`build_delivery_order(record, linked_order=…)` 取该订单的产品/收货医院/数量；
+响应新增 `order_source ∈ {linked_order, event_fallback}` 标明来源；不给 `order_id` 时旧行为不变。
+顺带修好错误优先级：`reshipment_required=false` 先报"不需要补发"，不被"没有进行中的作业"掩盖。
+
+**接上之后**：收货医院来自订单（结案表单那个下拉框可以退休）、补发数量来自订单、
+在哪辆车上来自 `assignments`、涉及哪些批次来自 `reservations`。
+
+**仍未做**：① 取货点改"最近的、有货的货源点"（`dynamic_problem` 仍有 4 处假定 `DISPATCH_ORIGIN`）；
+② 出事车辆剩余站序重排；③ "货还在车上"那一支的车辆载货建模。**我在此停住**：
+第①项要动候选构造与接受路径，不在状态未验证时开这个重构。
+
+**验证**：新增 `tests/test_rescue_order_link.py`（7 条）；全量 `pytest -q` **270 passed / 0 failed**。
+
+---
+
 ## 2026-09-16 — B1b + B4：订单带起点，路线从货源点出发
 
 **模型**：订单新增可选 `origin_facility_id`（不给＝默认主仓）。规划器按 **（温区 × 货源点）分组**，

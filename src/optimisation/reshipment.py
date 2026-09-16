@@ -38,6 +38,12 @@ def build_reshipment_order(record: dict) -> ReshipmentOrder | None:
     validation; when absent, the first customer in the committed Singapore
     network is used. Demand reuses that customer's configured demo demand.
     Returns ``None`` when the case does not require reshipment.
+
+    ``linked_order`` is the transport order this excursion belongs to (an
+    ``OrderProgress`` from the running operation, 2026-09-16). When it is given,
+    the reshipment takes **its** product, receiving hospital and quantity: the
+    whole shipment is scrapped, so "how much to replace" is simply how much that
+    order carries — no node demo demand, no operator-picked destination.
     """
     if not record["reshipment_required"]:
         return None
@@ -61,7 +67,7 @@ def build_reshipment_order(record: dict) -> ReshipmentOrder | None:
     )
 
 
-def build_delivery_order(record: dict) -> DeliveryOrder | None:
+def build_delivery_order(record: dict, *, linked_order=None) -> DeliveryOrder | None:
     """Derive a dispatch ``DeliveryOrder`` from one ``close_case()`` record.
 
     This is the bridge that keeps resupply on ONE pathway: the order carries
@@ -87,6 +93,19 @@ def build_delivery_order(record: dict) -> DeliveryOrder | None:
             f"destination facility {destination!r} is not in Singapore demo customers"
         )
     product_id = event["product_id"]
+    if linked_order is not None:
+        if linked_order.product_id != product_id:
+            raise ValueError(
+                f"case {record['run_id']} is about {product_id!r} but order "
+                f"{linked_order.order_id!r} carries {linked_order.product_id!r}"
+            )
+        destination = linked_order.destination_facility_id
+        node = next((item for item in customers if item["facility_id"] == destination), None)
+        if node is None:
+            raise ValueError(
+                f"linked order {linked_order.order_id!r} delivers to unknown "
+                f"facility {destination!r}"
+            )
     try:
         zone = PRODUCT_TEMPERATURE_ZONE[product_id]
     except KeyError as exc:
@@ -95,7 +114,7 @@ def build_delivery_order(record: dict) -> DeliveryOrder | None:
         order_id=f"RO-{record['run_id']}",
         product_id=product_id,
         destination_facility_id=destination,
-        quantity=node["demand"],
+        quantity=(linked_order.quantity if linked_order is not None else node["demand"]),
         earliest_min=node["earliest_min"],
         latest_min=node["latest_min"],
         temperature_zone=zone,

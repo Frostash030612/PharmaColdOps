@@ -1069,6 +1069,32 @@ def _with_candidate_geometry(network: dict, preview: dict) -> dict:
     return preview
 
 
+def _order_source(linked) -> str:
+    """Where the rescue order's product/hospital/quantity came from."""
+    return "linked_order" if linked is not None else "event_fallback"
+
+
+def _linked_order(record: dict, state) -> object | None:
+    """The transport order this excursion concerns, when the input named one.
+
+    The simulated excursion carries ``event.order_id`` (2026-09-16), so the
+    rescue reads the product, the receiving hospital and the quantity straight
+    off that order instead of guessing from a dropdown and a node's demo demand.
+    Naming an order that is not in the running operation is an error, not a
+    silent fallback: the whole point is that the link is real.
+    """
+    order_id = (record.get("event") or {}).get("order_id")
+    if not order_id:
+        return None
+    order = state.orders.get(order_id)
+    if order is None:
+        raise ValueError(
+            f"case {record['run_id']} is linked to order {order_id!r}, which is not "
+            "part of the running operation"
+        )
+    return order
+
+
 def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dict:
     """Every way this closed case could be served — read-only, nothing reserved.
 
@@ -1077,16 +1103,22 @@ def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dic
     applies exactly that choice. Deriving the order happens here too, so the UI
     never has to guess a destination or a quantity.
     """
-    order = build_delivery_order(record)
-    if order is None:
+    # Case-level refusal first: "this needs no reshipment" is a fact about the
+    # case, and must not be masked by "no plan is open".
+    if not record.get("reshipment_required"):
         raise ValueError(f"case {record['run_id']} does not require reshipment")
     dispatch_id, state = _require_plan()
+    linked = _linked_order(record, state)
+    order = build_delivery_order(record, linked_order=linked)
+    if order is None:  # pragma: no cover - guarded just above
+        raise ValueError(f"case {record['run_id']} does not require reshipment")
     clock, next_day = _dispatch_clock(record, order)
     context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
     state, context, _ = _prepare_branch(state, context, order)
     if order.order_id in state.orders:  # already committed: show it, don't re-judge
         return {"dispatch_id": dispatch_id, "order_id": order.order_id,
                 "already_committed": True, "scheduled_next_day": next_day,
+                "order_source": _order_source(linked),
                 "order": _order_dump(order), "policy": policy, "candidates": [],
                 "baselines": {}}
     preview = preview_emergency_order(state, context, order,
@@ -1096,6 +1128,7 @@ def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dic
         "order_id": order.order_id,
         "already_committed": False,
         "scheduled_next_day": next_day,
+        "order_source": _order_source(linked),
         "order": _order_dump(order),
         **_with_candidate_geometry(read_network(), preview),
     }
@@ -1112,11 +1145,14 @@ def route_reshipment(record: dict, *, candidate_kind: str | None = None,
     nothing to branch from: the case is refused rather than quietly promoted into
     an operation of its own (``docs/C_配送模块.md`` §4.4-2).
     """
-    order = build_delivery_order(record)
-    if order is None:
+    if not record.get("reshipment_required"):
+        raise ValueError(f"case {record['run_id']} does not require reshipment")
+    dispatch_id, state = _require_plan()
+    linked = _linked_order(record, state)
+    order = build_delivery_order(record, linked_order=linked)
+    if order is None:  # pragma: no cover - guarded just above
         raise ValueError(f"case {record['run_id']} does not require reshipment")
     clock, next_day = _dispatch_clock(record, order)
-    dispatch_id, state = _require_plan()
 
     if order.order_id in state.orders:  # replaying the same case must not double-book
         context = load_context(DISPATCH_DATABASE_URL, dispatch_id)

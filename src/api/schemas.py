@@ -31,6 +31,11 @@ class EventIn(BaseModel):
     stage: str = "transit"
     facility_id: Optional[str] = None
     destination_facility_id: Optional[str] = None
+    #: Which transport order this excursion concerns (2026-09-16). The simulated
+    #: input already knows it, and the order carries the product, the receiving
+    #: hospital and the quantity — so the rescue no longer has to guess a
+    #: destination from a dropdown or a quantity from the node's demo demand.
+    order_id: Optional[str] = None
 
 
 class DecideIn(EventIn):
