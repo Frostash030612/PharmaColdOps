@@ -22,12 +22,13 @@ DEPOT_FACILITY_ID = DISPATCH_ORIGIN
 # A resupply must travel in the temperature zone its product actually needs;
 # defaulting everything to "chilled" would let a frozen product be matched to a
 # chilled vehicle, which dispatch_models is specifically meant to prevent.
-PRODUCT_TEMPERATURE_ZONE = {
-    "vaccine_2_8": "chilled",
-    "insulin_2_8": "chilled",
-    "frozen_m20": "frozen",
-    "mrna_ultracold": "ultracold",
-}
+#
+# Read from the shared catalogue (2026-09-16): this used to be a second literal
+# copy of the same four products, which is precisely how one list grows a product
+# the other one has never heard of.
+from .catalog import product_zones
+
+PRODUCT_TEMPERATURE_ZONE = product_zones()
 
 
 def build_reshipment_order(record: dict) -> ReshipmentOrder | None:

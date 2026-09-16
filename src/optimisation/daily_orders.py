@@ -30,12 +30,11 @@ from .dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot
 from .singapore_loader import SINGAPORE_NETWORK_PATH, read_network
 
 #: A temperature zone needs a product so the planner can match zone and batch.
-#: Mirrors ``reshipment.PRODUCT_TEMPERATURE_ZONE`` in the other direction.
-ZONE_PRODUCT = {
-    "chilled": "vaccine_2_8",
-    "frozen": "frozen_m20",
-    "ultracold": "mrna_ultracold",
-}
+#: Derived from the catalogue (2026-09-16) instead of mirroring a second literal:
+#: the first catalogue row of each zone wins, deterministically.
+from .catalog import zone_products
+
+ZONE_PRODUCT = zone_products()
 
 #: Spare stock carried on every vehicle, in units, as one hospital order's worth.
 #:

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "assumptions": "供货点为演示设定（2026-09-16 拍板）：主仓覆盖全部品类，每个分拨点最多供应两类；全部取自 data/optimisation/singapore/network.json 里已有的节点，不新增节点。supplies 里的数量是「没有批次台账时的演示可用量」，有台账时以台账聚合为准（见 docs/路径规划总逻辑方案.md §2.3）。W-KN-PIONEER（第三方仓）故意不列入，仅作对照；将来要启用加一行即可。",
+  "points": [
+    {
+      "facility_id": "W-WESTGATE",
+      "kind": "warehouse",
+      "supplies": "all",
+      "demo_quantity": { "vaccine_2_8": 600, "insulin_2_8": 400, "frozen_m20": 300, "mrna_ultracold": 200 }
+    },
+    {
+      "facility_id": "D-NORTHPOINT",
+      "kind": "distribution",
+      "supplies": { "vaccine_2_8": 90, "frozen_m20": 60 }
+    },
+    {
+      "facility_id": "D-HOUGANG",
+      "kind": "distribution",
+      "supplies": { "vaccine_2_8": 90, "mrna_ultracold": 40 }
+    },
+    {
+      "facility_id": "D-BUGIS",
+      "kind": "distribution",
+      "supplies": { "insulin_2_8": 120, "frozen_m20": 60 }
+    }
+  ]
+}

@@ -4,6 +4,32 @@
 
 ---
 
+## 2026-09-16 — B1 数据面：产品目录与供货表落地（产品收敛为 4 种）
+
+**决定**：产品从"设想的 100 种"收敛为 **4 种**。理由不是省事——**路径规划不能发明规则引擎判不了
+的产品**：权威清单在 A 的 `src/rule_engine/rules_config.json`（4 个产品、阈值有条款级出处）。
+100 种要成立得先有 100 份出处。现在目录与 A 的清单由**测试断言必须一致**。
+
+**新增两份数据文件 + 一个加载/校验模块**
+- `data/optimisation/product_catalog.csv`：`product_id, name_zh, name_en, temperature_zone, unit`，
+  是 `产品→温区` 的**唯一来源**（原先硬编码在 `reshipment.py` 与 `daily_orders.py` 两处，
+  是典型的双份漂移隐患）。**不写任何阈值**（那些属 A 的 `rules_config.json`）。
+- `data/optimisation/supply_points.json`：主仓 `W-WESTGATE` 全 4 种；分拨点各最多 2 类——
+  义顺（疫苗+冷冻）、后港（疫苗+mRNA）、武吉士（胰岛素+冷冻）。`W-KN-PIONEER` 故意不列入，仅作对照。
+- `src/optimisation/catalog.py`：读取 + 校验（主仓唯一且覆盖全品类、节点角色匹配、产品必须在目录里、
+  分拨点最多 2 类、不在表里＝不能供货），并提供 `available_quantity()`——
+  **有台账时以台账聚合为准（真实 0 不被演示值掩盖），无台账才用演示值**。
+
+**顺手清掉重复**：`PRODUCT_TEMPERATURE_ZONE` 与 `ZONE_PRODUCT` 改为从目录派生，
+派生结果与原来的硬编码完全一致（测试用 golden 值钉住），因此**现有行为零变化**。
+
+**验证**：新增 `tests/test_catalog_and_supply.py`（20 条）；全量 `pytest -q` **250 passed / 0 failed**。
+
+**仍待做（B1b）**：订单 `origin_facility_id` 字段与"起点必须能供这个货"的校验，以及与 B4 的
+多起点排线接起来；在此之前系统行为完全不变。
+
+---
+
 ## 2026-09-16 — B5 收工停靠选址 + B7 不可行理由，两批一起落地
 
 **B5（收工停靠）**：新增 `src/optimisation/overnight.py` 与 `POST /api/dispatch/overnight-plan`（只读）。
