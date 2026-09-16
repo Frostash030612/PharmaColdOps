@@ -480,6 +480,9 @@ const dailyOutcome = computed(() => {
                 {{ text.branchPickup }} {{ facilityName(c.pickup_facility_id) }}
               </div>
               <div v-if="c.resequenced" class="sg-pickup">{{ text.branchResequenced }}</div>
+              <!-- The spoiled batch is handed over at that same stop (B6). -->
+              <div v-if="c.quarantine_order_ids && c.quarantine_order_ids.length"
+                class="sg-pickup">{{ text.branchQuarantine }}</div>
             </td>
             <td>{{ clock(c.eta_min) }}</td>
             <td>

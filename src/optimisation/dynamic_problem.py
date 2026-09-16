@@ -69,6 +69,7 @@ def preview_emergency_order(
     current_time_min: int,
     loading_min: int = 15,
     policy: str = DEFAULT_POLICY,
+    spoiled_order_id: str | None = None,
 ) -> dict:
     """Compare every way this branch order could be served, without changing state.
 
@@ -101,6 +102,9 @@ def preview_emergency_order(
         return matrix["distance_m"][i][j], matrix["duration_s"][i][j] / 60.0
 
     order_lookup = _order_lookup(context)
+    # Which shipments are physically in a truck right now: an order is on board
+    # exactly while it is in a vehicle's remaining queue (B6, 2026-09-16).
+    spoiled_on_board = on_board_orders(state)
     input_data = context.get("input", {})
     lots = {item["lot_id"]: item for item in input_data.get("inventory", [])}
     # Which supply points may hand this product over, and which of them actually
@@ -298,10 +302,27 @@ def preview_emergency_order(
         else:                                   # add_stop_in_transit
             item["node_sequence"] = [current, destination, *remaining, 0]
 
+    # A candidate that stops at a pickup point hands the scrapped goods over
+    # there — the cold-chain reality is "return the spoiled batch, collect the
+    # replacement" in one visit, which is why no extra leg is needed. The onboard
+    # option makes no stop, so its spoiled goods ride to the vehicle's end node;
+    # the field stays empty and the limitation is declared in ``limitations``.
+    if spoiled_order_id and spoiled_order_id in spoiled_on_board:
+        for item in candidates:
+            if item.get("pickup_facility_id"):
+                item["quarantine_order_ids"] = [spoiled_order_id]
+
     candidates.sort(key=lambda item: _rank(item, policy))
+    # "Severity" of the case: is the spoiled shipment still in a truck, or was it
+    # already handed over at the hospital? The first needs the goods disposed of
+    # on the way (the pickup stop doubles as the hand-over point), the second does
+    # not — and which one it is comes straight out of the state.
     return {
         "feasible": any(item["on_time"] for item in candidates),
         "order_id": order.order_id,
+        #: The order whose goods were scrapped, when it is still in a truck.
+        "quarantine_order_id": spoiled_order_id if spoiled_order_id in spoiled_on_board else None,
+        "quarantine_vehicle_id": spoiled_on_board.get(spoiled_order_id),
         "current_time_min": current_time_min,
         "policy": policy,
         "available_quantity": stock,
@@ -310,6 +331,7 @@ def preview_emergency_order(
         "baselines": baselines,
         "limitations": [
             "preview_only",
+            "spoiled_goods_handed_over_at_the_pickup_stop_unless_the_onboard_option_is_used",
             "free_flow_travel_time",
             "in_transit_vehicle_returns_to_depot_unless_onboard_spare_covers_the_order",
             "onboard_spare_is_a_load_assumption_not_a_depot_lot",
@@ -317,6 +339,20 @@ def preview_emergency_order(
         ],
     }
 
+
+
+
+def on_board_orders(state: DispatchState) -> dict[str, str]:
+    """``order_id -> vehicle_id`` for goods that are physically still on a truck.
+
+    No new bookkeeping: an order is on board exactly while it is in a vehicle's
+    remaining queue. Once it is delivered it is in ``delivered_order_ids`` and the
+    goods are at the hospital — which is the other half of the scrap decision
+    (2026-09-16, B6).
+    """
+    return {order_id: vehicle.vehicle_id
+            for vehicle in state.vehicles.values()
+            for order_id in vehicle.remaining_order_ids}
 
 
 def _carriers_with_stock(order, lots, state) -> dict[str, int]:
@@ -516,6 +552,9 @@ def _candidate(kind: str, vehicle_id: str, eta: float, distance: float, order: D
         #: Where the goods come from. ``None`` = they are already on board (the
         #: in-transit spare option) or the vehicle is standing on them.
         "pickup_facility_id": None,
+        #: Scrapped orders this option hands over at its pickup stop (empty for a
+        #: case whose goods never left the hospital).
+        "quarantine_order_ids": [],
     }
 
 
@@ -529,12 +568,14 @@ def accept_emergency_order(
     vehicle_id: str,
     command_id: str,
     policy: str = DEFAULT_POLICY,
+    spoiled_order_id: str | None = None,
 ) -> DispatchState:
     """Revalidate and apply one previewed emergency option exactly once."""
     if command_id in state.applied_commands:
         return state
     preview = preview_emergency_order(
-        state, context, order, current_time_min=current_time_min, policy=policy
+        state, context, order, current_time_min=current_time_min, policy=policy,
+        spoiled_order_id=spoiled_order_id,
     )
     candidate = next((item for item in preview["candidates"] if (
         item["kind"] == candidate_kind and item["vehicle_id"] == vehicle_id
@@ -619,6 +660,26 @@ def accept_emergency_order(
         order.order_id, order.product_id, order.destination_facility_id,
         order.quantity, vehicle_id, order_status,
     )}
+    # A scrapped shipment must not be delivered. Take it out of the truck's queue
+    # and record what happened to it: removing it (rather than marking it
+    # delivered) also keeps the clock honest, because the tick counts the orders a
+    # vehicle still has to serve. "Scrapped" is a terminal state — it is neither
+    # pending nor delivered, and the audit trail keeps it either way.
+    if spoiled_order_id and spoiled_order_id in orders:
+        spoiled = orders[spoiled_order_id]
+        carrier = vehicles.get(spoiled.vehicle_id)
+        # Only goods that are STILL in the truck can be written off. A shipment
+        # already delivered stays "delivered": it really was handed over, and
+        # rewriting that would erase the fact the replacement exists because of.
+        if carrier is not None and spoiled_order_id in carrier.remaining_order_ids:
+            vehicles[spoiled.vehicle_id] = replace(
+                carrier,
+                remaining_order_ids=tuple(
+                    oid for oid in carrier.remaining_order_ids
+                    if oid != spoiled_order_id),
+            )
+            orders[spoiled_order_id] = replace(spoiled, status="scrapped")
+
     # The run is under way once any vehicle is; an accepted-but-undeparted run
     # must stay "accepted" so depart() still has something to do.
     status = "in_transit" if any(

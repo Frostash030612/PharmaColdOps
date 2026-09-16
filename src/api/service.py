@@ -945,7 +945,10 @@ def dispatch_route_view(state, context: dict) -> dict:
                 "earliest_min": order["earliest_min"], "latest_min": order["latest_min"],
                 "source_run_id": order.get("source_run_id"),
             })
-        if not stops:
+        if not stops and not vehicle.pickup_facility_ids:
+            # Nothing to draw at all: no stop, no diversion. A vehicle whose only
+            # order was scrapped still has a run left — take its diverted stops to
+            # its parking node — and must not vanish from the map (B6).
             continue
         # The schedule spans the WHOLE sequence, delivered stops included, and
         # runs from the minute the fleet rolled — not from whenever the speed was
@@ -988,6 +991,10 @@ def dispatch_route_view(state, context: dict) -> dict:
             "orders_delivered": sum(item.status == "delivered"
                                     for item in state.orders.values()),
             "stock_remaining": sum(state.available_by_lot.values()),
+            # Shipments written off rather than delivered (B6): neither pending
+            # nor delivered, so they need their own count to be visible at all.
+            "orders_scrapped": sum(item.status == "scrapped"
+                                   for item in state.orders.values()),
             # "All orders are delivered" is not "the fleet is back": the trucks
             # still have to drive home, and the map should show that rather than
             # making them disappear at the last stop.
@@ -1126,22 +1133,28 @@ def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dic
     if order is None:  # pragma: no cover - guarded just above
         raise ValueError(f"case {record['run_id']} does not require reshipment")
     clock, next_day = _dispatch_clock(record, order)
+    # The case is about this shipment: if its goods are still in a truck, adopting
+    # a plan has to scrap them rather than deliver them (B6, 2026-09-16).
+    spoiled_id = linked.order_id if linked is not None else None
     context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
     state, context, _ = _prepare_branch(state, context, order)
     if order.order_id in state.orders:  # already committed: show it, don't re-judge
         return {"dispatch_id": dispatch_id, "order_id": order.order_id,
                 "already_committed": True, "scheduled_next_day": next_day,
                 "order_source": _order_source(linked),
+                "spoiled_order_id": spoiled_id,
                 "order": _order_dump(order), "policy": policy, "candidates": [],
                 "baselines": {}}
     preview = preview_emergency_order(state, context, order,
-                                      current_time_min=clock, policy=policy)
+                                      current_time_min=clock, policy=policy,
+                                      spoiled_order_id=spoiled_id)
     return {
         "dispatch_id": dispatch_id,
         "order_id": order.order_id,
         "already_committed": False,
         "scheduled_next_day": next_day,
         "order_source": _order_source(linked),
+        "spoiled_order_id": spoiled_id,
         "order": _order_dump(order),
         **_with_candidate_geometry(read_network(), preview),
     }
@@ -1166,6 +1179,9 @@ def route_reshipment(record: dict, *, candidate_kind: str | None = None,
     if order is None:  # pragma: no cover - guarded just above
         raise ValueError(f"case {record['run_id']} does not require reshipment")
     clock, next_day = _dispatch_clock(record, order)
+    # If the case names the shipment it is about and that shipment is still in a
+    # truck, adopting a plan must scrap it instead of delivering it.
+    spoiled_id = linked.order_id if linked is not None else None
 
     if order.order_id in state.orders:  # replaying the same case must not double-book
         context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
@@ -1177,7 +1193,8 @@ def route_reshipment(record: dict, *, candidate_kind: str | None = None,
     context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
     state, context, _ = _prepare_branch(state, context, order)
     if candidate_kind is None or vehicle_id is None:
-        kind, carrier = _pick_candidate(state, context, order, clock, policy)
+        kind, carrier = _pick_candidate(state, context, order, clock, policy,
+                                        spoiled_order_id=spoiled_id)
     else:
         # An explicit choice from the comparison card: revalidated by
         # accept_emergency_order, never trusted as given.
@@ -1188,21 +1205,27 @@ def route_reshipment(record: dict, *, candidate_kind: str | None = None,
         candidate_kind=kind, vehicle_id=carrier,
         command_id=f"reship-{order.order_id}",
         policy=policy,
+        spoiled_order_id=spoiled_id,
     )
     # Context carries the order for later previews: without it, the next case's
     # affected-order simulation cannot resolve this one's window.
     context["input"]["orders"].append(_order_dump(order))
     update_run(DISPATCH_DATABASE_URL, dispatch_id, new, expected_version=state.version)
     update_context(DISPATCH_DATABASE_URL, dispatch_id, context)
+    scrapped = [oid for oid, item in new.orders.items() if item.status == "scrapped"]
     return {"dispatch_id": dispatch_id, "inserted": True,
             "candidate_kind": kind, "vehicle_id": carrier,
             "scheduled_next_day": next_day,
+            # Which shipments this action scrapped, so the caller (and the audit
+            # trail) can tell "delivered" from "written off" (B6).
+            "scrapped_order_ids": scrapped,
             "route_view": dispatch_route_view(new, context),
             **state_to_dict(new), **context}
 
 
 def _pick_candidate(state, context: dict, order: DeliveryOrder, clock: int,
-                    policy: str = DEFAULT_POLICY) -> tuple[str, str]:
+                    policy: str = DEFAULT_POLICY,
+                    spoiled_order_id: str | None = None) -> tuple[str, str]:
     """The best on-time option the dispatch preview actually offers.
 
     Delegating to the preview means the capacity, temperature-zone, onboard-spare
@@ -1213,6 +1236,7 @@ def _pick_candidate(state, context: dict, order: DeliveryOrder, clock: int,
     """
     preview = preview_emergency_order(
         state, context, order, current_time_min=clock, policy=policy,
+        spoiled_order_id=spoiled_order_id,
     )
     candidate = preview.get("selected_candidate")
     if candidate is None or not candidate["on_time"]:

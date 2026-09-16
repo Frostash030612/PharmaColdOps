@@ -111,6 +111,7 @@ export default {
   "branchEta": "ETA",
   "branchLateness": "Late",
   "branchPickup": "fetch at",
+  "branchQuarantine": "and hands over the spoiled batch",
   "branchResequenced": "(queue re-sequenced)",
   "branchAffected": "Affected orders",
   "branchNoAffected": "No existing order is affected",
