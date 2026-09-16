@@ -50,6 +50,33 @@ def test_dispatch_endpoint_routes_only_order_destinations():
     assert len(zone["geojson"]["features"]) == 1
 
 
+def test_dispatch_endpoint_rejects_invalid_hard_limits():
+    request = payload()
+    request["constraints"] = {"max_vehicles": 0, "max_stops_per_vehicle": 4}
+
+    response = client.post("/api/dispatch/plan", json=request)
+
+    assert response.status_code == 422
+
+
+def test_created_operation_cannot_reintroduce_vehicles_above_fleet_limit():
+    request = payload()
+    request["vehicles"].extend([
+        {**request["vehicles"][0], "vehicle_id": "V-CHILL-2"},
+        {**request["vehicles"][0], "vehicle_id": "V-CHILL-3"},
+    ])
+    request.update(
+        constraints={"max_vehicles": 1, "max_stops_per_vehicle": 4},
+        dispatch_id="DSP-FLEET-LIMIT", command_id="create-fleet-limit",
+    )
+
+    response = client.post("/api/dispatch/runs", json=request)
+
+    assert response.status_code == 200
+    assert set(response.json()["vehicles"]) == {"V-CHILL-1"}
+    assert len(response.json()["input"]["vehicles"]) == 1
+
+
 def test_dispatch_endpoint_rejects_quarantined_or_insufficient_stock():
     request = payload()
     request["inventory"][0]["status"] = "quarantine"

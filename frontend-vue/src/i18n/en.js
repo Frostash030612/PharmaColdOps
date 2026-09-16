@@ -59,6 +59,7 @@ export default {
   "dailyReroll": "🔀 Reroll a random batch",
   "dailySeed": "seed",
   "dailySimulated": "Simulated data: hospitals and receiving windows come from the committed road network, but the daily demand and fleet are this project's demo assumptions, not hospital orders.",
+  "dailyConstraints": "Hard limits: at most {vehicles} vehicles · at most {stops} hospitals per vehicle",
   "branchTitle": "Branch event: change a running vehicle's route, or send another one",
   "branchHint": "Every option below is a preview: nothing is reserved and no vehicle moves until you pick one.",
   "branchPreview": "🔍 Compare the options",
@@ -89,6 +90,7 @@ export default {
   "legendPending": "Route still ahead",
   "legendDriven": "Already driven",
   "legendBranch": "Touched by the branch event",
+  "incidentCount": "incident(s)",
   "transportOpen": "⛶ Expand map",
   "transportTitle": "Transport view",
   "transportClose": "Close (Esc)",
@@ -144,6 +146,18 @@ export default {
     sectionRisk: "Risk index",
     riskNote: "(rule-derived · deterministic, not an ML model)",
     sectionEvidence: "Why this decision",
+  },
+
+  workspace: {
+    mapTitle: "Today's cold-chain delivery map",
+    eventsTitle: "Excursion events",
+    eventsNote: "Select a map marker or event below to inspect its readings and decision.",
+    caseTitle: "Excursion detail and decision sandbox",
+    previewCase: "Preset case",
+    presetsAndRules: "Presets and rule configuration",
+    unknownFacility: "Location pending",
+    closed: "Closed",
+    minutes: "min",
   },
 
   right: {

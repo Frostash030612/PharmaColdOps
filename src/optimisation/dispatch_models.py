@@ -23,6 +23,20 @@ TemperatureZone = Literal["chilled", "frozen", "ultracold"]
 OnboardSpare = tuple[tuple[str, str, int], ...]
 
 
+@dataclass(frozen=True)
+class DispatchConstraints:
+    """Hard fleet limits applied by every static dispatch solver."""
+
+    max_vehicles: int | None = None
+    max_stops_per_vehicle: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.max_vehicles is not None and self.max_vehicles < 1:
+            raise ValueError("max_vehicles must be a positive integer")
+        if self.max_stops_per_vehicle is not None and self.max_stops_per_vehicle < 1:
+            raise ValueError("max_stops_per_vehicle must be a positive integer")
+
+
 def normalise_onboard_spare(value: object) -> OnboardSpare:
     """Canonicalise onboard spare stock from tuples, lists or dicts.
 

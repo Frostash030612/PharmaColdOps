@@ -4,7 +4,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot, validate_dispatch_inputs
+from .dispatch_models import (
+    DeliveryOrder, DispatchConstraints, DispatchVehicle, InventoryLot,
+    validate_dispatch_inputs,
+)
 from .greedy import solve_greedy
 from .models import ReplanResult
 from .ortools_solver import solve_ortools
@@ -44,6 +47,7 @@ def plan_delivery_orders(
     *,
     algorithm: str = "greedy",
     network_path: str | Path = SINGAPORE_NETWORK_PATH,
+    constraints: DispatchConstraints | None = None,
 ) -> DispatchPlan:
     """Plan available inventory orders, with one independent fleet per zone.
 
@@ -57,13 +61,20 @@ def plan_delivery_orders(
     if algorithm not in {"greedy", "ortools"}:
         raise ValueError(f"unsupported routing algorithm {algorithm!r}")
 
+    constraints = constraints or DispatchConstraints()
     zone_plans = []
+    vehicles_remaining = constraints.max_vehicles
     for zone in sorted({order.temperature_zone for order in orders}):
         zone_orders = tuple(order for order in orders if order.temperature_zone == zone)
         zone_vehicles = tuple(
             vehicle for vehicle in vehicles
             if vehicle.temperature_zone == zone and vehicle.status == "available"
         )
+        if vehicles_remaining is not None:
+            zone_vehicles = zone_vehicles[:vehicles_remaining]
+            vehicles_remaining -= len(zone_vehicles)
+        if not zone_vehicles:
+            raise ValueError(f"fleet limit leaves no available vehicle for zone {zone}")
         capacities = {vehicle.capacity for vehicle in zone_vehicles}
         if len(capacities) != 1:
             raise ValueError(f"vehicles in zone {zone} must currently share one capacity")
@@ -103,9 +114,15 @@ def plan_delivery_orders(
             facility_windows=windows,
         )
         if algorithm == "greedy":
-            dense_result = solve_greedy(instance, leg_fn=leg_fn)
+            dense_result = solve_greedy(
+                instance, leg_fn=leg_fn,
+                max_stops_per_vehicle=constraints.max_stops_per_vehicle,
+            )
         else:
-            dense_result = solve_ortools(instance, leg_fn=leg_fn)
+            dense_result = solve_ortools(
+                instance, leg_fn=leg_fn,
+                max_stops_per_vehicle=constraints.max_stops_per_vehicle,
+            )
         result = restore_network_node_ids(dense_result, source_ids)
         # Rebuild by source node without relying on request dictionary order.
         node_by_facility = {n["facility_id"]: n["node_id"] for n in read_network(network_path)["nodes"]}

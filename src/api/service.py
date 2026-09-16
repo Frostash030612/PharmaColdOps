@@ -54,15 +54,19 @@ from optimisation.tracking import (  # noqa: E402
     watched_now,
 )
 from optimisation.singapore_loader import read_network  # noqa: E402
-from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot  # noqa: E402
+from optimisation.dispatch_models import (  # noqa: E402
+    DeliveryOrder, DispatchConstraints, DispatchVehicle, InventoryLot,
+)
 from optimisation.dispatch_planner import DISPATCH_ORIGIN, plan_delivery_orders  # noqa: E402
 from optimisation.dispatch_state import accept_plan, deliver_next, depart, state_to_dict  # noqa: E402
 from optimisation.dispatch_repository import (  # noqa: E402
     create_run, latest_dispatch_id, latest_open_dispatch_id, load_context, load_run,
     recent_runs, update_context, update_run,
 )
-from optimisation.daily_orders import ASSUMPTIONS as DAILY_PLAN_ASSUMPTIONS  # noqa: E402
-from optimisation.daily_orders import daily_delivery_batch  # noqa: E402
+from optimisation.daily_orders import (  # noqa: E402
+    ASSUMPTIONS as DAILY_PLAN_ASSUMPTIONS,
+    FLEET_LIMIT, MAX_STOPS_PER_VEHICLE, daily_delivery_batch,
+)
 from optimisation.dynamic_problem import (  # noqa: E402
     DEFAULT_POLICY, accept_emergency_order, preview_emergency_order,
 )
@@ -449,12 +453,16 @@ def dispatch_plan_view(req: DispatchPlanIn) -> dict:
     """Preview an order-driven plan without mutating inventory or vehicles."""
     orders, inventory, vehicles = _dispatch_inputs(req)
     plan = plan_delivery_orders(
-        orders, inventory, vehicles, algorithm=req.algorithm
+        orders, inventory, vehicles, algorithm=req.algorithm,
+        constraints=_dispatch_constraints(req),
     )
-    return _dispatch_plan_response(plan, requested_algorithm=req.algorithm)
+    return _dispatch_plan_response(
+        plan, requested_algorithm=req.algorithm,
+        constraints=req.constraints.model_dump(),
+    )
 
 
-def _dispatch_plan_response(plan, *, requested_algorithm: str) -> dict:
+def _dispatch_plan_response(plan, *, requested_algorithm: str, constraints: dict | None = None) -> dict:
     """Serialise one already-computed plan; never invokes a solver again."""
     network = read_network()
     zone_views = []
@@ -491,6 +499,7 @@ def _dispatch_plan_response(plan, *, requested_algorithm: str) -> dict:
         "preview": True,
         "feasible": plan.feasible,
         "order_count": plan.order_count,
+        "constraints": constraints or {},
         "zones": zone_views,
     }
 
@@ -503,19 +512,40 @@ def _dispatch_inputs(req: DispatchPlanIn):
     )
 
 
+def _dispatch_constraints(req: DispatchPlanIn) -> DispatchConstraints:
+    return DispatchConstraints(**req.constraints.model_dump())
+
+
 def create_dispatch(req: DispatchCreateIn) -> dict:
     """Plan, accept and atomically persist one dispatch run."""
     orders, inventory, vehicles = _dispatch_inputs(req)
-    plan = plan_delivery_orders(orders, inventory, vehicles, algorithm=req.algorithm)
+    plan = plan_delivery_orders(
+        orders, inventory, vehicles, algorithm=req.algorithm,
+        constraints=_dispatch_constraints(req),
+    )
+    planned_vehicle_ids = {
+        vehicle_id for zone_plan in plan.zone_plans
+        for vehicle_id in zone_plan.vehicle_ids
+    }
+    accepted_vehicles = tuple(
+        vehicle for vehicle in vehicles if vehicle.vehicle_id in planned_vehicle_ids
+    )
     state = accept_plan(plan, orders, inventory, command_id=req.command_id,
-                        vehicles=vehicles)
-    plan_view = _dispatch_plan_response(plan, requested_algorithm=req.algorithm)
+                        vehicles=accepted_vehicles)
+    plan_view = _dispatch_plan_response(
+        plan, requested_algorithm=req.algorithm,
+        constraints=req.constraints.model_dump(),
+    )
     context = {
         "plan": plan_view,
         "input": {
             "orders": [item.model_dump() for item in req.orders],
             "inventory": [item.model_dump() for item in req.inventory],
-            "vehicles": [item.model_dump() for item in req.vehicles],
+            # Keep the persisted fleet identical to the solver's hard fleet
+            # limit. Otherwise an excluded fourth vehicle could reappear later
+            # as an emergency "spare" and silently bypass max_vehicles.
+            "vehicles": [_vehicle_dump(vehicle) for vehicle in accepted_vehicles],
+            "constraints": req.constraints.model_dump(),
         },
     }
     create_run(DISPATCH_DATABASE_URL, req.dispatch_id, state, context=context)
@@ -636,6 +666,10 @@ def daily_plan_request(
         # store) so two clients cannot collide on the same id.
         "plan": {
             "algorithm": "greedy",
+            "constraints": {
+                "max_vehicles": FLEET_LIMIT,
+                "max_stops_per_vehicle": MAX_STOPS_PER_VEHICLE,
+            },
             "orders": [_order_dump(order) for order in orders],
             "inventory": [_lot_dump(lot) for lot in inventory],
             "vehicles": [_vehicle_dump(vehicle) for vehicle in vehicles],
@@ -1136,6 +1170,7 @@ def replay_dispatch(dispatch_id: str, *, speed: float | None = None,
         command_id=f"replay-{dispatch_id}",
         algorithm=(context.get("plan") or {}).get("algorithm", "greedy"),
         orders=source["orders"], inventory=source["inventory"], vehicles=source["vehicles"],
+        constraints=source.get("constraints", {}),
     )
     created = create_dispatch(batch)
     departed = depart_dispatch(created["dispatch_id"], f"replay-go-{dispatch_id}", speed=speed)

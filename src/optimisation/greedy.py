@@ -11,6 +11,7 @@ def _best_feasible_insertion(
     unassigned: set[int],
     vehicle_id: int,
     leg_fn: LegFn,
+    max_stops_per_vehicle: int | None = None,
 ) -> VehicleRoute | None:
     """Return the minimum-distance feasible one-customer insertion."""
     current = evaluate_route(instance, current_ids, vehicle_id=vehicle_id, leg_fn=leg_fn)
@@ -23,6 +24,9 @@ def _best_feasible_insertion(
             candidate_ids = (
                 current_ids[:position] + (customer_id,) + current_ids[position:]
             )
+            if (max_stops_per_vehicle is not None
+                    and len(candidate_ids) > max_stops_per_vehicle):
+                continue
             candidate = evaluate_route(
                 instance, candidate_ids, vehicle_id=vehicle_id, leg_fn=leg_fn
             )
@@ -43,7 +47,10 @@ def _best_feasible_insertion(
     return None if best is None else best[1]
 
 
-def solve_greedy(instance: SolomonInstance, *, leg_fn: LegFn = euclidean_leg) -> ReplanResult:
+def solve_greedy(
+    instance: SolomonInstance, *, leg_fn: LegFn = euclidean_leg,
+    max_stops_per_vehicle: int | None = None,
+) -> ReplanResult:
     """Construct feasible routes with nearest-distance time-window insertion.
 
     One vehicle is filled at a time.  Every proposed insertion is scheduled
@@ -53,13 +60,16 @@ def solve_greedy(instance: SolomonInstance, *, leg_fn: LegFn = euclidean_leg) ->
     """
     unassigned = {node.node_id for node in instance.customers}
     routes: list[VehicleRoute] = []
+    if max_stops_per_vehicle is not None and max_stops_per_vehicle < 1:
+        raise ValueError("max_stops_per_vehicle must be a positive integer")
 
     for vehicle_id in range(1, instance.vehicle_nr + 1):
         ids: tuple[int, ...] = ()
         route: VehicleRoute | None = None
         while unassigned:
             candidate = _best_feasible_insertion(
-                instance, ids, unassigned, vehicle_id, leg_fn
+                instance, ids, unassigned, vehicle_id, leg_fn,
+                max_stops_per_vehicle=max_stops_per_vehicle,
             )
             if candidate is None:
                 break

@@ -46,11 +46,14 @@ ZONE_PRODUCT = {
 #: whole replacement order; it occupies load, so the planner subtracts it from
 #: the usable capacity.
 SPARE_UNITS = 30
+FLEET_LIMIT = 3
+MAX_STOPS_PER_VEHICLE = 4
 
 #: What the batch means, in the words the UI and report should reuse.
 ASSUMPTIONS = (
     "模拟数据：医院名称、收货窗口与服务时长取自已入库的新加坡路网（真实设施），"
     "但每日需求量、产品组合与车队规模是本项目的演示假设，不是医院真实订单。"
+    f"演示车队硬上限为 {FLEET_LIMIT} 辆，每辆车最多服务 {MAX_STOPS_PER_VEHICLE} 家医院。"
     f"另外每辆车按演示假设随车携带 {SPARE_UNITS} 单位同温区备用量（用于途中支线事件，"
     "如货损补送或临时加急），该备用量占用车辆额定载重，因此排线可用载重为额定载重减去备用量。"
 )

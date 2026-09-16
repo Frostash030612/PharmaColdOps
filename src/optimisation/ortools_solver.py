@@ -17,6 +17,7 @@ def solve_ortools(
     first_solution: str = "PATH_CHEAPEST_ARC",
     drop_penalty: int = 0,
     minimize_vehicles: bool = False,
+    max_stops_per_vehicle: int | None = None,
 ) -> ReplanResult:
     """Solve with hard capacity/windows and a distance objective.
 
@@ -50,6 +51,8 @@ def solve_ortools(
     """
     if time_limit_seconds < 1:
         raise ValueError("time_limit_seconds must be >= 1")
+    if max_stops_per_vehicle is not None and max_stops_per_vehicle < 1:
+        raise ValueError("max_stops_per_vehicle must be a positive integer")
     try:
         from ortools.constraint_solver import pywrapcp, routing_enums_pb2
     except ImportError as exc:  # pragma: no cover - environment guard
@@ -107,6 +110,19 @@ def solve_ortools(
         True,
         "Capacity",
     )
+
+    if max_stops_per_vehicle is not None:
+        def stop_count(from_index: int) -> int:
+            return int(manager.IndexToNode(from_index) != 0)
+
+        stop_count_index = routing.RegisterUnaryTransitCallback(stop_count)
+        routing.AddDimensionWithVehicleCapacity(
+            stop_count_index,
+            0,
+            [max_stops_per_vehicle] * instance.vehicle_nr,
+            True,
+            "Stops",
+        )
 
     def elapsed(from_index: int, to_index: int) -> int:
         node = nodes[manager.IndexToNode(from_index)]

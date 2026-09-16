@@ -71,6 +71,9 @@ main {
   max-width: 1440px; margin: 16px auto 0; padding: 0 24px;
   display: grid; grid-template-columns: 300px 1fr 340px; gap: 16px; align-items: start;
 }
+.operations-layout { grid-template-columns: minmax(0, 1fr) 340px; }
+.operations-map { min-width: 0; }
+.operations-side { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
 .card {
   background: var(--card); border: 1px solid var(--line); border-radius: 12px;
   padding: 16px; box-shadow: 0 1px 2px rgba(15,42,74,.05);
@@ -252,6 +255,43 @@ html[lang="zh"] .ev-row .k { width: 100px; }
 .hist-risk { font-weight: 700; }
 .hist-why { color: #334155; }
 
+/* ---------- map-first incident rail ---------- */
+.incident-head { display: flex; align-items: flex-start; gap: 10px; justify-content: space-between; }
+.incident-head strong { font-size: 14px; color: var(--ink); }
+.incident-head p { margin: 3px 0 10px; color: var(--muted); font-size: 11.5px; }
+.incident-head button { flex: none; border: 1px solid var(--line); background: #fff; color: var(--muted);
+  border-radius: 999px; padding: 3px 9px; font-size: 10px; cursor: pointer; }
+.incident-head button:disabled { opacity: .5; cursor: default; }
+.incident-empty { margin: 8px 0 0; padding: 12px; border: 1px dashed var(--line); border-radius: 9px;
+  background: #f8fafc; color: var(--muted); font-size: 12px; }
+.incident-list { display: grid; gap: 8px; }
+.incident-card { width: 100%; display: flex; align-items: flex-start; gap: 9px; text-align: left;
+  border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 9px 10px;
+  color: var(--ink); cursor: pointer; transition: .13s; }
+.incident-card:hover, .incident-card.active { border-color: var(--teal); background: #f0fdfa;
+  box-shadow: 0 0 0 2px rgba(20,184,166,.1); }
+.incident-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex: none; }
+.incident-copy { min-width: 0; flex: 1; display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); }
+.incident-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.incident-row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 12px; }
+.incident-row em { flex: none; font-style: normal; color: var(--teal); font-size: 10px; font-weight: 700; }
+.incident-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.incident-row strong { flex: none; font-size: 11px; }
+
+/* ---------- event sandbox drawer ---------- */
+.case-backdrop { position: fixed; inset: 0; z-index: 2100; background: rgba(8,20,32,.42);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.case-drawer { position: absolute; top: 0; right: 0; width: min(620px, 94vw); height: 100%;
+  background: var(--card); box-shadow: -18px 0 48px rgba(8,20,32,.25); display: flex; flex-direction: column; }
+.case-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 15px 18px; border-bottom: 1px solid var(--line); }
+.case-drawer-head > div { display: grid; gap: 2px; }
+.case-drawer-head strong { font-size: 15px; }
+.case-drawer-head span { color: var(--muted); font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.case-drawer-body { padding: 16px 18px 28px; overflow: auto; }
+.case-advanced { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; }
+.case-advanced summary { color: var(--teal); font-weight: 700; font-size: 12px; cursor: pointer; margin-bottom: 10px; }
+
 /* history table — standalone class (.htable) so the same table renders inside
    the page (.audit section) and inside the centered modal alike */
 .htable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -317,4 +357,7 @@ html[lang="zh"] .ev-row .k { width: 100px; }
 
 footer { text-align: center; color: var(--muted); font-size: 11.5px; padding: 0 24px 30px; }
 
-@media (max-width: 1080px) { main { grid-template-columns: 1fr; } }
+@media (max-width: 1080px) {
+  main, .operations-layout { grid-template-columns: 1fr; }
+  .operations-side { position: static; max-height: none; }
+}

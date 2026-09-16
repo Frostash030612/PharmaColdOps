@@ -10,16 +10,22 @@ import { useDecisionsStore } from "../stores/decisions.js";
 import { useSandboxStore } from "../stores/sandbox.js";
 import { useDispatchStore } from "../stores/dispatch.js";
 import { useHistoryStore } from "../stores/history.js";
+import { useOverlayStore } from "../stores/overlay.js";
 import { eventPayload, overridePayload, postJson } from "../lib/api.js";
 import data from "../data/singaporeRoutes.json";
 import LeafletMap from "./LeafletMap.vue";
 import TransportView from "./TransportView.vue";
 import { locale, bundle } from "../i18n/index.js";
+import { DISPO_COLOR } from "../data/products.js";
+import { interp } from "../lib/format.js";
+
+const props = defineProps({ primary: { type: Boolean, default: false } });
 
 const decisions = useDecisionsStore();
 const sandbox = useSandboxStore();
 const dispatch = useDispatchStore();
 const history = useHistoryStore();
+const overlay = useOverlayStore();
 const busy = ref(false);
 const text = computed(() => bundle(locale.value).singapore);
 const mode = ref("ortools");
@@ -29,6 +35,27 @@ const transportOpen = ref(false);
 const isLive = computed(() => !!dispatch.live);
 const nodes = data.nodes;                       // facility names/coords: same ids either way
 const names = Object.fromEntries(nodes.map((n) => [n.node_id, n.name]));
+const nodeByFacility = Object.fromEntries(nodes.map((n) => [n.facility_id, n.node_id]));
+
+const incidentEvents = computed(() => history.runs.flatMap((run) => {
+  const facilityId = run.event?.destination_facility_id;
+  const nodeId = nodeByFacility[facilityId];
+  if (nodeId == null) return [];
+  return [{
+    id: run.run_id,
+    nodeId,
+    color: DISPO_COLOR[run.disposition] || "#dc2626",
+    label: `${run.run_id} · ${names[nodeId]}`,
+  }];
+}));
+
+function openIncident(runId) {
+  const record = history.runs.find((run) => run.run_id === runId);
+  if (!record) return;
+  sandbox.restoreCase(record);
+  selectedId.value = nodeByFacility[record.event?.destination_facility_id] ?? null;
+  overlay.openCase();
+}
 
 /* The plan the map draws: live operation when there is one, else the demo. */
 const plan = computed(() => dispatch.live || data.plans[mode.value]);
@@ -147,6 +174,13 @@ const KIND_LABELS = {
 function kindLabel(kind) {
   return text.value[KIND_LABELS[kind]] || kind;
 }
+const dailyConstraintText = computed(() => {
+  const c = dispatch.dailyBatch?.plan?.constraints;
+  if (!c?.max_vehicles || !c?.max_stops_per_vehicle) return "";
+  return interp(text.value.dailyConstraints, {
+    vehicles: c.max_vehicles, stops: c.max_stops_per_vehicle,
+  });
+});
 </script>
 
 <template>
@@ -164,15 +198,18 @@ function kindLabel(kind) {
         :aria-pressed="mode === key" @click="mode = key">{{ text[key] }}</button>
     </div>
 
-    <div class="sg-map-head">
+    <div v-if="!props.primary" class="sg-map-head">
       <button class="sg-expand" @click="transportOpen = true">{{ text.transportOpen }}</button>
     </div>
     <LeafletMap :nodes="nodes" :plan="plan" :selected-id="selectedId" :text="text"
+      :height="props.primary ? '520px' : '290px'" :legend="props.primary"
       :selected-vehicle="selectedVehicle"
       :overlays="dispatch.branchOverlays" :branch-node-ids="dispatch.branchNodeIds"
       :incident-node-id="dispatch.incidentNodeId"
+      :incident-events="incidentEvents"
       :compare-vehicle="dispatch.branchOverlays.length ? dispatch.branchCandidate?.vehicle_id : null"
-      @select="selectedId = $event" @select-vehicle="pickVehicle($event)" />
+      @select="selectedId = $event" @select-vehicle="pickVehicle($event)"
+      @select-incident="openIncident" />
 
     <div v-if="isLive" class="sg-metrics">
       <div><b>{{ dispatch.run.status }}</b><span>{{ text.dispatchStatus }}</span></div>
@@ -199,6 +236,7 @@ function kindLabel(kind) {
       </button>
       <template v-if="dispatch.dailyPreview && dispatch.dailyPreview.zones.length">
         <p class="sg-note">{{ text.dailySimulated }}</p>
+        <p v-if="dailyConstraintText" class="sg-constraints">{{ dailyConstraintText }}</p>
         <p class="sg-source">
           {{ text.dailyPreview }}<template v-if="dispatch.dailyBatch && dispatch.dailyBatch.seed != null"> · {{ text.dailySeed }} {{ dispatch.dailyBatch.seed }}</template>:
           <b>{{ dispatch.dailyPreview.zones[0].total_distance.toFixed(2) }}</b> {{ text.km }} ·
@@ -397,6 +435,8 @@ function kindLabel(kind) {
 .sg-daily > button { background: #0f172a; color: #fff; border: 0; border-radius: 7px; padding: 6px 11px; cursor: pointer; font-size: 12px; font-weight: 600; }
 .sg-daily > button:disabled { opacity: .6; cursor: default; }
 .sg-daily > button + button { margin-left: 8px; background: #0d9488; }
+.sg-constraints { display: inline-block; margin: 0 0 7px; padding: 4px 8px; border-radius: 999px;
+  background: #eef2ff; color: #4338ca; font-size: 11px; font-weight: 700; }
 .sg-daily-stops { list-style: none; padding: 0; margin: 6px 0 9px; color: #475569; line-height: 1.7; }
 .sg-daily-stops b { color: #0f172a; }
 .sg-commit { margin-top: 10px; }

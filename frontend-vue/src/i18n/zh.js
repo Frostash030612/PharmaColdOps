@@ -58,6 +58,7 @@ export default {
   "dailyReroll": "🔀 换随机一批",
   "dailySeed": "种子",
   "dailySimulated": "模拟数据：医院与收货窗口来自已入库路网，但每日需求量与车队是本项目的演示假设，不是医院真实订单。",
+  "dailyConstraints": "硬约束：最多 {vehicles} 辆车 · 每车最多 {stops} 个医院",
   "branchTitle": "支线处置：改现有车的路线，还是另派一辆",
   "branchHint": "以下每一种都只是预览，不占库存、不占车辆；选定哪一条才会真正写进作业。",
   "branchPreview": "🔍 预览处置方案",
@@ -88,6 +89,7 @@ export default {
   "legendPending": "剩余路线",
   "legendDriven": "已走过",
   "legendBranch": "支线事件涉及",
+  "incidentCount": "个异常",
   "transportOpen": "⛶ 展开地图",
   "transportTitle": "运输视图",
   "transportClose": "关闭（Esc）",
@@ -143,6 +145,18 @@ export default {
     sectionRisk: "风险指数",
     riskNote: "（规则启发式 · 确定性，非 ML 模型）",
     sectionEvidence: "为什么这么判",
+  },
+
+  workspace: {
+    mapTitle: "今日冷链配送地图",
+    eventsTitle: "异常事件",
+    eventsNote: "点击地图标记或下方事件，查看该次温度参数与判定。",
+    caseTitle: "异常事件详情与处置沙箱",
+    previewCase: "预设案例",
+    presetsAndRules: "预设案例与规则配置",
+    unknownFacility: "位置待确认",
+    closed: "已结案",
+    minutes: "分钟",
   },
 
   right: {

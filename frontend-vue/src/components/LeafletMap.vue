@@ -28,11 +28,13 @@ const props = defineProps({
   branchNodeIds: { type: Array, default: () => [] },
   /// The facility whose goods were affected, if any.
   incidentNodeId: { type: Number, default: null },
+  /// Archived incidents rendered as first-class map markers.
+  incidentEvents: { type: Array, default: () => [] },
   /// While a comparison is shown, this vehicle's own pending line is faded so
   /// the two options ("before" grey / "after" red) are what the eye lands on.
   compareVehicle: { type: String, default: null },
 });
-const emit = defineEmits(["select", "selectVehicle"]);
+const emit = defineEmits(["select", "selectVehicle", "selectIncident"]);
 const el = ref(null);
 const tileError = ref(false);
 const colors = ["#0d9488", "#7c3aed", "#d97706"];
@@ -150,8 +152,35 @@ function redraw() {
     });
   });
   drawNodes(onRoute);
+  drawIncidentEvents();
   drawVehicles();
   drawOverlays();
+}
+
+/* Multiple archived events can belong to one hospital.  One marker per
+   facility keeps the map readable; the badge shows the count and opens the
+   newest event (the rail still exposes every individual record). */
+function drawIncidentEvents() {
+  const groups = new Map();
+  props.incidentEvents.forEach((event) => {
+    if (!groups.has(event.nodeId)) groups.set(event.nodeId, []);
+    groups.get(event.nodeId).push(event);
+  });
+  for (const [nodeId, events] of groups) {
+    const node = NODES_BY_ID.value[nodeId];
+    if (!node || !events.length) continue;
+    const latest = events[0];
+    const marker = L.marker([node.lat, node.lon], {
+      zIndexOffset: 650,
+      icon: L.divIcon({
+        className: "incident-icon",
+        html: `<span style="background:${latest.color || '#dc2626'}">!${events.length > 1 ? `<small>${events.length}</small>` : ""}</span>`,
+        iconSize: [30, 30], iconAnchor: [15, 30],
+      }),
+    }).addTo(layer).on("click", () => emit("selectIncident", latest.id));
+    marker.bindTooltip(`${node.name} · ${events.length} ${props.text.incidentCount || "incident(s)"}`,
+      { direction: "top" });
+  }
 }
 
 function drawStop(stop, routeIndex, dim) {
@@ -376,6 +405,7 @@ watch(() => props.plan, (next, prev) => {
 });
 watch(() => props.overlays, drawOverlays, { deep: true });
 watch(() => props.branchNodeIds, redraw, { deep: true });
+watch(() => props.incidentEvents, redraw, { deep: true });
 watch(() => props.selectedId, redraw);
 watch(() => props.selectedVehicle, () => {
   redraw();
@@ -433,5 +463,11 @@ onBeforeUnmount(() => {
   width: 15px; height: 15px; border-radius: 50%; color: #fff; font-size: 9px; font-weight: 700;
   border: 1.5px solid #fff; box-shadow: 0 1px 3px rgba(15,23,42,.35); }
 :deep(.stop-num b.tick) { background: #64748b; font-size: 10px; }
+:deep(.incident-icon span) { position: relative; display: grid; place-items: center; width: 28px; height: 28px;
+  border-radius: 50%; color: #fff; border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(15,23,42,.4); font-size: 15px; font-weight: 900; }
+:deep(.incident-icon small) { position: absolute; right: -7px; top: -7px; min-width: 16px; height: 16px;
+  display: grid; place-items: center; border-radius: 999px; background: #0f172a; border: 1px solid #fff;
+  color: #fff; font-size: 8px; }
 .sg-tile-note { font-size: 11px; line-height: 1.5; color: #64748b; margin: 6px 0; }
 </style>

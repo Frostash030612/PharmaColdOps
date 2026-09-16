@@ -23,7 +23,7 @@ from fastapi.testclient import TestClient
 from api import service
 from api.main import app
 from optimisation.daily_orders import ZONE_PRODUCT, daily_delivery_batch
-from optimisation.dispatch_models import validate_dispatch_inputs
+from optimisation.dispatch_models import DispatchConstraints, validate_dispatch_inputs
 from optimisation.dispatch_planner import DISPATCH_ORIGIN, plan_delivery_orders
 from optimisation.dispatch_repository import latest_dispatch_id
 from optimisation.singapore_loader import read_network
@@ -116,6 +116,23 @@ def test_a_bigger_batch_than_one_truck_is_split_by_the_planner():
     assert plan.zone_plans[0].result.metrics.served_customers == 8
 
 
+@pytest.mark.parametrize("algorithm", ["greedy", "ortools"])
+def test_hard_fleet_and_stop_limits_are_enforced_by_the_solver(algorithm):
+    orders, inventory, vehicles = daily_delivery_batch(hospitals=8)
+    constraints = DispatchConstraints(max_vehicles=2, max_stops_per_vehicle=3)
+
+    plan = plan_delivery_orders(
+        orders, inventory, vehicles, algorithm=algorithm, constraints=constraints,
+    )
+    zone = plan.zone_plans[0]
+
+    assert len(zone.vehicle_ids) == 2
+    assert zone.result.metrics.vehicles_used <= 2
+    assert all(len(route.customer_ids) <= 3 for route in zone.result.routes)
+    assert zone.result.metrics.served_customers <= 6
+    assert zone.result.metrics.unserved_customer_ids
+
+
 # --- API plumbing ------------------------------------------------------------
 
 def test_daily_orders_endpoint_returns_a_postable_plan():
@@ -125,11 +142,15 @@ def test_daily_orders_endpoint_returns_a_postable_plan():
     assert body["hospitals"] == 4
     assert len(body["plan"]["orders"]) == 4
     assert body["plan"]["algorithm"] in {"greedy", "ortools"}
+    assert body["plan"]["constraints"] == {
+        "max_vehicles": 3, "max_stops_per_vehicle": 4,
+    }
     # the simulated-data disclosure travels with the payload
     assert body["note"].strip()
     preview = client.post("/api/dispatch/plan", json=body["plan"])
     assert preview.status_code == 200
     assert preview.json()["feasible"] is True
+    assert preview.json()["constraints"] == body["plan"]["constraints"]
 
 
 def test_daily_orders_endpoint_rejects_a_bad_seed_or_zone():

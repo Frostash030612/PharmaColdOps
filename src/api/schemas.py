@@ -151,6 +151,13 @@ class DispatchVehicleIn(BaseModel):
     onboard_spare: List[OnboardSpareIn] = Field(default_factory=list)
 
 
+class DispatchConstraintsIn(BaseModel):
+    """Hard operating limits; omitted fields keep the legacy behaviour."""
+
+    max_vehicles: Optional[int] = Field(default=None, ge=1)
+    max_stops_per_vehicle: Optional[int] = Field(default=None, ge=1)
+
+
 #: Every way a branch order can be served. Previously this literal listed only
 #: two of the three implemented kinds, so the API answered 422 for the
 #: ``load_before_departure`` candidate it had just offered in a preview.
@@ -168,6 +175,7 @@ class DispatchPlanIn(BaseModel):
     inventory: List[InventoryLotIn]
     vehicles: List[DispatchVehicleIn]
     algorithm: Literal["greedy", "ortools"] = "greedy"
+    constraints: DispatchConstraintsIn = Field(default_factory=DispatchConstraintsIn)
 
 
 class DispatchCreateIn(DispatchPlanIn):
