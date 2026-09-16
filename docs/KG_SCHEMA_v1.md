@@ -111,7 +111,7 @@
 
 | property | type | 说明 |
 |---|---|---|
-| `facility_id` | string | PK，与 C M5 路由表**逐字同源**（`W-KN-PIONEER`、`H-NUH`…），禁自造别名 |
+| `facility_id` | string | PK，与 C M5 路由表**逐字同源**（`W-WESTGATE`、`D-NORTHPOINT`、`H-NUH`…），禁自造别名 |
 | `name` | string | 设施名（C 设施表，逐字） |
 | `role` | string | C 词表：`depot` / `customer`（逐字，不重命名） |
 | `type` | string | 由 C `role` 派生：depot→`Warehouse`，customer→`Hospital`（v1 客户全是公立医院） |
@@ -146,7 +146,7 @@
 | ✚ `TRIGGERS_RESHIPMENT` | `(:ExcursionEvent)-[]->(:ReshipmentOrder)` | Event 0—1 Order | 判定需补发 → 生成补发单（M3→M5 锚点） | `scrap`/`quarantine` 事件 → 补发单 |
 | ✚ `RESHIPS_TO` | `(:ReshipmentOrder)-[]->(:Facility)` | Order 0—1 Facility | 补发单目的地；`destination_facility_id` 已进契约，9/13 起该目的地同时进入 `audit_chain` 的证据列表 | `RO-…` → `H-NUH` |
 | ✚ `FOLLOWS` | `(:ExcursionEvent)-[]->(:SOP)` | Event N—M SOP | 本次结案依循的操作流程（由 `rule_no` 经 `RULE_TO_SOPS` 映射；2026-09-11 随 writer 落地，**待 A/C 评审**；实现与 §4 问答路径均用 `FOLLOWS`，2026-09-12 命名对齐） | `run_id=…` → `SOP-GDP-001` |
-| ✚ `CONNECTS` | `(:Facility)-[r]-(:Facility)` | Facility 全对全 55 条（无向） | 真实路网最短路径（C `network.json` 矩阵 + 逐对路线几何）：`distance_m` / `duration_s` / `geometry`（JSON 字符串，`[lon,lat]` GeoJSON 序——Neo4j 不支持嵌套列表故序列化）/ `source`；与 M5 求解器同一份矩阵 | `W-KN-PIONEER` ↔ `H-NUH` 13.0 km |
+| ✚ `CONNECTS` | `(:Facility)-[r]-(:Facility)` | Facility 全对全 **171 条**（无向，19 个设施；2026-09-16 由 105 条扩至 171） | 真实路网最短路径（C `network.json` 矩阵 + 逐对路线几何）：`distance_m` / `duration_s` / `geometry`（JSON 字符串，`[lon,lat]` GeoJSON 序——Neo4j 不支持嵌套列表故序列化）/ `source`；与 M5 求解器同一份矩阵 | `W-WESTGATE` ↔ `H-NTFGH` 1.2 km |
 | ✚ `FOLLOWS_PROCEDURE` | `(:Product)-[]->(:SOP)` | Product 1—N SOP | 产品处置所依循的 SOP（由 产品条款 → `RULE_TO_REGULATIONS` → `RULE_TO_SOPS` 推导，与运行时 writer 同表；**待 A/C 评审**） | `vaccine_2_8` → `SOP-GDP-001/002/003` |
 
 `EVENT_LEADS_TO_DISPOSITION` **边属性**（决策现场，审计可回放、可本地化渲染）：`rule_no`(int 1–6) · `reason`(引擎句) · `rule_path`(引擎整句) · `regulation`(引擎逐条句) · `reshipment_required`(bool) · `risk_score`(int) · `cause_code`(→`Cause`) · `decided_at`(datetime)。

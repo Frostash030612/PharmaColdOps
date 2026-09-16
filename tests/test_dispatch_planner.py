@@ -3,6 +3,13 @@ import pytest
 
 from api import service
 from api.main import app
+from optimisation.dispatch_planner import DISPATCH_ORIGIN
+from optimisation.singapore_loader import read_network
+
+
+def _node_id(facility_id: str) -> int:
+    """Resolve a facility to its network node id (order changes with the network)."""
+    return next(n["node_id"] for n in read_network()["nodes"] if n["facility_id"] == facility_id)
 
 
 client = TestClient(app)
@@ -25,12 +32,12 @@ def payload():
         ],
         "inventory": [
             {"lot_id": "LOT-1", "product_id": "vaccine_2_8",
-             "facility_id": "W-KN-PIONEER", "available_quantity": 50,
+             "facility_id": DISPATCH_ORIGIN, "available_quantity": 50,
              "temperature_zone": "chilled"},
         ],
         "vehicles": [
             {"vehicle_id": "V-CHILL-1", "capacity": 100,
-             "temperature_zone": "chilled", "start_facility_id": "W-KN-PIONEER"},
+             "temperature_zone": "chilled", "start_facility_id": DISPATCH_ORIGIN},
         ],
         "algorithm": "greedy",
     }
@@ -46,7 +53,7 @@ def test_dispatch_endpoint_routes_only_order_destinations():
     assert zone["target_facilities"] == 2
     assert zone["served_facilities"] == 2
     assert set(zone["routes"][0]["order_ids"]) == {"DO-NUH", "DO-CGH"}
-    assert set(zone["routes"][0]["customer_ids"]) == {2, 5}
+    assert set(zone["routes"][0]["customer_ids"]) == {_node_id("H-NUH"), _node_id("H-CGH")}
     assert len(zone["geojson"]["features"]) == 1
 
 
@@ -181,11 +188,11 @@ def test_emergency_preview_compares_spare_vehicle_and_return_to_depot():
     request["inventory"][0]["available_quantity"] = 80
     request["vehicles"].append({
         "vehicle_id": "V-CHILL-2", "capacity": 100,
-        "temperature_zone": "chilled", "start_facility_id": "W-KN-PIONEER",
+        "temperature_zone": "chilled", "start_facility_id": DISPATCH_ORIGIN,
     })
     request["vehicles"].append({
         "vehicle_id": "V-CHILL-3", "capacity": 100,
-        "temperature_zone": "chilled", "start_facility_id": "W-KN-PIONEER",
+        "temperature_zone": "chilled", "start_facility_id": DISPATCH_ORIGIN,
     })
     assert client.post("/api/dispatch/runs", json=request).status_code == 200
     assert client.post(

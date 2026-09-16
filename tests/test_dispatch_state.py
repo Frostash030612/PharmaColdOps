@@ -1,5 +1,6 @@
 from optimisation.dispatch_models import DeliveryOrder, DispatchVehicle, InventoryLot
 from optimisation.dispatch_planner import plan_delivery_orders
+from optimisation.dispatch_planner import DISPATCH_ORIGIN
 from optimisation.dispatch_state import accept_plan, deliver_next, depart
 from optimisation import dispatch_repository
 
@@ -8,8 +9,8 @@ def fixtures():
     orders = tuple(DeliveryOrder(
         f"DO-{i}", "vaccine_2_8", facility, quantity, 540, 1020, "chilled"
     ) for i, facility, quantity in ((1, "H-NUH", 20), (2, "H-CGH", 30)))
-    inventory = (InventoryLot("LOT-1", "vaccine_2_8", "W-KN-PIONEER", 60, "chilled"),)
-    vehicles = (DispatchVehicle("V-1", 100, "chilled", "W-KN-PIONEER"),)
+    inventory = (InventoryLot("LOT-1", "vaccine_2_8", DISPATCH_ORIGIN, 60, "chilled"),)
+    vehicles = (DispatchVehicle("V-1", 100, "chilled", DISPATCH_ORIGIN),)
     return orders, inventory, vehicles
 
 

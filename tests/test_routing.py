@@ -7,7 +7,9 @@ from optimisation.greedy import solve_greedy
 from optimisation.models import Node, SolomonInstance
 from optimisation.ortools_solver import solve_ortools
 from optimisation.reshipment import build_reshipment_order, plan_reshipment_route
+from optimisation.dispatch_planner import DISPATCH_ORIGIN
 from optimisation.routing import build_result, evaluate_route
+from optimisation.singapore_loader import read_network
 from optimisation.solomon_loader import SOLOMON_DIR, SOLOMON_NAMES, load_instance
 
 
@@ -106,7 +108,7 @@ def test_build_reshipment_order_matches_kg_order_id():
     order = build_reshipment_order(_closed_record())
     assert order is not None
     assert order.order_id == "RO-R20260912-001"
-    assert order.origin_facility_id == "W-KN-PIONEER"
+    assert order.origin_facility_id == DISPATCH_ORIGIN
     assert order.demand_units == 30
 
 
@@ -121,7 +123,10 @@ def test_plan_reshipment_route_uses_only_order_destination(algorithm):
     assert result.routes
     assert result.metrics.vehicles_used == 1
     assert result.metrics.served_customers == 1
-    assert result.routes[0].customer_ids == (1,)
+    # A record without a destination falls back to the first customer node; resolve
+    # it by facility so adding nodes does not silently re-point this assertion.
+    first_customer = next(n["node_id"] for n in read_network()["nodes"] if n["role"] == "customer")
+    assert result.routes[0].customer_ids == (first_customer,)
 
 
 def test_plan_reshipment_route_rejects_unknown_destination():

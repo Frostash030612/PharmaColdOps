@@ -49,10 +49,10 @@ def test_connects_edges_match_network_matrix():
         RETURN a.facility_id AS a, b.facility_id AS b, r
         """
     )
-    # 15 facilities → 105 unordered pairs, exactly once each
-    assert len(edges) == 105
+    # 19 facilities → 171 unordered pairs, exactly once each
+    assert len(edges) == 171
     pairs = {frozenset((e["a"], e["b"])) for e in edges}
-    assert len(pairs) == 105
+    assert len(pairs) == 171
 
     for e in edges:
         r = e["r"]
@@ -65,8 +65,10 @@ def test_connects_edges_match_network_matrix():
             assert len(pt) == 2 and abs(pt[0]) < 180 and abs(pt[1]) < 90
 
     # spot check one pair against the matrix, verbatim
-    i = 0  # W-KN-PIONEER
-    j = 2  # H-NUH
+    # Node order since 2026-09-16: 0 W-WESTGATE (depot), 1 W-KN-PIONEER, 2 H-SGH,
+    # 3 H-NUH … so the old (0, 2) pair became (1, 3).
+    i = 1  # W-KN-PIONEER
+    j = 3  # H-NUH
     row = _query(
         """
         MATCH (a:Facility {facility_id: $a})-[r:CONNECTS]-(b:Facility {facility_id: $b})

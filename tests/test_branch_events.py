@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from api import service
 from api.main import app
 from optimisation.singapore_loader import read_network
+from optimisation.dispatch_planner import DISPATCH_ORIGIN
 
 client = TestClient(app)
 
@@ -197,7 +198,7 @@ def test_the_onboard_option_is_cheaper_than_driving_back_for_stock(closed_case):
     vehicle = next(iter(created["orders"].values()))["vehicle_id"]
     moved = client.post(f"/api/dispatch/runs/{dispatch_id}/deliver-next",
                         json={"vehicle_id": vehicle, "command_id": "d1"}).json()
-    assert moved["vehicles"][vehicle]["current_facility_id"] != "W-KN-PIONEER"
+    assert moved["vehicles"][vehicle]["current_facility_id"] != DISPATCH_ORIGIN
 
     network = read_network()
     planned = {order["destination_facility_id"] for order in created["orders"].values()}
@@ -275,11 +276,11 @@ def test_load_before_departure_is_an_acceptable_choice():
             "earliest_min": 540, "latest_min": 1020, "temperature_zone": "chilled"}],
         "inventory": [{
             "lot_id": "LOT-1", "product_id": "vaccine_2_8",
-            "facility_id": "W-KN-PIONEER", "available_quantity": 50,
+            "facility_id": DISPATCH_ORIGIN, "available_quantity": 50,
             "temperature_zone": "chilled"}],
         "vehicles": [{
             "vehicle_id": "V-CHILL-1", "capacity": 100,
-            "temperature_zone": "chilled", "start_facility_id": "W-KN-PIONEER"}],
+            "temperature_zone": "chilled", "start_facility_id": DISPATCH_ORIGIN}],
         "algorithm": "greedy", "dispatch_id": "DSP-LOADING",
         "command_id": "create-loading",
     }
@@ -318,7 +319,7 @@ def test_onboard_spare_survives_a_state_reload():
     state = DispatchState(
         version=3, status="in_transit", orders={},
         vehicles={"V-1": VehicleProgress(
-            "V-1", "W-KN-PIONEER", (), onboard_spare=(("vaccine_2_8", "chilled", 30),))},
+            "V-1", DISPATCH_ORIGIN, (), onboard_spare=(("vaccine_2_8", "chilled", 30),))},
         available_by_lot={}, reserved_by_order={},
     )
     assert state_from_dict(state_to_dict(state)) == state

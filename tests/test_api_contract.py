@@ -6,6 +6,7 @@ spec-override sandbox. Parity checks assert API responses equal a direct
 engine call for the gold scenario bank.
 """
 import csv
+import json
 from pathlib import Path
 
 import pytest
@@ -166,7 +167,11 @@ def test_route_plans_closed_reshipment_case():
     assert body["served_customers"] >= 0
     assert body["target_customers"] == 1
     assert body["served_customers"] == 1
-    assert body["routes"][0]["customer_ids"] == [2]  # H-NUH network node
+    # Resolve the node id by facility instead of pinning it: node order changed
+    # on 2026-09-16 when the supply points were added (H-NUH moved 2 -> 3).
+    network = json.loads((ROOT / "data" / "optimisation" / "singapore" / "network.json").read_text())
+    h_nuh = next(n["node_id"] for n in network["nodes"] if n["facility_id"] == "H-NUH")
+    assert body["routes"][0]["customer_ids"] == [h_nuh]  # H-NUH network node
     assert {
         "time_window_violations", "capacity_violations",
         "depot_return_violations", "vehicle_limit_violations",

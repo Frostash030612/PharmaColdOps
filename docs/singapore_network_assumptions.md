@@ -16,6 +16,7 @@ OR-Tools 实现是 **Routing Solver + Guided Local Search**，不是 CP-SAT，�
 
 首版 `facilities.json` 为 1 仓库 + 10 医院，符合 DAILY_PLAN 9/23 的起步规模；20–50 节点是后续扩展目标。
 **2026-09-15 扩展为 1 仓库 + 14 个接收点**（11 个公立医院站点 + 3 家私立医院），仍在 `M5_singapore_network_plan.md` 自定的「depot + 10~15」规模内。
+**2026-09-16 再扩展为 19 节点**：主仓移至裕廊东思家客 Westgate（节点 0），原 Kuehne+Nagel 仓降为 `third_party`，新增 3 个 `distribution` 分拨点（义顺 Northpoint City、后港 Hougang Mall、武吉士 Bugis+）；选点依据见 [供货点选址分析.md](供货点选址分析.md)。
 
 - 演示仓库：Kuehne+Nagel Singapore Logistics Hub，10 Pioneer Crescent。
   [官方地址](https://home.kuehne-nagel.com/locations?query=singapore%2F1000)；
@@ -107,7 +108,8 @@ GeoJSON 使用 `[longitude, latitude]`，设施表使用 `lat` / `lon`，D 的 `
 
 - **82 passed，0 skipped**，包括真实网络集成以及 6 个 Solomon 贪心实例回归。
 - 可往返路网：23,815 个节点、45,557 条有向边；筛选前最大弱连通图为 24,270 节点、46,187 边。
-- 15 个设施全部可达；匹配道路节点的偏移距离 45.0–295.1 米。矩阵全部有限，105 对设施的正反向距离均不同。
+- 19 个设施全部可达；矩阵全部有限，**171 对**设施的正反向距离均不同。
+- **2026-09-16 重建修正**：原矩阵里 SGH 的地理编码落在 `type=administrative` 的规划分区质心上（离医院正门 1.55 km）；重建后匹配到 `type=hospital`（0.14 km）。14 对与 SGH 相关的距离因此变化（最大 +39%），其余 14 个旧节点坐标零变化。
 - 已实跑 `export_singapore_routes.py --time-limit 10`，生成两份道路 GeoJSON 与两份完整排程 JSON。
 
 | 算法 | 车辆 | 服务客户 | 总距离 km | 合计路线时长 min | 违规/未服务 |

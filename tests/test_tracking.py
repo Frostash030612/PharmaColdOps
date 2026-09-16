@@ -168,9 +168,11 @@ def test_an_operation_is_still_open_while_its_trucks_drive_home(day_plan):
     still ran home.
     """
     dispatch_id = day_plan(hospitals=1)
-    # 90x with the 30-second tick cap advances 45 simulated minutes per tick:
-    # enough for the one delivery, not enough to be home again.
-    service.depart_dispatch(dispatch_id, "go", speed=90.0)
+    # 60x with the 30-second tick cap advances 30 simulated minutes per tick: enough
+    # for the one delivery, not enough to be home again. Measured after the
+    # 2026-09-16 depot move (Westgate sits closer to the hospitals than the old
+    # Pioneer hub did, so the old 90x was already home within one tick).
+    service.depart_dispatch(dispatch_id, "go", speed=60.0)
     _age_clock(dispatch_id, minutes_ago=3)
     delivered = service.tick_dispatch(dispatch_id)          # the one order lands
 

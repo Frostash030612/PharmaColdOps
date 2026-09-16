@@ -219,15 +219,24 @@ def _facilities_from_network() -> list[dict]:
     with open(NETWORK_PATH, encoding="utf-8") as f:
         net = json.load(f)
     prov = net.get("provenance", {})
-    sha = prov.get("extract_sha256", "")[:12]
+    # ``extract_sha256`` is null when the matrix was built from the OSMnx cache
+    # rather than a local .osm extract, so ``.get(..., "")`` is not enough.
+    sha = (prov.get("extract_sha256") or "")[:12]
     generated = net.get("generated_at", "")[:10]
     rows = []
+    # Facility type follows the network role; a supply point is not a hospital.
+    facility_types = {
+        "depot": "Warehouse",
+        "distribution": "DistributionCentre",
+        "third_party": "ThirdPartyWarehouse",
+        "customer": "Hospital",
+    }
     for n in net["nodes"]:
         rows.append({
             "facility_id": n["facility_id"],
             "name": n["name"],
             "role": n["role"],
-            "type": "Warehouse" if n["role"] == "depot" else "Hospital",
+            "type": facility_types[n["role"]],
             "lat": n["lat"],
             "lon": n["lon"],
             "address": n.get("query", ""),

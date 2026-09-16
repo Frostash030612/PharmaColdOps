@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .dispatch_models import DeliveryOrder
+from .dispatch_planner import DISPATCH_ORIGIN
 from .greedy import solve_greedy
 from .models import ReplanResult, ReshipmentOrder
 from .ortools_solver import solve_ortools
@@ -14,7 +15,9 @@ from .singapore_loader import (
     restore_network_node_ids,
 )
 
-DEPOT_FACILITY_ID = "W-KN-PIONEER"
+# Single source of truth: the default origin lives in dispatch_planner. Keeping a
+# second literal here is how the new supply structure would silently drift.
+DEPOT_FACILITY_ID = DISPATCH_ORIGIN
 
 # A resupply must travel in the temperature zone its product actually needs;
 # defaulting everything to "chilled" would let a frozen product be matched to a

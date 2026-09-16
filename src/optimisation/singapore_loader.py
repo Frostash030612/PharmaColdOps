@@ -38,10 +38,19 @@ def validate_network(raw: dict, where: str = 'network') -> None:
         nodes = raw['nodes']
         if not isinstance(nodes, list) or len(nodes) < 2:
             fail('nodes (need depot and customer)')
+        # Node 0 stays the default warehouse. Since 2026-09-16 the network also
+        # carries supply points (``distribution``) and the retained third-party
+        # warehouse (``third_party``); neither is a delivery destination, so both
+        # must stay demand-free and service-free.
+        supply_roles = {'distribution', 'third_party'}
         for i, node in enumerate(nodes):
             integer(node['node_id'], f'nodes[{i}].node_id')
-            if node['node_id'] != i or node['role'] != ('depot' if i == 0 else 'customer'):
+            role = node['role']
+            matches_position = role == 'depot' if i == 0 else role in {'customer'} | supply_roles
+            if node['node_id'] != i or not matches_position:
                 fail(f'nodes[{i}].node_id/role')
+            if i and role in supply_roles and (node['demand'] or node['service_min']):
+                fail(f'nodes[{i}] supply point demand/service')
             for field in ('demand', 'earliest_min', 'latest_min', 'service_min'):
                 integer(node[field], f'nodes[{i}].{field}')
             if node['latest_min'] < node['earliest_min']:
@@ -76,9 +85,17 @@ def read_network(path: str | Path = SINGAPORE_NETWORK_PATH) -> dict:
 
 
 def load_singapore_instance(path: str | Path = SINGAPORE_NETWORK_PATH) -> tuple[SolomonInstance, LegFn]:
+    """Depot + receiving sites only — supply points are not delivery stops.
+
+    The network also carries supply points and a retained third-party warehouse.
+    They must not enter a delivery instance: the solvers would be free to route
+    to them, the comparison table would silently change, and the exported demo
+    plan would show a supermarket as a receiving site.
+    """
     raw = read_network(path)
     nodes = tuple(Node(n['node_id'], 0, 0, n['demand'], n['earliest_min'],
-                       n['latest_min'], n['service_min']) for n in raw['nodes'])
+                       n['latest_min'], n['service_min'])
+                  for n in raw['nodes'] if n['role'] in ('depot', 'customer'))
     distance = raw['matrix']['distance_m']
     duration = raw['matrix']['duration_s']
 

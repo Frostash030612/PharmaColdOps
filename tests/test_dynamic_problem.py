@@ -15,6 +15,7 @@
 import pytest
 
 from optimisation.dispatch_models import DeliveryOrder
+from optimisation.dispatch_planner import DISPATCH_ORIGIN
 from optimisation.dispatch_state import DispatchState, OrderProgress, VehicleProgress
 from optimisation.dynamic_problem import accept_emergency_order, preview_emergency_order
 from optimisation.singapore_loader import read_network
@@ -47,7 +48,7 @@ def _context(orders, *, capacity=40, spare_vehicle=False, vehicle_status="in_tra
                 for o in orders
             ],
             "inventory": [
-                {"lot_id": "LOT-1", "product_id": "vaccine_2_8", "facility_id": "W-KN-PIONEER",
+                {"lot_id": "LOT-1", "product_id": "vaccine_2_8", "facility_id": DISPATCH_ORIGIN,
                  "temperature_zone": "chilled", "status": "available"},
             ],
             "vehicles": vehicles,

@@ -18,7 +18,10 @@ from .singapore_loader import (
     restore_network_node_ids,
 )
 
-DISPATCH_ORIGIN = "W-KN-PIONEER"
+#: Default main warehouse. Since 2026-09-16 this is the Scarlett Westgate outlet
+#: (node 0 in network.json); the former Kuehne+Nagel depot is kept as a
+#: third-party warehouse for comparison and is no longer the default origin.
+DISPATCH_ORIGIN = "W-WESTGATE"
 
 
 @dataclass(frozen=True)

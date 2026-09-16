@@ -3,18 +3,31 @@
   "instance": "SINGAPORE_DEMO",
   "vehicle_nr": 3,
   "capacity": 200,
-  "assumptions": "Demonstration only: depot assignment, 3 vehicles, capacity 200 units, each receiving site demand 30 units, 09:00–17:00 service windows, 15-minute service, depot 08:00–18:00. Receiving sites are 11 public hospital sites and 3 private hospitals; the demand, fleet and windows are project assumptions, not orders from these institutions. No commercial relationship or actual shipment data implied.",
+  "assumptions": "Demonstration only: depot assignment, 3 vehicles, capacity 200 units, each receiving site demand 30 units, 09:00–17:00 service windows, 15-minute service, depot 08:00–18:00. Receiving sites are 11 public hospital sites and 3 private hospitals; the demand, fleet and windows are project assumptions, not orders from these institutions. No commercial relationship or actual shipment data implied. Supply points (2026-09-16): the main warehouse and three regional depots are simulated front-warehouse roles assigned to four Scarlett Supermarket outlets; outlet addresses come from the public outlet directory (location.sggreatpromo.com, retrieved 2026-09-16). These are retail mall units without pharmaceutical cold-chain capability — a project assumption, not a claim about the retailer. The former Kuehne+Nagel Pioneer depot is kept as a third-party warehouse for comparison. Depot/warehouse opening window 08:00-18:00.",
   "nodes": [
+    {
+      "facility_id": "W-WESTGATE",
+      "name": "Scarlett Westgate (Jurong East) — main warehouse",
+      "query": "Westgate, Singapore",
+      "role": "depot",
+      "source_url": "https://location.sggreatpromo.com/outlet/scarlett-supermarket/scarlett-westgate",
+      "demand": 0,
+      "earliest_min": 480,
+      "latest_min": 1080,
+      "service_min": 0,
+      "note": "主仓（2026-09-16 起）。门店目录地址 #B2-01 Westgate, 3 Gateway Drive, Singapore 608532；Scarlett 全岛最大门店。选址分析：配义顺/后港/武吉士三个分拨点后，14 家医院到最近供货点之和 67.8 km（现状 K+N 仓配同样三分拨点为 76.5 km，仅主仓不设分拨点则 232.8 km）。单仓口径下比 Clementi 差约 34 km（偏西），由分拨点补覆盖。"
+    },
     {
       "facility_id": "W-KN-PIONEER",
       "name": "Kuehne+Nagel Singapore Logistics Hub",
       "query": "10 Pioneer Crescent, Singapore",
-      "role": "depot",
+      "role": "third_party",
       "source_url": "https://home.kuehne-nagel.com/locations?query=singapore%2F1000",
       "demand": 0,
       "earliest_min": 480,
       "latest_min": 1080,
-      "service_min": 0
+      "service_min": 0,
+      "note": "原主仓（2026-09-14 之前）。2026-09-16 起降为第三方仓：不进默认供货表、不作默认起点，保留作为「自建前仓 vs 第三方仓」的对照与 provenance（真实的 Kuehne+Nagel 冷链枢纽）。"
     },
     {
       "facility_id": "H-SGH",
@@ -26,7 +39,10 @@
       "earliest_min": 540,
       "latest_min": 1020,
       "service_min": 15,
-      "geocoder_accept": ["hospital", "administrative"],
+      "geocoder_accept": [
+        "hospital",
+        "administrative"
+      ],
       "note": "2026-09-15 取代 National Heart Centre Singapore：SGH 在 SGDI 的 MOH 医院名单上（NHCS 是专科中心、不在该名单），且两者同在 Outram 院区、实测相距仅约 107 m，同时保留会让地图上出现两个几乎重合的停靠点。⚠️ 该节点需要 geocoder_accept 例外：OSMnx 的 geocoder 用 dedupe=0 时，「Singapore General Hospital」的首条结果是同名分区（type=administrative，即医院所在分区），换过 Outram Road / Hospital Drive / Block 1 等多种说法均无法拿到 type=hospital 的医院实体（Hospital Drive 那条返回的是 NHCS）。另用不带 dedupe 的查询交叉核对，医院实体坐标 (1.27945, 103.83627) 与分区一致、距 NHCS 约 107 m，故位置可信。"
     },
     {
@@ -176,6 +192,42 @@
       "latest_min": 1020,
       "service_min": 15,
       "note": "私立医院。官网域名取自 OSM 该医院的 website 标签（mtalvernia.sg）；先前手工猜测的两个域名均不存在。加入理由：Thomson/Braddell 一带距最近节点约 2.5 km，且地理编码 type=hospital、匹配干净。"
+    },
+    {
+      "facility_id": "D-NORTHPOINT",
+      "name": "Scarlett Choice Northpoint City (Yishun) — north depot",
+      "query": "Northpoint City, Yishun, Singapore",
+      "role": "distribution",
+      "source_url": "https://location.sggreatpromo.com/outlet/scarlett-supermarket/scarlett-choice-northpoint-city",
+      "demand": 0,
+      "earliest_min": 480,
+      "latest_min": 1080,
+      "service_min": 0,
+      "note": "北部分拨点。门店目录地址 #B2-101 Northpoint City, 930 Yishun Avenue 2。路网距离：KTPH 1.1 km、WH 7.0 km。在 4×7×6=168 种区域组合穷举中属总距离最优方案。"
+    },
+    {
+      "facility_id": "D-HOUGANG",
+      "name": "Scarlett Hougang Mall — north-east depot",
+      "query": "Hougang Mall, Singapore",
+      "role": "distribution",
+      "source_url": "https://location.sggreatpromo.com/outlet/scarlett-supermarket/scarlett-hougang-mall",
+      "demand": 0,
+      "earliest_min": 480,
+      "latest_min": 1080,
+      "service_min": 0,
+      "note": "东北/东部分拨点。门店目录地址 #04-02 Hougang Mall, 90 Hougang Avenue 10。路网距离：BGMP 2.4 km、SKH 3.0 km、CGH 10.9 km。官方规划区属东北区，门店目录归东部——若改用勿洛（正东），总距离 +7.7 km 且最远单程升到 12.8 km（SKH），故取后港。"
+    },
+    {
+      "facility_id": "D-BUGIS",
+      "name": "Scarlett Bugis+ — south depot",
+      "query": "Bugis+, Singapore",
+      "role": "distribution",
+      "source_url": "https://location.sggreatpromo.com/outlet/scarlett-supermarket/scarlett-bugis-plus",
+      "demand": 0,
+      "earliest_min": 480,
+      "latest_min": 1080,
+      "service_min": 0,
+      "note": "南部分拨点。门店目录地址 #03-16/17 Bugis+, 201 Victoria Street。承担市中心 7 家医院：KKH 1.7 km、SGH 2.5 km、TTSH 3.9 km、MEH 4.1 km、MAH 6.3 km、PEH 7.1 km、AH 8.0 km。"
     }
   ]
 }

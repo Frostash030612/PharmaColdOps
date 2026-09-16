@@ -4,7 +4,37 @@
 
 ---
 
-## 2026-09-16 — G20 第一批 + G12 车队硬约束（`35ef820`）
+## 2026-09-16 — 主仓与分拨点改用思家客门店（路网扩至 19 节点）+ 修正 SGH 地理编码
+
+**决定**：医院不适合当货源点，改用具真实来源的连锁超市门店。主仓 = **Scarlett Westgate（裕廊东）**，
+分拨点 = **义顺 Northpoint City（北）/ 后港 Hougang Mall（东北）/ 武吉士 Bugis+（南）**；
+旧仓 `W-KN-PIONEER` **保留**并降为 `third_party`（作"自建前仓 vs 第三方仓"对照，不进默认供货表）。
+
+**选点不是拍脑袋**：抓取公开门店目录得 20 家候选 → Nominatim 地理编码 → OSMnx 真实路网
+（23,828 节点 / 45,591 边）按 `travel_time` 选路 → 168 种区域组合全部穷举。
+结果 Σ(14 家医院到最近供货点) = **70.1 km**（只有主仓 231.6 km；现状 K+N 仓 + 同样三分拨点 78.7 km），
+最远单程 10.9 km。**"北/东/南"这个结构本身零代价**——区域约束下的最优解就是无约束最优。
+依据与全部分析见 `docs/供货点选址分析.md`。
+
+**顺带修好一个真错误**：重建矩阵时发现原 `network.json` 里 **SGH 一直编码在
+`type=administrative` 的规划分区质心上（离医院正门 1.55 km）**，重建后匹配到
+`type=hospital`（0.14 km）。14 对与 SGH 相关的距离随之变化（最大 +39%），其余 14 个旧节点坐标零变化。
+
+**改动面**：`facilities.json`（节点 0 改 `W-WESTGATE`，新增 3 个 `distribution`，旧仓改 `third_party`，各带选点 `note`）；
+`network.json` 19 节点 / 19×19 / **171 对** / 342 条几何；`DISPATCH_ORIGIN` → `W-WESTGATE`
+并把 `reshipment.DEPOT_FACILITY_ID` 改为引用同一常量（原先两处各写一份）；
+`validate_network` 放宽 role 校验（非 customer 节点必须无需求无服务时长）；
+`load_singapore_instance` 只取"仓 + 医院"（否则供货点会被当成可送达客户，污染对比表与前端演示计划）；
+`build_graph` 的 Facility `type` 按 role 映射，并修掉 `extract_sha256` 为 `null` 时的崩溃。
+
+**验证**：知识图谱重建为 **Facility 19 / CONNECTS 171**；全量 `pytest -q` **207 passed / 0 failed**；
+`pnpm build` 通过。测试里另修两处"新仓更近"导致的假设失效：`test_an_operation_is_still_open_while_its_trucks_drive_home`
+倍速 90×→**60×**（实测 60× 时货已送到、车仍在回程），以及把硬编码的节点序号断言改为按 `facility_id` 解析。
+
+**尚未做**：供货表（节点 × 产品 → 可用量）与订单 `origin` 字段、里程上限与终点站约束、报废救援的成对插入
+（`docs/路径规划总逻辑方案.md` §8 的 B1–B7）。
+
+---
 
 **G20 第一批**：首页改为地图主区，`GET /api/runs` 的归档异常按医院上图并进入右侧事件列表；
 点击地图标记或事件卡片会载入该次记录并打开处置沙箱抽屉。事件目前只有“已结案”数据，状态着色、
