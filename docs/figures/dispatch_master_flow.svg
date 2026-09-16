@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1780" height="2160" viewBox="0 0 1780 2160">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/></marker><marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626"/></marker></defs>
+<rect width="1780" height="2160" fill="#ffffff"/>
+<text x="890.0" y="56" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="31" font-weight="700" fill="#0f172a">配送路径规划 · 总逻辑（多起点 · 里程上限 · 终点站 · 报废救援）</text>
+<text x="890.0" y="88" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" fill="#475569">前一天收工选址 → 次日多起点取送排线 → 途中报废救援 → 再收工　｜　出处：docs/路径规划总逻辑方案.md</text>
+<rect x="40" y="106" width="1060" height="430" rx="16" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.6" stroke-dasharray="10 6" opacity="0.6"/>
+<text x="60" y="136" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#16a34a">阶段一 · 前一日收工：停靠选址（只用每日固定订单）</text>
+<rect x="40" y="542" width="1060" height="270" rx="16" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.6" stroke-dasharray="10 6" opacity="0.6"/>
+<text x="60" y="572" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#0284c7">阶段二 · 次日开局：订单池与货源校验</text>
+<rect x="40" y="818" width="1060" height="388" rx="16" fill="#fffbeb" stroke="#d97706" stroke-width="1.6" stroke-dasharray="10 6" opacity="0.6"/>
+<text x="60" y="848" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#d97706">阶段三 · 静态排线：能串就串，串不下就加车</text>
+<rect x="40" y="1212" width="1060" height="803" rx="16" fill="#fef2f2" stroke="#dc2626" stroke-width="1.6" stroke-dasharray="10 6" opacity="0.6"/>
+<text x="60" y="1242" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="19" font-weight="700" fill="#dc2626">阶段四 · 执行中：报废救援（四类候选比较）</text>
+<rect x="70" y="124" width="680" height="58" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="410.0" y="158.95" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">① 当日配送全部结束（车辆状态清零／在途结清）</text>
+<rect x="70" y="224" width="680" height="76" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="410.0" y="255.70999999999998" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">② 只取「每天都要送的固定订单」</text>
+<text x="410.0" y="280.19" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">（突发订单、报废事件不参与选址）</text>
+<rect x="70" y="342" width="680" height="76" rx="12" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+<text x="410.0" y="373.71" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">③ 停靠选址：为每辆车选一个「可作终点」的节点停靠</text>
+<text x="410.0" y="398.19" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">目标：次日首段空驶最小 ｜ 位移计入当日里程</text>
+<rect x="70" y="460" width="680" height="58" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="410.0" y="494.95" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">④ 次日起点 = 停靠节点（车辆起点不再固定为仓库）</text>
+<rect x="70" y="560" width="680" height="76" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="410.0" y="591.71" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑤ 订单池 = 每日固定订单 + 当日新增订单</text>
+<text x="410.0" y="616.19" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">每单：起点 / 终点 / 最晚到达 / 温区 / 数量</text>
+<polygon points="410.0,678 750,736.0 410.0,794 70,736.0" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="410.0" y="729.71" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#7c2d12">⑥ 起点节点有货，</text>
+<text x="410.0" y="754.19" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#7c2d12">且温区一致？</text>
+<rect x="70" y="836" width="680" height="76" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="410.0" y="867.71" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑦ 按温区分队求解</text>
+<text x="410.0" y="892.19" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">取送成对 + 时间窗 + 载重 + 每车每日里程上限 + 可作终点节点</text>
+<polygon points="410.0,954 750,1006.0 410.0,1058 70,1006.0" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="410.0" y="1011.95" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#7c2d12">⑧ 现有车辆能否全部服务？</text>
+<rect x="70" y="1100" width="680" height="76" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="410.0" y="1131.71" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑨ 输出：每车「起点 → 取货点 → 送货点 → … → 收车点」</text>
+<text x="410.0" y="1156.19" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">并给出每车当日里程 / 上限</text>
+<polygon points="930.0,984 1080,1042.0 930.0,1100 780,1042.0" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="930.0" y="1035.71" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#7c2d12">⑧b 还能加车吗？</text>
+<text x="930.0" y="1060.19" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#7c2d12">（未超车队上限 K）</text>
+<rect x="780" y="1130" width="300" height="58" rx="12" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+<text x="930.0" y="1164.95" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑧c 加派一辆新车</text>
+<rect x="70" y="1230" width="680" height="76" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="410.0" y="1261.71" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑩ 执行中：处置判定「报废」（A 侧）</text>
+<text x="410.0" y="1286.19" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">→ 生成补发订单（起点 = 合格货源节点）</text>
+<rect x="70" y="1348" width="680" height="58" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="410.0" y="1382.95" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑪ 定位：tracking 给出车当前所在路段、走到哪、现在几点</text>
+<rect x="70" y="1448" width="680" height="58" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="410.0" y="1482.95" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑫ 找货：供货表中同产品、同温区、可用量足够的节点</text>
+<rect x="70" y="1548" width="680" height="103" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="410.0" y="1580.97" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑬ 生成候选并逐个比较</text>
+<text x="410.0" y="1605.45" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">① 同车顺路取货再送　② 同车重排剩余站序</text>
+<text x="410.0" y="1629.93" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">③ 新派一辆（含空车专送）　④ 该车已无其他订单 → 就近节点收车</text>
+<rect x="70" y="1693" width="680" height="58" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+<text x="410.0" y="1727.95" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑭ 逐候选校验：时间窗 / 每日里程上限 / 载重 / 温区 / 终点站</text>
+<polygon points="410.0,1793 750,1845.0 410.0,1897 70,1845.0" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+<text x="410.0" y="1850.95" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="600" fill="#7c2d12">⑮ 有可行候选？</text>
+<rect x="70" y="1939" width="680" height="58" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+<text x="410.0" y="1973.95" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑯ 操作员选定 → 写回当天作业（幂等命令）</text>
+<rect x="70" y="2039" width="680" height="58" rx="12" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+<text x="410.0" y="2073.95" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="17" font-weight="500" fill="#0f172a">⑰ 当日结束 → 回到 ①</text>
+<line x1="410.0" y1="182" x2="410.0" y2="224" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="300" x2="410.0" y2="342" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="418" x2="410.0" y2="460" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="518" x2="410.0" y2="560" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="636" x2="410.0" y2="678" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="794" x2="410.0" y2="836" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="912" x2="410.0" y2="954" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="1176" x2="410.0" y2="1230" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="1306" x2="410.0" y2="1348" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="1406" x2="410.0" y2="1448" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="1506" x2="410.0" y2="1548" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="1651" x2="410.0" y2="1693" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="1751" x2="410.0" y2="1793" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="1897" x2="410.0" y2="1939" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="1997" x2="410.0" y2="2039" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="1058" x2="410.0" y2="1100" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="440.0" y="1085.0" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#334155">能</text>
+<polyline points="750,1006.0 765,1006.0 765,1042.0 778,1042.0" fill="none" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="765" y="994.0" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#334155">否</text>
+<line x1="930.0" y1="1100" x2="930.0" y2="1130" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="960.0" y="1121.0" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#334155">是</text>
+<polyline points="780,1159.0 768,1159.0 768,874.0 752,874.0" fill="none" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="774" y="862.0" text-anchor="start" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#334155">重新求解</text>
+<line x1="1080" y1="1042.0" x2="1114" y2="1042.0" stroke="#dc2626" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#ah)"/>
+<text x="1100.0" y="1030.0" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#dc2626">否</text>
+<line x1="410.0" y1="794" x2="410.0" y2="836" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<line x1="410.0" y1="736.0" x2="1114" y2="736.0" stroke="#dc2626" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#ah)"/>
+<text x="774" y="724.0" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#dc2626">否</text>
+<line x1="410.0" y1="1897" x2="410.0" y2="1939" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="444.0" y="1924.0" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#334155">有</text>
+<line x1="410.0" y1="1845.0" x2="1114" y2="1845.0" stroke="#dc2626" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#ah)"/>
+<text x="784" y="1833.0" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#dc2626">没有</text>
+<polyline points="70,2068.0 52,2068.0 52,153.0 68,153.0" fill="none" stroke="#334155" stroke-width="2.4" marker-end="url(#ah)"/>
+<text x="50" y="1081.5" text-anchor="middle" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#334155" transform="rotate(-90 50 1081.5)">下一个配送日</text>
+<rect x="1120" y="124" width="620" height="194" rx="12" fill="#f1f5f9" stroke="#475569" stroke-width="2"/>
+<text x="1136" y="154" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#475569">业务口径（2026-09-16 拍板）</text>
+<text x="1136" y="182" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 里程上限含返程与空驶，每车每天累计</text>
+<text x="1136" y="207" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 次日从任一节点出发；停在终点站的就从该站出发</text>
+<text x="1136" y="232" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 货源在节点里找（供货能力表：节点 × 产品）</text>
+<text x="1136" y="257" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 报废订单优先，可延迟别的订单</text>
+<text x="1136" y="282" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 新增订单必须同温区同车</text>
+<text x="1136" y="307" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 「可作终点」= 车辆最后允许停靠的节点</text>
+<rect x="1120" y="686.0" width="620" height="94" rx="12" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="1136" y="716.0" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#dc2626">说明 ① 货源校验不通过</text>
+<text x="1136" y="744.0" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">前端说明：该订单无可用货源或温区不符</text>
+<text x="1136" y="769.0" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">内容：订单号 / 产品 / 缺口数量</text>
+<rect x="1120" y="976.0" width="620" height="144" rx="12" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+<text x="1136" y="1006.0" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#dc2626">说明 ② 即便加车也排不下</text>
+<text x="1136" y="1034.0" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">前端说明：未服务订单 + 被哪条约束挡住 + 差多少</text>
+<text x="1136" y="1059.0" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">示例：需要 41.8 km，超过单车上限 35 km；</text>
+<text x="1136" y="1084.0" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">　　　最早可达 10:38，晚于最晚收货 10:00</text>
+<text x="1136" y="1109.0" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">→ 这就是「无论如何都会超时」时给用户看的东西</text>
+<rect x="1120" y="1130" width="620" height="169" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<text x="1136" y="1160" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#2563eb">数据面要加的字段</text>
+<text x="1136" y="1188" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 订单加 origin（取货点），问题变为取送（PDPTW）</text>
+<text x="1136" y="1213" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 节点能力位：可收货 / 可供货 / 可作终点</text>
+<text x="1136" y="1238" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 供货表 v1：节点 × 产品 → 可用量（不含批次效期）</text>
+<text x="1136" y="1263" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 车辆 start_facility_id 放开；新增当日里程台账</text>
+<text x="1136" y="1288" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">· 约束新增：车队数 K / 每车里程上限 / 终点站集合</text>
+<rect x="1120" y="1323" width="620" height="144" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+<text x="1136" y="1353" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#16a34a">前端要做的事</text>
+<text x="1136" y="1381" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">输入：车队数量 / 每车里程上限 / 可作终点的节点（多选）</text>
+<text x="1136" y="1406" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">排线：每车 起点→取货→送货→收车点 + 当日里程 / 上限</text>
+<text x="1136" y="1431" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">无解：说明块（未服务订单 + 被挡约束 + 差多少）</text>
+<text x="1136" y="1456" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">救援：候选行显示货源节点与取货后预计到达</text>
+<rect x="1120" y="1491" width="620" height="194" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+<text x="1136" y="1521" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="18" font-weight="700" fill="#ea580c">关键落点（避免两处各算一份）</text>
+<text x="1136" y="1549" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">里程维度：ortools_solver.py（复用已有距离回调）</text>
+<text x="1136" y="1574" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">取送成对：AddPickupAndDelivery（ortools 9.15 已验证可用）</text>
+<text x="1136" y="1599" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">开环收尾：dummy 终点节点 + 可作终点集合</text>
+<text x="1136" y="1624" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">多起点：RoutingIndexManager 的 starts / ends 按车给</text>
+<text x="1136" y="1649" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">新加载器：load_pickup_delivery_subset()（原路径不动）</text>
+<text x="1136" y="1674" font-family="PingFang SC,Hiragino Sans GB,Microsoft YaHei,Helvetica,Arial,sans-serif" font-size="16" fill="#0f172a">口径分裂警告：tracking 的 [0, *seq, 0] 必须一起改</text>
+</svg>
