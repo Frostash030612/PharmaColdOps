@@ -103,15 +103,11 @@ def preview_emergency_order(
     order_lookup = _order_lookup(context)
     input_data = context.get("input", {})
     lots = {item["lot_id"]: item for item in input_data.get("inventory", [])}
-    stock = sum(
-        state.available_by_lot.get(lot_id, 0)
-        for lot_id, lot in lots.items()
-        if lot["product_id"] == order.product_id
-        and lot["temperature_zone"] == order.temperature_zone
-        and lot["facility_id"] == DISPATCH_ORIGIN
-        and lot.get("status", "available") == "available"
-    )
-    if stock < order.quantity:
+    # Which supply points may hand this product over, and which of them actually
+    # hold enough of it (B6: the pickup no longer has to be the main warehouse).
+    carriers = _carriers_with_stock(order, lots, state)
+    stock = max(carriers.values(), default=0)
+    if not carriers:
         return {
             "feasible": False,
             "order_id": order.order_id,
@@ -145,24 +141,45 @@ def preview_emergency_order(
         if progress is None and vehicle.get("status", "available") == "available":
             if free_capacity < order.quantity:
                 continue
-            distance, travel = leg(DISPATCH_ORIGIN, order.destination_facility_id)
+            start = vehicle.get("start_facility_id") or DISPATCH_ORIGIN
+            pickup = _nearest_carrier(carriers, start, order.destination_facility_id, leg)
+            to_pickup_distance, to_pickup_time = leg(start, pickup)
+            distance, travel = leg(pickup, order.destination_facility_id)
             depart_at = max(current_time_min, vehicle.get("available_from_min", 0)) + loading_min
-            eta = depart_at + travel
-            candidates.append(_candidate("spare_vehicle", vehicle_id, eta, distance, order))
-        elif progress is not None and progress.status == "reserved":
+            eta = depart_at + to_pickup_time + loading_min + travel
+            item = _candidate("spare_vehicle", vehicle_id, eta,
+                              to_pickup_distance + distance, order)
+            item["pickup_facility_id"] = pickup
+            candidates.append(item)
+        elif progress is not None and progress.status == "reserved" and (
+                progress.current_facility_id in carriers):
             if free_capacity < order.quantity:
                 continue
             # Assigned but still at the depot: the cheapest option of all —
             # load this order with the rest before the vehicle ever leaves, so
             # there is no detour, only an extra stop placed first.
-            distance, travel = leg(DISPATCH_ORIGIN, order.destination_facility_id)
+            pickup = progress.current_facility_id
+            distance, travel = leg(pickup, order.destination_facility_id)
             depart_at = current_time_min + loading_min
             eta = depart_at + travel
             item = _candidate("load_before_departure", vehicle_id, eta, distance, order)
+            item["pickup_facility_id"] = pickup
             affected = _affected_orders(
                 progress.remaining_order_ids, progress.current_facility_id,
                 depart_at, order.destination_facility_id, eta, order_lookup, leg,
             )
+            tail, changed = _resequence_tail(
+                list(progress.remaining_order_ids),
+                order.destination_facility_id, eta, order_lookup, leg,
+            )
+            item["remaining_order_ids_after"] = tail
+            item["resequenced"] = changed
+            if changed:
+                affected = _affected_orders(
+                    progress.remaining_order_ids, progress.current_facility_id,
+                    current_time_min, order.destination_facility_id, eta,
+                    order_lookup, leg, diverted_order_ids=tail,
+                )
             item["affected_order_ids"] = list(progress.remaining_order_ids)
             item["affected_orders"] = affected
             item["on_time"] = item["on_time"] and not any(a["newly_late"] for a in affected)
@@ -182,6 +199,18 @@ def preview_emergency_order(
                     current_time_min, order.destination_facility_id, eta,
                     order_lookup, leg,
                 )
+                tail, changed = _resequence_tail(
+                    list(progress.remaining_order_ids),
+                    order.destination_facility_id, eta, order_lookup, leg,
+                )
+                item["remaining_order_ids_after"] = tail
+                item["resequenced"] = changed
+                if changed:
+                    affected = _affected_orders(
+                        progress.remaining_order_ids, progress.current_facility_id,
+                        current_time_min, order.destination_facility_id, eta,
+                        order_lookup, leg, diverted_order_ids=tail,
+                    )
                 item["affected_order_ids"] = list(progress.remaining_order_ids)
                 item["affected_orders"] = affected
                 item["on_time"] = item["on_time"] and not any(
@@ -191,13 +220,19 @@ def preview_emergency_order(
             # depot first. Only offered when the truck can still take them aboard.
             if free_capacity < order.quantity:
                 continue
-            to_depot_distance, to_depot_time = leg(progress.current_facility_id, DISPATCH_ORIGIN)
-            delivery_distance, delivery_time = leg(DISPATCH_ORIGIN, order.destination_facility_id)
-            eta = current_time_min + to_depot_time + loading_min + delivery_time
+            # The kind keeps its historical name, but the stop is now the nearest
+            # supply point that holds the product — which is only the depot when
+            # the depot is the closest source.
+            pickup = _nearest_carrier(carriers, progress.current_facility_id,
+                                      order.destination_facility_id, leg)
+            to_pickup_distance, to_pickup_time = leg(progress.current_facility_id, pickup)
+            delivery_distance, delivery_time = leg(pickup, order.destination_facility_id)
+            eta = current_time_min + to_pickup_time + loading_min + delivery_time
             item = _candidate(
                 "return_to_depot", vehicle_id, eta,
-                to_depot_distance + delivery_distance, order,
+                to_pickup_distance + delivery_distance, order,
             )
+            item["pickup_facility_id"] = pickup
             # A detour must not silently make this vehicle's own remaining
             # orders miss their own delivery windows — re-simulate their
             # arrival with and without the detour and flag any newly-late one.
@@ -209,6 +244,18 @@ def preview_emergency_order(
                 current_time_min, order.destination_facility_id, eta,
                 order_lookup, leg,
             )
+            tail, changed = _resequence_tail(
+                list(progress.remaining_order_ids),
+                order.destination_facility_id, eta, order_lookup, leg,
+            )
+            item["remaining_order_ids_after"] = tail
+            item["resequenced"] = changed
+            if changed:
+                affected = _affected_orders(
+                    progress.remaining_order_ids, progress.current_facility_id,
+                    current_time_min, order.destination_facility_id, eta,
+                    order_lookup, leg, diverted_order_ids=tail,
+                )
             item["affected_order_ids"] = list(progress.remaining_order_ids)
             item["affected_orders"] = affected
             item["on_time"] = item["on_time"] and not any(a["newly_late"] for a in affected)
@@ -236,12 +283,18 @@ def preview_emergency_order(
         else:
             current = 0
         destination = nodes[order.destination_facility_id]
+        pickup = item.get("pickup_facility_id")
+        pickup_node = None if pickup is None else nodes[pickup]
         if item["kind"] == "spare_vehicle":
-            item["node_sequence"] = [0, destination, 0]
+            start = nodes.get(item.get("start_facility_id") or DISPATCH_ORIGIN, 0)
+            item["node_sequence"] = [start, *( [pickup_node] if pickup_node is not None else [] ),
+                                     destination, 0]
         elif item["kind"] == "load_before_departure":
-            item["node_sequence"] = [0, destination, *remaining, 0]
+            # the vehicle is already standing on the pickup point
+            item["node_sequence"] = [current, destination, *remaining, 0]
         elif item["kind"] == "return_to_depot":
-            item["node_sequence"] = [current, 0, destination, *remaining, 0]
+            item["node_sequence"] = [current, *([pickup_node] if pickup_node is not None else []),
+                                     destination, *remaining, 0]
         else:                                   # add_stop_in_transit
             item["node_sequence"] = [current, destination, *remaining, 0]
 
@@ -263,6 +316,46 @@ def preview_emergency_order(
             "affected_order_etas_ignore_per_stop_service_dwell_time",
         ],
     }
+
+
+
+def _carriers_with_stock(order, lots, state) -> dict[str, int]:
+    """Supply points that may hand this product over, with how much they hold.
+
+    A point counts only if the supply table says it carries this product **and**
+    the request's own ledger has enough of it available — the table declares what
+    a node may supply, the ledger says what is actually there. Both matter, and a
+    demo quantity in the table is not stock.
+    """
+    from .catalog import read_supply_points, supplies_product
+
+    allowed = {point.facility_id for point in read_supply_points()
+               if supplies_product(point, order.product_id)}
+    stock: dict[str, int] = {}
+    for lot_id, lot in lots.items():
+        if (lot["product_id"] != order.product_id
+                or lot["temperature_zone"] != order.temperature_zone
+                or lot.get("status", "available") != "available"
+                or lot["facility_id"] not in allowed):
+            continue
+        stock[lot["facility_id"]] = stock.get(lot["facility_id"], 0) + \
+            state.available_by_lot.get(lot_id, 0)
+    return {facility: units for facility, units in stock.items()
+            if units >= order.quantity}
+
+
+def _nearest_carrier(carriers: dict[str, int], from_facility: str,
+                     to_facility: str, leg) -> str | None:
+    """The pickup point that costs this vehicle the least extra driving.
+
+    Judged on the **whole detour** - where the truck is now, out to the source,
+    then on to the hospital - not on the distance to either end alone. Picking the
+    source closest to the truck can send it past a nearer one and back.
+    """
+    if not carriers:
+        return None
+    return min(carriers, key=lambda facility: (
+        leg(from_facility, facility)[0] + leg(facility, to_facility)[0]))
 
 
 def _order_lookup(context: dict) -> dict:
@@ -288,7 +381,7 @@ def _simulate_arrivals(start_facility: str, start_time: float, order_ids: tuple[
 
 def _affected_orders(remaining_order_ids: tuple[str, ...], current_facility_id: str,
                      current_time_min: int, detour_facility_id: str, detour_eta: float,
-                     order_lookup: dict, leg) -> list[dict]:
+                     order_lookup: dict, leg, diverted_order_ids=None) -> list[dict]:
     """Compare each remaining order's arrival with vs without the detour.
 
     ``newly_late`` is true only when the detour is what pushes a previously
@@ -298,8 +391,12 @@ def _affected_orders(remaining_order_ids: tuple[str, ...], current_facility_id: 
     """
     baseline = _simulate_arrivals(current_facility_id, current_time_min,
                                   remaining_order_ids, order_lookup, leg)
+    # The diverted tour may also have been RE-SEQUENCED (see _resequence_tail):
+    # the delay a remaining order suffers is the one it suffers on the route that
+    # will actually be driven, not on the old queue order.
     diverted = _simulate_arrivals(detour_facility_id, detour_eta,
-                                  remaining_order_ids, order_lookup, leg)
+                                  diverted_order_ids or remaining_order_ids,
+                                  order_lookup, leg)
     affected = []
     for order_id in remaining_order_ids:
         latest = order_lookup[order_id]["latest_min"]
@@ -313,6 +410,70 @@ def _affected_orders(remaining_order_ids: tuple[str, ...], current_facility_id: 
             "newly_late": (not was_late) and diverted[order_id] > latest,
         })
     return affected
+
+
+
+#: How many improvement passes the re-sequencing may make. The tail is one
+#: vehicle's remaining stops (a handful), so this is a safety rail, not a cost.
+RESEQUENCE_PASSES = 8
+
+
+def _resequence_tail(tail_ids: list[str], start_facility: str, start_time: float,
+                     order_lookup: dict, leg) -> tuple[list[str], bool]:
+    """Re-order one vehicle's remaining stops to shorten the diverted tour.
+
+    Inserting a rescue order used to leave the rest of the queue untouched, so a
+    truck could be sent back and forth across the island because of where the new
+    stop happened to land. This is a bounded 2-opt over the remaining stops.
+
+    Only swaps that keep every **currently on-time** order on time are accepted:
+    an order already running late may stay late (that is the situation the
+    operator is already in), but the diversion must not be what pushes a fresh
+    one over its window. Returns ``(sequence, changed)``.
+    """
+    if len(tail_ids) < 2:
+        return list(tail_ids), False
+
+    def arrivals(sequence: list[str]) -> dict[str, float]:
+        return _simulate_arrivals(start_facility, start_time, tuple(sequence),
+                                  order_lookup, leg)
+
+    original = list(tail_ids)
+    original_arrivals = arrivals(original)
+    on_time_before = {
+        order_id for order_id in original
+        if original_arrivals[order_id] <= order_lookup[order_id]["latest_min"]
+    }
+
+    def total_time(sequence: list[str], times: dict[str, float]) -> float:
+        return times[sequence[-1]] if sequence else start_time
+
+    def acceptable(sequence: list[str]) -> tuple[bool, dict[str, float]]:
+        times = arrivals(sequence)
+        for order_id in on_time_before:
+            if times[order_id] > order_lookup[order_id]["latest_min"]:
+                return False, times
+        return True, times
+
+    best = original
+    best_times = original_arrivals
+    best_cost = total_time(best, best_times)
+    improved = True
+    passes = 0
+    while improved and passes < RESEQUENCE_PASSES:
+        improved = False
+        passes += 1
+        for i in range(len(best) - 1):
+            for j in range(i + 1, len(best)):
+                trial = best[:i] + list(reversed(best[i:j + 1])) + best[j + 1:]
+                ok, times = acceptable(trial)
+                if not ok:
+                    continue
+                cost = total_time(trial, times)
+                if cost < best_cost - 1e-9:
+                    best, best_times, best_cost = trial, times, cost
+                    improved = True
+    return best, best != original
 
 
 def _rank(item: dict, policy: str) -> tuple:
@@ -347,6 +508,14 @@ def _candidate(kind: str, vehicle_id: str, eta: float, distance: float, order: D
         #: A spare vehicle was not part of this operation; every other kind
         #: redirects a vehicle that was already going somewhere for this run.
         "starts_new_vehicle": kind == "spare_vehicle",
+        #: The queue this vehicle would be left with, and whether that is a
+        #: different ORDER from today's (B6 second half, 2026-09-16). A spare
+        #: vehicle has no queue to re-order.
+        "remaining_order_ids_after": [],
+        "resequenced": False,
+        #: Where the goods come from. ``None`` = they are already on board (the
+        #: in-transit spare option) or the vehicle is standing on them.
+        "pickup_facility_id": None,
     }
 
 
@@ -382,12 +551,16 @@ def accept_emergency_order(
         # than a depot lot, as the preview's ``limitations`` states.
         allocations = [(f"ONBOARD-{vehicle_id}", order.quantity)]
     else:
+        # Reserve at the pickup point this candidate was priced with, not at a
+        # hard-coded warehouse: the operator compared options that fetch from
+        # different places, and the ledger has to follow the choice.
+        pickup = candidate.get("pickup_facility_id") or DISPATCH_ORIGIN
         needed = order.quantity
         allocations = []
         for lot_id, lot in lots.items():
             if (lot["product_id"] != order.product_id
                     or lot["temperature_zone"] != order.temperature_zone
-                    or lot["facility_id"] != DISPATCH_ORIGIN
+                    or lot["facility_id"] != pickup
                     or lot.get("status", "available") != "available"):
                 continue
             take = min(needed, available.get(lot_id, 0))
@@ -410,10 +583,13 @@ def accept_emergency_order(
         # vehicle on its first task must not erase what is already on board.
         declared = next((item for item in context["input"]["vehicles"]
                          if item["vehicle_id"] == vehicle_id), {})
+        start = declared.get("start_facility_id") or DISPATCH_ORIGIN
+        pickup = candidate.get("pickup_facility_id")
         vehicles[vehicle_id] = VehicleProgress(
-            vehicle_id, DISPATCH_ORIGIN, (order.order_id,),
+            vehicle_id, start, (order.order_id,),
             status="in_transit" if state.status == "in_transit" else "reserved",
             onboard_spare=normalise_onboard_spare(declared.get("onboard_spare", ())),
+            pickup_facility_ids=(() if pickup in (None, start) else (pickup,)),
         )
     else:
         # Every remaining kind puts this order at the head of the vehicle's
@@ -421,9 +597,18 @@ def accept_emergency_order(
         # departure does not put a vehicle on the road and a detour does not
         # take one off it. Only the onboard option changes what it carries.
         vehicle = vehicles[vehicle_id]
+        # The candidate knows the queue it previewed (the rescue order first, then
+        # the re-sequenced tail). Applying anything else would make the accepted
+        # plan differ from the one the operator compared.
+        tail = candidate.get("remaining_order_ids_after") or list(vehicle.remaining_order_ids)
         changes: dict = {
-            "remaining_order_ids": (order.order_id, *vehicle.remaining_order_ids)
+            "remaining_order_ids": (order.order_id, *tail)
         }
+        pickup = candidate.get("pickup_facility_id")
+        if pickup is not None and pickup != vehicle.current_facility_id:
+            # The truck has to go and get the goods first; record that leg so the
+            # clock and the map know about it (B6).
+            changes["pickup_facility_ids"] = (pickup, *vehicle.pickup_facility_ids)
         if candidate_kind == "add_stop_in_transit":
             changes["onboard_spare"] = _consume_spare(vehicle, order)
         vehicles[vehicle_id] = replace(vehicle, **changes)

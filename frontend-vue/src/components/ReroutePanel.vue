@@ -474,6 +474,12 @@ const dailyOutcome = computed(() => {
                    option ends at the same hospital, so showing that leg made
                    all three read "26.28 km" and look identical. -->
               +{{ (c.added_distance_m / 1000).toFixed(2) }} {{ text.km }}
+              <!-- Which source this option fetches from (B6): the same vehicle
+                   can be sent to different pickup points for different money. -->
+              <div v-if="c.pickup_facility_id" class="sg-pickup">
+                {{ text.branchPickup }} {{ facilityName(c.pickup_facility_id) }}
+              </div>
+              <div v-if="c.resequenced" class="sg-pickup">{{ text.branchResequenced }}</div>
             </td>
             <td>{{ clock(c.eta_min) }}</td>
             <td>
@@ -662,6 +668,7 @@ const dailyOutcome = computed(() => {
 .sg-candidates tr.chosen td { background: #f0fdfa; }
 .sg-candidates tr.late td:first-child { color: #b91c1c; }
 .sg-candidates em { font-style: normal; color: #b45309; }
+.sg-pickup { margin-top: 2px; color: #0f766e; font-size: 10px; }
 .sg-candidates button { background: #0d9488; color: #fff; border: 0; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .sg-candidates button:disabled { opacity: .6; cursor: default; }
 .sg-affected { display: block; color: #475569; }

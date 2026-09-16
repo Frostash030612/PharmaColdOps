@@ -110,6 +110,8 @@ export default {
   "branchExtra": "Extra",
   "branchEta": "ETA",
   "branchLateness": "Late",
+  "branchPickup": "fetch at",
+  "branchResequenced": "(queue re-sequenced)",
   "branchAffected": "Affected orders",
   "branchNoAffected": "No existing order is affected",
   "branchNewlyLate": "late because of this",

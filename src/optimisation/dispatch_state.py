@@ -32,6 +32,11 @@ class VehicleProgress:
     #: a parking node makes the route open, and the map must draw the final leg to
     #: it instead of home (2026-09-16).
     end_node_id: int | None = None
+    #: Supply points this vehicle must visit **before** its remaining deliveries
+    #: (2026-09-16, B6). A rescue whose goods are not on board sends the truck to a
+    #: pickup point first; keeping that leg in the state is what lets the clock,
+    #: the map and the ledger agree instead of the truck appearing to teleport.
+    pickup_facility_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

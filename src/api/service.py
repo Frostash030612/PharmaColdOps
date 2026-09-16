@@ -918,6 +918,19 @@ def dispatch_route_view(state, context: dict) -> dict:
     sim_now = watched_now(clock) if clock else None
     for vehicle_id, vehicle in sorted(state.vehicles.items()):
         pending, stops = [], []
+        # A rescue whose goods are not on board sends the truck to a pickup point
+        # first. That leg is part of the run, so it is a stop like any other — the
+        # map would otherwise show the truck driving to a hospital it cannot serve
+        # from what it carries (B6, 2026-09-16).
+        for facility_id in vehicle.pickup_facility_ids:
+            pickup_node = node_by_facility.get(facility_id)
+            if pickup_node is None:
+                continue
+            pending.append(pickup_node)
+            stops.append({
+                "node_id": pickup_node, "order_id": None, "kind": "pickup",
+                "facility_id": facility_id, "quantity": 0, "delivered": False,
+            })
         for order_id in (*vehicle.delivered_order_ids, *vehicle.remaining_order_ids):
             order = orders.get(order_id)
             if order is None:  # an order the context never recorded: skip, don't guess
@@ -1338,13 +1351,20 @@ def tick_dispatch(dispatch_id: str) -> dict:
         for vehicle_id, vehicle in sorted(state.vehicles.items()):
             if vehicle.status != "in_transit" or not vehicle.remaining_order_ids:
                 continue
-            sequence = [node_by_facility[state.orders[oid].destination_facility_id]
-                        for oid in (*vehicle.delivered_order_ids, *vehicle.remaining_order_ids)]
+            # Pickup stops come first and are passed before any delivery, so they
+            # must be counted out of ``reached_stops`` — otherwise the first order
+            # would be delivered the moment the truck reached the pickup point.
+            pickups = [node_by_facility[facility_id]
+                       for facility_id in vehicle.pickup_facility_ids
+                       if facility_id in node_by_facility]
+            sequence = [*pickups, *[
+                node_by_facility[state.orders[oid].destination_facility_id]
+                for oid in (*vehicle.delivered_order_ids, *vehicle.remaining_order_ids)]]
             track = vehicle_track(network, sequence, schedule_origin(clock) + LOADING_MIN,
                                   sim_now)
             # Arrivals already recorded must not count again, or the next stop
             # would be delivered the moment the previous one was.
-            if track["reached_stops"] > len(vehicle.delivered_order_ids):
+            if track["reached_stops"] - len(pickups) > len(vehicle.delivered_order_ids):
                 due = (vehicle_id, vehicle.remaining_order_ids[0])
                 break
         if due is None:

@@ -109,6 +109,8 @@ export default {
   "branchExtra": "多跑",
   "branchEta": "预计送达",
   "branchLateness": "迟到",
+  "branchPickup": "先取货于",
+  "branchResequenced": "（剩余站序已重排）",
   "branchAffected": "受影响订单",
   "branchNoAffected": "不影响任何已有订单",
   "branchNewlyLate": "因此变迟",
