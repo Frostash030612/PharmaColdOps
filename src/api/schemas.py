@@ -7,7 +7,7 @@ thresholds from ``rules_config.json`` are used.
 """
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -187,6 +187,17 @@ class DispatchPlanIn(BaseModel):
 class DispatchCreateIn(DispatchPlanIn):
     dispatch_id: str
     command_id: str
+
+
+class OvernightPlanIn(DispatchPlanIn):
+    """Tomorrow's fixed orders + how far each truck already drove today.
+
+    The overnight decision needs both: tomorrow's first stops decide *where* to
+    park, today's remaining mileage budget decides *whether* the truck may still
+    drive there (2026-09-16, B5).
+    """
+
+    today_distance_m: Dict[str, int] = Field(default_factory=dict)
 
 
 class DispatchCommandIn(BaseModel):

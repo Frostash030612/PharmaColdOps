@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-09-16 — B5 收工停靠选址 + B7 不可行理由，两批一起落地
+
+**B5（收工停靠）**：新增 `src/optimisation/overnight.py` 与 `POST /api/dispatch/overnight-plan`（只读）。
+按次日固定订单试排一次拿到每车**首站** → 在 `terminal_facility_ids` 里选离首站最近的节点过夜 →
+位移计入**当日**里程，预算不够就原地不动并说明原因。界面在配送面板里加了「🌙 规划收工停靠」，
+并且**用实时车队位置**（该车路线末段 `to` 节点）而不是批次里的假设位置。
+
+- 实测（当日跑 42.96 km、车收在后港）：上限 45 km → 想去武吉士但预算不够，原地不动并注明；
+  上限 60 km → 移到武吉士，位移 10.9 km、**次日首段省 7.4 km**、两日净 −3.5 km。
+- **两处如实修正**：① 首版把它包装成 `worth_moving`"划算"，但按三角不等式挪车省下的空驶
+  不会超过挪车本身——已改成 `net_two_day_m`，并在响应 `assumptions` 与界面文案里写明
+  "买到的是次日更短的首段/更早出发，不是两日总里程更省"；② 首版让"次日无任务"的车也开
+  17.7 km 去停在最近分拨点，纯浪费——改为原地不动（有回归测试）。
+- **已知边界**：次日**排线**仍从主仓起算；"从停靠点出发"需要每车起点支持，与 B4 一起做。
+
+**B7（不可行理由）**：新增 `src/optimisation/feasibility.py`。对每张未服务订单**真的**插入
+每条现有路线（以及一辆空车，若车队有余量），用与求解器同一个 `evaluate_route` 判定，
+记录挡在哪一条（`mileage_limit_exceeded` / `time_window_infeasible` / `capacity_exceeded` /
+`closing_window_exceeded` / `stop_limit_exceeded` / `no_vehicle_available` /
+`placeable_in_isolation`）与**实测数值**（取最接近可行的那次尝试）。API 在 `zones[].unserved[]`
+返回 `facility_id` / `order_ids` / `reasons`，前端逐条渲染中文说明。
+
+- 实测界面：26 km 上限下逐条列出"Singapore General Hospital 需要 28.8 km，超过单车上限 26.0 km"。
+
+**验证**：新增 `tests/test_overnight_parking.py`（8 条）与 `tests/test_feasibility_reasons.py`（6 条）；
+全量 `pytest -q` **230 passed / 0 failed**；`pnpm build` 通过；两批都在浏览器里实测过。
+
+---
+
 ## 2026-09-16 — B3 落地：前端「调度约束」面板，配送规则在界面上可见可调
 
 **目标**：让 B2 的里程上限与终点站逻辑在页面上能看见、能操作——不用改代码或发 curl 才能试。

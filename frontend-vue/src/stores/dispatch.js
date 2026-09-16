@@ -275,6 +275,52 @@ export const useDispatchStore = defineStore("dispatch", () => {
     }
   }
 
+  /* Where the fleet should spend the night (B5).
+
+     Read-only: the backend plans tomorrow's fixed orders once to learn each
+     truck's first stop, then picks the allowed parking node closest to it. We
+     pass today's driven distance per truck when a live operation knows it, so
+     the repositioning drive is charged against the remaining mileage cap. */
+  const overnightPlan = ref(null);
+
+  async function loadOvernightPlan() {
+    const body = planBody();
+    if (!ready() || !body) return null;
+    const facilityByNode = Object.fromEntries(
+      data.nodes.map((node) => [node.node_id, node.facility_id]));
+
+    /* Where each truck actually is NOW, not where the batch assumed it starts.
+
+       After a day of open routes (B2) the fleet is parked at supply points, and
+       that is exactly what decides tonight's repositioning. Without a live
+       operation we fall back to the batch's own positions. */
+    const todayDistance = {};
+    const routes = live.value?.routes || [];
+    const vehiclesNow = (body.vehicles || []).map((vehicle) => {
+      const route = routes.find((r) => r.vehicle_id === vehicle.vehicle_id);
+      if (!route) return vehicle;
+      todayDistance[vehicle.vehicle_id] = Math.round((route.total_distance || 0) * 1000);
+      const legs = route.legs || [];
+      const lastNode = legs.length ? legs[legs.length - 1].to : null;
+      const facility = lastNode === null ? null : facilityByNode[lastNode];
+      return facility ? { ...vehicle, start_facility_id: facility } : vehicle;
+    });
+
+    pending.value = true;
+    dailyError.value = "";
+    try {
+      overnightPlan.value = await postJson(
+        `${decisions.apiBase}/api/dispatch/overnight-plan`,
+        { ...body, vehicles: vehiclesNow, today_distance_m: todayDistance });
+      return overnightPlan.value;
+    } catch (e) {
+      dailyError.value = String(e.message || e);
+      return null;
+    } finally {
+      pending.value = false;
+    }
+  }
+
   async function loadDailyPlan(seed = null) {
     if (!ready()) return null;
     pending.value = true;
@@ -449,7 +495,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     branchVehicle, branchCandidate, branchOverlays, branchNodeIds, incidentNodeId,
     recent, replayError, loadRecent, replay, watchVisibility,
     dailyBatch, dailyPreview, dailyError,
-    constraintsForm, previewDailyPlan,
+    constraintsForm, previewDailyPlan, overnightPlan, loadOvernightPlan,
     loadDailyPlan, confirmDailyPlan, oneClickDailyPlan, rerollDailyPlan,
   };
 });

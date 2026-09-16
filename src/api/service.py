@@ -499,6 +499,18 @@ def _dispatch_plan_response(plan, *, requested_algorithm: str, constraints: dict
             "target_facilities": len(zone_plan.order_ids_by_node),
             "served_facilities": result.metrics.served_customers,
             "unserved_customer_ids": list(result.metrics.unserved_customer_ids),
+            # Why each of them did not fit, measured by re-attempting the
+            # insertion (B7). Codes are stable; the client localises them.
+            "unserved": [
+                {
+                    "node_id": node_id,
+                    "facility_id": id_by_node.get(node_id),
+                    "order_ids": list(zone_plan.order_ids_by_node.get(node_id, ())),
+                    "reasons": [dict(reason) for reason in
+                                zone_plan.unserved_reasons.get(node_id, ())],
+                }
+                for node_id in result.metrics.unserved_customer_ids
+            ],
             "total_distance": result.metrics.total_distance,
             "mileage_violations": result.metrics.mileage_violations,
             "terminal_facility_ids": list(zone_plan.terminal_facility_ids),
@@ -525,6 +537,37 @@ def _dispatch_inputs(req: DispatchPlanIn):
 
 def _dispatch_constraints(req: DispatchPlanIn) -> DispatchConstraints:
     return DispatchConstraints(**req.constraints.model_dump())
+
+
+def overnight_plan_view(req) -> dict:
+    """Serialise the overnight parking decision (B5).
+
+    Returns the chosen node per truck plus the two numbers that make the choice
+    arguable: what the repositioning drive costs today, and how much deadhead it
+    removes from tomorrow's first leg. ``net_two_day_m`` is the honest balance
+    (usually negative — repositioning is at least what it saves, by the triangle
+    inequality; what it buys is an earlier start).
+    """
+    from optimisation.overnight import plan_overnight_parking
+
+    orders, inventory, vehicles = _dispatch_inputs(req)
+    plan = plan_overnight_parking(
+        orders, inventory, vehicles, algorithm=req.algorithm,
+        constraints=_dispatch_constraints(req),
+        today_distance_m=req.today_distance_m,
+    )
+    return {
+        "algorithm": plan.algorithm,
+        "totals": {
+            "reposition_m": plan.total_reposition_m,
+            "deadhead_m": plan.total_deadhead_m,
+            "stay_deadhead_m": plan.total_stay_deadhead_m,
+            "saved_m": plan.total_saved_m,
+            "net_two_day_m": plan.total_net_m,
+        },
+        "choices": [dataclasses.asdict(choice) for choice in plan.choices],
+        "assumptions": list(plan.assumptions),
+    }
 
 
 def create_dispatch(req: DispatchCreateIn) -> dict:

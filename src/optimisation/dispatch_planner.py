@@ -1,13 +1,14 @@
 """Order-driven static dispatch planning over the Singapore road matrix."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .dispatch_models import (
     DeliveryOrder, DispatchConstraints, DispatchVehicle, InventoryLot,
     validate_dispatch_inputs,
 )
+from .feasibility import diagnose_unserved
 from .greedy import solve_greedy
 from .models import ReplanResult
 from .ortools_solver import solve_ortools
@@ -34,6 +35,9 @@ class ZonePlan:
     #: Parking nodes this zone's routes were allowed to end at (empty ⇒ closed
     #: routes that return to the depot).
     terminal_facility_ids: tuple[str, ...] = ()
+    #: Measured reasons per unserved destination node (network node id), keyed so
+    #: the API can explain *why* an order did not fit (B7).
+    unserved_reasons: dict[int, tuple[dict, ...]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -175,6 +179,22 @@ def plan_delivery_orders(
                 end_leg_fn=end_leg_fn, mileage_limit=mileage_limit_km,
             )
         result = restore_network_node_ids(dense_result, source_ids)
+        # Measure why anything was left out, in the solver's own units, so the
+        # client can explain it instead of printing "did not fit" (B7).
+        dense_reasons = diagnose_unserved(
+            instance,
+            dense_result.metrics.unserved_customer_ids,
+            dense_result.routes,
+            leg_fn=leg_fn,
+            end_leg_fn=end_leg_fn,
+            mileage_limit=mileage_limit_km,
+            max_stops_per_vehicle=constraints.max_stops_per_vehicle,
+            fleet_has_room=len(zone_vehicles) > len(dense_result.routes),
+        )
+        unserved_reasons = {
+            source_ids[dense_id]: reasons
+            for dense_id, reasons in dense_reasons.items()
+        }
         # Rebuild by source node without relying on request dictionary order.
         order_ids_by_node = {
             node_by_facility[facility_id]: tuple(order_ids)
@@ -186,5 +206,6 @@ def plan_delivery_orders(
             order_ids_by_node=order_ids_by_node,
             result=result,
             terminal_facility_ids=tuple(constraints.terminal_facility_ids or ()),
+            unserved_reasons=unserved_reasons,
         ))
     return DispatchPlan(algorithm, len(orders), tuple(zone_plans))

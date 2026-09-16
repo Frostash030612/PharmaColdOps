@@ -19,7 +19,8 @@ from . import service
 from .schemas import (
     BatchIn, BranchPolicyIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
     EmergencyAcceptIn, EmergencyPreviewIn,
-    DispatchDeliverIn, DispatchPlanIn, DispatchReplayIn, DispatchSpeedIn, GridIn, QAIn, QAOut,
+    DispatchDeliverIn, DispatchPlanIn, DispatchReplayIn, DispatchSpeedIn, GridIn,
+    OvernightPlanIn, QAIn, QAOut,
     RouteIn, RouteOut,
 )
 
@@ -179,6 +180,21 @@ def route_reshipment_case(req: RouteIn):
 def create_dispatch_run(req: DispatchCreateIn):
     try:
         return service.create_dispatch(req)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/dispatch/overnight-plan")
+def plan_overnight_parking(req: OvernightPlanIn):
+    """Where each truck should spend the night, and what that saves tomorrow.
+
+    Read-only: it plans tomorrow's fixed orders once to learn each truck's first
+    stop, then picks the allowed parking node closest to it, charging the drive
+    against today's mileage cap. Nothing is persisted and no stock is reserved
+    (docs/路径规划总逻辑方案.md §4, B5).
+    """
+    try:
+        return service.overnight_plan_view(req)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 

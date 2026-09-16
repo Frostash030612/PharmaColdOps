@@ -200,6 +200,49 @@ const dailyEndsText = computed(() => interp(text.value.dailyMileageLine, {
     || text.value.dailyNoTerminal,
 }));
 
+/* Why an order did not fit (B7). The backend returns stable codes plus the
+   measured numbers; the wording lives here, like every other code in this app. */
+const unservedOrders = computed(() => dispatch.dailyPreview?.zones?.[0]?.unserved || []);
+
+const REASON_KEYS = {
+  mileage_limit_exceeded: "reasonMileage",
+  time_window_infeasible: "reasonTimeWindow",
+  capacity_exceeded: "reasonCapacity",
+  closing_window_exceeded: "reasonClosing",
+  stop_limit_exceeded: "reasonStops",
+  no_vehicle_available: "reasonNoVehicle",
+  placeable_in_isolation: "reasonPlaceable",
+};
+const km = (metres) => (Number(metres || 0) / 1000).toFixed(1);
+function safeClock(minutes) {
+  return minutes === undefined || minutes === null ? "—" : clock(minutes);
+}
+function reasonText(reason) {
+  const d = reason.detail || {};
+  return interp(text.value[REASON_KEYS[reason.code]] || reason.code, {
+    needed: km(d.needed_distance_m), limit: km(d.limit_m),
+    earliest: safeClock(d.earliest_arrival_min), latest: safeClock(d.latest_min),
+    late: d.late_by_min ?? "", units: d.needed_units ?? "",
+    capacity: d.capacity_units ?? "", max: d.max_stops_per_vehicle ?? "",
+    closing: safeClock(d.closing_min),
+  });
+}
+
+/* Where the fleet should spend the night (B5). */
+const overnight = computed(() => dispatch.overnightPlan);
+const OVERNIGHT_NOTES = {
+  mileage_budget_exhausted: "overnightBudget",
+  no_terminal_given: "overnightNoTerminal",
+  unused_tomorrow: "overnightUnused",
+  kept_position: "overnightKept",
+};
+function overnightNoteText(note) {
+  return text.value[OVERNIGHT_NOTES[note]] || note;
+}
+function facilityName(facilityId) {
+  return nameByFacility[facilityId] || facilityId;
+}
+
 /* The daily preview answers whether the limits actually bite: it can come back
    with fewer trucks, more trucks, or orders it could not place at all. */
 const dailyOutcome = computed(() => {
@@ -308,11 +351,18 @@ const dailyOutcome = computed(() => {
           <b>{{ dispatch.dailyPreview.zones[0].routes.length }}</b> {{ text.vehicles }} ·
           {{ dispatch.dailyPreview.zones[0].served_facilities }}/{{ dispatch.dailyPreview.zones[0].target_facilities }} {{ text.served }}
         </p>
-        <p v-if="dailyOutcome && (dailyOutcome.unserved || dailyOutcome.overLimit)"
-          class="sg-error" role="status">
-          <template v-if="dailyOutcome.unserved">{{ interp(text.dailyUnserved, { n: dailyOutcome.unserved }) }}</template>
-          <template v-if="dailyOutcome.overLimit"> {{ text.dailyOverLimit }}</template>
-        </p>
+        <div v-if="unservedOrders.length" class="sg-unserved" role="status">
+          <p class="sg-error">{{ interp(text.dailyUnserved, { n: unservedOrders.length }) }}</p>
+          <ul>
+            <li v-for="entry in unservedOrders" :key="entry.node_id">
+              <b>{{ names[entry.node_id] || entry.facility_id }}</b>
+              <span v-for="reason in entry.reasons" :key="reason.code" class="sg-reason">
+                {{ reasonText(reason) }}
+              </span>
+            </li>
+          </ul>
+        </div>
+        <p v-if="dailyOutcome && dailyOutcome.overLimit" class="sg-error">{{ text.dailyOverLimit }}</p>
         <ul class="sg-daily-stops">
           <li v-for="route in dispatch.dailyPreview.zones[0].routes" :key="route.vehicle_id">
             <b>{{ route.vehicle_id }}</b>:
@@ -325,6 +375,31 @@ const dailyOutcome = computed(() => {
             </span>
           </li>
         </ul>
+        <div class="sg-overnight">
+          <button :disabled="dispatch.pending" @click="dispatch.loadOvernightPlan()">
+            {{ dispatch.pending ? text.dailyCreating : text.overnightPlan }}
+          </button>
+          <template v-if="overnight">
+            <p class="sg-note">{{ text.overnightNote }}</p>
+            <ul class="sg-daily-stops">
+              <li v-for="choice in overnight.choices" :key="choice.vehicle_id">
+                <b>{{ choice.vehicle_id }}</b>:
+                {{ facilityName(choice.from_facility_id) }} → {{ text.overnightPark }}
+                <b>{{ facilityName(choice.park_facility_id) }}</b>
+                · {{ text.overnightReposition }} {{ km(choice.reposition_m) }} {{ text.km }}
+                · {{ text.overnightFirstStop }}
+                {{ choice.tomorrow_first_facility_id ? facilityName(choice.tomorrow_first_facility_id) : text.overnightIdle }}
+                · {{ text.overnightSaved }} {{ km(choice.saved_m) }} {{ text.km }}
+                <em v-if="choice.note">（{{ overnightNoteText(choice.note) }}）</em>
+              </li>
+            </ul>
+            <p class="sg-constraints">{{ interp(text.overnightTotals, {
+              reposition: km(overnight.totals.reposition_m),
+              saved: km(overnight.totals.saved_m),
+              net: km(overnight.totals.net_two_day_m),
+            }) }}</p>
+          </template>
+        </div>
         <button :disabled="dispatch.pending" @click="dispatch.confirmDailyPlan()">
           {{ text.dailyConfirm }}
         </button>
@@ -515,6 +590,17 @@ const dailyOutcome = computed(() => {
   background: #eef2ff; color: #4338ca; font-size: 11px; font-weight: 700; }
 .sg-daily-stops { list-style: none; padding: 0; margin: 6px 0 9px; color: #475569; line-height: 1.7; }
 .sg-daily-stops b { color: #0f172a; }
+.sg-unserved { margin: 6px 0; }
+.sg-unserved ul { list-style: none; padding: 0; margin: 4px 0 0; }
+.sg-unserved li { color: #7f1d1d; font-size: 12px; line-height: 1.6; }
+.sg-reason { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+  background: #fee2e2; color: #991b1b; font-size: 11px; }
+.sg-overnight { margin: 8px 0 6px; padding: 8px 10px; border: 1px dashed #94a3b8; border-radius: 9px;
+  background: #f8fafc; }
+.sg-overnight > button { background: #0f766e; color: #fff; border: 1px solid #0f766e; border-radius: 7px;
+  padding: 6px 10px; cursor: pointer; font-size: 12px; font-weight: 600; }
+.sg-overnight > button:disabled { opacity: 0.55; cursor: default; }
+.sg-overnight em { color: #b45309; font-style: normal; font-weight: 600; }
 .sg-route-end { margin-left: 6px; color: #0f766e; }
 .sg-route-end em { color: #b91c1c; font-style: normal; font-weight: 700; }
 .sg-limits { margin: 8px 0 6px; padding: 8px 10px 10px; border: 1px solid #cbd5e1; border-radius: 9px;
