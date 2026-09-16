@@ -82,6 +82,9 @@ class DeliveryOrder:
     latest_min: int
     temperature_zone: TemperatureZone
     source_run_id: str | None = None
+    #: Where this order is picked up (2026-09-16, B1b). ``None`` means the
+    #: planner's default origin, so every existing caller keeps its behaviour.
+    origin_facility_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.order_id or not self.product_id or not self.destination_facility_id:
@@ -90,6 +93,8 @@ class DeliveryOrder:
             raise ValueError("order quantity must be positive")
         if self.earliest_min < 0 or self.latest_min < self.earliest_min:
             raise ValueError("order time window is invalid")
+        if self.origin_facility_id == self.destination_facility_id:
+            raise ValueError("an order cannot be picked up where it is delivered")
 
 
 @dataclass(frozen=True)
@@ -148,24 +153,37 @@ def validate_dispatch_inputs(
         if len(values) != len(set(values)):
             raise ValueError(f"duplicate {label}_id")
 
-    available: dict[tuple[str, str], int] = {}
+    # Multi-origin (2026-09-16, B1b/B4): every order is checked **at its own
+    # origin** — the goods must be available there and a vehicle must be there to
+    # load them. ``origin_facility_id`` is only the default for orders that do not
+    # name one, so a single-origin request keeps exactly the old guarantee.
+    def origin_of(order: DeliveryOrder) -> str | None:
+        return order.origin_facility_id or origin_facility_id
+
+    stock: dict[tuple[str, str, str], int] = {}
     for lot in inventory:
-        if lot.status == "available" and (
-            origin_facility_id is None or lot.facility_id == origin_facility_id
-        ):
-            key = (lot.product_id, lot.temperature_zone)
-            available[key] = available.get(key, 0) + lot.available_quantity
-    required: dict[tuple[str, str], int] = {}
+        if lot.status == "available":
+            key = (lot.facility_id, lot.product_id, lot.temperature_zone)
+            stock[key] = stock.get(key, 0) + lot.available_quantity
+
+    required: dict[tuple[str | None, str, str], int] = {}
     for order in orders:
-        key = (order.product_id, order.temperature_zone)
+        key = (origin_of(order), order.product_id, order.temperature_zone)
         required[key] = required.get(key, 0) + order.quantity
-    for key, quantity in required.items():
-        if available.get(key, 0) < quantity:
-            raise ValueError(f"insufficient available inventory for {key[0]} ({key[1]})")
-        if not any(v.status == "available" and v.temperature_zone == key[1] for v in vehicles):
-            raise ValueError(f"no available vehicle for temperature zone {key[1]}")
-    if origin_facility_id is not None and any(
-        vehicle.status == "available" and vehicle.start_facility_id != origin_facility_id
-        for vehicle in vehicles
-    ):
-        raise ValueError("available vehicles must start at the dispatch origin")
+
+    for (origin, product, zone), quantity in required.items():
+        if origin is None:
+            # No origin anywhere: keep the historical "anywhere in the network"
+            # behaviour for callers that never modelled one.
+            have = sum(q for (facility, p, z), q in stock.items()
+                       if p == product and z == zone)
+        else:
+            have = stock.get((origin, product, zone), 0)
+        if have < quantity:
+            where = f" at {origin}" if origin else ""
+            raise ValueError(f"insufficient available inventory for {product} ({zone}){where}")
+        if not any(v.status == "available" and v.temperature_zone == zone
+                   and (origin is None or v.start_facility_id == origin)
+                   for v in vehicles):
+            where = f" at {origin}" if origin else ""
+            raise ValueError(f"no available vehicle for temperature zone {zone}{where}")

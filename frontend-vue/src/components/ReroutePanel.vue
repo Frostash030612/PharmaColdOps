@@ -366,6 +366,8 @@ const dailyOutcome = computed(() => {
         <ul class="sg-daily-stops">
           <li v-for="route in dispatch.dailyPreview.zones[0].routes" :key="route.vehicle_id">
             <b>{{ route.vehicle_id }}</b>:
+            <em class="sg-origin">{{ interp(text.dailyFrom, {
+              origin: facilityName(dispatch.dailyPreview.zones[0].origin_facility_id) }) }}</em>
             {{ route.customer_ids.map((id) => names[id] || id).join(" → ") }}
             <span class="sg-route-end">
               → {{ text.dailyEndsAt }}
@@ -388,7 +390,7 @@ const dailyOutcome = computed(() => {
                 <b>{{ facilityName(choice.park_facility_id) }}</b>
                 · {{ text.overnightReposition }} {{ km(choice.reposition_m) }} {{ text.km }}
                 · {{ text.overnightFirstStop }}
-                {{ choice.tomorrow_first_facility_id ? facilityName(choice.tomorrow_first_facility_id) : text.overnightIdle }}
+                {{ choice.tomorrow_origin_facility_id ? facilityName(choice.tomorrow_origin_facility_id) : text.overnightIdle }}
                 · {{ text.overnightSaved }} {{ km(choice.saved_m) }} {{ text.km }}
                 <em v-if="choice.note">（{{ overnightNoteText(choice.note) }}）</em>
               </li>
@@ -590,6 +592,7 @@ const dailyOutcome = computed(() => {
   background: #eef2ff; color: #4338ca; font-size: 11px; font-weight: 700; }
 .sg-daily-stops { list-style: none; padding: 0; margin: 6px 0 9px; color: #475569; line-height: 1.7; }
 .sg-daily-stops b { color: #0f172a; }
+.sg-origin { color: #0f766e; font-style: normal; font-weight: 600; margin-right: 4px; }
 .sg-unserved { margin: 6px 0; }
 .sg-unserved ul { list-style: none; padding: 0; margin: 4px 0 0; }
 .sg-unserved li { color: #7f1d1d; font-size: 12px; line-height: 1.6; }

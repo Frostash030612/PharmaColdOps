@@ -52,8 +52,8 @@ class ParkingChoice:
     from_facility_id: str            # where the truck is now (today's end)
     park_facility_id: str            # where it should spend the night
     reposition_m: int                # driven today to get there
-    tomorrow_first_facility_id: str | None
-    deadhead_m: int                  # parking node → tomorrow's first stop
+    tomorrow_origin_facility_id: str | None
+    deadhead_m: int                  # parking node → tomorrow's pickup point
     stay_deadhead_m: int             # today's position → tomorrow's first stop
     saved_m: int                     # stay_deadhead_m − deadhead_m
     net_m: int                       # saved_m − reposition_m: the honest two-day balance
@@ -117,19 +117,22 @@ def plan_overnight_parking(
             if not route.customer_ids:
                 continue
             vehicle_id = zone_plan.vehicle_ids[route.vehicle_id - 1]
-            first_stop[vehicle_id] = route.customer_ids[0]
+            # The truck must REACH its pickup point before anything else, so that
+            # is what tonight's parking has to be close to (B4 made the origin a
+            # real route start, 2026-09-16).
+            first_stop[vehicle_id] = node_by_facility[zone_plan.origin_facility_id]
 
     choices: list[ParkingChoice] = []
     for vehicle in vehicles:
         here = node_by_facility.get(vehicle.start_facility_id)
-        target = first_stop.get(vehicle.vehicle_id)
+        pickup = first_stop.get(vehicle.vehicle_id)
         note = ""
         if here is None:
             raise ValueError(f"vehicle {vehicle.vehicle_id}: unknown start facility")
         if not terminals:
             park = here
             note = "no_terminal_given"
-        elif target is None:
+        elif pickup is None:
             # Nothing to do tomorrow: stay where it is. Driving an idle truck to a
             # nicer spot spends today's mileage for a benefit that does not exist —
             # the first UI run moved one 17.7 km for nothing.
@@ -139,7 +142,7 @@ def plan_overnight_parking(
             driven = int(today_distance_m.get(vehicle.vehicle_id, 0))
             park = None
             budget_blocked = False
-            for candidate in sorted(terminals, key=lambda node: distance[node][target]):
+            for candidate in sorted(terminals, key=lambda node: distance[node][pickup]):
                 reposition = distance[here][candidate]
                 if (constraints.mileage_limit_m is not None
                         and driven + reposition > constraints.mileage_limit_m):
@@ -157,15 +160,15 @@ def plan_overnight_parking(
                 # Without this the operator would think this was the best choice.
                 note = "mileage_budget_exhausted"
 
-        deadhead = distance[park][target] if target is not None else 0
-        stay_deadhead = distance[here][target] if target is not None else 0
+        deadhead = distance[park][pickup] if pickup is not None else 0
+        stay_deadhead = distance[here][pickup] if pickup is not None else 0
         choices.append(ParkingChoice(
             vehicle_id=vehicle.vehicle_id,
             from_facility_id=vehicle.start_facility_id,
             park_facility_id=facility_by_node[park],
             reposition_m=int(distance[here][park]),
-            tomorrow_first_facility_id=(
-                None if target is None else facility_by_node[target]
+            tomorrow_origin_facility_id=(
+                None if pickup is None else facility_by_node[pickup]
             ),
             deadhead_m=int(deadhead),
             stay_deadhead_m=int(stay_deadhead),

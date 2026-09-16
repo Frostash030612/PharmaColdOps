@@ -48,7 +48,14 @@ def _inputs(destination: str, *, vehicle_at: str, capacity: int = 100):
     return orders, inventory, vehicles
 
 
-def test_the_truck_parks_at_the_allowed_node_closest_to_tomorrows_first_stop(matrix):
+def test_the_truck_parks_at_the_allowed_node_closest_to_tomorrows_pickup(matrix):
+    """Parking is judged against where tomorrow STARTS, not where it ends.
+
+    With a supply-point origin the truck must reach its pickup point before any
+    delivery (B4), so the overnight decision targets that node. A truck that ended
+    the day in the far east and must load at the west warehouse should park on the
+    way, not at the hospital it will not visit first.
+    """
     distance, node = matrix
     orders, inventory, vehicles = _inputs("H-SKH", vehicle_at="H-CGH")
     constraints = DispatchConstraints(terminal_facility_ids=TERMINALS)
@@ -56,13 +63,12 @@ def test_the_truck_parks_at_the_allowed_node_closest_to_tomorrows_first_stop(mat
     plan = plan_overnight_parking(orders, inventory, vehicles, constraints=constraints)
 
     choice = plan.choices[0]
-    assert choice.tomorrow_first_facility_id == "H-SKH"
-    expected = min(TERMINALS, key=lambda fid: distance[node[fid]][node["H-SKH"]])
+    assert choice.tomorrow_origin_facility_id == "W-WESTGATE"
+    expected = min(TERMINALS, key=lambda fid: distance[node[fid]][node["W-WESTGATE"]])
     assert choice.park_facility_id == expected
-    # the comparison is what makes the choice reviewable
     # distances are reported in whole metres; the matrix keeps decimals
-    assert choice.deadhead_m == pytest.approx(distance[node[expected]][node["H-SKH"]], abs=1)
-    assert choice.stay_deadhead_m == pytest.approx(distance[node["H-CGH"]][node["H-SKH"]], abs=1)
+    assert choice.deadhead_m == pytest.approx(distance[node[expected]][node["W-WESTGATE"]], abs=1)
+    assert choice.stay_deadhead_m == pytest.approx(distance[node["H-CGH"]][node["W-WESTGATE"]], abs=1)
     assert choice.saved_m == choice.stay_deadhead_m - choice.deadhead_m
     assert choice.reposition_m == pytest.approx(distance[node["H-CGH"]][node[expected]], abs=1)
     # By the triangle inequality the reposition is at least what it saves, so the
@@ -134,7 +140,7 @@ def test_a_truck_with_nothing_tomorrow_stays_where_it_is():
                                   constraints=constraints)
 
     idle_choice = next(c for c in plan.choices if c.vehicle_id == "V-IDLE")
-    assert idle_choice.tomorrow_first_facility_id is None
+    assert idle_choice.tomorrow_origin_facility_id is None
     assert idle_choice.note == "unused_tomorrow"
     assert idle_choice.park_facility_id == "H-CGH"     # stayed put
     assert idle_choice.reposition_m == 0

@@ -112,6 +112,7 @@ def load_singapore_subset(
     vehicle_nr: int | None = None,
     capacity: int | None = None,
     facility_windows: dict[str, tuple[int, int]] | None = None,
+    origin_facility_id: str | None = None,
 ) -> tuple[SolomonInstance, LegFn, tuple[int, ...]]:
     """Build a dense solver problem for only the requested facilities.
 
@@ -136,9 +137,26 @@ def load_singapore_subset(
         requested.append((node, demand))
     requested.sort(key=lambda item: item[0]['node_id'])
 
-    source_ids = (raw['nodes'][0]['node_id'], *(node['node_id'] for node, _ in requested))
-    nodes = [Node(0, 0, 0, 0, raw['nodes'][0]['earliest_min'],
-                  raw['nodes'][0]['latest_min'], raw['nodes'][0]['service_min'])]
+    # The dense depot is the node this group loads at. Defaults to node 0 (the
+    # main warehouse); a per-origin group (2026-09-16, B4) passes its own supply
+    # point so the route genuinely starts where the goods are.
+    origin = raw['nodes'][0]
+    if origin_facility_id is not None:
+        origin = by_facility.get(origin_facility_id)
+        if origin is None:
+            raise ValueError(f"unknown origin facility {origin_facility_id!r}")
+        if origin['role'] not in ('depot', 'distribution', 'third_party'):
+            raise ValueError(
+                f"origin {origin_facility_id!r} has role {origin['role']!r}: "
+                "only a warehouse or a supply point can be an order origin"
+            )
+        if origin in [node for node, _ in requested]:
+            raise ValueError(
+                f"origin {origin_facility_id!r} is also a delivery destination"
+            )
+    source_ids = (origin['node_id'], *(node['node_id'] for node, _ in requested))
+    nodes = [Node(0, 0, 0, 0, origin['earliest_min'],
+                  origin['latest_min'], origin['service_min'])]
     facility_windows = facility_windows or {}
     for dense_id, (node, demand) in enumerate(requested, start=1):
         requested_window = facility_windows.get(

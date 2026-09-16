@@ -116,6 +116,9 @@ class RouteOut(BaseModel):
 class DispatchOrderIn(BaseModel):
     order_id: str
     product_id: str
+    #: Where the goods are picked up. Omitted ⇒ the planner's default origin, so
+    #: every existing payload keeps working (2026-09-16, B1b).
+    origin_facility_id: Optional[str] = None
     destination_facility_id: str
     quantity: int = Field(gt=0)
     earliest_min: int = Field(ge=0)

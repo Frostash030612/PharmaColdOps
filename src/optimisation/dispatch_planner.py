@@ -28,11 +28,15 @@ DISPATCH_ORIGIN = "W-WESTGATE"
 
 @dataclass(frozen=True)
 class ZonePlan:
+    """One (temperature zone, origin) group and the fleet planned for it."""
+
     temperature_zone: str
     vehicle_ids: tuple[str, ...]
     order_ids_by_node: dict[int, tuple[str, ...]]
     result: ReplanResult
-    #: Parking nodes this zone's routes were allowed to end at (empty ⇒ closed
+    #: Where this group's orders are loaded — the route starts here (B4).
+    origin_facility_id: str = DISPATCH_ORIGIN
+    #: Parking nodes this group's routes were allowed to end at (empty ⇒ closed
     #: routes that return to the depot).
     terminal_facility_ids: tuple[str, ...] = ()
     #: Measured reasons per unserved destination node (network node id), keyed so
@@ -49,6 +53,37 @@ class DispatchPlan:
     @property
     def feasible(self) -> bool:
         return all(plan.result.feasible for plan in self.zone_plans)
+
+
+
+def _assert_origins_can_supply(orders: tuple[DeliveryOrder, ...]) -> None:
+    """An order's origin must be declared able to supply that product (B1b).
+
+    The inventory check already proves the goods are physically there; this is the
+    other half — the node is *allowed* to be a source for it. It is what turns
+    "put any node in the origin box" into "pick a supply point that carries the
+    product", and it is the reason a hospital can never be an origin by accident.
+    """
+    from .catalog import read_supply_points, supplies_product
+
+    points = read_supply_points()
+    by_facility = {point.facility_id: point for point in points}
+    wanted: dict[str, set[str]] = {}
+    for order in orders:
+        origin = order.origin_facility_id or DISPATCH_ORIGIN
+        wanted.setdefault(origin, set()).add(order.product_id)
+    for origin, products in sorted(wanted.items()):
+        point = by_facility.get(origin)
+        if point is None:
+            raise ValueError(
+                f"origin {origin!r} is not a supply point; it cannot supply "
+                f"{sorted(products)}"
+            )
+        for product_id in sorted(products):
+            if not supplies_product(point, product_id):
+                raise ValueError(
+                    f"origin {origin!r} does not supply {product_id!r}"
+                )
 
 
 def plan_delivery_orders(
@@ -78,6 +113,7 @@ def plan_delivery_orders(
         raise ValueError(f"unsupported routing algorithm {algorithm!r}")
 
     constraints = constraints or DispatchConstraints()
+    _assert_origins_can_supply(orders)
     network = read_network(network_path)
     node_by_facility = {n["facility_id"]: n["node_id"] for n in network["nodes"]}
     terminal_node_ids: tuple[int, ...] = ()
@@ -116,17 +152,38 @@ def plan_delivery_orders(
 
     zone_plans = []
     vehicles_remaining = constraints.max_vehicles
-    for zone in sorted({order.temperature_zone for order in orders}):
-        zone_orders = tuple(order for order in orders if order.temperature_zone == zone)
-        zone_vehicles = tuple(
+    # One independent fleet per (temperature zone, origin). Grouping by origin is
+    # what makes "every order carries an origin" real (B4, 2026-09-16): a route
+    # starts at the supply point its orders load from, so the mileage, capacity,
+    # time-window and parking rules all apply to the leg that actually happens.
+    # A single truck serving orders from *different* origins needs the full
+    # pickup-delivery model and is not in this version.
+    groups = sorted({(order.temperature_zone,
+                      order.origin_facility_id or DISPATCH_ORIGIN)
+                     for order in orders})
+    for zone, origin in groups:
+        zone_orders = tuple(
+            order for order in orders
+            if order.temperature_zone == zone
+            and (order.origin_facility_id or DISPATCH_ORIGIN) == origin
+        )
+        at_origin = tuple(
             vehicle for vehicle in vehicles
             if vehicle.temperature_zone == zone and vehicle.status == "available"
+            and vehicle.start_facility_id == origin
         )
+        if not at_origin:
+            raise ValueError(
+                f"no available vehicle for temperature zone {zone} at {origin}"
+            )
+        zone_vehicles = at_origin
         if vehicles_remaining is not None:
-            zone_vehicles = zone_vehicles[:vehicles_remaining]
+            zone_vehicles = at_origin[:vehicles_remaining]
             vehicles_remaining -= len(zone_vehicles)
         if not zone_vehicles:
-            raise ValueError(f"fleet limit leaves no available vehicle for zone {zone}")
+            raise ValueError(
+                f"fleet limit leaves no available vehicle for zone {zone} at {origin}"
+            )
         capacities = {vehicle.capacity for vehicle in zone_vehicles}
         if len(capacities) != 1:
             raise ValueError(f"vehicles in zone {zone} must currently share one capacity")
@@ -163,7 +220,7 @@ def plan_delivery_orders(
         instance, leg_fn, source_ids = load_singapore_subset(
             demands, network_path,
             vehicle_nr=len(zone_vehicles), capacity=usable_capacity,
-            facility_windows=windows,
+            facility_windows=windows, origin_facility_id=origin,
         )
         end_leg_fn = make_end_leg_fn(source_ids)
         if algorithm == "greedy":
@@ -202,6 +259,7 @@ def plan_delivery_orders(
         }
         zone_plans.append(ZonePlan(
             temperature_zone=zone,
+            origin_facility_id=origin,
             vehicle_ids=tuple(vehicle.vehicle_id for vehicle in zone_vehicles),
             order_ids_by_node=order_ids_by_node,
             result=result,

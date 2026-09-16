@@ -494,6 +494,8 @@ def _dispatch_plan_response(plan, *, requested_algorithm: str, constraints: dict
             })
         zone_views.append({
             "temperature_zone": zone_plan.temperature_zone,
+            # Where this group loads: the route starts here (B4).
+            "origin_facility_id": zone_plan.origin_facility_id,
             "feasible": result.feasible,
             "target_orders": sum(len(ids) for ids in zone_plan.order_ids_by_node.values()),
             "target_facilities": len(zone_plan.order_ids_by_node),
@@ -793,6 +795,9 @@ def get_active_dispatch() -> dict:
 def _order_dump(order: DeliveryOrder) -> dict:
     return {
         "order_id": order.order_id, "product_id": order.product_id,
+        # The pickup point travels with the order: dropping it here is how a
+        # distribution-point order silently turned into a warehouse order (B1b).
+        "origin_facility_id": order.origin_facility_id,
         "destination_facility_id": order.destination_facility_id,
         "quantity": order.quantity, "earliest_min": order.earliest_min,
         "latest_min": order.latest_min, "temperature_zone": order.temperature_zone,
