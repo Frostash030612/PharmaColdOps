@@ -10,7 +10,7 @@
    committed demo plan, exactly as the decision panels fall back to the local
    engine. */
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, reactive, computed } from "vue";
 import { useDecisionsStore } from "./decisions.js";
 import { postJson } from "../lib/api.js";
 import data from "../data/singaporeRoutes.json";
@@ -193,6 +193,88 @@ export const useDispatchStore = defineStore("dispatch", () => {
   const dailyPreview = ref(null);   // POST /api/dispatch/plan response
   const dailyError = ref("");
 
+  /* Operator-editable hard limits (B3, 2026-09-16).
+
+     These are the three knobs the delivery logic actually reacts to: how many
+     trucks exist, how far each one may drive in a day, and which nodes a truck
+     is allowed to finish at (an allowed node makes the route OPEN — the truck
+     parks there instead of driving back to the warehouse).
+
+     ``mileageLimitKm`` is a string because it is bound to a text input where
+     "empty" must stay distinguishable from "0 km"; the request builder turns it
+     into metres, or null for "no cap". */
+  const constraintsForm = reactive({
+    max_vehicles: 3,
+    max_stops_per_vehicle: 4,
+    mileageLimitKm: "",
+    terminal_facility_ids: [],
+  });
+
+  function constraintSnapshot() {
+    return {
+      max_vehicles: Number(constraintsForm.max_vehicles) || 0,
+      max_stops_per_vehicle: Number(constraintsForm.max_stops_per_vehicle) || 0,
+      mileageLimitKm: constraintsForm.mileageLimitKm,
+      terminal_facility_ids: [...constraintsForm.terminal_facility_ids].sort(),
+    };
+  }
+  let absorbed = null;
+
+  /* Take the batch's own limits, but never overwrite what the operator typed:
+     fetching another batch must not silently undo "25 km per truck". */
+  function absorbConstraints(fromPlan) {
+    if (absorbed !== null
+        && JSON.stringify(constraintSnapshot()) !== JSON.stringify(absorbed)) {
+      return;
+    }
+    const c = fromPlan?.constraints || {};
+    constraintsForm.max_vehicles = c.max_vehicles || constraintsForm.max_vehicles;
+    constraintsForm.max_stops_per_vehicle =
+      c.max_stops_per_vehicle || constraintsForm.max_stops_per_vehicle;
+    constraintsForm.mileageLimitKm = c.mileage_limit_m
+      ? String(c.mileage_limit_m / 1000) : "";
+    constraintsForm.terminal_facility_ids = [...(c.terminal_facility_ids || [])];
+    absorbed = constraintSnapshot();
+  }
+
+  /* The exact body /api/dispatch/plan and /api/dispatch/runs accept: the batch
+     the backend proposed, with the operator's limits on top. */
+  function planBody() {
+    if (!dailyBatch.value) return null;
+    const km = Number(constraintsForm.mileageLimitKm);
+    return {
+      ...dailyBatch.value.plan,
+      constraints: {
+        ...dailyBatch.value.plan.constraints,
+        max_vehicles: Number(constraintsForm.max_vehicles) || null,
+        max_stops_per_vehicle: Number(constraintsForm.max_stops_per_vehicle) || null,
+        mileage_limit_m: constraintsForm.mileageLimitKm !== "" && km > 0
+          ? Math.round(km * 1000) : null,
+        // An empty selection means "no parking nodes": every truck drives back,
+        // which is the legacy closed route.
+        terminal_facility_ids: constraintsForm.terminal_facility_ids.length
+          ? [...constraintsForm.terminal_facility_ids] : null,
+      },
+    };
+  }
+
+  async function previewDailyPlan() {
+    const body = planBody();
+    if (!ready() || !body) return null;
+    pending.value = true;
+    dailyError.value = "";
+    try {
+      dailyPreview.value = await postJson(
+        `${decisions.apiBase}/api/dispatch/plan`, body);
+      return dailyPreview.value;
+    } catch (e) {
+      dailyError.value = String(e.message || e);
+      return null;
+    } finally {
+      pending.value = false;
+    }
+  }
+
   async function loadDailyPlan(seed = null) {
     if (!ready()) return null;
     pending.value = true;
@@ -204,8 +286,9 @@ export const useDispatchStore = defineStore("dispatch", () => {
       if (!response.ok) throw new Error("HTTP " + response.status);
       const batch = await response.json();
       dailyBatch.value = batch;
+      absorbConstraints(batch.plan);
       dailyPreview.value = await postJson(
-        `${decisions.apiBase}/api/dispatch/plan`, batch.plan);
+        `${decisions.apiBase}/api/dispatch/plan`, planBody());
       return batch;
     } catch (e) {
       dailyError.value = String(e.message || e);
@@ -215,13 +298,15 @@ export const useDispatchStore = defineStore("dispatch", () => {
     }
   }
 
-  async function confirmDailyPlan() {    if (!ready() || !dailyBatch.value) return null;
+  async function confirmDailyPlan() {
+    const body = planBody();
+    if (!ready() || !body) return null;
     const dispatchId = `PLAN-${Math.floor(Date.now() / 1000)}`;
     pending.value = true;
     dailyError.value = "";
     try {
       const data = await postJson(`${decisions.apiBase}/api/dispatch/runs`, {
-        ...dailyBatch.value.plan,
+        ...body,
         dispatch_id: dispatchId,
         command_id: `create-${dispatchId}`,
       });
@@ -364,6 +449,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     branchVehicle, branchCandidate, branchOverlays, branchNodeIds, incidentNodeId,
     recent, replayError, loadRecent, replay, watchVisibility,
     dailyBatch, dailyPreview, dailyError,
+    constraintsForm, previewDailyPlan,
     loadDailyPlan, confirmDailyPlan, oneClickDailyPlan, rerollDailyPlan,
   };
 });

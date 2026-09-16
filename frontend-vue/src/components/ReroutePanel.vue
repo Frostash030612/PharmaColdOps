@@ -181,6 +181,37 @@ const dailyConstraintText = computed(() => {
     vehicles: c.max_vehicles, stops: c.max_stops_per_vehicle,
   });
 });
+
+/* Parking nodes: everything in the network that is not a receiving site.
+   Warehouses and distribution points are what a truck may finish at — that set
+   is exactly what turns the route open (no drive home). */
+const terminalOptions = computed(() =>
+  nodes.filter((n) => n.role !== "customer")
+    .map((n) => ({ facility_id: n.facility_id, name: n.name, role: n.role })));
+
+const nameByFacility = Object.fromEntries(nodes.map((n) => [n.facility_id, n.name]));
+function terminalName(facilityId) {
+  return nameByFacility[facilityId];
+}
+
+const dailyEndsText = computed(() => interp(text.value.dailyMileageLine, {
+  mileage: dispatch.constraintsForm.mileageLimitKm || text.value.dailyUnlimited,
+  terminals: dispatch.constraintsForm.terminal_facility_ids.length
+    || text.value.dailyNoTerminal,
+}));
+
+/* The daily preview answers whether the limits actually bite: it can come back
+   with fewer trucks, more trucks, or orders it could not place at all. */
+const dailyOutcome = computed(() => {
+  const zone = dispatch.dailyPreview?.zones?.[0];
+  if (!zone) return null;
+  return {
+    vehicles: zone.routes.length,
+    unserved: zone.unserved_customer_ids?.length || 0,
+    mileageViolations: zone.mileage_violations || 0,
+    overLimit: zone.routes.some((r) => r.mileage_limit_violation),
+  };
+});
 </script>
 
 <template>
@@ -237,16 +268,61 @@ const dailyConstraintText = computed(() => {
       <template v-if="dispatch.dailyPreview && dispatch.dailyPreview.zones.length">
         <p class="sg-note">{{ text.dailySimulated }}</p>
         <p v-if="dailyConstraintText" class="sg-constraints">{{ dailyConstraintText }}</p>
+
+        <!-- The three knobs the delivery rule reacts to (B3). One truck may take
+             several orders only while it stays under the mileage cap; a parking
+             node lets it stop there instead of driving back. -->
+        <fieldset class="sg-limits">
+          <legend>{{ text.dailyLimits }}</legend>
+          <label>
+            <span>{{ text.dailyMaxVehicles }}</span>
+            <input type="number" min="1" max="12" step="1"
+              v-model="dispatch.constraintsForm.max_vehicles" />
+          </label>
+          <label>
+            <span>{{ text.dailyMileageCap }}</span>
+            <input type="number" min="1" step="1" :placeholder="text.dailyUnlimited"
+              v-model="dispatch.constraintsForm.mileageLimitKm" />
+          </label>
+          <label>
+            <span>{{ text.dailyMaxStops }}</span>
+            <input type="number" min="1" max="14" step="1"
+              v-model="dispatch.constraintsForm.max_stops_per_vehicle" />
+          </label>
+          <div class="sg-terminals">
+            <span>{{ text.dailyTerminals }}</span>
+            <label v-for="option in terminalOptions" :key="option.facility_id" class="sg-terminal">
+              <input type="checkbox" :value="option.facility_id"
+                v-model="dispatch.constraintsForm.terminal_facility_ids" />
+              <span>{{ option.name }}</span>
+            </label>
+          </div>
+          <button :disabled="dispatch.pending" @click="dispatch.previewDailyPlan()">
+            {{ dispatch.pending ? text.dailyCreating : text.dailyApply }}
+          </button>
+        </fieldset>
+        <p class="sg-constraints">{{ dailyEndsText }}</p>
         <p class="sg-source">
           {{ text.dailyPreview }}<template v-if="dispatch.dailyBatch && dispatch.dailyBatch.seed != null"> · {{ text.dailySeed }} {{ dispatch.dailyBatch.seed }}</template>:
           <b>{{ dispatch.dailyPreview.zones[0].total_distance.toFixed(2) }}</b> {{ text.km }} ·
           <b>{{ dispatch.dailyPreview.zones[0].routes.length }}</b> {{ text.vehicles }} ·
           {{ dispatch.dailyPreview.zones[0].served_facilities }}/{{ dispatch.dailyPreview.zones[0].target_facilities }} {{ text.served }}
         </p>
+        <p v-if="dailyOutcome && (dailyOutcome.unserved || dailyOutcome.overLimit)"
+          class="sg-error" role="status">
+          <template v-if="dailyOutcome.unserved">{{ interp(text.dailyUnserved, { n: dailyOutcome.unserved }) }}</template>
+          <template v-if="dailyOutcome.overLimit"> {{ text.dailyOverLimit }}</template>
+        </p>
         <ul class="sg-daily-stops">
           <li v-for="route in dispatch.dailyPreview.zones[0].routes" :key="route.vehicle_id">
             <b>{{ route.vehicle_id }}</b>:
             {{ route.customer_ids.map((id) => names[id] || id).join(" → ") }}
+            <span class="sg-route-end">
+              → {{ text.dailyEndsAt }}
+              <b>{{ route.end_facility_id ? (terminalName(route.end_facility_id) || route.end_facility_id) : text.dailyBackToDepot }}</b>
+              · {{ route.total_distance.toFixed(1) }} {{ text.km }}
+              <em v-if="route.mileage_limit_violation"> ⚠ {{ text.dailyOverLimit }}</em>
+            </span>
           </li>
         </ul>
         <button :disabled="dispatch.pending" @click="dispatch.confirmDailyPlan()">
@@ -439,6 +515,21 @@ const dailyConstraintText = computed(() => {
   background: #eef2ff; color: #4338ca; font-size: 11px; font-weight: 700; }
 .sg-daily-stops { list-style: none; padding: 0; margin: 6px 0 9px; color: #475569; line-height: 1.7; }
 .sg-daily-stops b { color: #0f172a; }
+.sg-route-end { margin-left: 6px; color: #0f766e; }
+.sg-route-end em { color: #b91c1c; font-style: normal; font-weight: 700; }
+.sg-limits { margin: 8px 0 6px; padding: 8px 10px 10px; border: 1px solid #cbd5e1; border-radius: 9px;
+  background: #f8fafc; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; }
+.sg-limits legend { padding: 0 6px; font-size: 11px; font-weight: 700; color: #334155; }
+.sg-limits label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #475569; }
+.sg-limits input[type="number"] { width: 74px; padding: 5px 7px; border: 1px solid #cbd5e1;
+  border-radius: 6px; font-size: 12px; }
+.sg-terminals { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center;
+  font-size: 11px; color: #475569; }
+.sg-terminal { flex-direction: row; align-items: center; gap: 5px; }
+.sg-terminal input { margin: 0; }
+.sg-limits button { margin-left: auto; background: #1d4ed8; color: #fff; border: 1px solid #1d4ed8;
+  border-radius: 7px; padding: 6px 10px; cursor: pointer; font-size: 12px; font-weight: 600; }
+.sg-limits button:disabled { opacity: 0.55; cursor: default; }
 .sg-commit { margin-top: 10px; }
 .sg-commit button { background: #0d9488; color: #fff; border: 1px solid #0d9488; border-radius: 7px; padding: 7px 11px; cursor: pointer; font-size: 12px; font-weight: 600; }
 .sg-commit button:disabled { opacity: .6; cursor: default; }
