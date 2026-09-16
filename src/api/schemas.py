@@ -156,6 +156,12 @@ class DispatchConstraintsIn(BaseModel):
 
     max_vehicles: Optional[int] = Field(default=None, ge=1)
     max_stops_per_vehicle: Optional[int] = Field(default=None, ge=1)
+    #: Whole distance one vehicle may drive in a day (metres): empty
+    #: repositioning, loaded legs and the closing leg all count (2026-09-16).
+    mileage_limit_m: Optional[int] = Field(default=None, ge=1)
+    #: Parking nodes. When set, routes are open — each one ends at the nearest of
+    #: these instead of driving back to the depot, and no return leg is charged.
+    terminal_facility_ids: Optional[List[str]] = None
 
 
 #: Every way a branch order can be served. Previously this literal listed only

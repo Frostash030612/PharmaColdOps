@@ -84,7 +84,12 @@ class RouteStop:
 
 @dataclass(frozen=True)
 class VehicleRoute:
-    """One depot-to-depot route with its auditable schedule."""
+    """One depot-to-end route with its auditable schedule.
+
+    ``end_node_id`` is ``None`` for the legacy closed route (the vehicle returns
+    to the depot) and otherwise the node the vehicle parks at, so an open route
+    can be told apart from a return trip (2026-09-16, supply-point work).
+    """
 
     vehicle_id: int
     customer_ids: tuple[int, ...]
@@ -95,6 +100,8 @@ class VehicleRoute:
     time_window_violations: int
     capacity_violation_units: int
     depot_return_violation: bool
+    end_node_id: int | None = None
+    mileage_limit_violation: bool = False
 
     @property
     def feasible(self) -> bool:
@@ -102,6 +109,7 @@ class VehicleRoute:
             self.time_window_violations == 0
             and self.capacity_violation_units == 0
             and not self.depot_return_violation
+            and not self.mileage_limit_violation
         )
 
 
@@ -120,6 +128,7 @@ class ReplanMetrics:
     depot_return_violations: int
     vehicle_limit_violations: int
     unserved_customer_ids: tuple[int, ...]
+    mileage_violations: int = 0
 
     @property
     def violation_count(self) -> int:
@@ -128,6 +137,7 @@ class ReplanMetrics:
             + self.capacity_violations
             + self.depot_return_violations
             + self.vehicle_limit_violations
+            + self.mileage_violations
             + len(self.unserved_customer_ids)
         )
 

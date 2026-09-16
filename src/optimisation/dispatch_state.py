@@ -28,6 +28,10 @@ class VehicleProgress:
     #: Consumed by the ``add_stop_in_transit`` candidate so an in-transit vehicle
     #: can serve a branch event without returning to the depot.
     onboard_spare: tuple[tuple[str, str, int], ...] = ()
+    #: Network node this vehicle finishes at. ``None`` = the depot (closed route);
+    #: a parking node makes the route open, and the map must draw the final leg to
+    #: it instead of home (2026-09-16).
+    end_node_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -106,12 +110,15 @@ def accept_plan(
     by_order = {order.order_id: order for order in orders}
     assignments: dict[str, str] = {}
     sequences: dict[str, list[str]] = {}
+    end_nodes: dict[str, int] = {}
     for zone_plan in plan.zone_plans:
         for route in zone_plan.result.routes:
             if not route.customer_ids:
                 continue
             vehicle_id = zone_plan.vehicle_ids[route.vehicle_id - 1]
             sequence = sequences.setdefault(vehicle_id, [])
+            if route.end_node_id is not None:
+                end_nodes[vehicle_id] = route.end_node_id
             for node_id in route.customer_ids:
                 for order_id in zone_plan.order_ids_by_node[node_id]:
                     assignments[order_id] = vehicle_id
@@ -150,7 +157,8 @@ def accept_plan(
     spare_by_vehicle = {vehicle.vehicle_id: vehicle.onboard_spare for vehicle in vehicles}
     vehicle_states = {
         vehicle_id: VehicleProgress(vehicle_id, DISPATCH_ORIGIN, tuple(sequence),
-                                    onboard_spare=spare_by_vehicle.get(vehicle_id, ()))
+                                    onboard_spare=spare_by_vehicle.get(vehicle_id, ()),
+                                    end_node_id=end_nodes.get(vehicle_id))
         for vehicle_id, sequence in sequences.items()
     }
     return DispatchState(1, "accepted", order_states, vehicle_states,

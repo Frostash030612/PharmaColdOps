@@ -162,15 +162,20 @@ def point_along(coords: list, fraction: float) -> list:
 
 
 def vehicle_track(network: dict, node_sequence: list[int], depart_min: float,
-                  sim_now: float) -> dict:
-    """Position and stop progress for one vehicle's depot→…→depot run.
+                  sim_now: float, end_node: int = 0) -> dict:
+    """Position and stop progress for one vehicle's depot→…→end run.
 
     ``node_sequence`` is the vehicle's remaining stops in order (network node
     ids). Returns the interpolated position, which leg it is on, and how many
     stops it has reached by ``sim_now`` — the caller turns "reached" into an
     audited delivery command; this function never mutates anything.
+
+    ``end_node`` is where the run finishes: the depot (0) for a closed route, or
+    the parking node of an open one (2026-09-16).  It must match what the planner
+    charged, otherwise the map would drive the truck home while the plan says it
+    parks.
     """
-    route = [0, *node_sequence, 0]
+    route = [0, *node_sequence, end_node]
     arrivals: list[float] = []
     clock = depart_min
     position = point_along(_leg(network, 0, route[1])[0], 0.0) if len(route) > 1 else [0.0, 0.0]

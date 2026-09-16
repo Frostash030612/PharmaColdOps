@@ -4,6 +4,45 @@
 
 ---
 
+## 2026-09-16 — B2 落地：每车每日里程上限 + 「终点站」开环路线
+
+**要实现的两条业务规则**（用户口径，2026-09-16）：
+① 在不超过每辆车**每日最长里程**的前提下能一车串多单就串，串不下就**加派一辆**；
+② 车辆最后可以停在**指定可作为终点的节点**（不再一律开回仓库）；怎么都放不下就**明确报"无法服务"**。
+
+**口径**：里程上限**含**取货前空驶、载货行驶与收尾段（去终点站或返仓）；**每车每天**。
+
+**改动**
+- `routing.evaluate_route()` 新增 `end_leg_fn`（末段去停车点，替代返仓）与 `mileage_limit`（超出即该车不可行）；
+  `VehicleRoute` 增加 `end_node_id` / `mileage_limit_violation`，`ReplanMetrics` 增加 `mileage_violations`。
+- **贪心**：插入校验里带上里程上限——超限的插法直接被拒，循环自然开下一辆车（即"能串就串，否则加车"）。
+- **OR-Tools**：追加 **dummy 终点节点**（每辆车的 end 指向它，进它的弧按"最后一个真实站点 → 最近终点站"计价）
+  实现开环；新增 **Mileage 维度**（`AddDimensionWithVehicleCapacity`，每车容量 = 上限）把里程变成硬约束。
+  两个算法共用同一套末段计价函数，不会出现"模型算一个数、报表算另一个数"。
+- **执行侧一起改**（否则会出现"求解器说停在终点站、地图把车拉回仓库"）：`VehicleProgress.end_node_id`
+  由计划写入，`tracking.vehicle_track(..., end_node=)`、`dispatch_route_view` 的日程与腿都以它收尾。
+- **API**：`DispatchConstraintsIn` 增加 `mileage_limit_m` / `terminal_facility_ids`；`/api/dispatch/plan`
+  每条路线回 `end_node_id` / `end_facility_id` / `mileage_limit_violation`，每个温区回 `mileage_violations`
+  与 `terminal_facility_ids`。契约写入 `docs/接口契约.md` §9.5。
+
+**实测（4 家医院，从 Westgate 出发；greedy 与 ortools 一致）**
+
+| 场景 | 结果 |
+|---|---|
+| 不加新约束 | 1 车 / **38.23 km** / 末站 = 仓库（与改动前完全一致） |
+| 开环（3 个分拨点） | 1 车 / **27.99 km**（省 10.2 km）/ 收车 = `D-BUGIS` |
+| 里程上限 35 km | 1 车 / 4 单全服务 |
+| 里程上限 **25 km** | **2 车** / 4 单全服务 / 无超限 → 自动加车 |
+| 里程上限 12 km | 0 车 / 4 单全部未服务 / `feasible=false` → 明确不可行 |
+
+**验证**：新增 `tests/test_route_limits.py`（10 条：紧里程加车、超限不可行、终点站开环更省里程、
+两算法一致、状态机与地图跟随收车点、参数校验与 API 契约）；全量 `pytest -q` **217 passed / 0 failed**。
+
+**本批未做**：前端三个输入框（B3）；分支/应急候选路径仍按"回仓库"口径（B6 一并处理）；
+"为什么不可行"的逐条理由（B7）。
+
+---
+
 ## 2026-09-16 — 主仓与分拨点改用思家客门店（路网扩至 19 节点）+ 修正 SGH 地理编码
 
 **决定**：医院不适合当货源点，改用具真实来源的连锁超市门店。主仓 = **Scarlett Westgate（裕廊东）**，

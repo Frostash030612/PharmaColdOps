@@ -11,6 +11,7 @@ from .dispatch_models import (
 from .greedy import solve_greedy
 from .models import ReplanResult
 from .ortools_solver import solve_ortools
+from .routing import EndLeg, EndLegFn
 from .singapore_loader import (
     SINGAPORE_NETWORK_PATH,
     load_singapore_subset,
@@ -30,6 +31,9 @@ class ZonePlan:
     vehicle_ids: tuple[str, ...]
     order_ids_by_node: dict[int, tuple[str, ...]]
     result: ReplanResult
+    #: Parking nodes this zone's routes were allowed to end at (empty ⇒ closed
+    #: routes that return to the depot).
+    terminal_facility_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -57,6 +61,11 @@ def plan_delivery_orders(
     This is a preview: it validates resources but does not reserve inventory or
     vehicles. Vehicles within one temperature zone must currently share a
     capacity because the existing solver model has one fleet-wide capacity.
+
+    ``constraints.mileage_limit_m`` caps each vehicle's total driven distance and
+    ``constraints.terminal_facility_ids`` makes routes open (they end at a supply
+    point instead of driving home).  Both are optional and, when omitted, the
+    planner behaves exactly as before.
     """
     validate_dispatch_inputs(
         orders, inventory, vehicles, origin_facility_id=DISPATCH_ORIGIN
@@ -65,6 +74,42 @@ def plan_delivery_orders(
         raise ValueError(f"unsupported routing algorithm {algorithm!r}")
 
     constraints = constraints or DispatchConstraints()
+    network = read_network(network_path)
+    node_by_facility = {n["facility_id"]: n["node_id"] for n in network["nodes"]}
+    terminal_node_ids: tuple[int, ...] = ()
+    if constraints.terminal_facility_ids:
+        unknown = sorted(set(constraints.terminal_facility_ids) - set(node_by_facility))
+        if unknown:
+            raise ValueError(f"unknown terminal facilities: {unknown}")
+        terminal_node_ids = tuple(
+            node_by_facility[fid] for fid in constraints.terminal_facility_ids
+        )
+    mileage_limit_km = (
+        None if constraints.mileage_limit_m is None
+        else constraints.mileage_limit_m / 1000.0
+    )
+    distance_matrix = network["matrix"]["distance_m"]
+    duration_matrix = network["matrix"]["duration_s"]
+
+    def make_end_leg_fn(source_ids: tuple[int, ...]) -> EndLegFn | None:
+        """Nearest allowed parking node, priced in the solver's km/min units."""
+        if not terminal_node_ids:
+            return None
+
+        def end_leg(dense_id: int) -> EndLeg:
+            last = source_ids[dense_id]
+            best = min(
+                terminal_node_ids,
+                key=lambda terminal: distance_matrix[last][terminal],
+            )
+            return EndLeg(
+                distance=distance_matrix[last][best] / 1000.0,
+                duration=duration_matrix[last][best] / 60.0,
+                node_id=best,
+            )
+
+        return end_leg
+
     zone_plans = []
     vehicles_remaining = constraints.max_vehicles
     for zone in sorted({order.temperature_zone for order in orders}):
@@ -116,19 +161,21 @@ def plan_delivery_orders(
             vehicle_nr=len(zone_vehicles), capacity=usable_capacity,
             facility_windows=windows,
         )
+        end_leg_fn = make_end_leg_fn(source_ids)
         if algorithm == "greedy":
             dense_result = solve_greedy(
                 instance, leg_fn=leg_fn,
                 max_stops_per_vehicle=constraints.max_stops_per_vehicle,
+                end_leg_fn=end_leg_fn, mileage_limit=mileage_limit_km,
             )
         else:
             dense_result = solve_ortools(
                 instance, leg_fn=leg_fn,
                 max_stops_per_vehicle=constraints.max_stops_per_vehicle,
+                end_leg_fn=end_leg_fn, mileage_limit=mileage_limit_km,
             )
         result = restore_network_node_ids(dense_result, source_ids)
         # Rebuild by source node without relying on request dictionary order.
-        node_by_facility = {n["facility_id"]: n["node_id"] for n in read_network(network_path)["nodes"]}
         order_ids_by_node = {
             node_by_facility[facility_id]: tuple(order_ids)
             for facility_id, order_ids in orders_by_facility.items()
@@ -138,5 +185,6 @@ def plan_delivery_orders(
             vehicle_ids=tuple(vehicle.vehicle_id for vehicle in zone_vehicles),
             order_ids_by_node=order_ids_by_node,
             result=result,
+            terminal_facility_ids=tuple(constraints.terminal_facility_ids or ()),
         ))
     return DispatchPlan(algorithm, len(orders), tuple(zone_plans))

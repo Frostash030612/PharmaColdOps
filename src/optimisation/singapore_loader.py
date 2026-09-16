@@ -191,6 +191,11 @@ def restore_network_node_ids(result: ReplanResult, source_ids: tuple[int, ...]) 
         time_window_violations=route.time_window_violations,
         capacity_violation_units=route.capacity_violation_units,
         depot_return_violation=route.depot_return_violation,
+        # The parking node is NOT a dense solver node: ``end_leg_fn`` is built by
+        # the planner straight from the network matrix, so this id is already a
+        # network node id and must not be translated again (2026-09-16).
+        end_node_id=route.end_node_id,
+        mileage_limit_violation=route.mileage_limit_violation,
     ) for route in result.routes)
     old = result.metrics
     metrics = ReplanMetrics(
@@ -202,5 +207,6 @@ def restore_network_node_ids(result: ReplanResult, source_ids: tuple[int, ...]) 
         depot_return_violations=old.depot_return_violations,
         vehicle_limit_violations=old.vehicle_limit_violations,
         unserved_customer_ids=tuple(source(node_id) for node_id in old.unserved_customer_ids),
+        mileage_violations=old.mileage_violations,
     )
     return ReplanResult(result.instance, result.algorithm, routes, metrics)

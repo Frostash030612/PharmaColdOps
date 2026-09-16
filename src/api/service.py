@@ -465,6 +465,7 @@ def dispatch_plan_view(req: DispatchPlanIn) -> dict:
 def _dispatch_plan_response(plan, *, requested_algorithm: str, constraints: dict | None = None) -> dict:
     """Serialise one already-computed plan; never invokes a solver again."""
     network = read_network()
+    id_by_node = {n["node_id"]: n["facility_id"] for n in network["nodes"]}
     zone_views = []
     for zone_plan in plan.zone_plans:
         result = zone_plan.result
@@ -482,6 +483,14 @@ def _dispatch_plan_response(plan, *, requested_algorithm: str, constraints: dict
                 "total_load": route.total_load,
                 "total_distance": route.total_distance,
                 "duration": route.duration,
+                # Where this vehicle finishes: ``None`` = drives back to the depot
+                # (closed route), otherwise the parking node (open route).
+                "end_node_id": route.end_node_id,
+                "end_facility_id": (
+                    None if route.end_node_id is None
+                    else id_by_node.get(route.end_node_id)
+                ),
+                "mileage_limit_violation": route.mileage_limit_violation,
             })
         zone_views.append({
             "temperature_zone": zone_plan.temperature_zone,
@@ -491,6 +500,8 @@ def _dispatch_plan_response(plan, *, requested_algorithm: str, constraints: dict
             "served_facilities": result.metrics.served_customers,
             "unserved_customer_ids": list(result.metrics.unserved_customer_ids),
             "total_distance": result.metrics.total_distance,
+            "mileage_violations": result.metrics.mileage_violations,
+            "terminal_facility_ids": list(zone_plan.terminal_facility_ids),
             "routes": routes,
             "geojson": routes_geojson(network, result),
         })
@@ -666,10 +677,15 @@ def daily_plan_request(
         # store) so two clients cannot collide on the same id.
         "plan": {
             "algorithm": "greedy",
-            "constraints": {
-                "max_vehicles": FLEET_LIMIT,
-                "max_stops_per_vehicle": MAX_STOPS_PER_VEHICLE,
-            },
+            # Dumped from the model rather than spelled out, so a new constraint
+            # field can never be missing from the batch the operator is handed
+            # (2026-09-16: mileage_limit_m / terminal_facility_ids were).
+            "constraints": dataclasses.asdict(
+                DispatchConstraints(
+                    max_vehicles=FLEET_LIMIT,
+                    max_stops_per_vehicle=MAX_STOPS_PER_VEHICLE,
+                )
+            ),
             "orders": [_order_dump(order) for order in orders],
             "inventory": [_lot_dump(lot) for lot in inventory],
             "vehicles": [_vehicle_dump(vehicle) for vehicle in vehicles],
@@ -793,13 +809,14 @@ def _dispatch_clock(record: dict, order: DeliveryOrder) -> tuple[int, bool]:
     return order.earliest_min, True
 
 
-def _route_legs(network: dict, stops: list[dict]) -> list[dict]:
-    """Depot → every stop (delivered ones included) → depot, as separate legs."""
-    sequence = [0, *[stop["node_id"] for stop in stops], 0]
+def _route_legs(network: dict, stops: list[dict], end_node: int = 0) -> list[dict]:
+    """Depot → every stop (delivered ones included) → end node, as separate legs."""
+    sequence = [0, *[stop["node_id"] for stop in stops], end_node]
     return leg_geojson(network, sequence)
 
 
-def _legs_with_progress(network: dict, stops: list[dict], track: dict | None) -> list[dict]:
+def _legs_with_progress(network: dict, stops: list[dict], track: dict | None,
+                        end_node: int = 0) -> list[dict]:
     """The schedule's legs, each marked with whether the truck has DRIVEN it.
 
     ``delivered`` (the stop's order is recorded as delivered) is not the same
@@ -810,7 +827,7 @@ def _legs_with_progress(network: dict, stops: list[dict], track: dict | None) ->
     before the one the truck is on is behind it, and the current leg counts once
     it is fully covered.
     """
-    schedule = [0, *[stop["node_id"] for stop in stops], 0]
+    schedule = [0, *[stop["node_id"] for stop in stops], end_node]
     current = None
     if track:
         for index, (a, b) in enumerate(zip(schedule, schedule[1:])):
@@ -819,7 +836,7 @@ def _legs_with_progress(network: dict, stops: list[dict], track: dict | None) ->
                 break
     fraction = (track or {}).get("leg_fraction", 0.0)
     legs = []
-    for index, (leg, (a, b)) in enumerate(zip(_route_legs(network, stops),
+    for index, (leg, (a, b)) in enumerate(zip(_route_legs(network, stops, end_node),
                                               zip(schedule, schedule[1:]))):
         end = index + 1
         legs.append({
@@ -872,12 +889,16 @@ def dispatch_route_view(state, context: dict) -> dict:
         # The schedule spans the WHOLE sequence, delivered stops included, and
         # runs from the minute the fleet rolled — not from whenever the speed was
         # last changed (see tracking.schedule_origin).
+        # Where this run finishes: the depot for a closed route, the parking node
+        # for an open one. It must be what the planner priced (2026-09-16).
+        end_node = vehicle.end_node_id if vehicle.end_node_id is not None else 0
         whole = [stop["node_id"] for stop in stops]
         track = None
         if sim_now is not None:
             track = vehicle_track(network, whole,
-                                  schedule_origin(clock) + LOADING_MIN, sim_now)
-        schedule = (0, *whole, 0)
+                                  schedule_origin(clock) + LOADING_MIN, sim_now,
+                                  end_node=end_node)
+        schedule = (0, *whole, end_node)
         total = sum(distance[a][b] for a, b in zip(schedule, schedule[1:])) / 1000
         sequences[vehicle_id] = pending
         routes.append({
@@ -888,7 +909,7 @@ def dispatch_route_view(state, context: dict) -> dict:
             # driven separately from what is left, so a route in progress is
             # readable at a glance. Leg ``i`` ends at stop ``i``; the final leg
             # is the way home, which serves no order and is still DRIVEN.
-            "legs": _legs_with_progress(network, stops, track),
+            "legs": _legs_with_progress(network, stops, track, end_node=end_node),
             "track": track,
             "total_load": sum(stop["quantity"] for stop in stops
                               if not stop["delivered"]),

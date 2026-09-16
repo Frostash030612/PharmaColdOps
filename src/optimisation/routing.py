@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 
 from .models import (
     Node,
@@ -24,6 +25,36 @@ def euclidean(a: Node, b: Node) -> float:
 LegFn = Callable[[Node, Node], tuple[float, float]]
 
 
+@dataclass(frozen=True)
+class EndLeg:
+    """The leg that closes a route.
+
+    ``node_id is None`` means the vehicle drives back to the depot (legacy
+    behaviour).  Otherwise the vehicle parks at that node and the route is
+    **open** — no return leg is charged, which is what makes "stop at a supply
+    point instead of driving home" cheaper in the mileage cap.
+
+    ``node_id`` lives in the caller's own node space: the Singapore planner
+    builds it from the network matrix, so it is a **network** node id and is
+    passed through ``restore_network_node_ids`` untranslated.  The solvers treat
+    it as opaque — they only charge the leg and record where the route ended.
+    """
+
+    distance: float
+    duration: float
+    node_id: int | None = None
+
+
+#: Given the last customer's node id (0 when the route is still empty), return the
+#: leg that ends the route.
+EndLegFn = Callable[[int], EndLeg]
+
+
+def euclidean_end_leg(_last_node_id: int) -> EndLeg:
+    """Default open-route end: stay put (used only by pure Solomon unit tests)."""
+    return EndLeg(0.0, 0.0, None)
+
+
 def euclidean_leg(a: Node, b: Node) -> tuple[float, float]:
     """Default Solomon leg: distance equals travel time."""
     d = euclidean(a, b)
@@ -36,13 +67,20 @@ def evaluate_route(
     *,
     vehicle_id: int = 1,
     leg_fn: LegFn = euclidean_leg,
+    end_leg_fn: EndLegFn | None = None,
+    mileage_limit: float | None = None,
 ) -> VehicleRoute:
-    """Build the schedule for one depot-to-depot customer sequence.
+    """Build the schedule for one depot-to-end customer sequence.
 
     Waiting before a time window opens is allowed.  A customer is late when
     service starts after its latest time, matching the standard Solomon
     convention.  Violations are returned as metrics instead of hidden so the
     same function can evaluate heuristic and OR-Tools results.
+
+    ``end_leg_fn`` replaces the depot return with a leg to a parking node
+    (open route, 2026-09-16).  ``mileage_limit`` is the per-vehicle daily cap in
+    the same unit as ``leg_fn`` (km): exceeding it marks the route infeasible,
+    which is how the greedy insertion loop learns to open another vehicle.
     """
     ids = tuple(customer_ids)
     if len(ids) != len(set(ids)):
@@ -82,9 +120,12 @@ def evaluate_route(
         ))
         current = node
 
-    return_leg, return_travel_time = leg_fn(current, depot)
-    distance += return_leg
-    return_time = departure + return_travel_time
+    if end_leg_fn is None:
+        end = EndLeg(*leg_fn(current, depot), node_id=None)
+    else:
+        end = end_leg_fn(current.node_id)
+    distance += end.distance
+    return_time = departure + end.duration
     return VehicleRoute(
         vehicle_id=vehicle_id,
         customer_ids=ids,
@@ -94,7 +135,13 @@ def evaluate_route(
         duration=return_time - depot.earliest,
         time_window_violations=sum(stop.late_by > EPSILON for stop in stops),
         capacity_violation_units=max(0, load - instance.capacity),
+        # Whether the vehicle goes home or parks, it must arrive before the
+        # site closes: the flag keeps its name but now covers either end.
         depot_return_violation=return_time > depot.latest + EPSILON,
+        end_node_id=end.node_id,
+        mileage_limit_violation=(
+            mileage_limit is not None and distance > mileage_limit + EPSILON
+        ),
     )
 
 
@@ -133,6 +180,7 @@ def build_result(
         depot_return_violations=depot_violations,
         vehicle_limit_violations=max(0, len(route_tuple) - instance.vehicle_nr),
         unserved_customer_ids=unserved,
+        mileage_violations=sum(route.mileage_limit_violation for route in route_tuple),
     )
     return ReplanResult(
         instance=instance.instance,

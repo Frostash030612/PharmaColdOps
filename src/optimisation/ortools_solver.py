@@ -4,7 +4,14 @@ from __future__ import annotations
 import math
 
 from .models import ReplanResult, SolomonInstance
-from .routing import LegFn, build_result, euclidean_leg, evaluate_route
+from .routing import (
+    EndLeg,
+    EndLegFn,
+    LegFn,
+    build_result,
+    euclidean_leg,
+    evaluate_route,
+)
 
 
 def solve_ortools(
@@ -18,6 +25,8 @@ def solve_ortools(
     drop_penalty: int = 0,
     minimize_vehicles: bool = False,
     max_stops_per_vehicle: int | None = None,
+    end_leg_fn: EndLegFn | None = None,
+    mileage_limit: float | None = None,
 ) -> ReplanResult:
     """Solve with hard capacity/windows and a distance objective.
 
@@ -48,11 +57,25 @@ def solve_ortools(
     result can only be pinned down to "same configuration and same time budget".
     The GA additionally records its seed. Both are anytime algorithms, so
     iteration counts still vary with machine speed.
+
+    ``end_leg_fn`` + ``mileage_limit`` (2026-09-16) turn the closed VRPTW into an
+    **open route with a per-vehicle mileage cap**:
+
+    * a **dummy end node** is appended and made the end of every vehicle, so a
+      route no longer has to come back to the depot.  The arc into that dummy is
+      priced with ``end_leg_fn`` — the leg from the last real stop to the parking
+      node — which is exactly the quantity the schedule reconstruction charges
+      too, so model and reported numbers cannot drift apart;
+    * the mileage dimension is capacity-limited per vehicle, i.e. a hard
+      "≤ N km per vehicle per day" that also covers the final leg to the parking
+      node and any empty repositioning before a stop.
     """
     if time_limit_seconds < 1:
         raise ValueError("time_limit_seconds must be >= 1")
     if max_stops_per_vehicle is not None and max_stops_per_vehicle < 1:
         raise ValueError("max_stops_per_vehicle must be a positive integer")
+    if mileage_limit is not None and mileage_limit <= 0:
+        raise ValueError("mileage_limit must be positive")
     try:
         from ortools.constraint_solver import pywrapcp, routing_enums_pb2
     except ImportError as exc:  # pragma: no cover - environment guard
@@ -74,14 +97,33 @@ def solve_ortools(
         )
 
     nodes = instance.nodes
-    manager = pywrapcp.RoutingIndexManager(
-        len(nodes), instance.vehicle_nr, 0
-    )
+    # The dummy end node exists only for open routes; without it the model is the
+    # original closed depot-to-depot VRPTW (unchanged for every legacy caller).
+    dummy: int | None = len(nodes) if end_leg_fn is not None else None
+    if dummy is None:
+        manager = pywrapcp.RoutingIndexManager(
+            len(nodes), instance.vehicle_nr, 0
+        )
+    else:
+        manager = pywrapcp.RoutingIndexManager(
+            len(nodes) + 1, instance.vehicle_nr,
+            [0] * instance.vehicle_nr, [dummy] * instance.vehicle_nr,
+        )
     routing = pywrapcp.RoutingModel(manager)
 
+    def end_leg(node_index: int) -> EndLeg:
+        assert end_leg_fn is not None
+        return end_leg_fn(nodes[node_index].node_id)
+
     def distance(from_index: int, to_index: int) -> int:
-        a = nodes[manager.IndexToNode(from_index)]
-        b = nodes[manager.IndexToNode(to_index)]
+        a_index = manager.IndexToNode(from_index)
+        b_index = manager.IndexToNode(to_index)
+        if dummy is not None and b_index == dummy:
+            return round(end_leg(a_index).distance * distance_scale)
+        if dummy is not None and a_index == dummy:
+            return 0
+        a = nodes[a_index]
+        b = nodes[b_index]
         d, _ = leg_fn(a, b)
         return round(d * distance_scale)
 
@@ -100,7 +142,10 @@ def solve_ortools(
         )
 
     def demand(from_index: int) -> int:
-        return nodes[manager.IndexToNode(from_index)].demand
+        node_index = manager.IndexToNode(from_index)
+        if dummy is not None and node_index == dummy:
+            return 0
+        return nodes[node_index].demand
 
     demand_index = routing.RegisterUnaryTransitCallback(demand)
     routing.AddDimensionWithVehicleCapacity(
@@ -111,9 +156,25 @@ def solve_ortools(
         "Capacity",
     )
 
+    if mileage_limit is not None:
+        # Hard cap on the whole driven distance per vehicle: the dimension starts
+        # at zero and accumulates the same arc costs as the objective, including
+        # the final leg into the dummy end node.
+        limit_units = round(mileage_limit * distance_scale)
+        routing.AddDimensionWithVehicleCapacity(
+            distance_index,
+            0,
+            [limit_units] * instance.vehicle_nr,
+            True,
+            "Mileage",
+        )
+
     if max_stops_per_vehicle is not None:
         def stop_count(from_index: int) -> int:
-            return int(manager.IndexToNode(from_index) != 0)
+            node_index = manager.IndexToNode(from_index)
+            if dummy is not None and node_index == dummy:
+                return 0
+            return int(node_index != 0)
 
         stop_count_index = routing.RegisterUnaryTransitCallback(stop_count)
         routing.AddDimensionWithVehicleCapacity(
@@ -125,11 +186,17 @@ def solve_ortools(
         )
 
     def elapsed(from_index: int, to_index: int) -> int:
-        node = nodes[manager.IndexToNode(from_index)]
+        a_index = manager.IndexToNode(from_index)
+        if dummy is not None and a_index == dummy:
+            return 0
+        node = nodes[a_index]
+        service = node.service * time_scale
+        if dummy is not None and manager.IndexToNode(to_index) == dummy:
+            return math.ceil(end_leg(a_index).duration * time_scale) + service
         target = nodes[manager.IndexToNode(to_index)]
         _, minutes = leg_fn(node, target)
         # Round travel upward: integer feasibility must not hide lateness.
-        return math.ceil(minutes * time_scale) + node.service * time_scale
+        return math.ceil(minutes * time_scale) + service
 
     elapsed_index = routing.RegisterTransitCallback(elapsed)
     horizon = instance.horizon_end * time_scale
@@ -195,6 +262,7 @@ def solve_ortools(
             index = solution.Value(routing.NextVar(index))
         if customer_ids:
             routes.append(evaluate_route(
-                instance, customer_ids, vehicle_id=vehicle_id + 1, leg_fn=leg_fn
+                instance, customer_ids, vehicle_id=vehicle_id + 1, leg_fn=leg_fn,
+                end_leg_fn=end_leg_fn, mileage_limit=mileage_limit,
             ))
     return build_result(instance, "ortools-routing", routes)

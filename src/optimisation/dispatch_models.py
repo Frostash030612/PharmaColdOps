@@ -25,16 +25,32 @@ OnboardSpare = tuple[tuple[str, str, int], ...]
 
 @dataclass(frozen=True)
 class DispatchConstraints:
-    """Hard fleet limits applied by every static dispatch solver."""
+    """Hard fleet limits applied by every static dispatch solver.
+
+    ``mileage_limit_m`` is the whole distance one vehicle may drive in a day,
+    including empty repositioning and the closing leg (2026-09-16 decision).
+    ``terminal_facility_ids`` turns the closed round trip into an **open route**:
+    when set, every route must end at one of those nodes and no return-to-depot
+    leg is charged.  Left unset, both keep the legacy behaviour exactly.
+    """
 
     max_vehicles: int | None = None
     max_stops_per_vehicle: int | None = None
+    mileage_limit_m: int | None = None
+    terminal_facility_ids: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         if self.max_vehicles is not None and self.max_vehicles < 1:
             raise ValueError("max_vehicles must be a positive integer")
         if self.max_stops_per_vehicle is not None and self.max_stops_per_vehicle < 1:
             raise ValueError("max_stops_per_vehicle must be a positive integer")
+        if self.mileage_limit_m is not None and self.mileage_limit_m < 1:
+            raise ValueError("mileage_limit_m must be a positive integer")
+        if self.terminal_facility_ids is not None:
+            if not self.terminal_facility_ids:
+                raise ValueError("terminal_facility_ids must not be empty when given")
+            if len(set(self.terminal_facility_ids)) != len(self.terminal_facility_ids):
+                raise ValueError("terminal_facility_ids must be unique")
 
 
 def normalise_onboard_spare(value: object) -> OnboardSpare:

@@ -70,6 +70,7 @@ pytest -q            # 全量回归
 | **多站环线规划** | 按订单排线，**一辆车串多站**（实测 4 医院 1 车 → 75.19 km 环线） | `dispatch_planner.plan_delivery_orders()` |
 | **车队硬约束（2026-09-16）** | API 可限制车队总数和每车最多站点；演示默认最多 3 辆、每车 4 站，贪心与 OR-Tools 同时执行 | `DispatchConstraints` + `DispatchPlanIn.constraints` |
 | 真实路网 | 新加坡 **1 主仓 + 1 第三方仓 + 14 个接收点 + 3 个分拨点 = 19 节点**（11 公立医院 + 3 私立），19×19 距离/时间矩阵 + 342 条道路几何（2026-09-16 由 15 节点扩至 19，主仓移至裕廊东思家客） | `data/optimisation/singapore/network.json` |
+| **里程上限 + 终点站（2026-09-16）** | `constraints.mileage_limit_m` 是**每车每天**的硬里程上限（含空驶与收尾段）；`constraints.terminal_facility_ids` 让路线**开环**——末段去最近的终点站、不计返仓里程。实测 4 家医院：闭环 38.23 km → 开环 27.99 km；上限 25 km 自动变 2 车；上限 12 km 明确报"无法服务" | `routing.evaluate_route()` / `greedy.py` / `ortools_solver.py`（Mileage 维度 + dummy 终点节点）/ `dispatch_planner.py` / `tracking.vehicle_track(end_node=…)`，测试 `tests/test_route_limits.py` |
 | 业务模型 | 订单 / 库存批次 / 车辆能力（温层、容量、起点、状态） | `dispatch_models.py` |
 | **今日配送计划（2026-09-14 新增）** | 一批日常订单 → 一车串多站环线 → 操作员预览 → 确认建作业；订单来源＝固定演示集或 `?seed=` 随机 | `daily_orders.py` + `GET /api/dispatch/daily-orders`，界面在 `ReroutePanel.vue` |
 | 状态机 | 接单→发车→逐站送达→完成，命令幂等、frozen dataclass | `dispatch_state.py` |
