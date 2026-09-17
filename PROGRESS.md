@@ -940,10 +940,14 @@ entry.fromFraction = entry.leg === leg ? entry.toFraction : 0;
 
 | 成员 | 角色（提案 §10.1） | 对应目录 | 当前已就绪 |
 |---|---|---|---|
-| A（Xu Wenzhe） | 项目负责人 · 规则/决策引擎 · 合规 · 报告 | `src/rule_engine/` | 规则引擎 v2 完成（冻结规则+法规引用+4 产品）；57 场景；10 测试 |
-| B（Zhu Jianyu） | 数据与机器学习 · 根因诊断 · 实验评估 | `src/ml/` `data/ml/` | 数据字典+审计、LR/LGBM/XGB+SHAP 与根因全实验脚本**已跑通出数** |
-| C（Wang Lepeng） | 配送优化 · VRPTW · OR-Tools/遗传 | `src/optimisation/` | 数据已备（solomon 实例 + 真实新加坡路网）；贪心/OR-Tools 均已跑通出路线 |
-| D（Shen Ziyi） | 知识图谱/问答 · 后端 API · UI · 视频 | `src/knowledge_graph/` `src/api/` | demo 前端（EN+ZH，Vue 在线/离线双模式）；KG schema + 加载 + 问答已接 Neo4j，**9/13 起本地 `docker compose up -d` 起库并完成数据库端到端验证**；`/decide` `/route` `/qa` 三端点均真实现 + 契约测试 |
+| A（Xu Wenzhe） | 项目负责人 · 规则/决策引擎 · 合规 · 报告 | `src/rule_engine/` | 规则引擎 v2 完成（冻结规则+法规引用+4 产品）；57 场景；10 测试；**rubric v1.1**（第 4 条→`scrap`，引擎↔gold 54/57）+ **阈值证据表 v1** + **条款级来源核实**（改正 6 处引用/标注） |
+| B（Zhu Jianyu） | 数据与机器学习 · 根因诊断 · 实验评估 | `src/ml/` `data/ml/` | 数据字典+审计（许可证到源页逐一核实）、LR/LGBM/XGB+SHAP 与根因全实验脚本**已跑通出数** |
+| C（Wang Lepeng） | 配送优化 · VRPTW · OR-Tools/遗传 | `src/optimisation/` | **B1–B7 全部完成**（多货源点起点/里程上限/终点站/收工停靠/不可行理由/报废救援全链）+ **PDPTW 取送模型步骤 1–4**（开关默认关闭）；三方对比表已落盘 `data/processed/routing_comparison.md`；路线全链（建单→发车→时钟→地图→送达）已通 |
+| D（Shen Ziyi） | 知识图谱/问答 · 后端 API · UI · 视频 | `src/knowledge_graph/` `src/api/` | demo 前端（EN+ZH，Vue 在线/离线双模式）；KG schema + 加载 + 问答已接 Neo4j，**9/13 起本地跑库并完成数据库端到端验证**；`/decide` `/route` `/qa` 三端点均真实现 + 契约测试；**地图运输视图**（进度分段/大图/支线标记/改道对比） |
+
+> **2026-09-18 校准**：本分工表原先停在 9/14 的勾选状态，与代码脱节（例：W3-C 曾写"对比表尚未落盘"，
+> 实际 9/15 已产出）。已按代码校准；各条末尾标「2026-09-18 校准」处为本次改动。
+> 当前全量测试基线：**313 passed / 20 skipped**（本机 Neo4j 未起时；起库后 skip 归零）。
 
 ### A —— 规则 / 决策引擎 / 报告
 
@@ -966,7 +970,7 @@ entry.fromFraction = entry.leg === leg ? entry.toFraction : 0;
 - [x] **提案冲刺（9/13 前）**：确认 OR-Tools 可行性（装 `ortools` 出 hello-world 即可）；demo 右栏「简化启发式 ≠ 正式求解器」口径在提案/README 一致（已注）。**☑ 2026-09-13 复核**：可行性已远超 hello-world——`src/optimisation/ortools_solver.py` 是可用求解器，提案 §6.4 把名称写实为 `RoutingModel` + `PATH_CHEAPEST_ARC` + `GUIDED_LOCAL_SEARCH` 并注明 `not CP-SAT`。
 - [x] **W1-C**：建 `src/optimisation/` 包 + 输入/输出 schema 定义（**补发单 → 仓库分配 → 车辆路线**的数据契约，字段与 A/B/D 对齐）；贪心基线正式化（把 demo 的 NN+2-opt 思路搬成带时间窗/容量约束校验的 Python 实现）。**☑ 已完成**：`models.py`（`ReplanResult` / `VehicleRoute` / `RouteStop` / `ReplanMetrics`，`models.py:135`）、`solomon_loader.py`、`routing.py`、`greedy.py`（确定性最近插入 + 容量/时间窗/回仓窗口校验，不可服务客户显式列为 unserved）；另有 `dispatch_models.py` / `dispatch_planner.py` / `dispatch_state.py` / `dispatch_repository.py` 承载订单驱动调度。
 - [x] **W2-C**：OR-Tools / CP-SAT v1 求解器，跑通 solomon c101（有全局最优参考值可对）。**☑ 已完成**，但**术语订正**：实现是 **OR-Tools Routing Solver + GUIDED_LOCAL_SEARCH，不是 CP-SAT**（`ortools_solver.py`）；`scripts/run_routing_baselines.py` 可复跑全 6 个 Solomon 实例并出可复现表；c101 文献最优 828.94 是模块注释里的对照锚。新加坡路网矩阵（原 W2）也已落地（`data/optimisation/singapore/`）。
-- [ ] **W3-C**：主流程打通 + 贪心 vs Routing Solver（GLS）对比表；多温区 / 缺货优先级留 W4（可选）。**部分完成**：主流程已通（`/api/dispatch/*` 全链 + 状态机 + 持久化），**对比表尚未落盘**；后续按 `docs/C_配送模块.md` 第 6 批出正式对比表。
+- [x] **W3-C**：主流程打通 + 贪心 vs Routing Solver（GLS）对比表；多温区 / 缺货优先级留 W4（可选）。**☑ 2026-09-18 校准为已完成**：主流程早已全通（`/api/dispatch/*` 全链 + 状态机 + 持久化 + 地图实时进度）；**对比表也已落盘**——`python scripts/run_routing_baselines.py --time-limits 10 30 60 --seed 42` → **`data/processed/routing_comparison.md`**（9/15 产出，逐行给车辆数/距离/准时率/违规/未服务/用时，含 SINTEF 参照值与 Δ、环境与复现命令）。结论摘要见 `docs/C_配送模块.md` §5 A3。**仍缺**：对比**图**（报告排版阶段做）+ 多温区/缺货优先级（W4 可选）。
 - [ ] 产出文件固定位：`data/optimisation/`（输入已入库）→ 结果写 `data/processed/`（不入库）。
 
 ### D —— 知识图谱 / 问答 / 集成 / UI
@@ -980,7 +984,7 @@ entry.fromFraction = entry.leg === leg ? entry.toFraction : 0;
 
 ### 跨成员契约（防各做各的）
 
-1. **异常事件 schema**：`ExcursionEvent`（产品/温度/时长/MKT/包装/环节）是全系统入口——A 已在引擎定义，C/D 不要再自造字段。
+1. **异常事件 schema**：`ExcursionEvent`（产品/温度/时长/MKT/包装/环节）是全系统入口——A 已在引擎定义，C/D 不要再自造字段。**2026-09-18 校准**：C 侧已加**可选** `EventIn.order_id`（异常挂到具体订单，2026-09-16 B6），用于推导"补发去哪、补多少、在哪辆车上、涉及哪些批次"；该字段的**跨成员契约定稿**（是否上提到 `ExcursionEvent`）仍归 A+C。
 2. **补发单 → 改派**：A 引擎产 `reshipment` 标志 → C 收到「补发单」生成改派路线 → D 展示。字段契约 W2 前三方定死。
 3. **风险分 ↔ 前端**：demo 现用规则启发式风险指数（确定性、同阈值同源）；B 的 ML 分只进报告不接 UI（schema 错位已论证），若最终要接 UI 需 B+D 先做 feature bridge。
 4. **git 纪律**：一功能一 commit、commit message 写清做了啥（历史里出现过 `9.8 0.4`、`重复` 这类无效消息）；**只 commit 源码/文档/数据集，`data/processed/` 与模型产物不入库**（`.gitignore` 已拦）。
@@ -989,16 +993,20 @@ entry.fromFraction = entry.leg === leg ? entry.toFraction : 0;
 
 ## 前后端接口与上云（架构基线 · 随周更新）
 
-> 面向 W2–W5：demo 现在**纯静态**（规则引擎的 JS 忠实移植 + `real_data.js`，零后端也能跑）。这是特点也是风险——JS 逻辑与 Python 引擎是**两份实现**，接口与部署要把「何时用 Python 真实现」定清楚，别等答辩周才补。
+> 面向 W2–W5：demo 支持**双模式**（Vue 前端 `?api=` 为空时走离线 JS 引擎，有值则打 FastAPI）。
+> 这是特点也是风险——JS 逻辑与 Python 引擎是**两份实现**，接口与部署要把「何时用 Python 真实现」定清楚，别等答辩周才补。
+>
+> **2026-09-18 校准**：本节写于旧 vanilla 前端时代。旧 `frontend/`（含 `real_data.js`）**已于 2026-09-12 整体退役删除**，
+> 现唯一前端是 `frontend-vue/`，离线副本只剩 `frontend-vue/src/lib/engine.js` 一份（由 `tests/test_frontend_threshold_parity.py` 兜）。
 
 ### 1. 推荐：前后端解耦 + 契约优先，同一份 demo 双模式
 
-前端不重写，加一个 `API_BASE` 配置点（config 常量 / 环境变量），三种取值切三种形态：
+前端不重写，保留一个 API 地址配置点（现为 URL 上的 `?api=` 查询参数），三种取值切三种形态：
 
-| `API_BASE` | 形态 | 谁在算 |
+| `?api=` | 形态 | 谁在算 |
 |---|---|---|
-| `''`（空） | 静态演示模式（现状，默认） | 前端 JS `evaluate()` |
-| `http://127.0.0.1:8000` | 本地联调 | 本机 FastAPI 接真 Python 模块 |
+| 空 | 离线演示模式 | 前端 `lib/engine.js`（JS 副本，只覆盖规则判定） |
+| `http://127.0.0.1:8000` | 本地联调（**推荐演示形态**） | 本机 FastAPI 接真 Python 模块 |
 | `https://…onrender.com` | 上云全栈 | 云端 FastAPI |
 
 事件录入表单两种模式共用，只是「判/算」换成调后端。**离线 demo 永不失效，答辩现场网络挂了也有兜底。**
@@ -1007,25 +1015,27 @@ entry.fromFraction = entry.leg === leg ? entry.toFraction : 0;
 
 Pydantic 模型 = 引擎 dataclass 的序列化（`model_dump`），**不要手写两遍 JSON 映射**。字段名以现有 `Decision` 输出为准（README-zh 承诺过「JS 与 Python 引擎一致」），谁都不许再造别名。
 
-| 端点 | 输入 | 输出 | 后端实现 | 状态 |
+| 端点 | 输入 | 输出 | 后端实现 | 状态（2026-09-18 校准） |
 |---|---|---|---|---|
-| `POST /api/decide` | `ExcursionEvent` JSON | `Decision` JSON（disposition / risk / evidence / regulation） | `src/rule_engine`（现成） | 引擎已可用，只差套壳 |
-| `POST /api/route` | 补发单 → 仓库/订单 | 改派路线（车辆序列 + 时间窗） | `src/optimisation`（C） | W2-C 起，此前 stub 501 |
-| `POST /api/qa` | 自然语言问题 | 答案 + 依据节点 | `src/knowledge_graph`（D） | 此前 stub 501 |
-| `GET /api/health` | — | `{status: ok}` | — | 探活用 |
+| `POST /api/decide` | `ExcursionEvent` JSON | `Decision` JSON（disposition / risk / evidence / regulation） | `src/rule_engine` | ✅ **已接真引擎**（纯预览，不归档） |
+| `POST /api/route` | 补发单 → 仓库/订单 | 改派路线（车辆序列 + 时间窗） | `src/optimisation`（C） | ✅ **已替换 stub**：按 `run_id` 读已结案案例 + 求解器 |
+| `POST /api/qa` | 自然语言问题 | 答案 + 依据节点 | `src/knowledge_graph`（D） | ✅ **已替换 stub**：结构化 Cypher + 四态 `status` |
+| `GET /api/health` | — | `{status: ok}` | — | ✅ 探活用 |
+| `POST /api/dispatch/*` | 批次订单 / 约束 / 救援请求 | 计划 / 作业 / 实时轨迹 / 候选 | `src/optimisation` + `src/api` | ✅ 一组（C 的调度），构建于上述四端点之后 |
 
-建议加 `tests/test_api_contract.py`：断言 demo JS 里用到的键 ⊆ FastAPI 返回 JSON 键，防「前端改字段、后端不知道」。
+契约定义在 `src/api/schemas.py`；契约测试 **`tests/test_api_contract.py`（18 例）**——正是它断言"前端用到的键 ⊆ 后端返回的键"。
+⚠️ 该文件 2026-09-18 修掉一处**真实缺陷**：读 `network.json` 时漏了 `encoding="utf-8"`，在中文 Windows（GBK 代码页）上必然 `UnicodeDecodeError`。
 
 **诚实边界：ML 模型不进 API。** 风险分是规则启发式（确定性、同阈值同源）；真 ML 只进报告（schema 错位已论证）。好处是**后端不用打包任何模型产物**——`data/processed/` 本来 gitignored 不上云也成立，B 的活不受部署影响。
 
 ### 3. 上云怎么做（分层，演示日永不裸奔）
 
-- **Level 0 · 纯静态兜底（现在就能做）**：`frontend/` 推 GitHub Pages / Vercel，零后端上线。前端字段已是演示全集。
+- **Level 0 · 纯静态兜底（现在就能做）**：`frontend-vue/`（`pnpm build` 产出的 `dist/`）推 GitHub Pages / Vercel，零后端上线。前端字段已是演示全集。**注**：离线模式只有规则引擎与本地演示数据，"今日配送 / 调度 / 地图运输"这些要真后端，所以 Level 0 是**兜底**不是默认演示形态。
 - **Level 1 · 全栈默认路径（推荐 Render 免费 Web Service）**：
-  1. W2-D：`src/api/main.py` FastAPI + uvicorn 跑通 3 个 stub + `/api/decide` 接上引擎；
-  2. 根目录加 `Dockerfile`（`python:3.11-slim` → `pip install -r requirements.txt` → 拷 `src/` + `data/` → uvicorn 启动）；
-  3. push GitHub → Render 连仓库自动部署（数据文件都在 repo 里，demo 规模**不需要数据库**）；
-  4. 前端 `API_BASE` 指向 Render 域名，打开即全栈 demo。
+  1. ~~W2-D：FastAPI 跑通 3 个 stub + `/api/decide` 接上引擎~~ ✅ **已完成**（四端点全为真实现，另有一组 `/api/dispatch/*`）；
+  2. 根目录加 `Dockerfile`（`python:3.11-slim` → `pip install -r requirements.txt` → 拷 `src/` + `data/` → uvicorn 启动）—— ❌ **仍未做**；
+  3. push GitHub → Render 连仓库自动部署（数据文件都在 repo 里，demo 规模**不需要数据库**；Neo4j 问答可选，缺库时 `/api/qa` 返回 503 而不是崩）；
+  4. 前端 `?api=` 指向 Render 域名，打开即全栈 demo。
 - **备选 / 学校额度**：Hugging Face Spaces（Docker，偏 ML 展示）、Azure for Students / AWS Educate（NUS 学生若可申请，配额更高）。
 - **注意**：① 免费实例闲置会休眠，再次请求冷启动几秒——**演示前先访问一次预热**；② 免费条款会变，**演示前一晚全网实测一遍**（别答辩当天第一次上云）；③ 数据全为合成/公开，无敏感信息，但 CORS 白名单要设、key 别写进前端；④ 国内网络不稳的话，本地 `uvicorn` + `localhost` 演示即可，上云只给演示日 / 新加坡现场用。
 
