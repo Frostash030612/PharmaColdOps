@@ -45,7 +45,8 @@
 
 `tests/test_api_contract.py` 读 `network.json` 时漏了 `encoding="utf-8"`，走系统 locale 解码，
 而该文件含中文（`name_zh`）→ **GBK 代码页上必然 `UnicodeDecodeError`**（本机实测 1 failed / 312 passed）。
-全仓 62 处文件读写只此一处漏 encoding。补上后 **313 passed / 20 skipped / 0 failed**。
+全仓 62 处文件读写只此一处漏 encoding。补上后 **313 passed / 20 skipped / 0 failed**
+（本批另新增 4 条测试，故当前基线为 **317 passed**）。
 （该行是 9/16「货源点」那批加的；它写着"别钉死节点序号"的注释，同一次改动顺手引入。）
 
 ### ③ 文档校准（9/16–17 落地后正文滞后，已按代码逐条改）
@@ -1004,7 +1005,16 @@ entry.fromFraction = entry.leg === leg ? entry.toFraction : 0;
 
 > **2026-09-18 校准**：本分工表原先停在 9/14 的勾选状态，与代码脱节（例：W3-C 曾写"对比表尚未落盘"，
 > 实际 9/15 已产出）。已按代码校准；各条末尾标「2026-09-18 校准」处为本次改动。
-> 当前全量测试基线：**313 passed / 20 skipped**（本机 Neo4j 未起时；起库后 skip 归零）。
+> 当前全量测试基线：**317 passed / 20 skipped / 0 failed**（本机 Neo4j 未起时；起库后 skip 归零。
+> 20 skipped 是缺库的 `needs_db`；**DSH 沙箱内会出大批 `tmp_path` error，那是环境问题不是代码问题**）。
+>
+> **⚠️ 2026-09-18 交接（不新增任务、不改派）**：A 本轮明确**不做**下面两件，留给对应主责人，
+> 详情写在 **`docs/DAILY_PLAN.md` 顶部「⚠️ 交接」一节**（那是 tracked 文件，队友 clone 即可见；
+> `HANDOFF.md` 是 untracked 的，写在那里队友看不到）：
+> 1. **车辆机械故障救援 → C**（`docs/C_配送模块.md` §5 B1）。第 5 批的**质量事件侧已完成**，
+>    "车抛锚后剩余任务怎么办"**仍未做**——`DispatchVehicle.status="failed"` 至今只有枚举值。
+> 2. **`Dockerfile` + 上云 → D**（本文件「前后端接口与上云」一节已按当前代码校准）。
+>    四个契约端点与前端都已就绪，**缺的只是容器与部署这一步**。
 
 ### A —— 规则 / 决策引擎 / 报告
 
