@@ -61,6 +61,28 @@ def _consume_spare(progress: VehicleProgress, order: DeliveryOrder) -> tuple[tup
     return tuple(remaining)
 
 
+def _refuse_paired_run(state: DispatchState) -> None:
+    """Rescue splicing is queue-based; a pickup-delivery run is a driven sequence.
+
+    Every branch option works by putting the new order at the head of a truck's
+    *order queue* and re-sequencing the tail. A paired run carries an explicit
+    stop sequence instead — the map, the clock and ``next_stop`` all read it — so
+    splicing only the queue would leave the new order undeliverable while the
+    ledger called it assigned. Both entry points refuse together, so the panel
+    cannot preview an option that acceptance would then reject (2026-09-16,
+    PDPTW step 4).
+    """
+    paired = sorted(vehicle_id for vehicle_id, vehicle in state.vehicles.items()
+                    if vehicle.drive_plan)
+    if paired:
+        raise ValueError(
+            "rescue is not available for a pickup-delivery run yet: such a run drives "
+            "an explicit stop sequence, while a rescue re-sequences the order queue. "
+            "Re-plan today's batch with routing_model='grouped' to use the rescue flow "
+            f"(paired vehicles: {', '.join(paired)})"
+        )
+
+
 def preview_emergency_order(
     state: DispatchState,
     context: dict,
@@ -85,6 +107,8 @@ def preview_emergency_order(
         )
     if state.status not in {"accepted", "in_transit"}:
         raise ValueError("emergency orders require an active dispatch")
+    # Before anything else looks at the queue: a paired run has no queue to splice.
+    _refuse_paired_run(state)
     if order.order_id in state.orders:
         raise ValueError(f"order {order.order_id!r} already exists")
 

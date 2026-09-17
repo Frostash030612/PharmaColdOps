@@ -20,6 +20,7 @@ from optimisation.dispatch_models import (
     DeliveryOrder, DispatchConstraints, DispatchVehicle, InventoryLot,
 )
 from optimisation.dispatch_planner import DISPATCH_ORIGIN, plan_delivery_orders
+from optimisation.singapore_loader import PickupDeliveryOrder
 
 client = TestClient(app)
 TERMINALS = ("D-HOUGANG", "D-BUGIS")
@@ -128,8 +129,100 @@ def test_the_grouped_default_is_untouched():
 
 
 def test_pickup_delivery_refuses_a_solver_that_cannot_pair():
-    with pytest.raises(ValueError, match="pair insertion"):
-        _plan(DispatchConstraints(routing_model="pickup_delivery"), algorithm="greedy")
+    """Genetic search plans one single-origin tour; this is not one.
+
+    The refusal names the reason instead of quietly answering with a different
+    solver — the caller asked for a genetic plan and would otherwise believe it
+    got one (2026-09-16, PDPTW step 4).
+    """
+    with pytest.raises(ValueError, match="single-origin tour"):
+        _plan(DispatchConstraints(routing_model="pickup_delivery"), algorithm="ga")
+
+
+def test_the_genetic_solver_refuses_a_paired_instance_directly():
+    """The guard also protects callers that never go through the planner."""
+    from optimisation.ga_solver import solve_ga
+    from optimisation.singapore_loader import load_pickup_delivery_subset
+
+    instance, leg_fn, _ = load_pickup_delivery_subset(
+        tuple(PickupDeliveryOrder(order_id=order.order_id,
+                                  origin_facility_id=order.origin_facility_id,
+                                  destination_facility_id=order.destination_facility_id,
+                                  quantity=order.quantity,
+                                  earliest_min=order.earliest_min,
+                                  latest_min=order.latest_min)
+              for order in ORDERS),
+        vehicle_nr=1, capacity=100,
+    )
+    with pytest.raises(ValueError, match="single origin"):
+        solve_ga(instance, leg_fn=leg_fn, max_generations=1)
+
+
+# --- the greedy baseline pairs too (2026-09-16, PDPTW step 4) -----------------
+
+def test_greedy_pair_insertion_serves_the_same_run():
+    """The baseline exists to be beaten: it must at least be feasible."""
+    plan = _plan(DispatchConstraints(routing_model="pickup_delivery"), algorithm="greedy")
+    group = plan.zone_plans[0]
+
+    assert plan.algorithm == "greedy-pair-insertion-pickup-delivery"
+    assert group.result.metrics.vehicles_used == 1
+    assert not group.result.metrics.unserved_customer_ids
+    assert {
+        order_id for _, order_id, _ in group.stop_plan_by_vehicle[1]
+    } == {order.order_id for order in ORDERS}
+
+
+def test_greedy_collects_everything_before_it_delivers_it():
+    """The pairing is what a one-node-at-a-time insertion gets wrong."""
+    plan = _plan(DispatchConstraints(routing_model="pickup_delivery"), algorithm="greedy")
+
+    for route in plan.zone_plans[0].result.routes:
+        entries = plan.zone_plans[0].stop_plan_by_vehicle[route.vehicle_id]
+        # the driven stops and the planned stops are the same list, in the same order
+        assert [stop.kind for stop in route.stops] == [kind for kind, _, _ in entries]
+        collected: list[str] = []
+        for (kind, order_id, _), stop in zip(entries, route.stops):
+            assert kind == stop.kind
+            if kind == "pickup":
+                collected.append(order_id)
+            else:
+                assert order_id in collected, "delivered before it was collected"
+                collected.remove(order_id)
+        assert collected == [], "collected something it never delivered"
+
+
+def test_greedy_capacity_is_a_peak_not_a_total():
+    """Goods collected but not yet handed over still occupy the truck."""
+    orders = (
+        DeliveryOrder("O-A", "vaccine_2_8", "H-SGH", 30, 540, 1020, "chilled",
+                      origin_facility_id=DISPATCH_ORIGIN),
+        DeliveryOrder("O-B", "vaccine_2_8", "H-NUH", 25, 540, 1020, "chilled",
+                      origin_facility_id="D-HOUGANG"),
+    )
+    plan = _plan(DispatchConstraints(routing_model="pickup_delivery"),
+                 algorithm="greedy", orders=orders,
+                 vehicles=(DispatchVehicle("V-1", 50, "chilled", DISPATCH_ORIGIN),))
+    route = plan.zone_plans[0].result.routes[0]
+
+    assert route.feasible
+    assert not plan.zone_plans[0].result.metrics.unserved_customer_ids
+    # Collecting both before delivering either would put 55 units on a 50-unit
+    # truck; the insertion has to notice that while placing the pair.
+    assert max(stop.cumulative_load for stop in route.stops) <= 50
+    assert [stop.kind for stop in route.stops][0] == "pickup"
+
+
+def test_greedy_explains_what_it_could_not_fit():
+    """An unserved order still gets a measured reason, pair insertion or not."""
+    orders = ORDERS + (DeliveryOrder("O-W3", "vaccine_2_8", "H-TTSH", 60, 540, 1020,
+                                     "chilled", origin_facility_id=DISPATCH_ORIGIN),)
+    plan = _plan(DispatchConstraints(routing_model="pickup_delivery", max_stops_per_vehicle=2),
+                 algorithm="greedy", orders=orders)
+    group = plan.zone_plans[0]
+
+    assert group.result.metrics.unserved_customer_ids
+    assert group.unserved_reasons, "every unserved order needs a reason"
 
 
 def test_an_origin_that_cannot_supply_is_still_refused():
@@ -162,18 +255,3 @@ def test_the_api_can_select_the_model():
     assert zone["routes"], "the plan must serve the orders"
     served = sum(len(route["order_ids"]) for route in zone["routes"])
     assert served == 3
-
-
-def test_a_pickup_delivery_plan_cannot_be_dispatched_yet():
-    """Previewing is wired; executing is not, and that must not be silent.
-
-    The state models a truck's work as an ORDER QUEUE with at most a leading
-    pickup (B6). A pickup-delivery plan interleaves them, so accepting one would
-    produce a live map the truck does not drive. Refusing is the honest answer
-    until the stop-sequence state lands (step 4).
-    """
-    from optimisation.dispatch_state import accept_plan
-
-    plan = _plan(DispatchConstraints(routing_model="pickup_delivery"))
-    with pytest.raises(ValueError, match="cannot be dispatched yet"):
-        accept_plan(plan, ORDERS, INVENTORY, command_id="c", vehicles=ONE_TRUCK)

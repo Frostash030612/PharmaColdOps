@@ -248,6 +248,20 @@ def solve_ga(
     the schedule attached to the result is authoritative even though the search
     itself used the cheaper incremental decoder.
     """
+    if instance.load_model == "pickup_delivery":
+        # The giant tour is one sequence over ONE origin: the split procedure then
+        # cuts it into routes that all start there, and the load is assumed to be
+        # on board from the start. A pickup-delivery instance breaks both
+        # assumptions — its routes visit several sources and its load rises and
+        # falls — so a permutation cannot describe a solution, let alone a good
+        # one. Refuse instead of returning a schedule with deliveries before their
+        # pickups (2026-09-16, PDPTW step 4).
+        raise ValueError(
+            "the genetic solver plans a single origin with the load taken at the "
+            "route start; it cannot express pickup-delivery pairs (several sources, "
+            "load rising and falling). Use algorithm='ortools' or the greedy pair "
+            "insertion for pickup-delivery orders"
+        )
     if population_size < 2:
         raise ValueError("population_size must be >= 2")
     if elite < 0 or elite * 2 > population_size:

@@ -58,7 +58,9 @@ from optimisation.dispatch_models import (  # noqa: E402
     DeliveryOrder, DispatchConstraints, DispatchVehicle, InventoryLot,
 )
 from optimisation.dispatch_planner import DISPATCH_ORIGIN, plan_delivery_orders  # noqa: E402
-from optimisation.dispatch_state import accept_plan, deliver_next, depart, state_to_dict  # noqa: E402
+from optimisation.dispatch_state import (  # noqa: E402
+    accept_plan, deliver_next, depart, next_stop, planned_stops, state_to_dict,
+)
 from optimisation.dispatch_repository import (  # noqa: E402
     create_run, latest_dispatch_id, latest_open_dispatch_id, load_context, load_run,
     recent_runs, update_context, update_run,
@@ -494,8 +496,12 @@ def _dispatch_plan_response(plan, *, requested_algorithm: str, constraints: dict
             })
         zone_views.append({
             "temperature_zone": zone_plan.temperature_zone,
-            # Where this group loads: the route starts here (B4).
+            # Where this group loads: the route starts here (B4). ``None`` in
+            # pickup-delivery mode, where every order brings its own source.
             "origin_facility_id": zone_plan.origin_facility_id,
+            # Which model produced this group, so the client says "one source per
+            # truck" or "collect and deliver in one run" from data, not guesswork.
+            "routing_model": zone_plan.routing_model,
             "feasible": result.feasible,
             "target_orders": sum(len(ids) for ids in zone_plan.order_ids_by_node.values()),
             "target_facilities": len(zone_plan.order_ids_by_node),
@@ -899,6 +905,28 @@ def _legs_with_progress(network: dict, stops: list[dict], track: dict | None,
     return legs
 
 
+def _planned_stop_nodes(vehicle, state, node_by_facility) -> list[int] | None:
+    """The network node of every planned stop, in order.
+
+    The whole run, delivered stops included: the truck's position is computed from
+    the full sequence, so a route in progress is drawn where it actually is.
+    ``None`` means some facility is not in the network — the caller skips the
+    vehicle rather than drawing a route with a hole in it.
+    """
+    nodes = []
+    for stop in planned_stops(vehicle):
+        if stop.is_pickup:
+            node_id = node_by_facility.get(stop.facility_id)
+        else:
+            order = state.orders.get(stop.order_id)
+            node_id = (None if order is None
+                       else node_by_facility.get(order.destination_facility_id))
+        if node_id is None:
+            return None
+        nodes.append(node_id)
+    return nodes
+
+
 def dispatch_route_view(state, context: dict) -> dict:
     """What the live dispatch state looks like on the map.
 
@@ -918,29 +946,34 @@ def dispatch_route_view(state, context: dict) -> dict:
     sim_now = watched_now(clock) if clock else None
     for vehicle_id, vehicle in sorted(state.vehicles.items()):
         pending, stops = [], []
-        # A rescue whose goods are not on board sends the truck to a pickup point
-        # first. That leg is part of the run, so it is a stop like any other — the
-        # map would otherwise show the truck driving to a hospital it cannot serve
-        # from what it carries (B6, 2026-09-16).
-        for facility_id in vehicle.pickup_facility_ids:
-            pickup_node = node_by_facility.get(facility_id)
-            if pickup_node is None:
+        # Every stop is read off the plan, so a pickup-delivery run is drawn as
+        # driven: collect at one supply point, deliver, collect again (PDPTW step
+        # 4). A rescue whose goods are not on board puts its pickup point in the
+        # same place, because ``planned_stops`` derives it from the legacy fields
+        # (B6, 2026-09-16).
+        for stop in planned_stops(vehicle):
+            if stop.is_pickup:
+                # ``order_id`` is empty for a legacy B6 diversion, which is not tied
+                # to a single order; the map reads the facility either way.
+                node_id = node_by_facility.get(stop.facility_id)
+                if node_id is None:
+                    continue
+                pending.append(node_id)
+                stops.append({
+                    "node_id": node_id, "order_id": stop.order_id or None,
+                    "kind": "pickup", "facility_id": stop.facility_id,
+                    "quantity": 0, "delivered": False,
+                })
                 continue
-            pending.append(pickup_node)
-            stops.append({
-                "node_id": pickup_node, "order_id": None, "kind": "pickup",
-                "facility_id": facility_id, "quantity": 0, "delivered": False,
-            })
-        for order_id in (*vehicle.delivered_order_ids, *vehicle.remaining_order_ids):
-            order = orders.get(order_id)
+            order = orders.get(stop.order_id)
             if order is None:  # an order the context never recorded: skip, don't guess
                 continue
             node_id = node_by_facility[order["destination_facility_id"]]
-            delivered = order_id in vehicle.delivered_order_ids
+            delivered = stop.order_id in vehicle.delivered_order_ids
             if not delivered:
                 pending.append(node_id)
             stops.append({
-                "node_id": node_id, "order_id": order_id,
+                "node_id": node_id, "order_id": stop.order_id, "kind": "delivery",
                 "quantity": order["quantity"], "delivered": delivered,
                 "earliest_min": order["earliest_min"], "latest_min": order["latest_min"],
                 "source_run_id": order.get("source_run_id"),
@@ -1375,21 +1408,24 @@ def tick_dispatch(dispatch_id: str) -> dict:
         for vehicle_id, vehicle in sorted(state.vehicles.items()):
             if vehicle.status != "in_transit" or not vehicle.remaining_order_ids:
                 continue
-            # Pickup stops come first and are passed before any delivery, so they
-            # must be counted out of ``reached_stops`` — otherwise the first order
-            # would be delivered the moment the truck reached the pickup point.
-            pickups = [node_by_facility[facility_id]
-                       for facility_id in vehicle.pickup_facility_ids
-                       if facility_id in node_by_facility]
-            sequence = [*pickups, *[
-                node_by_facility[state.orders[oid].destination_facility_id]
-                for oid in (*vehicle.delivered_order_ids, *vehicle.remaining_order_ids)]]
+            # What is left to drive, in driving order. A pickup-delivery plan
+            # interleaves collect and deliver, and ``next_stop`` gives the index of
+            # the next delivery with every pickup before it already passed — so a
+            # stop is due exactly when the schedule has driven past that index
+            # (PDPTW step 4; for a grouped route this is the pre-PDPTW arithmetic).
+            upcoming = next_stop(vehicle)
+            if upcoming is None:
+                continue
+            index, stop = upcoming
+            sequence = _planned_stop_nodes(vehicle, state, node_by_facility)
+            if sequence is None:
+                continue
             track = vehicle_track(network, sequence, schedule_origin(clock) + LOADING_MIN,
                                   sim_now)
             # Arrivals already recorded must not count again, or the next stop
             # would be delivered the moment the previous one was.
-            if track["reached_stops"] - len(pickups) > len(vehicle.delivered_order_ids):
-                due = (vehicle_id, vehicle.remaining_order_ids[0])
+            if track["reached_stops"] > index:
+                due = (vehicle_id, stop.order_id)
                 break
         if due is None:
             break

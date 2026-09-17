@@ -180,11 +180,18 @@ def vehicle_track(network: dict, node_sequence: list[int], depart_min: float,
     clock = depart_min
     position = point_along(_leg(network, 0, route[1])[0], 0.0) if len(route) > 1 else [0.0, 0.0]
     leg_from, leg_to, fraction = 0, route[1] if len(route) > 1 else 0, 0.0
+    stop_count = len(node_sequence)
 
-    for a, b in zip(route, route[1:]):
+    # A stop is a leg that ends at ``node_sequence[i]``. Judging it by "the leg
+    # does not end at the depot" was equivalent until a pickup-delivery run put a
+    # collection stop ON the depot node — the warehouse is both the route start
+    # and a supply point — and that stop was silently not counted, so the tick
+    # delivered the wrong order (2026-09-16, PDPTW step 4).
+    for index, (a, b) in enumerate(zip(route, route[1:])):
+        is_stop = index < stop_count
         coords, minutes = _leg(network, a, b)
         arrive = clock + minutes
-        if b != 0:
+        if is_stop:
             arrivals.append(arrive)
         if minutes <= 0:
             # A zero-length leg (the same node twice in a row): the truck does
@@ -192,7 +199,7 @@ def vehicle_track(network: dict, node_sequence: list[int], depart_min: float,
             # interpolate and no time passes beyond the stop's own service.
             if sim_now >= arrive:
                 leg_from, leg_to, fraction = a, b, 1.0
-            clock = arrive + (SERVICE_MIN if b != 0 else 0)
+            clock = arrive + (SERVICE_MIN if is_stop else 0)
             continue
         if clock <= sim_now < arrive:
             fraction = (sim_now - clock) / minutes
@@ -201,7 +208,7 @@ def vehicle_track(network: dict, node_sequence: list[int], depart_min: float,
         elif sim_now >= arrive:
             leg_from, leg_to, fraction = a, b, 1.0
             position = list(coords[-1])
-        clock = arrive + (SERVICE_MIN if b != 0 else 0)
+        clock = arrive + (SERVICE_MIN if is_stop else 0)
 
     reached = sum(1 for arrive in arrivals if sim_now >= arrive)
     return {

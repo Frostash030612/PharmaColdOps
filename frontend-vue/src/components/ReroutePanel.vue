@@ -171,6 +171,24 @@ const KIND_LABELS = {
   return_to_depot: "branchKindReturn",
   spare_vehicle: "branchKindSpare",
 };
+/* The preview lists a route's own stops, so a pickup-delivery run reads as
+   "↑W-WESTGATE → H-NUH → ↑D-HOUGANG → H-SKH" instead of pretending the truck
+   starts loaded at one place (2026-09-16, PDPTW step 4). Grouped routes have
+   delivery stops only, which is what this printed before. */
+function routeSequence(route) {
+  const stops = route.stops?.length
+    ? route.stops
+    : (route.customer_ids || []).map((node_id) => ({ node_id, kind: "delivery" }));
+  return stops
+    .map((stop) => `${stop.kind === "pickup" ? "↑" : ""}${names[stop.node_id] || stop.node_id}`)
+    .join(" → ");
+}
+
+function stopKindLabel(stop) {
+  if (!stop || !stop.kind) return text.value.stop;
+  return stop.kind === "pickup" ? text.value.stopPickup : text.value.stopDelivery;
+}
+
 function kindLabel(kind) {
   return text.value[KIND_LABELS[kind]] || kind;
 }
@@ -332,6 +350,15 @@ const dailyOutcome = computed(() => {
             <input type="number" min="1" max="14" step="1"
               v-model="dispatch.constraintsForm.max_stops_per_vehicle" />
           </label>
+          <label>
+            <span>{{ text.dailyModel }}</span>
+            <select v-model="dispatch.constraintsForm.routing_model">
+              <option value="grouped">{{ text.dailyModelGrouped }}</option>
+              <option value="pickup_delivery">{{ text.dailyModelPaired }}</option>
+            </select>
+          </label>
+          <p v-if="dispatch.constraintsForm.routing_model === 'pickup_delivery'"
+            class="sg-note">{{ text.dailyModelHint }}</p>
           <div class="sg-terminals">
             <span>{{ text.dailyTerminals }}</span>
             <label v-for="option in terminalOptions" :key="option.facility_id" class="sg-terminal">
@@ -366,9 +393,11 @@ const dailyOutcome = computed(() => {
         <ul class="sg-daily-stops">
           <li v-for="route in dispatch.dailyPreview.zones[0].routes" :key="route.vehicle_id">
             <b>{{ route.vehicle_id }}</b>:
-            <em class="sg-origin">{{ interp(text.dailyFrom, {
-              origin: facilityName(dispatch.dailyPreview.zones[0].origin_facility_id) }) }}</em>
-            {{ route.customer_ids.map((id) => names[id] || id).join(" → ") }}
+            <em class="sg-origin">{{ dispatch.dailyPreview.zones[0].origin_facility_id
+              ? interp(text.dailyFrom, {
+                  origin: facilityName(dispatch.dailyPreview.zones[0].origin_facility_id) })
+              : text.dailyFromMany }}</em>
+            {{ routeSequence(route) }}
             <span class="sg-route-end">
               → {{ text.dailyEndsAt }}
               <b>{{ route.end_facility_id ? (terminalName(route.end_facility_id) || route.end_facility_id) : text.dailyBackToDepot }}</b>
@@ -548,11 +577,16 @@ const dailyOutcome = computed(() => {
       <span v-if="route.total_distance != null">{{ route.total_distance.toFixed(2) }} {{ text.km }}</span>
       <div class="sg-stops">
         <button :class="{ selected: selectedId === 0 }" @click="selectedId = 0">{{ text.depot }}</button>
+        <!-- A pickup-delivery run interleaves collecting and delivering, so a stop
+             says which one it is: an unmarked stop list would read as if the truck
+             handed goods over at a supply point (2026-09-16, PDPTW step 4). -->
         <button v-for="(id, i) in route.customer_ids" :key="`${route.vehicle_id}-${id}-${i}`"
-          :title="names[id]" :aria-label="`${text.stop} ${i + 1}: ${names[id]}`"
+          :title="names[id]" :aria-label="`${stopKindLabel(route.stops[i])} ${i + 1}: ${names[id]}`"
           :class="{ selected: selectedId === id, done: route.stops[i]?.delivered,
+                    pickup: route.stops[i]?.kind === 'pickup',
                     mine: route.stops[i]?.order_id === thisCaseOrderId }"
-          @click="selectedId = id">{{ i + 1 }} · {{ nodes[id].facility_id.replace(/^H-/, '') }}</button>
+          @click="selectedId = id">{{ i + 1 }} · {{ nodes[id].facility_id.replace(/^H-/, '') }}
+          <em v-if="route.stops[i]?.kind === 'pickup'">↑{{ text.stopPickup }}</em></button>
         <span>→ {{ text.depot }}</span>
       </div>
     </div>
@@ -561,11 +595,14 @@ const dailyOutcome = computed(() => {
       <template v-if="selected">
         <b>{{ selected.node.name }}</b>
         <template v-if="selected.stop">
-          <div>{{ text.vehicle }} {{ selected.vehicle }} · {{ text.stop }} {{ selected.index }}</div>
+          <div>{{ text.vehicle }} {{ selected.vehicle }} · {{ text.stop }} {{ selected.index }}
+            <template v-if="selected.stop.kind"> · {{ stopKindLabel(selected.stop) }}</template>
+          </div>
           <!-- A live stop knows its order and window; a demo stop knows its schedule. -->
           <div v-if="selected.stop.order_id">
             {{ selected.stop.order_id }}<template v-if="selected.stop.source_run_id"> · {{ text.fromCase }} {{ selected.stop.source_run_id }}</template>
           </div>
+          <div v-if="selected.stop.kind === 'pickup'" class="sg-pickup">{{ text.stopPickupHint }}</div>
           <div v-if="selected.stop.arrival != null">
             {{ text.arrival }} {{ clock(selected.stop.arrival) }} · {{ text.service }} {{ clock(selected.stop.service_start) }}
           </div>
@@ -619,6 +656,8 @@ const dailyOutcome = computed(() => {
   background: #f8fafc; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; }
 .sg-limits legend { padding: 0 6px; font-size: 11px; font-weight: 700; color: #334155; }
 .sg-limits label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #475569; }
+.sg-limits select { padding: 5px 7px; border: 1px solid #cbd5e1; border-radius: 6px;
+  font-size: 11px; background: #fff; }
 .sg-limits input[type="number"] { width: 74px; padding: 5px 7px; border: 1px solid #cbd5e1;
   border-radius: 6px; font-size: 12px; }
 .sg-terminals { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center;
@@ -672,6 +711,9 @@ const dailyOutcome = computed(() => {
 .sg-candidates tr.late td:first-child { color: #b91c1c; }
 .sg-candidates em { font-style: normal; color: #b45309; }
 .sg-pickup { margin-top: 2px; color: #0f766e; font-size: 10px; }
+/* A collection stop: same strip, visibly different job. */
+.sg-stops button.pickup { border-style: dashed; border-color: #0f766e; }
+.sg-stops button.pickup em { font-style: normal; margin-left: 3px; color: #0f766e; font-size: 9px; }
 .sg-candidates button { background: #0d9488; color: #fff; border: 0; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .sg-candidates button:disabled { opacity: .6; cursor: default; }
 .sg-affected { display: block; color: #475569; }

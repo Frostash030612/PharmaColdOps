@@ -45,10 +45,17 @@ class ZonePlan:
     #: Measured reasons per unserved destination node (network node id), keyed so
     #: the API can explain *why* an order did not fit (B7).
     unserved_reasons: dict[int, tuple[dict, ...]] = field(default_factory=dict)
-    #: Which routing model produced this group (2026-09-16). Execution currently
-    #: understands "grouped" only, so the mode travels with the plan instead of
-    #: being assumed by whoever consumes it.
+    #: Which routing model produced this group (2026-09-16). The mode travels with
+    #: the plan instead of being assumed by whoever consumes it.
     routing_model: str = "grouped"
+    #: Per dense vehicle id, the ordered stops of its route as
+    #: ``(kind, order_id, facility_id)`` — a pickup carries its supply point, a
+    #: delivery the hospital (2026-09-16, PDPTW step 4). This is the sequence the
+    #: execution state drives, so the map and the clock show the truck collecting
+    #: before it delivers. Empty in the grouped model, where every order's origin
+    #: is the group's own start and the order queue already is the sequence.
+    stop_plan_by_vehicle: dict[int, tuple[tuple[str, str, str], ...]] = field(
+        default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -110,15 +117,11 @@ def _plan_pickup_delivery(
     because each order now contributes a pickup node and a delivery node to one
     instance instead of being filed under its origin.
 
-    Only OR-Tools is wired up so far — the greedy baseline still inserts one node
-    at a time, and a pair must be inserted as a pair. Asking for it is refused
-    loudly rather than answered with a plan that ignores the pairing.
+    Both solvers handle the pairing themselves: OR-Tools through
+    ``AddPickupAndDelivery`` (step 3) and the greedy baseline through whole-pair
+    insertion (step 4). Genetic search is not one of them — see the fleet-wide
+    algorithm check in :func:`plan_delivery_orders` for why.
     """
-    if algorithm != "ortools":
-        raise ValueError(
-            "routing_model='pickup_delivery' currently needs algorithm='ortools': "
-            "the greedy baseline has no pair insertion yet"
-        )
     # Goods still have to be at each order's own origin; only the *vehicle* check
     # is relaxed, because the truck may start anywhere and drive to the sources.
     validate_dispatch_inputs(
@@ -179,16 +182,45 @@ def _plan_pickup_delivery(
             terminal_node_ids = tuple(
                 node_by_facility[fid] for fid in constraints.terminal_facility_ids)
         end_leg_fn = _end_leg_fn(network, source_ids, terminal_node_ids)
-        dense_result = solve_ortools(
-            instance, leg_fn=leg_fn,
-            max_stops_per_vehicle=constraints.max_stops_per_vehicle,
-            end_leg_fn=end_leg_fn, mileage_limit=mileage_limit_km,
-        )
+        if algorithm == "greedy":
+            dense_result = solve_greedy(
+                instance, leg_fn=leg_fn,
+                max_stops_per_vehicle=constraints.max_stops_per_vehicle,
+                end_leg_fn=end_leg_fn, mileage_limit=mileage_limit_km,
+            )
+        else:
+            dense_result = solve_ortools(
+                instance, leg_fn=leg_fn,
+                max_stops_per_vehicle=constraints.max_stops_per_vehicle,
+                end_leg_fn=end_leg_fn, mileage_limit=mileage_limit_km,
+            )
         result = restore_network_node_ids(dense_result, source_ids)
         order_ids_by_node = {
             source_ids[node.node_id]: (node.pair_id,)
             for node in instance.deliveries
         }
+        # Read the stop sequence off the DENSE routes: several orders may share one
+        # hospital, and after the id mapping their stops would be indistinguishable
+        # — the order has to be pinned before that collapse, not guessed after it.
+        order_by_id = {order.order_id: order for order in zone_orders}
+        order_at_dense_node = {
+            node.node_id: node.pair_id
+            for node in (*instance.pickups, *instance.deliveries)
+        }
+        stop_plan_by_vehicle: dict[int, tuple[tuple[str, str, str], ...]] = {}
+        for route in dense_result.routes:
+            if not route.stops:
+                continue
+            entries = []
+            for stop in route.stops:
+                order_id = order_at_dense_node[stop.node_id]
+                order = order_by_id[order_id]
+                facility_id = (
+                    order.origin_facility_id or DISPATCH_ORIGIN
+                    if stop.kind == "pickup" else order.destination_facility_id
+                )
+                entries.append((stop.kind, order_id, facility_id))
+            stop_plan_by_vehicle[route.vehicle_id] = tuple(entries)
         unserved_reasons = {
             source_ids[dense_id]: reasons
             for dense_id, reasons in diagnose_unserved(
@@ -209,8 +241,10 @@ def _plan_pickup_delivery(
             terminal_facility_ids=tuple(constraints.terminal_facility_ids or ()),
             unserved_reasons=unserved_reasons,
             routing_model="pickup_delivery",
+            stop_plan_by_vehicle=stop_plan_by_vehicle,
         ))
-    return DispatchPlan("ortools-pickup-delivery", len(orders), tuple(zone_plans))
+    label = "greedy-pair-insertion" if algorithm == "greedy" else "ortools"
+    return DispatchPlan(f"{label}-pickup-delivery", len(orders), tuple(zone_plans))
 
 
 def _end_leg_fn(network: dict, source_ids: tuple[int, ...],
@@ -251,7 +285,17 @@ def plan_delivery_orders(
     planner behaves exactly as before.
     """
     if algorithm not in {"greedy", "ortools"}:
-        raise ValueError(f"unsupported routing algorithm {algorithm!r}")
+        # Genetic search stays a single-origin research baseline
+        # (scripts/benchmark_solvers.py, POST /api/route): it evolves one
+        # permutation of a tour that starts at one place with the load already on
+        # board. Neither holds once several sources share a run, so rather than
+        # quietly answering with a different solver it is refused — and
+        # ga_solver.solve_ga refuses the instance directly for its own callers.
+        raise ValueError(
+            f"unsupported routing algorithm {algorithm!r}: dispatch offers 'greedy' "
+            f"and 'ortools'. Genetic search plans one single-origin tour with the "
+            f"load taken at the route start and cannot express pickup-delivery pairs"
+        )
     constraints = constraints or DispatchConstraints()
     # Both modes: an order's origin must be a declared source for its product. The
     # pickup-delivery path used to skip this simply because the check lived further

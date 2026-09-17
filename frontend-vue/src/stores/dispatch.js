@@ -208,6 +208,10 @@ export const useDispatchStore = defineStore("dispatch", () => {
     max_stops_per_vehicle: 4,
     mileageLimitKm: "",
     terminal_facility_ids: [],
+    // "grouped" ties one truck to one source; "pickup_delivery" lets one run
+    // collect at several supply points before delivering. The value travels with
+    // the plan, so switching it re-plans instead of being assumed (PDPTW step 4).
+    routing_model: "grouped",
   });
 
   function constraintSnapshot() {
@@ -216,6 +220,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
       max_stops_per_vehicle: Number(constraintsForm.max_stops_per_vehicle) || 0,
       mileageLimitKm: constraintsForm.mileageLimitKm,
       terminal_facility_ids: [...constraintsForm.terminal_facility_ids].sort(),
+      routing_model: constraintsForm.routing_model,
     };
   }
   let absorbed = null;
@@ -234,6 +239,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     constraintsForm.mileageLimitKm = c.mileage_limit_m
       ? String(c.mileage_limit_m / 1000) : "";
     constraintsForm.terminal_facility_ids = [...(c.terminal_facility_ids || [])];
+    constraintsForm.routing_model = c.routing_model || "grouped";
     absorbed = constraintSnapshot();
   }
 
@@ -254,6 +260,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
         // which is the legacy closed route.
         terminal_facility_ids: constraintsForm.terminal_facility_ids.length
           ? [...constraintsForm.terminal_facility_ids] : null,
+        routing_model: constraintsForm.routing_model,
       },
     };
   }
