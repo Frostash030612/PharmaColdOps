@@ -98,7 +98,11 @@ def evaluate_route(
     departure = float(depot.earliest)
     distance = 0.0
     load = 0
+    peak_load = 0
+    pairing_broken = False
+    picked_up: dict[str, int] = {}
     stops: list[RouteStop] = []
+    pickup_delivery = instance.load_model == "pickup_delivery"
 
     for node_id in ids:
         node = by_id[node_id]
@@ -108,7 +112,22 @@ def evaluate_route(
         service_start = max(arrival, float(node.earliest))
         late_by = max(0.0, service_start - node.latest)
         departure = service_start + node.service
-        load += node.demand
+        if pickup_delivery:
+            # Load rises at the pickup and falls at its delivery, so a route may
+            # interleave the two. A delivery whose pickup has not happened yet is
+            # not a capacity question but a broken plan, and is reported as such.
+            if node.is_pickup:
+                load += node.demand
+                picked_up[node.pair_id] = picked_up.get(node.pair_id, 0) + node.demand
+            else:
+                if picked_up.get(node.pair_id, 0) < node.demand:
+                    pairing_broken = True
+                load -= node.demand
+                if node.pair_id in picked_up:
+                    picked_up[node.pair_id] -= node.demand
+        else:
+            load += node.demand
+        peak_load = max(peak_load, load)
         stops.append(RouteStop(
             node_id=node_id,
             arrival=arrival,
@@ -117,6 +136,7 @@ def evaluate_route(
             demand=node.demand,
             cumulative_load=load,
             late_by=late_by,
+            kind=node.kind,
         ))
         current = node
 
@@ -128,13 +148,19 @@ def evaluate_route(
     return_time = departure + end.duration
     return VehicleRoute(
         vehicle_id=vehicle_id,
-        customer_ids=ids,
+        # ``customer_ids`` stays "the orders this route serves" — one per delivery.
+        # A pickup is work the truck does, not an order delivered, so it lives in
+        # ``stops``/``node_sequence`` only (identical to ``ids`` for every legacy
+        # instance, where nothing is a pickup).
+        customer_ids=tuple(stop.node_id for stop in stops if stop.kind != "pickup"),
         stops=tuple(stops),
         total_load=load,
         total_distance=distance,
         duration=return_time - depot.earliest,
         time_window_violations=sum(stop.late_by > EPSILON for stop in stops),
-        capacity_violation_units=max(0, load - instance.capacity),
+        # The peak, not the final load: in a pickup-delivery route a vehicle can be
+        # over capacity mid-tour and unload again before the end.
+        capacity_violation_units=max(0, peak_load - instance.capacity),
         # Whether the vehicle goes home or parks, it must arrive before the
         # site closes: the flag keeps its name but now covers either end.
         depot_return_violation=return_time > depot.latest + EPSILON,
@@ -142,6 +168,7 @@ def evaluate_route(
         mileage_limit_violation=(
             mileage_limit is not None and distance > mileage_limit + EPSILON
         ),
+        pairing_violation=pairing_broken,
     )
 
 
@@ -166,6 +193,7 @@ def build_result(
         route.capacity_violation_units > 0 for route in route_tuple
     )
     depot_violations = sum(route.depot_return_violation for route in route_tuple)
+    pairing_violations = sum(route.pairing_violation for route in route_tuple)
     served = len(visited)
 
     metrics = ReplanMetrics(
@@ -181,6 +209,7 @@ def build_result(
         vehicle_limit_violations=max(0, len(route_tuple) - instance.vehicle_nr),
         unserved_customer_ids=unserved,
         mileage_violations=sum(route.mileage_limit_violation for route in route_tuple),
+        pairing_violations=pairing_violations,
     )
     return ReplanResult(
         instance=instance.instance,

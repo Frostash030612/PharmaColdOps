@@ -9,6 +9,9 @@ import json
 import math
 from pathlib import Path
 
+from dataclasses import dataclass
+from typing import Sequence
+
 from .models import Node, ReplanMetrics, ReplanResult, RouteStop, SolomonInstance, VehicleRoute
 from .routing import LegFn
 
@@ -187,6 +190,110 @@ def load_singapore_subset(
     return instance, leg_fn, source_ids
 
 
+
+@dataclass(frozen=True)
+class PickupDeliveryOrder:
+    """One order as the pickup-delivery loader needs it.
+
+    Deliberately not ``dispatch_models.DeliveryOrder``: ``catalog`` imports this
+    module, so importing the dispatch models here would close a cycle. The planner
+    maps its orders onto this shape.
+    """
+
+    order_id: str
+    origin_facility_id: str
+    destination_facility_id: str
+    quantity: int
+    earliest_min: int
+    latest_min: int
+
+
+def load_pickup_delivery_subset(
+    orders: Sequence[PickupDeliveryOrder],
+    path: str | Path = SINGAPORE_NETWORK_PATH,
+    *,
+    vehicle_nr: int | None = None,
+    capacity: int | None = None,
+) -> tuple[SolomonInstance, LegFn, tuple[int, ...]]:
+    """One dense pickup node **and** one dense delivery node per order.
+
+    ``load_singapore_subset`` cannot express this: it aggregates demand per
+    destination, which assumes the goods are loaded once at a single origin. Here
+    every order contributes a pair — its origin with ``demand = +quantity`` and its
+    destination with ``demand = -quantity`` — so one route may interleave orders
+    from different sources and the load profile is the real one (2026-09-16, PDPTW).
+
+    Returns the same ``(instance, leg_fn, source_ids)`` shape as the delivery-only
+    loader, so the solvers and the id restoration stay shared.
+    """
+    if not orders:
+        raise ValueError("at least one pickup-delivery order is required")
+    raw = read_network(path)
+    by_facility = {node['facility_id']: node for node in raw['nodes']}
+    depot = raw['nodes'][0]
+
+    nodes = [Node(0, 0, 0, 0, depot['earliest_min'], depot['latest_min'],
+                  depot['service_min'])]
+    source_ids = [depot['node_id']]
+    for order in sorted(orders, key=lambda item: item.order_id):
+        origin = by_facility.get(order.origin_facility_id)
+        destination = by_facility.get(order.destination_facility_id)
+        if origin is None:
+            raise ValueError(f"unknown origin facility {order.origin_facility_id!r}")
+        if destination is None:
+            raise ValueError(
+                f"unknown destination facility {order.destination_facility_id!r}")
+        if origin['role'] == 'customer':
+            raise ValueError(
+                f"origin {order.origin_facility_id!r} is a receiving site, not a source")
+        if destination['role'] != 'customer':
+            raise ValueError(
+                f"destination {order.destination_facility_id!r} is not a receiving site")
+        if type(order.quantity) is not int or order.quantity <= 0:
+            raise ValueError(f"order {order.order_id!r} needs a positive integer quantity")
+        earliest = max(destination['earliest_min'], order.earliest_min)
+        latest = min(destination['latest_min'], order.latest_min)
+        if earliest > latest:
+            raise ValueError(
+                f"order {order.order_id!r} window does not overlap "
+                f"{order.destination_facility_id!r} receiving hours"
+            )
+        # The pickup only has to happen while the source is open; the order's
+        # window is about the delivery.
+        # Both nodes carry the order's quantity **as a positive number**; the sign
+        # is derived from ``kind`` (in the schedule and in the capacity callback).
+        # That keeps ``Node.demand`` meaning "how much", exactly as it does for
+        # every legacy node, instead of meaning something different per role.
+        for node, kind, window in (
+            (origin, 'pickup', (origin['earliest_min'], origin['latest_min'])),
+            (destination, 'delivery', (earliest, latest)),
+        ):
+            nodes.append(Node(
+                len(nodes), 0, 0, order.quantity, window[0], window[1],
+                node['service_min'], kind=kind, pair_id=order.order_id,
+            ))
+            source_ids.append(node['node_id'])
+
+    distance = raw['matrix']['distance_m']
+    duration = raw['matrix']['duration_s']
+    source_ids = tuple(source_ids)
+
+    def leg_fn(a: Node, b: Node) -> tuple[float, float]:
+        source_a, source_b = source_ids[a.node_id], source_ids[b.node_id]
+        return distance[source_a][source_b] / 1000, duration[source_a][source_b] / 60
+
+    resolved_vehicle_nr = raw['vehicle_nr'] if vehicle_nr is None else vehicle_nr
+    resolved_capacity = raw['capacity'] if capacity is None else capacity
+    if type(resolved_vehicle_nr) is not int or resolved_vehicle_nr < 1:
+        raise ValueError("vehicle_nr must be a positive integer")
+    if type(resolved_capacity) is not int or resolved_capacity < 1:
+        raise ValueError("capacity must be a positive integer")
+    instance = SolomonInstance(
+        f"{raw['instance']}-PD-{len(orders)}", resolved_vehicle_nr,
+        resolved_capacity, tuple(nodes), load_model="pickup_delivery",
+    )
+    return instance, leg_fn, source_ids
+
 def restore_network_node_ids(result: ReplanResult, source_ids: tuple[int, ...]) -> ReplanResult:
     """Translate a subset solution back to network IDs for API and GeoJSON use."""
     def source(dense_id: int) -> int:
@@ -202,7 +309,7 @@ def restore_network_node_ids(result: ReplanResult, source_ids: tuple[int, ...]) 
             node_id=source(stop.node_id), arrival=stop.arrival,
             service_start=stop.service_start, departure=stop.departure,
             demand=stop.demand, cumulative_load=stop.cumulative_load,
-            late_by=stop.late_by,
+            late_by=stop.late_by, kind=stop.kind,
         ) for stop in route.stops),
         total_load=route.total_load, total_distance=route.total_distance,
         duration=route.duration,
@@ -214,6 +321,7 @@ def restore_network_node_ids(result: ReplanResult, source_ids: tuple[int, ...]) 
         # network node id and must not be translated again (2026-09-16).
         end_node_id=route.end_node_id,
         mileage_limit_violation=route.mileage_limit_violation,
+        pairing_violation=route.pairing_violation,
     ) for route in result.routes)
     old = result.metrics
     metrics = ReplanMetrics(
@@ -226,5 +334,6 @@ def restore_network_node_ids(result: ReplanResult, source_ids: tuple[int, ...]) 
         vehicle_limit_violations=old.vehicle_limit_violations,
         unserved_customer_ids=tuple(source(node_id) for node_id in old.unserved_customer_ids),
         mileage_violations=old.mileage_violations,
+        pairing_violations=old.pairing_violations,
     )
     return ReplanResult(result.instance, result.algorithm, routes, metrics)

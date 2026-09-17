@@ -4,6 +4,41 @@
 
 ---
 
+## 2026-09-16 — PDPTW 步骤 1–3：取送排线（规划侧），以开关启用、默认关闭
+
+**为什么分步**：全项目最大的一次改动，且它会取代一个当时能跑通、289 条测试全绿的模型。
+做成开关（`constraints.routing_model`，默认 `grouped`），任何一步出问题都能退回。
+
+**第 1 步 · 核心有符号载重 + 配对校验**：`Node.kind/pair_id`、`SolomonInstance.load_model`；
+`evaluate_route` 取送模式下取货加、送货减，容量违规按**峰值**判（车可中途超载再卸下——
+只看终载会漏），`pairing_violation` 捕获"先送后取"；`customer_ids` 仍只算送货点，
+新增 `node_sequence` 给出完整行驶序列。**preloaded 分支就是原来的代码，老行为逐字节不变。**
+
+**第 2 步 · 按订单建节点的加载器** `load_pickup_delivery_subset`：每张订单两个稠密节点
+（起点 pickup / 终点 delivery，同 `pair_id`）。**需求一律存正数、符号由 kind 决定**——
+第一版给送货点写负需求，与调度核心约定冲突，靠测试才发现。稠密编号按 order_id 排序 ⇒ 结果可复现。
+
+**第 3 步 · OR-Tools 取送 + 规划器开关**：`AddPickupAndDelivery` + 同车/先后 + **载重下界 0**
+（禁止"没取就送"靠负载重蒙混）；`drop_penalty` 改为**成对放弃**；首解策略改用
+`PARALLEL_CHEAPEST_INSERTION`（默认策略在这类实例上构造不出首解，同 §5 A2 那类问题）。
+规划器取送模式不再按货源点分组；车辆校验放宽为本温区有车（货源点校验仍逐单生效）；
+`diagnose_unserved` 改为**成对插入诊断**（单点插入会把配对失败误报成里程/时间窗问题）。
+
+**实测**：一车从主仓取两单、后港取一单，送三家医院，收车于后港；
+序列 `W-WESTGATE → W-WESTGATE → H-NUH → H-SGH → D-HOUGANG → H-SKH`，
+载重 `30 → 55 → 30 → 0 → 20 → 0`，feasible=true。**这是分组模型做不到的。**
+
+**闸门（重要）**：取送计划**只能预览、不能建单**——执行层把车辆工作建模为"订单队列 + 至多队首取货"，
+中途取货会让地图漏掉取货腿，因此 `accept_plan` **显式拒绝**取送计划（有测试）。
+宁可不建单，也不画出车没走的路线。
+
+**第 4 步（未做）**：贪心成对插入；执行层站点序列；GA 限定单起点并声明；前端显示中途取货站。
+
+**验证**：新增 `tests/test_pickup_delivery_core.py`（7）、`test_pickup_delivery_loader.py`（9）、
+`test_pickup_delivery_planning.py`（9）；全量 `pytest -q` **314 passed / 0 failed**。
+
+---
+
 ## 2026-09-16 — B6 最后一块：货还在车上（在途报废）
 
 **怎么判断"货还在车上"**：不需要新数据——关联订单若仍在某辆车的 `remaining_order_ids` 里就是在途；

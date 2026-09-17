@@ -70,6 +70,13 @@ def solve_ortools(
       "≤ N km per vehicle per day" that also covers the final leg to the parking
       node and any empty repositioning before a stop.
     """
+    pickup_delivery = instance.load_model == "pickup_delivery"
+    if pickup_delivery and first_solution == "PATH_CHEAPEST_ARC":
+        # The default construction strategy repeatedly fails to build a feasible
+        # start on pickup-delivery instances (measured on this repo's own
+        # instances; the same class of failure as the r101/rc101 case recorded in
+        # docs/C_配送模块.md §5 A2). Parallel cheapest insertion does construct one.
+        first_solution = "PARALLEL_CHEAPEST_INSERTION"
     if time_limit_seconds < 1:
         raise ValueError("time_limit_seconds must be >= 1")
     if max_stops_per_vehicle is not None and max_stops_per_vehicle < 1:
@@ -145,7 +152,12 @@ def solve_ortools(
         node_index = manager.IndexToNode(from_index)
         if dummy is not None and node_index == dummy:
             return 0
-        return nodes[node_index].demand
+        node = nodes[node_index]
+        if pickup_delivery and node_index != 0 and not node.is_pickup:
+            # Load falls at a delivery: the sign lives here, in one place, while
+            # ``Node.demand`` keeps meaning "how much" for every role.
+            return -node.demand
+        return node.demand
 
     demand_index = routing.RegisterUnaryTransitCallback(demand)
     routing.AddDimensionWithVehicleCapacity(
@@ -230,14 +242,48 @@ def solve_ortools(
             time_dimension.CumulVar(routing.End(vehicle_id))
         )
 
+    if pickup_delivery:
+        delivery_by_pair = {node.pair_id: node.node_id
+                            for node in nodes if not node.is_pickup}
+        for pickup in instance.pickups:
+            delivery_id = delivery_by_pair.get(pickup.pair_id)
+            if delivery_id is None:
+                raise ValueError(f"pickup {pickup.node_id} has no delivery")
+            pickup_index = manager.NodeToIndex(pickup.node_id)
+            delivery_index = manager.NodeToIndex(delivery_id)
+            # Same vehicle, pickup first. The explicit time and vehicle
+            # constraints make that intent readable and are cheap to check.
+            routing.AddPickupAndDelivery(pickup_index, delivery_index)
+            routing.solver().Add(
+                routing.VehicleVar(pickup_index) == routing.VehicleVar(delivery_index))
+            routing.solver().Add(
+                time_dimension.CumulVar(pickup_index)
+                <= time_dimension.CumulVar(delivery_index))
+        # Nothing may be delivered that was never loaded: without this a negative
+        # load could satisfy the capacity dimension instead of exposing a bad route.
+        capacity_dimension = routing.GetDimensionOrDie("Capacity")
+        for index in range(routing.Size()):
+            capacity_dimension.CumulVar(index).SetMin(0)
+
     if drop_penalty > 0:
         # Without this the model is unsatisfiable for the solver's construction
         # heuristic on some instances; with it, a customer the constraints
         # cannot place is dropped and reported as unserved instead of taking the
         # whole solution down.
         penalty = drop_penalty * distance_scale
-        for node_index in range(1, len(nodes)):
-            routing.AddDisjunction([manager.NodeToIndex(node_index)], penalty)
+        if pickup_delivery:
+            # Dropping half a pair is meaningless: a delivery with no pickup (or
+            # the reverse) is not a plan. One disjunction per pair drops both.
+            for pickup in instance.pickups:
+                delivery_by_pair = {node.pair_id: node.node_id
+                                    for node in nodes if not node.is_pickup}
+                routing.AddDisjunction([
+                    manager.NodeToIndex(pickup.node_id),
+                    manager.NodeToIndex(delivery_by_pair[pickup.pair_id]),
+                ], penalty)
+        else:
+            for node_index in range(1, len(nodes)):
+                routing.AddDisjunction([manager.NodeToIndex(node_index)], penalty)
 
     search = pywrapcp.DefaultRoutingSearchParameters()
     search.first_solution_strategy = getattr(

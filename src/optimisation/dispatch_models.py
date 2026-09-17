@@ -38,6 +38,11 @@ class DispatchConstraints:
     max_stops_per_vehicle: int | None = None
     mileage_limit_m: int | None = None
     terminal_facility_ids: tuple[str, ...] | None = None
+    #: ``"grouped"`` (default): one fleet per (zone, origin) — a truck serves orders
+    #: from a single source, which needs no pickup-delivery model.
+    #: ``"pickup_delivery"``: one fleet per zone, and a truck may collect from
+    #: several sources on one route (PDPTW, 2026-09-16).
+    routing_model: str = "grouped"
 
     def __post_init__(self) -> None:
         if self.max_vehicles is not None and self.max_vehicles < 1:
@@ -46,6 +51,11 @@ class DispatchConstraints:
             raise ValueError("max_stops_per_vehicle must be a positive integer")
         if self.mileage_limit_m is not None and self.mileage_limit_m < 1:
             raise ValueError("mileage_limit_m must be a positive integer")
+        if self.routing_model not in {"grouped", "pickup_delivery"}:
+            raise ValueError(
+                f"unknown routing_model {self.routing_model!r}; expected 'grouped' "
+                "or 'pickup_delivery'"
+            )
         if self.terminal_facility_ids is not None:
             if not self.terminal_facility_ids:
                 raise ValueError("terminal_facility_ids must not be empty when given")
@@ -141,6 +151,7 @@ def validate_dispatch_inputs(
     vehicles: tuple[DispatchVehicle, ...],
     *,
     origin_facility_id: str | None = None,
+    vehicles_anywhere: bool = False,
 ) -> None:
     """Reject duplicate IDs and resource claims that cannot form a plan."""
     if not orders:
@@ -183,7 +194,8 @@ def validate_dispatch_inputs(
             where = f" at {origin}" if origin else ""
             raise ValueError(f"insufficient available inventory for {product} ({zone}){where}")
         if not any(v.status == "available" and v.temperature_zone == zone
-                   and (origin is None or v.start_facility_id == origin)
+                   and (origin is None or vehicles_anywhere
+                        or v.start_facility_id == origin)
                    for v in vehicles):
             where = f" at {origin}" if origin else ""
             raise ValueError(f"no available vehicle for temperature zone {zone}{where}")

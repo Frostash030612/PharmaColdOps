@@ -146,6 +146,8 @@ def test_daily_orders_endpoint_returns_a_postable_plan():
         "max_vehicles": 3, "max_stops_per_vehicle": 4,
         # present but unset: the batch is a closed route with no mileage cap
         "mileage_limit_m": None, "terminal_facility_ids": None,
+        # the batch is planned by the grouped model (one source per truck)
+        "routing_model": "grouped",
     }
     # the simulated-data disclosure travels with the payload
     assert body["note"].strip()

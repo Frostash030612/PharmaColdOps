@@ -112,6 +112,17 @@ def accept_plan(
         raise ValueError("command_id is required")
     if not plan.feasible:
         raise ValueError("cannot accept an infeasible dispatch plan")
+    pickup_delivery = [zone_plan for zone_plan in plan.zone_plans
+                       if getattr(zone_plan, "routing_model", "grouped") == "pickup_delivery"]
+    if pickup_delivery:
+        # The state models a vehicle's work as an ORDER QUEUE with at most a
+        # leading pickup (B6). A pickup-delivery plan interleaves pickups and
+        # deliveries, so an accepted operation would draw a route the truck does
+        # not drive. Refuse loudly instead of writing that map.
+        raise ValueError(
+            "pickup-delivery plans cannot be dispatched yet: execution needs the "
+            "stop-sequence state (PDPTW step 4)"
+        )
     by_order = {order.order_id: order for order in orders}
     assignments: dict[str, str] = {}
     sequences: dict[str, list[str]] = {}

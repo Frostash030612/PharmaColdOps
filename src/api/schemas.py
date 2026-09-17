@@ -170,6 +170,10 @@ class DispatchConstraintsIn(BaseModel):
     #: Parking nodes. When set, routes are open — each one ends at the nearest of
     #: these instead of driving back to the depot, and no return leg is charged.
     terminal_facility_ids: Optional[List[str]] = None
+    #: "grouped" (default): one fleet per source, so a truck serves orders from a
+    #: single source. "pickup_delivery": one fleet per zone and a truck may collect
+    #: from several sources on one route (PDPTW, 2026-09-16; needs algorithm=ortools).
+    routing_model: Literal["grouped", "pickup_delivery"] = "grouped"
 
 
 #: Every way a branch order can be served. Previously this literal listed only

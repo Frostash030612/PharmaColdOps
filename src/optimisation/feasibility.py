@@ -48,6 +48,77 @@ def _keep_best(reasons: dict, code: str, detail: dict, *, smallest: str | None =
         current["detail"][smallest] = detail[smallest]
 
 
+
+def _diagnose_pickup_delivery(
+    instance, unserved, bases, by_id, *, reasons_factory,
+    leg_fn, end_leg_fn, mileage_limit, limit_m, max_stops_per_vehicle,
+) -> dict[int, tuple[dict, ...]]:
+    """Why an ORDER could not be placed, when it is a pickup/delivery pair.
+
+    A single-node insertion is meaningless here: dropping a delivery into a route
+    without its pickup is not a plan, and evaluating it would report a pairing
+    failure as if it were a mileage or window problem. So the pair is inserted as
+    a pair — every ``(i, j)`` with the pickup first — and the reasons come from the
+    attempts that were actually made (2026-09-16).
+    """
+    pickup_by_pair = {node.pair_id: node.node_id for node in instance.pickups}
+    diagnosis: dict[int, tuple[dict, ...]] = {}
+    for delivery_id in sorted(unserved):
+        delivery = by_id[delivery_id]
+        pickup_id = pickup_by_pair.get(delivery.pair_id)
+        reasons: dict[str, dict] = {}
+        if pickup_id is None:                       # a malformed instance, not a limit
+            reasons["no_vehicle_available"] = {
+                "code": "no_vehicle_available", "detail": {}}
+            diagnosis[delivery_id] = tuple(reasons.values())
+            continue
+        for base in bases:
+            if (max_stops_per_vehicle is not None
+                    and len(base) + 2 > max_stops_per_vehicle):
+                _keep_best(reasons, "stop_limit_exceeded",
+                           {"max_stops_per_vehicle": max_stops_per_vehicle})
+                continue
+            for i in range(len(base) + 1):
+                for j in range(i, len(base) + 1):
+                    attempt = (base[:i] + (pickup_id,) + base[i:j]
+                               + (delivery_id,) + base[j:])
+                    route = evaluate_route(
+                        instance, attempt, leg_fn=leg_fn, end_leg_fn=end_leg_fn,
+                        mileage_limit=mileage_limit,
+                    )
+                    if route.feasible:
+                        _keep_best(reasons, "placeable_in_isolation",
+                                   {"fits_after_distance_m":
+                                    round(route.total_distance * 1000)})
+                        continue
+                    if route.mileage_limit_violation and limit_m is not None:
+                        _keep_best(reasons, "mileage_limit_exceeded",
+                                   {"needed_distance_m":
+                                    round(route.total_distance * 1000),
+                                    "limit_m": limit_m},
+                                   smallest="needed_distance_m")
+                    if route.capacity_violation_units:
+                        _keep_best(reasons, "capacity_exceeded",
+                                   {"needed_units": route.total_load,
+                                    "capacity_units": instance.capacity},
+                                   smallest="needed_units")
+                    if route.time_window_violations:
+                        worst = max(route.stops, key=lambda stop: stop.late_by)
+                        _keep_best(reasons, "time_window_infeasible",
+                                   {"earliest_arrival_min": round(worst.arrival),
+                                    "latest_min": by_id[worst.node_id].latest,
+                                    "late_by_min": round(worst.late_by)},
+                                   smallest="late_by_min")
+                    if route.depot_return_violation:
+                        _keep_best(reasons, "closing_window_exceeded",
+                                   {"closing_min": instance.depot.latest},
+                                   smallest="closing_min")
+        if not reasons:
+            reasons["no_vehicle_available"] = {"code": "no_vehicle_available",
+                                               "detail": {}}
+        diagnosis[delivery_id] = tuple(reasons.values())
+    return diagnosis
+
 def diagnose_unserved(
     instance: SolomonInstance,
     unserved: tuple[int, ...] | list[int],
@@ -72,6 +143,12 @@ def diagnose_unserved(
 
     diagnosis: dict[int, tuple[dict, ...]] = {}
     limit_m = None if mileage_limit is None else round(mileage_limit * 1000)
+    if instance.load_model == "pickup_delivery":
+        return _diagnose_pickup_delivery(
+            instance, unserved, bases, by_id, reasons_factory=dict,
+            leg_fn=leg_fn, end_leg_fn=end_leg_fn, mileage_limit=mileage_limit,
+            limit_m=limit_m, max_stops_per_vehicle=max_stops_per_vehicle,
+        )
     for customer_id in sorted(unserved):
         reasons: dict[str, dict] = {}
         for base in bases:

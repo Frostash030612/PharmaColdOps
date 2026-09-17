@@ -28,10 +28,19 @@ class Node:
     earliest: int
     latest: int
     service: int
+    #: ``"delivery"`` (the default, and every pre-2026-09-16 node) or
+    #: ``"pickup"``. Only pickup-delivery instances mix the two.
+    kind: str = "delivery"
+    #: Identifies the pickup/delivery pair of one order (2026-09-16, PDPTW).
+    pair_id: str | None = None
 
     @property
     def is_depot(self) -> bool:
         return self.node_id == 0
+
+    @property
+    def is_pickup(self) -> bool:
+        return self.kind == "pickup"
 
 
 @dataclass(frozen=True)
@@ -45,23 +54,41 @@ class SolomonInstance:
     vehicle_nr: int
     capacity: int
     nodes: tuple[Node, ...]
+    #: How load moves through a route. ``"preloaded"`` (default, all legacy
+    #: instances): everything is loaded at the origin and the cumulative load
+    #: grows at each delivery. ``"pickup_delivery"``: load rises at a pickup node
+    #: and falls at its delivery, so the route may interleave the two.
+    load_model: str = "preloaded"
 
     @property
     def depot(self) -> Node:
         return self.nodes[0]
 
     @property
+    def pickups(self) -> tuple[Node, ...]:
+        return tuple(n for n in self.nodes if n.is_pickup)
+
+    @property
+    def deliveries(self) -> tuple[Node, ...]:
+        """The nodes a route has to serve — one per order.
+
+        For every legacy instance this is exactly "all nodes except the depot", so
+        ``customers`` keeps its old meaning everywhere downstream.
+        """
+        return tuple(n for n in self.nodes if not n.is_depot and not n.is_pickup)
+
+    @property
     def customers(self) -> tuple[Node, ...]:
         """All nodes except the depot."""
-        return tuple(n for n in self.nodes if not n.is_depot)
+        return self.deliveries
 
     @property
     def n_customers(self) -> int:
-        return len(self.nodes) - 1
+        return len(self.deliveries)
 
     @property
     def total_demand(self) -> int:
-        return sum(n.demand for n in self.customers)
+        return sum(n.demand for n in self.deliveries)
 
     @property
     def horizon_end(self) -> int:
@@ -80,6 +107,9 @@ class RouteStop:
     demand: int
     cumulative_load: int
     late_by: float = 0.0
+    #: ``"delivery"`` (default) or ``"pickup"`` — so a stop list can be drawn and
+    #: read without consulting the instance again.
+    kind: str = "delivery"
 
 
 @dataclass(frozen=True)
@@ -102,6 +132,9 @@ class VehicleRoute:
     depot_return_violation: bool
     end_node_id: int | None = None
     mileage_limit_violation: bool = False
+    #: A delivery was served before its own pickup (or with nothing on board).
+    #: Always false for "preloaded" instances.
+    pairing_violation: bool = False
 
     @property
     def feasible(self) -> bool:
@@ -110,7 +143,17 @@ class VehicleRoute:
             and self.capacity_violation_units == 0
             and not self.depot_return_violation
             and not self.mileage_limit_violation
+            and not self.pairing_violation
         )
+
+    @property
+    def node_sequence(self) -> tuple[int, ...]:
+        """Every node the vehicle visits, in order (pickups included).
+
+        Equal to ``customer_ids`` unless the instance mixes pickups and
+        deliveries; the map and the road geometry need the full driven sequence.
+        """
+        return tuple(stop.node_id for stop in self.stops)
 
 
 @dataclass(frozen=True)
@@ -129,6 +172,7 @@ class ReplanMetrics:
     vehicle_limit_violations: int
     unserved_customer_ids: tuple[int, ...]
     mileage_violations: int = 0
+    pairing_violations: int = 0
 
     @property
     def violation_count(self) -> int:
@@ -138,6 +182,7 @@ class ReplanMetrics:
             + self.depot_return_violations
             + self.vehicle_limit_violations
             + self.mileage_violations
+            + self.pairing_violations
             + len(self.unserved_customer_ids)
         )
 
