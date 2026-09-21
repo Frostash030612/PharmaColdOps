@@ -13,10 +13,14 @@ are the backend's own ``route_geojson`` / ``baselines[...].route_geojson``, so
 "before" and "after" are the lines the system would actually drive, not a
 sketch of them.
 
-Why the wall clock has to be driven: the simulated time is *start real time ×
-speed* (``tracking.advance_clock``), and a tick only advances it by the real
-seconds that passed. The case must be raised while the truck is between stops,
-so the clock is stepped until a vehicle is genuinely in transit with work left.
+Why the clock is *set* rather than waited for: simulated time is derived from the
+wall clock (``tracking.advance_clock``), so waiting for the truck to be between
+stops takes about ten real minutes — and worse, it lands on a slightly different
+simulated minute every time depending on how long each tick took. Since the
+fleet's position, the rescue options and every number in the figure all follow
+from that minute, the figure would not be reproducible. So the clock is placed
+at ``CLOCK_TARGET_MIN`` outright (``position_clock``) and one tick settles the
+ledger; the same command then draws the same figure on any machine.
 
 Output: ``docs/figures/dispatch_disruption_comparison.{png,svg}``.
 
@@ -51,7 +55,13 @@ EXCURSION = {"excursion_temp_c": -30.0, "duration_min": 150, "mkt_c": -31.0,
              "packaging": "intact", "stage": "transit", "product_id": "vaccine_2_8"}
 
 SPEED = 60.0            # simulated minutes per real minute while the clock runs
-CLOCK_TARGET_MIN = 590  # raise the case once the truck is between stops
+CLOCK_TARGET_MIN = 590  # the simulated minute the case is raised at
+
+#: The day the figure is set on. Pinned, not ``today``: the case stamp and the
+#: caption both carry a date, and a moving one would make the figure differ from
+#: one day to the next even though nothing about the scenario had changed.
+FIGURE_DATE = datetime.date(2026, 9, 18)
+GENERATED_ON = FIGURE_DATE.isoformat()
 
 # Palette: "before" is deliberately neutral and dashed, so the options read as
 # deviations from it rather than as three equivalent lines.
@@ -70,23 +80,28 @@ FONT_STACK = ["PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
 FONT_MONO = ["Consolas", "DejaVu Sans Mono", "Courier New"]
 
 
-def backdate_clock(_client, dispatch_id: str, start_min: int) -> None:
-    """Make the simulated day already be ``start_min`` when it is read next.
+def position_clock(dispatch_id: str, minute: float) -> None:
+    """Put the simulated day at ``minute`` outright, with no wall-clock waiting.
 
-    ``advance_clock`` derives simulated time as ``speed x real seconds`` since
-    ``clock['started_real']``, so the only ways to reach a given minute are to
-    wait or to move the origin. Tests move the origin; the figure script waits.
+    ``simulated_now`` is ``sim_start_min + elapsed real x speed``, so the stored
+    minute *is* the reading whenever ``started_real`` is "now". That is what the
+    figure script spends ten real minutes waiting for; tests can just say it.
+
+    Deliberately bypasses ``MAX_TICK_SECONDS``: that cap exists to stop an
+    unwatched demo racing ahead between polls, and a test is not a demo. The
+    schedule origin ``depart_min`` is left alone, so the fleet does not move —
+    only the clock does.
     """
     context = load_context(service.DISPATCH_DATABASE_URL, dispatch_id)
-    started = datetime.datetime.fromisoformat(context["clock"]["started_real"])
-    context["clock"]["started_real"] = (
-        started - datetime.timedelta(minutes=start_min / SPEED)).isoformat()
+    context["clock"]["sim_start_min"] = float(minute)
+    context["clock"]["started_real"] = datetime.datetime.now().isoformat()
     update_context(service.DISPATCH_DATABASE_URL, dispatch_id, context)
 
 
 def build_scenario(*, seed: int, hospitals: int, tick_seconds: float,
                    dispatch_db: str, runs_file: Path,
-                   start_min: int | None = None, verbose: bool = True) -> dict:
+                   clock_at_min: float | None = CLOCK_TARGET_MIN,
+                   verbose: bool = True) -> dict:
     """Drive the real API until a truck is in transit, then preview the rescue.
 
     Everything the figure needs comes out of this dict, and every value in it
@@ -98,9 +113,14 @@ def build_scenario(*, seed: int, hospitals: int, tick_seconds: float,
     dispatch database and case log — the figure script and the tests each pass a
     throwaway location.
 
-    ``start_min`` is for tests: simulated time accrues from the wall clock since
-    departure, so a caller that cannot afford to wait can back-date the clock's
-    start instead of sleeping. Left as ``None`` the clock runs in real time.
+    ``clock_at_min`` is the simulated minute to raise the case at. It is set
+    directly rather than waited for, because the figure has to land on the same
+    instant every run to be reproducible: ``CLOCK_TARGET_MIN`` is where a truck
+    is between stops with work left, and reaching it by ticking a wall-clock
+    derived simulation overshoots by however long a tick happened to take (589
+    on a fast machine, 592 on a slow one) — which moves the fleet and changes
+    every number in the figure. Pass ``None`` to drive the clock in real time
+    instead, as a demo does.
     """
     service.DISPATCH_DATABASE_URL = dispatch_db
     service.RUNS_FILE = Path(runs_file)
@@ -120,23 +140,34 @@ def build_scenario(*, seed: int, hospitals: int, tick_seconds: float,
                          json={"command_id": f"depart-{dispatch_id}", "speed": SPEED})
     depart.raise_for_status()
 
-    if start_min is not None:
-        backdate_clock(client, dispatch_id, start_min)
+    if clock_at_min is not None:
+        position_clock(dispatch_id, clock_at_min)
 
     view: dict = {}
-    for step in range(120):
-        time.sleep(tick_seconds)
+    if clock_at_min is not None:
+        # One tick settles the ledger at the minute just set, and with
+        # ``started_real`` rewritten to "now" it charges almost no wall-clock
+        # time on top — so the reading is the requested minute, not a guess.
         tick = client.post(f"/api/dispatch/runs/{dispatch_id}/tick",
-                           json={"command_id": f"tick-{step}"})
+                           json={"command_id": "tick-0"})
         tick.raise_for_status()
-        view = tick.json().get("route_view") or view
-        clock = (view.get("clock") or {}).get("sim_start_min")
-        if verbose:
-            print(f"  tick {step:>3}  clock={clock:.1f}")
-        if clock and clock >= CLOCK_TARGET_MIN:
-            break
-    else:                                                     # pragma: no cover
-        raise RuntimeError("the clock never reached the target minute")
+        view = tick.json().get("route_view") or {}
+    else:
+        for step in range(120):
+            time.sleep(tick_seconds)
+            tick = client.post(f"/api/dispatch/runs/{dispatch_id}/tick",
+                               json={"command_id": f"tick-{step}"})
+            tick.raise_for_status()
+            view = tick.json().get("route_view") or view
+            clock = (view.get("clock") or {}).get("sim_start_min")
+            if verbose:
+                print(f"  tick {step:>3}  clock={clock:.1f}")
+            if clock and clock >= CLOCK_TARGET_MIN:
+                break
+        else:                                                 # pragma: no cover
+            raise RuntimeError("the clock never reached the target minute")
+
+    clock = (view.get("clock") or {}).get("sim_start_min")
 
     # A truck that is genuinely between stops, with work still ahead of it: the
     # branch is only interesting when something remains to be re-planned.
@@ -160,11 +191,10 @@ def build_scenario(*, seed: int, hospitals: int, tick_seconds: float,
     # record is appended, and the event names the order it concerns. The one
     # thing set by hand is ``created_at``: the case must be stamped with the same
     # simulated minute the preview will read the fleet position from, otherwise
-    # "where the truck is" and "what time the case was raised" disagree. Stamping
-    # it with the measured clock (rather than the wall clock) is also what makes
-    # the figure reproducible run to run.
+    # "where the truck is" and "what time the case was raised" disagree.
     clock_min = int(clock)
-    created_at = (datetime.datetime(2026, 9, 18, clock_min // 60, clock_min % 60)
+    created_at = (datetime.datetime.combine(FIGURE_DATE, datetime.time(clock_min // 60 % 24,
+                                                                     clock_min % 60))
                   .isoformat(timespec="seconds"))
     event = {**EXCURSION, "order_id": target["order_id"]}
     decision = service.decide_view(DecideIn(**event), None)
@@ -192,6 +222,7 @@ def build_scenario(*, seed: int, hospitals: int, tick_seconds: float,
 
     return {"dispatch_id": dispatch_id, "case": record, "preview": body,
             "plan": plan, "view": view, "target": target, "clock_min": clock_min,
+            "generated_on": GENERATED_ON,
             "network": read_network()}
 
 
@@ -262,6 +293,9 @@ def draw(scenario: dict, out_dir: Path) -> list[Path]:
         "font.sans-serif": FONT_STACK,
         "font.monospace": FONT_MONO,
         "axes.unicode_minus": False,
+        # Matplotlib salts SVG element ids per session, so without this the same
+        # figure serialises to different bytes on every run.
+        "svg.hashsalt": "pharmacoldops-dispatch-disruption",
     })
 
     network = scenario["network"]
@@ -422,9 +456,10 @@ def draw(scenario: dict, out_dir: Path) -> list[Path]:
                  f"（后端共给出 {len(preview['candidates'])} 个候选）",
                  fontsize=9.0, color=INK, weight="bold", y=0.985)
     fig.text(0.05, 0.915,
-             f"数据来源：真实 API 驱动（{scenario['case']['run_id']}，"
+             f"数据来源：真实 API 驱动（{scenario['preview']['order_source']}，"
              f"{scenario['case']['disposition']}）· 货源与路线由后端导出 · "
-             f"生成于 {datetime.date.today().isoformat()}",
+             f"模拟日 {scenario['generated_on']} {scenario['clock_min'] // 60:02d}:"
+             f"{scenario['clock_min'] % 60:02d}",
              fontsize=5.6, color=MUTED)
     fig.text(0.05, 0.035,
              "口径：里程为路网静态距离，含空驶与收尾段；受影响订单的 ETA 不计每站装卸停留。"
@@ -435,7 +470,11 @@ def draw(scenario: dict, out_dir: Path) -> list[Path]:
     written = []
     for suffix in ("png", "svg"):
         path = out_dir / f"dispatch_disruption_comparison.{suffix}"
-        fig.savefig(path, format=suffix, facecolor="white")
+        # Matplotlib stamps the SVG's RDF metadata with the wall clock, which
+        # would leave the file differing on every run for no visible reason.
+        # Pinning it keeps the artefact itself reproducible.
+        fig.savefig(path, format=suffix, facecolor="white",
+                    metadata={"Date": GENERATED_ON})
         written.append(path)
     plt.close(fig)
     return written
@@ -446,7 +485,13 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=3)
     parser.add_argument("--hospitals", type=int, default=5)
     parser.add_argument("--tick-seconds", type=float, default=2.5,
-                        help="real seconds between clock ticks while advancing time")
+                        help="real seconds between clock ticks; only used with "
+                             "--wait-for-clock, which trades reproducibility "
+                             "and ten real minutes for a wall-clock-driven run")
+    parser.add_argument("--wait-for-clock", action="store_true",
+                        help="drive the clock in real time instead of placing it "
+                             "at CLOCK_TARGET_MIN (slower, and the fleet lands on "
+                             "a slightly different minute each run)")
     parser.add_argument("--out-dir", type=Path,
                         default=REPO_ROOT / "docs" / "figures")
     parser.add_argument("--dump-json", type=Path, default=None,
@@ -458,9 +503,10 @@ def main() -> int:
     dispatch_db = tempfile.mktemp(suffix=".sqlite3")
     runs_file = Path(tempfile.mktemp(suffix=".jsonl"))
 
-    print("driving the real API: daily batch → depart → advance → close → preview")
+    print("driving the real API: daily batch → depart → close → preview")
     scenario = build_scenario(seed=args.seed, hospitals=args.hospitals,
                               tick_seconds=args.tick_seconds,
+                              clock_at_min=None if args.wait_for_clock else CLOCK_TARGET_MIN,
                               dispatch_db=dispatch_db, runs_file=runs_file)
 
     if args.dump_json:

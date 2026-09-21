@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from optimisation.singapore_export import sequence_distance_m      # noqa: E402
 from optimisation.singapore_loader import read_network             # noqa: E402
 
-from plot_disruption_comparison import build_scenario              # noqa: E402
+from plot_disruption_comparison import CLOCK_TARGET_MIN, build_scenario   # noqa: E402
 
 NETWORK = read_network()
 
@@ -42,12 +42,13 @@ NETWORK = read_network()
 def scenario():
     """One driven scenario, shared: driving the clock is the slow part.
 
-    ``start_min`` back-dates the simulated day so the test reaches the same state
-    the figure script reaches by waiting — the scenario itself is identical, only
-    the waiting is skipped. The dispatch database and case log are throwaway
+    ``clock_at_min`` puts the simulated day at the minute the case needs (a truck
+    in transit with work left) without waiting out the ~10 real minutes that
+    would take at ``SPEED``. The dispatch database and case log are throwaway
     files, so running the suite never writes into the repository's own.
     """
-    return build_scenario(seed=3, hospitals=5, tick_seconds=0.05, start_min=49,
+    return build_scenario(seed=3, hospitals=5, tick_seconds=0.05,
+                          clock_at_min=CLOCK_TARGET_MIN,
                           dispatch_db=tempfile.mktemp(suffix=".sqlite3"),
                           runs_file=Path(tempfile.mktemp(suffix=".jsonl")),
                           verbose=False)
