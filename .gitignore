@@ -43,6 +43,16 @@ Thumbs.db
 frontend-vue/node_modules/
 frontend-vue/dist/
 
+# Cached map tiles for the offline basemap (scripts/fetch_map_tiles.mjs):
+# regenerable, ~2-3 MB of third-party PNGs. Delete the next line if you would
+# rather commit them so the demo map works with no internet at all.
+frontend-vue/public/tiles/
+
+# Uncropped originals of the proposal's demo screenshots. proposal/README.md
+# states these stay on the submitting machine; only the cropped, referenced
+# files (demo-*.png, kg-neo4j-browser.png) belong in the repository.
+proposal/figures/raw/
+
 # Tool scratch dirs (all regenerable, none is a deliverable)
 .pytest_cache/
 .pytest_tmp/

@@ -1,7 +1,12 @@
 <script setup>
 /* Map-first event rail.  The archive is currently the only durable event data
    source, so every item here is a closed case.  Status-specific colours stay a
-   second-batch task until the backend exposes a processing-status contract. */
+   second-batch task until the backend exposes a processing-status contract.
+
+   The scope ("today" / "case" / "all") lives in the history store rather than
+   here, because the map overlay in ReroutePanel draws the same set of cases:
+   keeping one source of truth is what stops other excursions from staying on
+   the map after the operator narrows the view. */
 import { computed } from "vue";
 import { useDecisionsStore } from "../stores/decisions.js";
 import { useHistoryStore } from "../stores/history.js";
@@ -9,6 +14,8 @@ import { useSandboxStore } from "../stores/sandbox.js";
 import { useOverlayStore } from "../stores/overlay.js";
 import routes from "../data/singaporeRoutes.json";
 import { locale, bundle } from "../i18n/index.js";
+import { interp } from "../lib/format.js";
+import { localDay } from "../lib/dayScope.js";
 import { DISPO_COLOR } from "../data/products.js";
 
 const decisions = useDecisionsStore();
@@ -18,7 +25,7 @@ const overlay = useOverlayStore();
 const L = computed(() => bundle(locale.value));
 const names = Object.fromEntries(routes.nodes.map((n) => [n.facility_id, n.name]));
 
-const events = computed(() => history.runs.map((run) => {
+function shape(run) {
   const ev = run.event || {};
   return {
     run,
@@ -31,7 +38,29 @@ const events = computed(() => history.runs.map((run) => {
     color: DISPO_COLOR[run.disposition] || "#dc2626",
     when: String(run.created_at || "").replace("T", " "),
   };
-}));
+}
+
+/* Scope and day resolution come from the store (shared with the map). */
+const events = computed(() => history.scopedRuns.map(shape));
+/* The "this case" scope has nothing to show when no record is loaded. */
+const caseScopeEmpty = computed(() => history.scope === "case" && !history.currentRun);
+
+/* Button labels carry the date and count, so no one has to guess which day is
+   on screen. */
+const labels = computed(() => {
+  const l = L.value.workspace;
+  return {
+    today: history.isToday
+      ? l.eventsToday
+      : interp(l.eventsTodayLatest, { date: history.shownDay }),
+    case: history.currentRun ? l.eventsCase : l.eventsCaseNone,
+    all: interp(l.eventsAll, { n: history.runs.length }),
+  };
+});
+
+/* Explain an empty "today" tab instead of leaving a bare empty rail. */
+const todayFallback = computed(() =>
+  interp(L.value.workspace.eventsTodayFallback, { date: localDay(new Date()) }));
 
 function openEvent(item) {
   sandbox.restoreCase(item.run);
@@ -49,12 +78,33 @@ function openEvent(item) {
       @click="history.refresh()">{{ L.history.refresh }}</button>
   </div>
 
-  <p v-if="!decisions.useApi" class="incident-empty">{{ L.history.offline }}</p>
-  <p v-else-if="history.loading && !events.length" class="incident-empty">{{ L.history.loading }}</p>
-  <p v-else-if="history.error && !events.length" class="incident-empty">{{ L.history.error }}</p>
-  <p v-else-if="history.loaded && !events.length" class="incident-empty">{{ L.history.empty }}</p>
+  <!-- Scope. Filters the event rail AND the map overlay (ReroutePanel reads the
+       same store value). Shown even with no archive, so the operator can tell
+       "nothing happened today" apart from "history is not loaded". -->
+  <div v-if="decisions.useApi" class="incident-scope" role="group" :aria-label="L.workspace.eventsTitle">
+    <button :class="{ on: history.scope === 'today' }" @click="history.scope = 'today'">{{ labels.today }}</button>
+    <button :class="{ on: history.scope === 'case' }" :title="history.currentRun ? history.currentRun.run_id : L.workspace.eventsCaseNone"
+      @click="history.scope = 'case'">{{ labels.case }}</button>
+    <button :class="{ on: history.scope === 'all' }" @click="history.scope = 'all'">{{ labels.all }}</button>
+  </div>
 
-  <div v-if="events.length" class="incident-list">
+  <p v-if="!decisions.useApi" class="incident-empty">{{ L.history.offline }}</p>
+  <p v-else-if="history.loading && !history.runs.length" class="incident-empty">{{ L.history.loading }}</p>
+  <p v-else-if="history.error && !history.runs.length" class="incident-empty">{{ L.history.error }}</p>
+  <p v-else-if="history.loaded && !history.runs.length" class="incident-empty">{{ L.history.empty }}</p>
+  <!-- "This case" selected but no record is open: say so instead of showing an
+       empty rail that looks broken. -->
+  <div v-else-if="caseScopeEmpty" class="incident-empty">
+    <p>{{ L.workspace.eventsNoneCase }}</p>
+    <button class="incident-more" @click="history.scope = 'today'">{{ labels.today }}</button>
+  </div>
+  <div v-else-if="!events.length" class="incident-empty">
+    <p>{{ L.workspace.eventsNoneToday }}</p>
+    <p class="incident-fallback">{{ todayFallback }}</p>
+    <button class="incident-more" @click="history.scope = 'all'">{{ labels.all }}</button>
+  </div>
+
+  <div v-else class="incident-list">
     <button v-for="item in events" :key="item.id" class="incident-card"
       :class="{ active: sandbox.currentRunId === item.id }" @click="openEvent(item)">
       <span class="incident-dot" :style="{ background: item.color }"></span>

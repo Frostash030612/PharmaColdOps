@@ -9,10 +9,12 @@ import { PRODUCT_NUM, DEFAULT_EVENT, TEMP_RANGE } from "../data/products.js";
 import { genProfile } from "../lib/timeline.js";
 import singaporeRoutes from "../data/singaporeRoutes.json";
 
-/* Receiving facilities a resupply can be sent to — the same 10 hospitals the
-   router knows. Which one a real excursion should resupply is a contract
-   question still open with A (see docs/C_配送模块.md B0); until the event
-   carries it, the operator picks, and the dice picks at random. */
+/* Receiving facilities a resupply can be sent to — every `customer` node in the
+   committed road network, which is 14 hospitals today (11 public + 3 private);
+   the filter is the source of truth, not this comment. Which one a real
+   excursion should resupply is a contract question still open with A (see
+   docs/C_配送模块.md B0); until the event carries it, the operator picks, and
+   the dice picks at random. */
 export const DESTINATIONS = singaporeRoutes.nodes.filter((n) => n.role === "customer");
 const randomDestination = () =>
   DESTINATIONS[Math.floor(Math.random() * DESTINATIONS.length)].facility_id;

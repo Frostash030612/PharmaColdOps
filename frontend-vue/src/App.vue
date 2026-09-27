@@ -11,16 +11,19 @@ import NewInboundModal from "./components/NewInboundModal.vue";
 import HistoryModal from "./components/HistoryModal.vue";
 import IncidentList from "./components/IncidentList.vue";
 import CaseDrawer from "./components/CaseDrawer.vue";
+import BranchCompareModal from "./components/BranchCompareModal.vue";
 import { SCENARIOS } from "./data/realData.mjs";
 import { useSandboxStore } from "./stores/sandbox.js";
 import { useDecisionsStore } from "./stores/decisions.js";
 import { useHistoryStore } from "./stores/history.js";
+import { useDispatchStore } from "./stores/dispatch.js";
 import { useOverlayStore } from "./stores/overlay.js";
 import { locale, bundle } from "./i18n/index.js";
 
 const sandbox = useSandboxStore();
 const decisions = useDecisionsStore();
 const history = useHistoryStore();
+const dispatch = useDispatchStore();
 const overlay = useOverlayStore();
 const L = computed(() => bundle(locale.value));
 
@@ -66,4 +69,6 @@ onMounted(() => {
   <NewInboundModal v-if="overlay.newInboundOpen" />
   <HistoryModal v-if="overlay.historyOpen" />
   <CaseDrawer v-if="overlay.caseOpen" />
+  <!-- Options for this case's resupply, each with its own map and timeline. -->
+  <BranchCompareModal v-if="dispatch.branchOpen" />
 </template>

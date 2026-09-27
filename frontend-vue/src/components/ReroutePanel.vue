@@ -37,7 +37,22 @@ const nodes = data.nodes;                       // facility names/coords: same i
 const names = Object.fromEntries(nodes.map((n) => [n.node_id, n.name]));
 const nodeByFacility = Object.fromEntries(nodes.map((n) => [n.facility_id, n.node_id]));
 
-const incidentEvents = computed(() => history.runs.flatMap((run) => {
+/* Network size, computed from the committed road network rather than typed into
+   the locale files: the counts changed twice (09-15, 09-16) and the labels went
+   stale both times, so every place that shows a size reads it from here. */
+const customerNodes = computed(() => nodes.filter((n) => n.role === "customer"));
+const counts = computed(() => ({
+  nodes: nodes.length,
+  hospitals: customerNodes.value.length,
+  depots: nodes.filter((n) => n.role === "depot").length,
+  thirdParty: nodes.filter((n) => n.role === "third_party").length,
+  distribution: nodes.filter((n) => n.role === "distribution").length,
+}));
+
+/* Archived cases drawn as markers. Scoped by the shared day filter
+   (history.scope), the same value the event rail uses: leaving old excursions
+   on the map buried the current day's markers under them. */
+const incidentEvents = computed(() => history.scopedRuns.flatMap((run) => {
   const facilityId = run.event?.destination_facility_id;
   const nodeId = nodeByFacility[facilityId];
   if (nodeId == null) return [];
@@ -164,7 +179,10 @@ function clock(minutes) {
 }
 
 /* Which way of serving the branch event this row is. The backend names the
-   kinds; the wording is local, like every other decision in this app. */
+   kinds; the wording is local, like every other decision in this app. The
+   candidate list itself now lives in BranchCompareModal, which owns its own
+   copy of this mapping — this one still labels the commits shown in the
+   operation's own order list. */
 const KIND_LABELS = {
   add_stop_in_transit: "branchKindAddStop",
   load_before_departure: "branchKindLoadFirst",
@@ -278,7 +296,7 @@ const dailyOutcome = computed(() => {
 <template>
   <div class="sg-routing">
     <strong>{{ text.title }}</strong>
-    <p class="sg-note">{{ text.note }}</p>
+    <p class="sg-note">{{ interp(text.note, counts) }}</p>
     <p class="sg-source" :class="{ live: isLive }">
       {{ isLive ? text.liveOperation : text.demoRoute }}
     </p>
@@ -312,20 +330,26 @@ const dailyOutcome = computed(() => {
     <div v-else class="sg-metrics">
       <div><b>{{ plan.metrics.total_distance.toFixed(2) }}</b><span>{{ text.distance }} · {{ text.km }}</span></div>
       <div><b>{{ plan.metrics.vehicles_used }}</b><span>{{ text.vehicles }}</span></div>
-      <div><b>{{ plan.metrics.served_customers }}/{{ nodes.length - 1 }}</b><span>{{ text.served }}</span></div>
+      <div><b>{{ plan.metrics.served_customers }}/{{ counts.hospitals }}</b><span>{{ text.served }}</span></div>
       <div><b>{{ plan.metrics.time_window_violations + plan.metrics.capacity_violations + plan.metrics.depot_return_violations + plan.metrics.vehicle_limit_violations }}</b><span>{{ text.violations }}</span></div>
     </div>
 
-    <!-- Today's delivery plan (doc §4.1). A reshipment case always plans ONE
-         order, so a vehicle served one hospital; a *batch* is what makes the
-         multi-stop planner do its job. Simulated, and it says so. -->
+    <!-- Today's delivery plan (doc §4.1). The demo path is deliberately two
+         steps: generate the batch (read-only), review it, then confirm — the
+         confirmation is the only write. The one-press shortcut that skips the
+         review is kept for debugging, folded away so it cannot be mistaken for
+         a second equally-important primary button (item 4, 2026-09-27). -->
     <div v-if="online" class="sg-daily">
       <button :disabled="dispatch.pending" @click="dispatch.loadDailyPlan('today')">
         {{ dispatch.pending ? text.dailyCreating : text.dailyPlan }}
       </button>
-      <button :disabled="dispatch.pending" @click="dispatch.oneClickDailyPlan()">
-        {{ text.dailyOneClick }}
-      </button>
+      <details class="sg-advanced">
+        <summary>{{ text.dailyAdvanced }}</summary>
+        <button class="sg-secondary" :disabled="dispatch.pending" @click="dispatch.oneClickDailyPlan()">
+          {{ text.dailyOneClick }}
+        </button>
+        <p class="sg-note">{{ text.dailyOneClickNote }}</p>
+      </details>
       <template v-if="dispatch.dailyPreview && dispatch.dailyPreview.zones.length">
         <p class="sg-note">{{ text.dailySimulated }}</p>
         <p v-if="dailyConstraintText" class="sg-constraints">{{ dailyConstraintText }}</p>
@@ -406,133 +430,88 @@ const dailyOutcome = computed(() => {
             </span>
           </li>
         </ul>
-        <div class="sg-overnight">
-          <button :disabled="dispatch.pending" @click="dispatch.loadOvernightPlan()">
-            {{ dispatch.pending ? text.dailyCreating : text.overnightPlan }}
-          </button>
-          <template v-if="overnight">
-            <p class="sg-note">{{ text.overnightNote }}</p>
-            <ul class="sg-daily-stops">
-              <li v-for="choice in overnight.choices" :key="choice.vehicle_id">
-                <b>{{ choice.vehicle_id }}</b>:
-                {{ facilityName(choice.from_facility_id) }} → {{ text.overnightPark }}
-                <b>{{ facilityName(choice.park_facility_id) }}</b>
-                · {{ text.overnightReposition }} {{ km(choice.reposition_m) }} {{ text.km }}
-                · {{ text.overnightFirstStop }}
-                {{ choice.tomorrow_origin_facility_id ? facilityName(choice.tomorrow_origin_facility_id) : text.overnightIdle }}
-                · {{ text.overnightSaved }} {{ km(choice.saved_m) }} {{ text.km }}
-                <em v-if="choice.note">（{{ overnightNoteText(choice.note) }}）</em>
-              </li>
-            </ul>
-            <p class="sg-constraints">{{ interp(text.overnightTotals, {
-              reposition: km(overnight.totals.reposition_m),
-              saved: km(overnight.totals.saved_m),
-              net: km(overnight.totals.net_two_day_m),
-            }) }}</p>
-          </template>
-        </div>
-        <button :disabled="dispatch.pending" @click="dispatch.confirmDailyPlan()">
+        <button class="sg-primary" :disabled="dispatch.pending" @click="dispatch.confirmDailyPlan()">
           {{ text.dailyConfirm }}
         </button>
         <button :disabled="dispatch.pending" @click="dispatch.rerollDailyPlan()">
           {{ text.dailyReroll }}
         </button>
+
+        <!-- Optional read-only analysis, folded away and placed after the action
+             it belongs to: it used to sit mid-panel looking like a required
+             step 3, so operators clicked it expecting to have to (item 3). -->
+        <details class="sg-advanced">
+          <summary>{{ text.overnightToggle }}</summary>
+          <div class="sg-overnight">
+            <button class="sg-secondary" :disabled="dispatch.pending" @click="dispatch.loadOvernightPlan()">
+              {{ dispatch.pending ? text.dailyCreating : text.overnightPlan }}
+            </button>
+            <p class="sg-note">{{ text.overnightOptional }}</p>
+            <template v-if="overnight">
+              <p class="sg-note">{{ text.overnightNote }}</p>
+              <ul class="sg-daily-stops">
+                <li v-for="choice in overnight.choices" :key="choice.vehicle_id">
+                  <b>{{ choice.vehicle_id }}</b>:
+                  {{ facilityName(choice.from_facility_id) }} → {{ text.overnightPark }}
+                  <b>{{ facilityName(choice.park_facility_id) }}</b>
+                  · {{ text.overnightReposition }} {{ km(choice.reposition_m) }} {{ text.km }}
+                  · {{ text.overnightFirstStop }}
+                  {{ choice.tomorrow_origin_facility_id ? facilityName(choice.tomorrow_origin_facility_id) : text.overnightIdle }}
+                  · {{ text.overnightSaved }} {{ km(choice.saved_m) }} {{ text.km }}
+                  <em v-if="choice.note">（{{ overnightNoteText(choice.note) }}）</em>
+                </li>
+              </ul>
+              <p class="sg-constraints">{{ interp(text.overnightTotals, {
+                reposition: km(overnight.totals.reposition_m),
+                saved: km(overnight.totals.saved_m),
+                net: km(overnight.totals.net_two_day_m),
+              }) }}</p>
+            </template>
+          </div>
+        </details>
       </template>
       <p v-if="dispatch.dailyError" class="sg-error" role="status">{{ dispatch.dailyError }}</p>
     </div>
 
-    <!-- The bridge: this case's resupply joins the SAME operation the day's plan
-         created, checked against real stock and real vehicle capacity. Always
-         says what the next action is (or why there is none) — a decision that
-         needs a resupply must never dead-end in a banner. -->
+    <!-- This case's resupply joins the SAME operation the day's plan created,
+         checked against real stock and real vehicle capacity. There is no
+         one-press "commit the default" button here any more: that button wrote
+         stock and assigned a vehicle while wearing a "safe" green, which let an
+         operator commit to the first-ranked option without ever seeing the
+         alternatives. Comparing first is now the only way in (item 1, 2026-09-27). -->
     <div class="sg-commit">
       <button v-if="canCloseAndDispatch" :disabled="busy || dispatch.pending"
         @click="closeAndDispatch()">
         {{ (busy || dispatch.pending) ? text.committing : text.closeAndDispatch }}
       </button>
-      <button v-else-if="canDispatchArchived" :disabled="dispatch.pending"
-        @click="dispatch.commitReshipment(sandbox.currentRunId)">
-        {{ dispatch.pending ? text.committing : text.commitReshipment }}
-      </button>
       <span v-else-if="alreadyCommitted" class="done">{{ text.committed }}</span>
       <span v-else-if="needsReshipment && !online" class="hint">{{ text.needsApi }}</span>
-      <span v-else class="hint">{{ text.noReshipment }}</span>
+      <span v-else-if="!needsReshipment" class="hint">{{ text.noReshipment }}</span>
     </div>
 
     <!-- Branch event: change a running vehicle's route, or send another one.
-         The backend already ranks the options; this is the operator's view of
-         that decision — distance, ETA and who else gets delayed (doc §4.2, §5 D3). -->
+         The backend already ranks the options; the popup is where the operator
+         compares them (distance, ETA, who else gets delayed — doc §4.2, §5 D3)
+         and commits the one they picked, so this block is the primary action. -->
     <div v-if="canDispatchArchived" class="sg-branch">
       <strong>{{ text.branchTitle }}</strong>
       <p class="sg-note">{{ text.branchHint }}</p>
       <div class="sg-branch-actions">
         <button :disabled="dispatch.pending"
           @click="dispatch.previewBranch(sandbox.currentRunId)">
-          {{ dispatch.pending ? text.branchPreviewing : text.branchPreview }}
+          {{ dispatch.pending ? text.branchPreviewing : text.branchCompare }}
         </button>
-        <label class="sg-branch-policy">
-          {{ text.branchPolicy }}
-          <select :value="dispatch.policy" :disabled="dispatch.pending"
-            @change="dispatch.setPolicy($event.target.value)">
-            <option value="minimize_disruption">{{ text.policyDisruption }}</option>
-            <option value="minimize_vehicles">{{ text.policyVehicles }}</option>
-          </select>
-        </label>
       </div>
       <p v-if="dispatch.needsDailyPlan" class="sg-error" role="status">{{ text.branchNeedsPlan }}</p>
       <p v-else-if="dispatch.branchError" class="sg-error" role="status">{{ dispatch.branchError }}</p>
 
-      <table v-if="dispatch.branch?.candidates.length" class="sg-candidates">
-        <thead>
-          <tr>
-            <th>{{ text.branchOption }}</th>
-            <th>{{ text.branchVehicle }}</th>
-            <th>{{ text.branchExtra }}</th>
-            <th>{{ text.branchEta }}</th>
-            <th>{{ text.branchAffected }}</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(c, index) in dispatch.branch.candidates" :key="`${c.kind}-${c.vehicle_id}`"
-            :class="{ chosen: index === 0, late: !c.on_time }">
-            <td>{{ kindLabel(c.kind) }}<em v-if="!c.on_time"> · {{ text.branchLateness }} {{ c.lateness_min }} {{ text.branchMinutes }}</em></td>
-            <td>{{ c.vehicle_id.replace(/^VEH-|^V-/, '') }}</td>
-            <td>
-              <!-- What the option COSTS, not the length of its final hop: every
-                   option ends at the same hospital, so showing that leg made
-                   all three read "26.28 km" and look identical. -->
-              +{{ (c.added_distance_m / 1000).toFixed(2) }} {{ text.km }}
-              <!-- Which source this option fetches from (B6): the same vehicle
-                   can be sent to different pickup points for different money. -->
-              <div v-if="c.pickup_facility_id" class="sg-pickup">
-                {{ text.branchPickup }} {{ facilityName(c.pickup_facility_id) }}
-              </div>
-              <div v-if="c.resequenced" class="sg-pickup">{{ text.branchResequenced }}</div>
-              <!-- The spoiled batch is handed over at that same stop (B6). -->
-              <div v-if="c.quarantine_order_ids && c.quarantine_order_ids.length"
-                class="sg-pickup">{{ text.branchQuarantine }}</div>
-            </td>
-            <td>{{ clock(c.eta_min) }}</td>
-            <td>
-              <span v-if="!c.affected_orders.length">{{ text.branchNoAffected }}</span>
-              <span v-for="a in c.affected_orders" :key="a.order_id" class="sg-affected">
-                {{ a.order_id }} +{{ a.delay_min }} {{ text.branchMinutes }}
-                <em v-if="a.newly_late">（{{ text.branchNewlyLate }}）</em>
-                <em v-else-if="a.already_late">（{{ text.branchAlreadyLate }}）</em>
-              </span>
-            </td>
-            <td>
-              <button :disabled="dispatch.pending"
-                @click="dispatch.commitReshipment(sandbox.currentRunId,
-                  { candidate_kind: c.kind, vehicle_id: c.vehicle_id })">
-                {{ text.branchChoose }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else-if="dispatch.branch" class="sg-note">{{ text.branchNoAffected }}</p>
+      <!-- The options themselves open in a popup (BranchCompareModal): choosing
+           between them is a map-and-timeline decision, which a table row cannot
+           show. This keeps a way back into it once it has been closed. -->
+      <p v-if="dispatch.branch?.candidates.length && !dispatch.branchOpen" class="sg-note">
+        <button class="sg-reopen" :disabled="dispatch.pending"
+          @click="dispatch.branchOpen = true">{{ text.compareReopen }}</button>
+      </p>
     </div>
     <p v-if="dispatch.error" class="sg-error" role="status">{{ dispatch.error }}</p>
 
@@ -631,9 +610,23 @@ const dailyOutcome = computed(() => {
 .sg-metrics b { display: block; font-size: 18px; color: #0f172a; }
 .sg-metrics span { color: #64748b; font-size: 11px; }
 .sg-daily { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+/* One primary action per step: "generate the batch" and "confirm it" carry the
+   dark fill, everything secondary is outlined. Two equally loud buttons made the
+   two-step demo path read as two competing choices (2026-09-27). */
 .sg-daily > button { background: #0f172a; color: #fff; border: 0; border-radius: 7px; padding: 6px 11px; cursor: pointer; font-size: 12px; font-weight: 600; }
 .sg-daily > button:disabled { opacity: .6; cursor: default; }
-.sg-daily > button + button { margin-left: 8px; background: #0d9488; }
+.sg-daily > button + button { margin-left: 8px; }
+.sg-daily > button.sg-primary { display: block; margin: 8px 0 0; padding: 8px 14px; font-size: 12.5px; }
+.sg-secondary { background: #fff; color: #0f766e; border: 1px solid #0d9488; border-radius: 7px;
+  padding: 5px 10px; cursor: pointer; font-size: 11.5px; font-weight: 600; }
+.sg-secondary:hover:not(:disabled) { background: #f0fdfa; }
+.sg-secondary:disabled { opacity: .6; cursor: default; }
+/* Folded-away extras: a <details> keeps them reachable without letting them
+   look like required steps of the demo flow. */
+.sg-advanced { margin: 8px 0 4px; }
+.sg-advanced > summary { cursor: pointer; color: #64748b; font-size: 11px; font-weight: 600; }
+.sg-advanced > summary:hover { color: #0f766e; }
+.sg-advanced .sg-note { margin: 6px 0 0; }
 .sg-constraints { display: inline-block; margin: 0 0 7px; padding: 4px 8px; border-radius: 999px;
   background: #eef2ff; color: #4338ca; font-size: 11px; font-weight: 700; }
 .sg-daily-stops { list-style: none; padding: 0; margin: 6px 0 9px; color: #475569; line-height: 1.7; }
@@ -644,10 +637,8 @@ const dailyOutcome = computed(() => {
 .sg-unserved li { color: #7f1d1d; font-size: 12px; line-height: 1.6; }
 .sg-reason { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
   background: #fee2e2; color: #991b1b; font-size: 11px; }
-.sg-overnight { margin: 8px 0 6px; padding: 8px 10px; border: 1px dashed #94a3b8; border-radius: 9px;
+.sg-overnight { margin: 6px 0 6px; padding: 8px 10px; border: 1px dashed #94a3b8; border-radius: 9px;
   background: #f8fafc; }
-.sg-overnight > button { background: #0f766e; color: #fff; border: 1px solid #0f766e; border-radius: 7px;
-  padding: 6px 10px; cursor: pointer; font-size: 12px; font-weight: 600; }
 .sg-overnight > button:disabled { opacity: 0.55; cursor: default; }
 .sg-overnight em { color: #b45309; font-style: normal; font-weight: 600; }
 .sg-route-end { margin-left: 6px; color: #0f766e; }
@@ -702,19 +693,14 @@ const dailyOutcome = computed(() => {
 .sg-branch-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .sg-branch-actions > button { background: #7c3aed; color: #fff; border: 0; border-radius: 7px; padding: 6px 11px; cursor: pointer; font-size: 12px; font-weight: 600; }
 .sg-branch-actions > button:disabled { opacity: .6; cursor: default; }
-.sg-branch-policy { color: #64748b; }
-.sg-branch-policy select { margin-left: 4px; border: 1px solid #cbd5e1; border-radius: 5px; padding: 3px 5px; font-size: 11px; color: #334155; background: #fff; }
-.sg-candidates { width: 100%; border-collapse: collapse; margin-top: 4px; }
-.sg-candidates th { text-align: left; color: #64748b; font-size: 10px; font-weight: 700; padding: 4px 6px; border-bottom: 1px solid #e2e8f0; }
-.sg-candidates td { padding: 6px; border-bottom: 1px solid #f1f5f9; color: #475569; vertical-align: top; line-height: 1.5; }
-.sg-candidates tr.chosen td { background: #f0fdfa; }
-.sg-candidates tr.late td:first-child { color: #b91c1c; }
-.sg-candidates em { font-style: normal; color: #b45309; }
+/* Way back into the comparison popup after closing it (the options themselves
+   live in BranchCompareModal, not in a table here). */
+.sg-reopen { border: 1px solid var(--teal); background: #fff; color: var(--teal); border-radius: 8px;
+  padding: 5px 10px; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.sg-reopen:hover:not(:disabled) { background: #f0fdfa; }
+.sg-reopen:disabled { opacity: .6; cursor: default; }
 .sg-pickup { margin-top: 2px; color: #0f766e; font-size: 10px; }
 /* A collection stop: same strip, visibly different job. */
 .sg-stops button.pickup { border-style: dashed; border-color: #0f766e; }
 .sg-stops button.pickup em { font-style: normal; margin-left: 3px; color: #0f766e; font-size: 9px; }
-.sg-candidates button { background: #0d9488; color: #fff; border: 0; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px; font-weight: 600; white-space: nowrap; }
-.sg-candidates button:disabled { opacity: .6; cursor: default; }
-.sg-affected { display: block; color: #475569; }
 </style>
