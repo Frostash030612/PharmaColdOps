@@ -423,16 +423,16 @@ def add_scale_slide(prs):
     s = add_slide(prs)
     add_title(s, "What Is Already Built", "Measured from the repository, 2026-09-27")
     add_bullets(s, [
-        "Backend: 23 HTTP endpoints — disposition, QA, routing and 13 dispatch "
-        "operations (plan, confirm, depart, simulated clock, emergency insert, "
-        "replay, overnight parking).",
+        "Backend: 23 API paths / 24 operations — disposition, QA, routing and 15 "
+        "dispatch paths / 16 operations (plan, confirm, depart, simulated clock, "
+        "emergency insert, replay, overnight parking).",
         "Frontend: one Vue 3 client, 23 components and 5 stores (≈5,900 lines); "
         "EN/ZH switch, offline JS engine, ?api= backend mode, Leaflet workspace.",
         "Working data on disk: 25 archived cases (keyword: one per closed inbound "
         "case) and 56 recorded dispatch operations with state persisted in SQLite.",
         "Rules and data: 6 priority rules over 4 prototype product classes, 57 "
         "human-labelled scenarios, 19-node Singapore road network (19×19 matrix).",
-        "Tests: 305 test functions across 35 files (≈5,000 lines) — engine, API "
+        "Tests: 305 test functions across 34 test files (≈5,000 lines) — engine, API "
         "contract, dispatch state machine, provenance and frontend/rule parity.",
         "Still missing and stated as such: Dockerfile/cloud deploy, duplicate-closure "
         "de-duplication, destination-pool expansion, occurrence-facility field.",
@@ -718,10 +718,10 @@ def shorten_for_short_deck(prs: Presentation) -> None:
         add_footer(s14, "Screenshot: the Vue client in API mode, 2026-09-27.",
                    name="TextBox 5")
     add_bullets(s14, [
-        "23 HTTP endpoints, 13 of them dispatch operations.",
+        "23 API paths / 24 operations, 15 of them dispatch paths.",
         "One Vue 3 client, 23 components; EN/ZH and offline mode.",
         "25 archived cases; 56 dispatch operations persisted.",
-        "305 test functions across 35 files.",
+        "305 test functions across 34 test files.",
         "Still missing: cloud deploy, de-duplication, destination pool.",
     ], left=8.25, top=1.75, width=4.5, size=13, space=9, name="TextBox 4")
 
