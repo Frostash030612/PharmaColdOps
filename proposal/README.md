@@ -9,9 +9,18 @@
 | [英文配图目录](figures/en/) | 7 张 SVG 已与正文同步；两张演示截图于 2026-09-13 在 Vue 前端（API 模式）重新截取。**两张未裁剪的全幅原件未入库**（仅在提交者本机 `proposal/figures/raw/`，本文件不指向仓库内路径），入库的是裁剪并引用的 `demo-rule-engine-en.png` / `demo-route-qa-en.png`；另含 2026-09-13 的 Neo4j Browser 实拍 `kg-neo4j-browser.png`（图 4b） |
 | [正式 Word（中）](PharmaColdOps_正式Proposal_4人版.docx) | 已按**合并后**的中文 Markdown 重新生成（`scripts/build_proposal_docx.py`，零第三方依赖，图片随 Markdown 引用一并嵌入）；组名、成员姓名及学号已填入；仍需人工终审 |
 | [正式 Word（英）](PharmaColdOps-Proposal-EN.docx) | 英文内容在 2026-09-13 的**版本之锚**（含人工对头部的简化）；**重建会覆盖这些人工修改** |
-| [提交件（英）](PharmaColdOps-Proposal-Group%2052.pdf) | **2026-09-13 提交用**：由上述英文 Word 导出的 PDF（20 页 / 4,246 词 / Letter），内容与提交时的英文 Word 一致 |
+| [提交件（英）](PharmaColdOps-Proposal-Group%2041.pdf) | **2026-09-13 提交用**：由上述英文 Word 导出的 PDF（20 页 / 4,246 词 / Letter），内容与提交时的英文 Word 一致 |
 | [提案 PPT](PharmaColdOps-Proposal-Presentation.pptx) | 旧版演示文稿，提交前需要同步范围、指标和未完成项 |
 | [调整版 PPT](PharmaColdOps_tune.pptx) | 保留原文件，提交前需确认是否继续使用 |
+
+### 演讲用的两份 deck（2026-09-28）
+
+| 文件 | 定位 | 怎么改 |
+|---|---|---|
+| [`PharmaColdOps .pptx`](PharmaColdOps%20.pptx) | **演讲当天用这份**：10 页，队友在 `tune` 版基础上做了视觉美化（深蓝标题条、卡片版式、金色分隔线、侧栏配图），组号已为 41，第 7 页前端截图已恢复为未裁剪原图 | 直接在 PowerPoint 里改；文字与版式改动不会自动回流到生成器 |
+| [`PharmaColdOps-Proposal-Presentation-Final.pptx`](PharmaColdOps-Proposal-Presentation-Final.pptx) | **生成版与留存版**：同一内容由脚本产出（`scripts/build_presentation_final.py --short`），字体/配色已按原设计对齐（Libre Baskerville + DM Sans、#454240 系、金色点缀） | 改 `scripts/build_presentation_final.py` 后重跑；**不要手改**，会被下一次生成覆盖 |
+
+两份不要同时改同一处文案，否则会出现两个互相矛盾的版本；定稿前确认演讲用哪一份。运维脚本：`scripts/set_group_number.py`（统一改组号）、`scripts/restore_screenshot.py`（换回未裁剪截图）、`scripts/deck_theme.py`（配色与字体常量）、`scripts/check_decks.py` 与 `scripts/check_deck_theme.py`（校验）。
 
 本轮修订提案源稿、SVG 配图和中文 Word 提案，不改变程序行为、规则阈值、rubric 或 gold 标签。本次修订把 9/12 之后落地的实现同步进正文与配图：`/api/route` 与 `/api/qa` 已是真实端点（不再标 501），订单驱动的补发求解与调度运行状态持久化已实现并通过测试，前端对已归档补发案例会实时取路线与图谱回答；仍缺的是把中文静态页已有的配送调度台接入案例处置结论、补齐英文与 Vue 界面的对应界面，以及候选目的地池扩充。风险模型 §8.2 三行数字于 2026-09-13 用 `scripts/train_risk_full.py` 在 `requirements.txt` 记录的环境（seed 42）复跑得到，其中 LightGBM/XGBoost 的阈值与指标与原记录不同；原因实验（Top-1/Top-3/macro-F1）与新加坡路线结果仍为已有记录，本次未重跑。39/57 的引擎与 gold 一致计数已直接运行当前引擎复核。更早的 ground-truth 设计文档保留为历史设计，已完成的标注结果以正文 §8.3 和其链接的统计材料为准。
 
