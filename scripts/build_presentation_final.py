@@ -517,9 +517,10 @@ def add_results_slide(prs):
         "no unserved orders); on the published Solomon c101/c201 instances the same solver reaches "
         "the best known solution within 10 s — a genetic algorithm we also implemented ties it, "
         "never beats it.",
-        "Dispatch decisions: each reshipment option comes with its real road geometry and the delay "
-        "it causes to orders already on board (measured: 0.59 km and 0 delayed orders for sending a "
-        "spare vehicle, versus 4 re-sequenced orders for reusing a truck in transit).",
+        # A bullet about the dispatch options' measured trade-off used to sit here.
+        # The committee cut it when they laid the results slide out as one big
+        # number plus three metric cards, so it is gone from both the short deck
+        # and here: the two decks must not disagree about what the results are.
     ], size=15, space=9, name="TextBox 3")
     add_footer(s, "Boundaries: suspected-synthetic data, single random split, time-bounded solver — these do not "
                   "establish real-world or operational savings.", name="TextBox 4")
