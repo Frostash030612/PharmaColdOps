@@ -3,7 +3,7 @@
 
 Course: IRS Practice Module
 
-Group name: Project Group 52
+Group name: Project Group 41
 
 Members: Xu Wenzhe (A0328771W), Zhu Jianyu (A0353769L), Wang Lepeng (A0357864L), Shen Ziyi (A0350940J).
 

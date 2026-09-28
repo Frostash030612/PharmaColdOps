@@ -4,7 +4,7 @@
 
 | 项目 | 文件 | 口径 |
 |---|---|---|
-| 提交件（已交 Canvas，冻结） | `proposal/PharmaColdOps-Proposal-Group 52.pdf`（源自 `PharmaColdOps-Proposal-EN.docx`） | 2026-09-13 提交的英文提案 |
+| 提交件（已交 Canvas，冻结） | `proposal/PharmaColdOps-Proposal-Group 41.pdf`（源自 `PharmaColdOps-Proposal-EN.docx`；2026-09-28 随组号更正改名） | 2026-09-13 提交的英文提案 |
 | 提案源稿（提交后仍在修订） | `proposal/PharmaColdOps-Proposal-EN.md` / `-ZH.md` | §8.3 等数字已按 rubric v1.1 更新到 2026-09-14 |
 | 课程要求 | `proposal/IRS practice module project proposal & final presentation guidelines v016.pdf`、`IRS practice module & exam briefing v2.17.pdf` | 演讲结构、评分项 |
 | 演讲用 PPT | `proposal/PharmaColdOps_tune.pptx`（推荐版，带设计） / `PharmaColdOps-Proposal-Presentation.pptx`（旧版，12 页） | 两份都是 9/13 前写的，事实停在 W0 |
@@ -31,7 +31,7 @@
 
 | v016 要求 | 旧 PPT 现状 | 判定 | 修正版（17 页）怎么处理 |
 |---|---|---|---|
-| 1 标题页：课题、**组号**、成员**姓名＋学号**、演讲日期 | 第 1 页缺组号，成员是 `[Member 2..4]` | **不合格** | 已补齐 `Project Group 52`、四人姓名＋学号；日期改为演讲日（现填 22 Sep 2026，**按实际演讲日改**） |
+| 1 标题页：课题、**组号**、成员**姓名＋学号**、演讲日期 | 第 1 页缺组号，成员是 `[Member 2..4]` | **不合格** | 已补齐 `Project Group 41`、四人姓名＋学号；日期改为演讲日（现填 22 Sep 2026，**按实际演讲日改**） |
 | 2 Introduction（概述／重要性／目标） | 第 2–5 页覆盖问题、影响、方案 | 合格 | 不改结构，只改事实 |
 | 3 Background / Market Context（背景、问题、研究或市场全景） | 有背景（2–4 页），**没有市场全景** | **缺失** | 新增第 13 页「Where PharmaColdOps Sits」 |
 | 4 Literature Review / Market Research（文献或竞品与趋势） | **完全没有**；笔记里有 Solomon，正文没有 | **缺失** | 并入第 13 页（Solomon 1987、OR-Tools、XGBoost/LightGBM、SHAP + Controlant 定位） |

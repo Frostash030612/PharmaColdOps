@@ -17,16 +17,26 @@ from pathlib import Path
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
+from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
+from pptx.oxml.ns import qn
 from pptx.util import Emu, Inches, Pt
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from deck_theme import (  # noqa: E402  (path set above)
+    CREAM, DARK_PANEL, DEEP_BLUE, FONT_BODY, FONT_BODY_BOLD, FONT_TITLE, GOLD,
+    INK, MUTED, PAPER, SAND, SIZE_BODY, SIZE_CAPTION, SIZE_CARD_HEAD, SIZE_H1,
+    SIZE_SMALL, SIZE_TITLE, WHITE,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "proposal" / "PharmaColdOps_tune.pptx"
 DST = ROOT / "proposal" / "PharmaColdOps-Proposal-Presentation-Final.pptx"
 
-INK = RGBColor(0x1F, 0x2A, 0x37)
-MUTED = RGBColor(0x50, 0x5F, 0x6E)
-ACCENT = RGBColor(0x0E, 0x6E, 0xA8)
+# Colours, fonts and sizes come from deck_theme (measured off the hand-designed
+# pages) — do not reintroduce local literal colours here, or the added slides
+# drift away from the rest of the deck again.
+ACCENT = GOLD
 
 
 # --------------------------------------------------------------------------
@@ -139,6 +149,25 @@ def delete_slides(prs, titles) -> list[str]:
     return dropped
 
 
+def style_run(r, *, font: str, size: float, color: str, bold: bool = False,
+              italic: bool = False) -> None:
+    """Everything the added slides write goes through here.
+
+    The hand-designed pages use Libre Baskerville for headings and DM Sans for
+    body text, on cream with a gold accent; runs built with plain python-pptx
+    inherit Calibri and looked like a different presentation. Both the latin and
+    the east-asian font name are set so Chinese text follows the same families."""
+    r.font.size = Pt(size)
+    r.font.bold = bold
+    r.font.italic = italic
+    r.font.name = font
+    r.font.color.rgb = RGBColor.from_string(color)
+    rPr = r._r.get_or_add_rPr()
+    for tag in ("a:ea", "a:cs"):
+        el = rPr.makeelement(qn(tag), {"typeface": font})
+        rPr.append(el)
+
+
 def textbox(slide, left, top, width, height):
     box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(height))
     tf = box.text_frame
@@ -148,24 +177,35 @@ def textbox(slide, left, top, width, height):
 
 
 def add_title(slide, text: str, kicker: str | None = None) -> None:
-    box, tf = textbox(slide, 0.62, 0.42, 12.1, 0.9)
+    box, tf = textbox(slide, 0.62, 0.40, 12.1, 0.95)
     p = tf.paragraphs[0]
     r = p.add_run()
     r.text = text
-    r.font.size = Pt(30)
-    r.font.bold = True
-    r.font.color.rgb = INK
+    style_run(r, font=FONT_TITLE, size=SIZE_TITLE, color=INK)
     if kicker:
-        box2, tf2 = textbox(slide, 0.66, 1.22, 12.1, 0.4)
+        box2, tf2 = textbox(slide, 0.66, 1.28, 12.1, 0.4)
         r2 = tf2.paragraphs[0].add_run()
         r2.text = kicker
-        r2.font.size = Pt(13)
-        r2.font.color.rgb = ACCENT
+        style_run(r2, font=FONT_BODY, size=SIZE_SMALL, color=MUTED)
+    # A hairline under the title, the way the designed pages separate the head
+    # from the body.
+    rule = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.62), Inches(1.20),
+                                  Inches(2.2), Pt(1.6))
+    rule.fill.solid()
+    rule.fill.fore_color.rgb = RGBColor.from_string(GOLD)
+    rule.line.fill.background()
+    rule.shadow.inherit = False
 
 
 def add_bullets(slide, items, *, left=0.62, top=1.75, width=12.1, height=5.0,
-                size=17, space=10, color=INK):
+                size=17, space=10, color=INK, marker="●", name: str | None = None):
     box, tf = textbox(slide, left, top, width, height)
+    if name:
+        # Give the block the slide-local name the design uses ("TextBox 3"), so
+        # the short build can find it by name instead of guessing: python-pptx
+        # auto-names new text boxes sequentially, which drifts when a slide is
+        # rebuilt with a different number of shapes.
+        box._element.nvSpPr.cNvPr.set("name", name)
     for i, item in enumerate(items):
         sub = isinstance(item, tuple)
         text = item[1] if sub else item
@@ -173,20 +213,19 @@ def add_bullets(slide, items, *, left=0.62, top=1.75, width=12.1, height=5.0,
         p.level = 1 if sub else 0
         p.space_after = Pt(space)
         r = p.add_run()
-        r.text = ("– " if sub else "● ") + text
-        r.font.size = Pt(size - 2 if sub else size)
-        r.font.color.rgb = MUTED if sub else color
-        r.font.bold = False
+        r.text = ("– " if sub else f"{marker} ") + text
+        style_run(r, font=FONT_BODY, size=(size - 2 if sub else size),
+                  color=(MUTED if sub else color))
     return box
 
 
-def add_footer(slide, text: str) -> None:
+def add_footer(slide, text: str, *, name: str | None = None) -> None:
     box, tf = textbox(slide, 0.62, 6.85, 12.1, 0.4)
+    if name:
+        box._element.nvSpPr.cNvPr.set("name", name)
     r = tf.paragraphs[0].add_run()
     r.text = text
-    r.font.size = Pt(11)
-    r.font.italic = True
-    r.font.color.rgb = MUTED
+    style_run(r, font=FONT_BODY, size=SIZE_CAPTION, color=MUTED, italic=True)
 
 
 # --------------------------------------------------------------------------
@@ -199,7 +238,7 @@ def fix_existing(prs: Presentation) -> None:
     # The title block is 6.89in wide at 14.5pt, so a paragraph must stay within
     # about 126 characters or it wraps and pushes the date line out of the box.
     # The NUS student IDs therefore live in the appendix, not here.
-    set_para(t2, 1, "Project Group 52 · Xu Wenzhe · Zhu Jianyu · Wang Lepeng · Shen Ziyi")
+    set_para(t2, 1, "Project Group 41 · Xu Wenzhe · Zhu Jianyu · Wang Lepeng · Shen Ziyi")
     set_para(t2, 2, "IRS Practice Module · Proposal Presentation · 22 Sep 2026")
 
     # --- Slide 2: drop the blanket "everything is manual" claim ----------
@@ -397,9 +436,9 @@ def add_scale_slide(prs):
         "contract, dispatch state machine, provenance and frontend/rule parity.",
         "Still missing and stated as such: Dockerfile/cloud deploy, duplicate-closure "
         "de-duplication, destination-pool expansion, occurrence-facility field.",
-    ], size=15, space=10)
+    ], size=15, space=10, name="TextBox 3")
     add_footer(s, "Every figure here is re-measurable: /openapi.json, data/audit/runs.jsonl, "
-                  "data/audit/dispatch.sqlite3, pytest --collect-only -q.")
+                  "data/audit/dispatch.sqlite3, pytest --collect-only -q.", name="TextBox 4")
     return s
 
 
@@ -417,8 +456,8 @@ def add_market_slide(prs):
         "to cited evidence, in one evaluable prototype.",
         "Honest positioning: unverified competitor capabilities are recorded as unknown — "
         "missing public documentation is not evidence of absence.",
-    ], size=17, space=14)
-    add_footer(s, "Proposal §3.2–3.3 · Figure 1. Market value still requires user interviews and operational data.")
+    ], size=17, space=14, name="TextBox 3")
+    add_footer(s, "Proposal §3.2–3.3 · Figure 1. Market value still requires user interviews and operational data.", name="TextBox 4")
     return s
 
 
@@ -457,7 +496,7 @@ def add_progress_slide(prs):
         "Leaflet map, dispatch console.",
         "Still missing and stated as such: occurrence-facility field in the close form, "
         "duplicate-closure de-duplication, destination-pool expansion, Dockerfile/cloud deploy.",
-    ], left=8.25, top=1.75, width=4.5, size=13.5, space=9)
+    ], left=8.25, top=1.75, width=4.5, size=13.5, space=9, name="TextBox 4")
     add_footer(s, caption)
     return s
 
@@ -481,9 +520,9 @@ def add_results_slide(prs):
         "Dispatch decisions: each reshipment option comes with its real road geometry and the delay "
         "it causes to orders already on board (measured: 0.59 km and 0 delayed orders for sending a "
         "spare vehicle, versus 4 re-sequenced orders for reusing a truck in transit).",
-    ], size=15, space=9)
+    ], size=15, space=9, name="TextBox 3")
     add_footer(s, "Boundaries: suspected-synthetic data, single random split, time-bounded solver — these do not "
-                  "establish real-world or operational savings.")
+                  "establish real-world or operational savings.", name="TextBox 4")
     return s
 
 
@@ -522,8 +561,8 @@ def add_conclusion_slide(prs):
         "the thresholds and provenance appendix, and two five-minute videos.",
         "What this prototype will not do: replace the quality lead's approval, or authorise real product release, "
         "destruction or transport.",
-    ], size=16, space=13)
-    add_footer(s, "Thank you — we are happy to take questions.")
+    ], size=16, space=13, name="TextBox 3")
+    add_footer(s, "Thank you — we are happy to take questions.", name="TextBox 4")
     return s
 
 
@@ -600,7 +639,7 @@ def shorten_for_short_deck(prs: Presentation) -> None:
     #     slide, not the many slides that merely mention the project name) ---
     cover = prs.slides[0]
     set_para(find(cover, "Text 2"), 1,
-             "Project Group 52 · Xu Wenzhe · Zhu Jianyu · Wang Lepeng · Shen Ziyi")
+             "Project Group 41 · Xu Wenzhe · Zhu Jianyu · Wang Lepeng · Shen Ziyi")
 
     # --- 2 problem -------------------------------------------------------
     s2 = by_title("Cold-Chain Excursions Threaten Drug Safety")
@@ -637,20 +676,21 @@ def shorten_for_short_deck(prs: Presentation) -> None:
     s13 = by_title("Where PharmaColdOps Sits")
     set_para(find(s13, "TextBox 1"), 0, "Where PharmaColdOps Sits")
     set_para(find(s13, "TextBox 2"), 0, "Positioning · market context and related work")
-    for p_index, text in (
-        (0, "● Commercial platforms already monitor temperature and automate parts "
-            "of the quality process — we do not claim to be first."),
-        (1, "● We build on existing foundations: Solomon's VRPTW benchmark, "
-            "OR-Tools, gradient-boosted trees, SHAP."),
-        (2, "● The gap we address is the unbroken, inspectable chain from event to "
-            "disposition to order to route to cited evidence."),
-    ):
-        set_para(find(s13, "TextBox 3"), p_index, text)
-    # The 4th positioning bullet is dropped: the same point is made on the
-    # "limits" slide, and 10 minutes cannot carry two versions of it.
-    p4 = para(find(s13, "TextBox 3"), 3)
-    if p4.runs:
-        p4._p.getparent().remove(p4._p)
+    body = find(s13, "TextBox 3")          # the bullet block add_market_slide created
+    bullets = [
+        "● Commercial platforms already monitor temperature and automate parts "
+        "of the quality process — we do not claim to be first.",
+        "● We build on existing foundations: Solomon's VRPTW benchmark, "
+        "OR-Tools, gradient-boosted trees, SHAP.",
+        "● The gap we address is the unbroken, inspectable chain from event to "
+        "disposition to order to route to cited evidence.",
+    ]
+    for index, text in enumerate(bullets):
+        set_para(body, index, text)
+    # Drop the original 4th bullet: it restates a point the limits slide already
+    # makes, and 10 minutes cannot carry two versions of it.
+    for extra in list(body.text_frame.paragraphs)[len(bullets):]:
+        extra._p.getparent().remove(extra._p)
 
     # --- 6 data: keep the provenance point, drop the long list -----------
     s9 = by_title("Data Sources: Verifiable, Disclosed Provenance")
@@ -668,14 +708,21 @@ def shorten_for_short_deck(prs: Presentation) -> None:
     set_para(find(s14, "TextBox 2"), 0, "Measured from the repository, 2026-09-27")
     old = find(s14, "TextBox 4")             # the long 5-bullet block from the full deck
     old._element.getparent().remove(old._element)
-    set_para(find(s14, "TextBox 5"), 0, "Screenshot: the Vue client in API mode, 2026-09-27.")
+    # The screenshot caption: in the full deck it is TextBox 5; in the short build
+    # the slide is created without it, so create it when missing.
+    try:
+        caption = find(s14, "TextBox 5")
+        set_para(caption, 0, "Screenshot: the Vue client in API mode, 2026-09-27.")
+    except KeyError:
+        add_footer(s14, "Screenshot: the Vue client in API mode, 2026-09-27.",
+                   name="TextBox 5")
     add_bullets(s14, [
         "23 HTTP endpoints, 13 of them dispatch operations.",
         "One Vue 3 client, 23 components; EN/ZH and offline mode.",
         "25 archived cases; 56 dispatch operations persisted.",
         "305 test functions across 35 files.",
         "Still missing: cloud deploy, de-duplication, destination pool.",
-    ], left=8.25, top=1.75, width=4.5, size=13, space=9)
+    ], left=8.25, top=1.75, width=4.5, size=13, space=9, name="TextBox 4")
 
     # --- 8 results: five bullets, numbers kept, prose removed ------------
     s15 = by_title("Preliminary Results")
@@ -733,8 +780,8 @@ def shorten_for_short_deck(prs: Presentation) -> None:
         "reproduction, the two videos.",
         "It does not replace the quality lead's approval, and does not authorise "
         "real product release, destruction or transport.",
-    ], left=0.62, top=2.00, width=12.1, height=4.4, size=17, space=16)
-    add_footer(s17, "Thank you — we are happy to take questions.")
+    ], left=0.62, top=2.00, width=12.1, height=4.4, size=17, space=16, name="TextBox 3")
+    add_footer(s17, "Thank you — we are happy to take questions.", name="TextBox 4")
 
 
 def main() -> None:

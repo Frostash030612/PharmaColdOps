@@ -24,7 +24,7 @@
 **历史背景**：提交后才发现中文静态页 `frontend/index-zh.html` 里已有订单驱动的配送调度台（`63f75c6`，9/12 20:05，经 C 的 `/api/dispatch/*` 驱动），源稿里「调度界面待建设」的说法因此过时，当时做过一轮收紧修正。该页随后于 9/12 被团队整体退役（`frontend/` 删除，Vue 成为唯一前端），调度台迁入 Vue 并接上结案案例（`POST /api/dispatch/reshipments`），远程 9/13 一批又按实测对齐了 KG/问答状态——这两件事使下表多处口径再次变化。
 
 **基准与口径**
-- **英文提交件** ＝ `PharmaColdOps-Proposal-Group 52.pdf`（2026-09-13 交 Canvas）及其来源 `PharmaColdOps-Proposal-EN.docx`（版本之锚）。**二者自提交后未再重建**，是冻结的提交口径。
+- **英文提交件** ＝ `PharmaColdOps-Proposal-Group 41.pdf`（2026-09-13 交 Canvas）及其来源 `PharmaColdOps-Proposal-EN.docx`（版本之锚）。**二者自提交后未再重建**，是冻结的提交口径。（该 PDF 于 2026-09-28 随组号更正由 `…Group 52.pdf` 改名；内容未改，仍是 9/13 提交的那一版。）
 - **英文源稿** ＝ `PharmaColdOps-Proposal-EN.md`，提交后经两轮修订：① 远程 9/13 一批；② 2026-09-14 合并后的实测重写与 §6.2/§8.3 对齐 rubric v1.1。
 - **中文源稿** ＝ `PharmaColdOps-Proposal-ZH.md`；**中文 Word 已于 2026-09-14 按合并＋对齐后的源稿重建**。
 

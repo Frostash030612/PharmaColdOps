@@ -7,7 +7,7 @@
 提案提交截止：2026-09-13 · 最终提交截止：2026-10-25
 本版更新：2026-09-13 · 状态：内容修订稿，尚待团队终审与提交
 
-组名：Project Group 52（Canvas 注册）。成员：Xu Wenzhe（A0328771W）、Zhu Jianyu（A0353769L）、Wang Lepeng（A0357864L）、Shen Ziyi（A0350940J）。本文以 A/B/C/D 表示职责，对照见 §10.1。
+组名：Project Group 41（Canvas 注册）。成员：Xu Wenzhe（A0328771W）、Zhu Jianyu（A0353769L）、Wang Lepeng（A0357864L）、Shen Ziyi（A0350940J）。本文以 A/B/C/D 表示职责，对照见 §10.1。
 
 ## 1. 项目概述
 
