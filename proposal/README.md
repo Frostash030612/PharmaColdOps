@@ -39,6 +39,7 @@
 - 布局实现要点（踩过的坑，改这一页前先看）：① 该页旧框名与视觉顺序不一致，且早期版本会删框，**不要按旧框名分配内容**——脚本改为把 4 条循环内容放进自建的 `loop_0..3`，卡片九槽全部按模板重建；② 主数字框高必须 ≥ 该字号的 1.17×行高（56pt 需 0.91in），否则 PowerPoint 会**静默缩小**字号；③ 任何 `Inches(...)` 不要对已是 `Inches` 的值二次换算。
 - **校验**：`scripts/check_deck_facts.py` 现在覆盖第 7、8 两页（7/7 + 14/14 通过）；新增 `scripts/check_deck_geometry.py` 全篇检查越界与文本框重叠（只剩第 10 页编号圆点与其文本的原设计重叠，属已知项）；新增 `scripts/check_speech_matches_deck.py` 逐条检查"deck 上要能答出来的事实是否都写进了讲稿"（31/31；封面日期故意不念，不计入）。
 - 备份：`PharmaColdOps .backup-before-slide8.pptx`（你换成新版第 7 页截图之后、第 8 页改版之前的状态）。改版前的原始版式见 git 历史。
+- 打印件：问答册的 Word 版 `QA准备-演讲稿配套.docx` 由 `scripts/build_qa_docx.py` 生成（A4、1.5cm 页边距、10.5pt 正文、每问 `keepNext` 不跨页）。它与讲稿 docx 共用 `scripts/docx_kit.py` 里的 OOXML 助手，所以两份外观一致，且都不依赖 python-docx 或 pandoc；改完对应 md 重跑对应 `build_*_docx.py` 即可。
 - 讲稿 `演讲稿-4人版.md` 的 P8 已按新版重写（闭环开场、逐层报数、`agreement` 而非 accuracy；隔离召回 0/3 与 15→3 条差异照旧说明）。
 
 > 已知小瑕疵：`演讲稿-4人版.docx` 第 5 页（PART D）估算约 103% 版心高，会多出 1 行；这是估算值（无字体度量），不影响讲稿，也不影响实际时长。
