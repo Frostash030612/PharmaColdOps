@@ -29,7 +29,7 @@ PPT exports are retained as older reference files until the team synchronises th
 
 Two front-end trees share one dual-mode behaviour (`?api=` → FastAPI backend; offline → built-in JS
 engine, byte-identical results). New work goes in **`frontend-vue/`** (Vue 3 + Vite); the older
-the zero-build `frontend/` was retired on 2026-09-12; `frontend-vue/` is the only client.
+zero-build `frontend/` was retired on 2026-09-12, so **`frontend-vue/` is the only client**.
 
 **Vue app (`frontend-vue/`, recommended)** — needs Node.js LTS (see below). Uses **pnpm**;
 with Node ≥ 16.9 run `corepack enable pnpm` once (no global install needed) and install from the
@@ -43,12 +43,14 @@ pnpm dev                       # http://localhost:5173          (offline)
 # http://localhost:5173/?api=http://127.0.0.1:8000               (backend mode)
 ```
 
-**Retired (2026-09-12): zero-build `frontend/`** — replaced by `frontend-vue/`:
+**Retired (2026-09-12): zero-build `frontend/`** — deleted; it is replaced entirely by
+`frontend-vue/` above. There is nothing to serve from that directory any more.
 
-```bash
-python -m http.server 5500 -d frontend
-# http://127.0.0.1:5500/index.html?api=http://127.0.0.1:8000
-```
+**Map basemap** — the Leaflet map prefers tiles cached under
+[`frontend-vue/public/tiles/`](frontend-vue/public/tiles/), fetched once with
+`node scripts/fetch_map_tiles.mjs`, so the demo needs no external request and survives a missing
+wifi (it falls back to the online OpenStreetMap layer, then to a route-only view; force the online
+layer with `?tiles=osm`). See [docs/前端地图底图说明.md](docs/前端地图底图说明.md).
 
 Backend (terminal 1, either case):
 
@@ -58,8 +60,9 @@ Backend (terminal 1, either case):
 
 **Where the code lives**
 
-- 🖥️ **Front-end (Vue)** — [`frontend-vue/`](frontend-vue/): Vue 3 + Vite SFCs (plain JS), `src/components/`, `src/stores/`, `src/lib/`, `src/i18n/`; data is the generated `src/data/realData.mjs`.
-- 🖥️ **Front-end** — [`frontend-vue/`](frontend-vue/): the single Vue 3 + Vite client (EN/ZH, offline fallback + `?api=` backend mode).
+- 🖥️ **Front-end (Vue)** — [`frontend-vue/`](frontend-vue/): the single Vue 3 + Vite client (EN/ZH,
+  offline fallback + `?api=` backend mode), Leaflet map, dispatch console, `src/components/`,
+  `src/stores/`, `src/lib/`, `src/i18n/`; data is the generated `src/data/realData.mjs`.
 - 🌐 **Back-end service** — [`src/api/`](src/api/): FastAPI + Uvicorn routes.
 - 🧠 **Decision core** (what the back-end calls) — [`src/rule_engine/`](src/rule_engine/); behaviour is driven by [`rules_config.json`](src/rule_engine/rules_config.json).
 - 🔗 **Contract tests** — [`tests/test_api_contract.py`](tests/test_api_contract.py): change `front-end ↔ back-end` fields together with this file.

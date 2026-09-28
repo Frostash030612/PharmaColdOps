@@ -3,7 +3,7 @@
 
 Course: IRS Practice Module
 
-Group name: Project Group 52
+Group name: Project Group 41
 
 Members: Xu Wenzhe (A0328771W), Zhu Jianyu (A0353769L), Wang Lepeng (A0357864L), Shen Ziyi (A0350940J).
 
@@ -125,7 +125,7 @@ Candidate-cause classification uses 16,192 facility-month simulation records wit
 
 The model is a single-depot VRPTW with equal vehicle capacities, customer service windows, service times and depot-return limits, minimising travel distance. The implementation uses RoutingModel, PATH_CHEAPEST_ARC and GUIDED_LOCAL_SEARCH, not CP-SAT. A time-bounded solution has no global-optimality guarantee. A feasible greedy solution is a comparison baseline, not a lower bound. [OR-Tools documentation](https://developers.google.com/optimization/routing/routing_options)
 
-Six Solomon instances support standard comparisons. The Singapore case uses one depot, ten hospitals and real directed OSM matrices, measured in km and min. Travel times estimate free flow and exclude live congestion. Demands, fleet and service windows are simulated and do not imply actual commercial relationships among the facilities.
+Six Solomon instances support standard comparisons. The Singapore case uses **19 nodes** (one main depot, one third-party warehouse kept for comparison, fourteen hospital receiving sites — eleven public and three private — and three distribution points) with real directed OSM matrices (19×19, 342 directed paths), measured in km and min. Travel times estimate free flow and exclude live congestion. Demands, fleet and service windows are simulated and do not imply actual commercial relationships among the facilities; the distribution points are retail outlets used as **simulated forward-stock roles** and have no pharmaceutical cold-chain capability.
 
 In online mode the Vue app solves and displays the route per closed case, falling back to the precomputed demo route offline or before a case is closed; temperature edits themselves do not trigger re-solving. The single-depot reshipment-order-to-solver mapping landed on 2026-09-12 and is reachable over HTTP for an ordered set of destinations, quantities and windows. Alternative-stock selection, multiple temperature compartments, carbon and wastage-loss objectives are extensions. A genetic algorithm may be considered after integrated acceptance, but is not a mandatory deliverable.
 
@@ -182,7 +182,7 @@ Cross-member contracts must fix the association among run_id, order_id, product,
 | [Electric Sheep Africa vaccine-cold-chain](https://huggingface.co/datasets/electricsheepafrica/vaccine-cold-chain) | 3 × 10,000 × 46; facility-month | Candidate causes | Simulation; CC BY 4.0 |
 | [Africa Synth Immunization](https://huggingface.co/datasets/electricsheepafrica/africa-synth-immunization-vaccine-quality-cold-chain-all) | Approximately 30,000 rows | Optional quality-risk supplement | Synthetic; CC BY 4.0 |
 | [Solomon / CVRPLIB](http://vrp.atd-lab.inf.puc-rio.br/index.php/en/) | Six committed instances | Standard VRPTW comparison | Abstract benchmark, preserve attribution |
-| [OpenStreetMap](https://www.openstreetmap.org/copyright) Singapore | 15 facilities, 15×15 matrices, 210 directed paths | Local routing case | Real roads, simulated operations; ODbL |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) Singapore | 19 facilities, 19×19 matrices, 342 directed paths (1 main depot + 1 third-party warehouse + 14 hospitals + 3 distribution points) | Local routing case | Real roads, simulated operations; ODbL |
 | Authored scenarios and human gold | 57 cases, four dispositions | Rule evaluation | Synthetic scenarios, independent annotation and arbitration |
 
 Licence verification is recorded in the [data dictionary](../data/ml/DATA_DICTIONARY.md). Preserve Electric Sheep Africa attribution and licence information and the applicable OSM attribution. Other small-sample or cybersecurity datasets are not core benchmarks.

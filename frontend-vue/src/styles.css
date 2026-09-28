@@ -262,8 +262,21 @@ html[lang="zh"] .ev-row .k { width: 100px; }
 .incident-head button { flex: none; border: 1px solid var(--line); background: #fff; color: var(--muted);
   border-radius: 999px; padding: 3px 9px; font-size: 10px; cursor: pointer; }
 .incident-head button:disabled { opacity: .5; cursor: default; }
+/* Day scope for the event rail: "today" vs "all". Keeps the current day visible
+   at a glance instead of showing every archived case as if it were today's. */
+.incident-scope { display: flex; gap: 6px; margin: 0 0 10px; }
+.incident-scope button { flex: 1 1 0; min-width: 0; border: 1px solid var(--line); background: #fff; color: var(--muted);
+  border-radius: 8px; padding: 5px 6px; font-size: 10.5px; font-weight: 600; cursor: pointer; transition: .13s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.incident-scope button:hover { border-color: var(--teal); color: var(--teal); }
+.incident-scope button.on { background: var(--teal); border-color: var(--teal); color: #fff; }
 .incident-empty { margin: 8px 0 0; padding: 12px; border: 1px dashed var(--line); border-radius: 9px;
   background: #f8fafc; color: var(--muted); font-size: 12px; }
+.incident-empty p { margin: 0 0 6px; }
+.incident-fallback { font-size: 11px; color: #94a3b8; }
+.incident-more { border: 1px solid var(--line); background: #fff; color: var(--teal); border-radius: 8px;
+  padding: 4px 9px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.incident-more:hover { border-color: var(--teal); background: #f0fdfa; }
 .incident-list { display: grid; gap: 8px; }
 .incident-card { width: 100%; display: flex; align-items: flex-start; gap: 9px; text-align: left;
   border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 9px 10px;

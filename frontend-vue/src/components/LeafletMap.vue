@@ -39,6 +39,7 @@ const el = ref(null);
 const tileError = ref(false);
 const colors = ["#0d9488", "#7c3aed", "#d97706"];
 let map, layer, overlayLayer, observer, vehicleLayer;
+let fellBackToOnline = false;     // local basemap missing -> tried the online layer once
 const markers = new Map();        // vehicle_id -> { marker, from, to, t0, dur }
 let raf = null;
 
@@ -382,9 +383,38 @@ function followVehicle() {
 
 onMounted(() => {
   map = L.map(el.value, { scrollWheelZoom: false, zoomControl: true });
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>', maxZoom: 18,
-  }).on("tileerror", () => { tileError.value = true; }).addTo(map);
+  /* Basemap. Local tiles (public/tiles, fetched once by
+     scripts/fetch_map_tiles.mjs) are preferred: no external request during a
+     demo, nothing to rate-limit or block, and it works with the wifi off.
+     Everything the map actually demonstrates — routes, depot, facilities,
+     simulated clock — is drawn from bundled data either way, so a missing
+     basemap degrades to a readable diagram instead of an empty box.
+     Force the online layer with ?tiles=osm, e.g. for a different city. */
+  const useOnlineTiles = new URLSearchParams(location.search).get("tiles") === "osm";
+  const baseLayer = useOnlineTiles
+    ? L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+        maxZoom: 18,
+      })
+    : L.tileLayer("./tiles/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> (tiles cached locally)',
+        maxZoom: 18,
+      });
+  baseLayer.on("tileerror", () => {
+    /* Local tiles absent → fall back to the online layer once; if that also
+       fails, the note under the map says so and the routes stay visible. */
+    if (!tileError.value && !useOnlineTiles && !fellBackToOnline) {
+      fellBackToOnline = true;
+      map?.removeLayer(baseLayer);
+      const online = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+        maxZoom: 18,
+      });
+      online.on("tileerror", () => { tileError.value = true; }).addTo(map);
+      return;
+    }
+    tileError.value = true;
+  }).addTo(map);
   redraw(); fit();
   observer = new ResizeObserver(() => map?.invalidateSize());
   observer.observe(el.value);

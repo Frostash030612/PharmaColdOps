@@ -7,7 +7,7 @@
 提案提交截止：2026-09-13 · 最终提交截止：2026-10-25
 本版更新：2026-09-13 · 状态：内容修订稿，尚待团队终审与提交
 
-组名：Project Group 52（Canvas 注册）。成员：Xu Wenzhe（A0328771W）、Zhu Jianyu（A0353769L）、Wang Lepeng（A0357864L）、Shen Ziyi（A0350940J）。本文以 A/B/C/D 表示职责，对照见 §10.1。
+组名：Project Group 41（Canvas 注册）。成员：Xu Wenzhe（A0328771W）、Zhu Jianyu（A0353769L）、Wang Lepeng（A0357864L）、Shen Ziyi（A0350940J）。本文以 A/B/C/D 表示职责，对照见 §10.1。
 
 ## 1. 项目概述
 
@@ -127,7 +127,7 @@ M1 和 M7 为工程支撑。ML 分数不进入决策 API，规则引擎是在线
 
 模型为单仓、同容量车辆、客户服务时间窗、服务时长及返仓时限约束的 VRPTW，目标是最小化行驶距离。实现使用 RoutingModel、PATH_CHEAPEST_ARC 初解和 GUIDED_LOCAL_SEARCH，不是 CP-SAT；限时解没有全局最优保证。贪心可行解是比较基线，不是目标函数下界。[OR-Tools 文档](https://developers.google.com/optimization/routing/routing_options)
 
-6 个 Solomon 实例用于标准比较；新加坡算例包含 1 仓、10 医院与真实 OSM 有向矩阵，距离为 km、时间为 min。时间是自由流估计，不含实时拥堵。需求、车队及服务窗口均为模拟假设，不表示设施间存在真实业务关系。
+6 个 Solomon 实例用于标准比较；新加坡算例为 **19 个节点**（1 个主仓、1 个第三方仓作对照、14 个医院收货点＝11 公立＋3 私立、3 个分拨点）与真实 OSM 有向矩阵（19×19，342 条有向路径），距离为 km、时间为 min。时间是自由流估计，不含实时拥堵。需求、车队及服务窗口均为模拟假设，不表示设施间存在真实业务关系；分拨点为零售门店的**模拟前置仓角色**，不具备医药冷链能力。
 
 在线模式下 Vue 按已结案案例实时求解并展示路线，离线或未结案时回退预计算演示路线；温度变化本身不触发重求解。单仓补发单到求解器的映射已于 2026-09-12 落地，并可按「一组目的地 + 数量 + 时间窗」的订单形式通过 HTTP 调用。替代库存选择、多温区、碳排放和报废损失目标列为扩展。遗传算法仅在主链验收后考虑，不作为必交算法。
 
@@ -184,7 +184,7 @@ Python 已有按 run_id 查询处置理由、审计链、产品要求及统计�
 | [Electric Sheep Africa vaccine-cold-chain](https://huggingface.co/datasets/electricsheepafrica/vaccine-cold-chain) | 3 × 10,000 × 46；设施月度 | 候选原因分类 | 仿真；CC BY 4.0 |
 | [Africa Synth Immunization](https://huggingface.co/datasets/electricsheepafrica/africa-synth-immunization-vaccine-quality-cold-chain-all) | 约 30,000 行 | 可选质量风险补充 | 合成；CC BY 4.0 |
 | [Solomon / CVRPLIB](http://vrp.atd-lab.inf.puc-rio.br/index.php/en/) | 已纳入 6 实例 | VRPTW 标准对照 | 抽象基准，保留来源 |
-| [OpenStreetMap](https://www.openstreetmap.org/copyright) 新加坡 | 15 设施、15×15 矩阵、210 条有向路径 | 本地配送算例 | 真实道路、模拟业务；ODbL |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) 新加坡 | 19 设施、19×19 矩阵、342 条有向路径（1 主仓＋1 第三方仓＋14 医院＋3 分拨点） | 本地配送算例 | 真实道路、模拟业务；ODbL |
 | 自建场景与人工 gold | 57 场景、4 类处置 | 规则评估 | 合成场景、独立标注与仲裁 |
 
 许可核实记录见 [数据字典](../data/ml/DATA_DICTIONARY.md)。保留 Electric Sheep Africa 署名与许可信息，以及 OSM 的相应署名。其他小样本或网络安全数据不作为核心基准。

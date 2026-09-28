@@ -9,9 +9,40 @@
 | [英文配图目录](figures/en/) | 7 张 SVG 已与正文同步；两张演示截图于 2026-09-13 在 Vue 前端（API 模式）重新截取。**两张未裁剪的全幅原件未入库**（仅在提交者本机 `proposal/figures/raw/`，本文件不指向仓库内路径），入库的是裁剪并引用的 `demo-rule-engine-en.png` / `demo-route-qa-en.png`；另含 2026-09-13 的 Neo4j Browser 实拍 `kg-neo4j-browser.png`（图 4b） |
 | [正式 Word（中）](PharmaColdOps_正式Proposal_4人版.docx) | 已按**合并后**的中文 Markdown 重新生成（`scripts/build_proposal_docx.py`，零第三方依赖，图片随 Markdown 引用一并嵌入）；组名、成员姓名及学号已填入；仍需人工终审 |
 | [正式 Word（英）](PharmaColdOps-Proposal-EN.docx) | 英文内容在 2026-09-13 的**版本之锚**（含人工对头部的简化）；**重建会覆盖这些人工修改** |
-| [提交件（英）](PharmaColdOps-Proposal-Group%2052.pdf) | **2026-09-13 提交用**：由上述英文 Word 导出的 PDF（20 页 / 4,246 词 / Letter），内容与提交时的英文 Word 一致 |
+| [提交件（英）](PharmaColdOps-Proposal-Group%2041.pdf) | **2026-09-13 提交用**：由上述英文 Word 导出的 PDF（20 页 / 4,246 词 / Letter），内容与提交时的英文 Word 一致 |
 | [提案 PPT](PharmaColdOps-Proposal-Presentation.pptx) | 旧版演示文稿，提交前需要同步范围、指标和未完成项 |
 | [调整版 PPT](PharmaColdOps_tune.pptx) | 保留原文件，提交前需确认是否继续使用 |
+
+### 演讲用的两份 deck（2026-09-28）
+
+| 文件 | 定位 | 怎么改 |
+|---|---|---|
+| [`PharmaColdOps .pptx`](PharmaColdOps%20.pptx) | **演讲当天用这份**：10 页，队友在 `tune` 版基础上做了视觉美化（深蓝标题条、卡片版式、金色分隔线、侧栏配图），组号已为 41，第 7 页前端截图已恢复为未裁剪原图 | 直接在 PowerPoint 里改；文字与版式改动不会自动回流到生成器 |
+| [`PharmaColdOps-Proposal-Presentation-Final.pptx`](PharmaColdOps-Proposal-Presentation-Final.pptx) | **生成版与留存版**：同一内容由脚本产出（`scripts/build_presentation_final.py --short`），字体/配色已按原设计对齐（Libre Baskerville + DM Sans、#454240 系、金色点缀） | 改 `scripts/build_presentation_final.py` 后重跑；**不要手改**，会被下一次生成覆盖 |
+
+两份不要同时改同一处文案，否则会出现两个互相矛盾的版本；**已定稿：演讲用 `PharmaColdOps .pptx`，它不再由脚本生成**（见下）。运维脚本：`scripts/set_group_number.py`（统一改组号）、`scripts/restore_screenshot.py`（换回未裁剪截图）、`scripts/deck_theme.py`（配色与字体常量）、`scripts/check_decks.py` 与 `scripts/check_deck_theme.py`（校验）、`scripts/check_deck_facts.py`（把 deck 第 7 页的实测数字与仓库重算比对，数字漂了就报错）。
+
+### 2026-09-28：演讲用 deck 定稿与事实同步
+
+- **定稿基准 = `PharmaColdOps .pptx`**（10 页，队友手工美化）。演讲稿 `演讲稿-4人版.md` 的页序、页码归属与数字口径**全部以这份为准**；`PharmaColdOps-Proposal-Presentation-Final.pptx` 降级为脚本生成/留存版，**不再用于现场**（它仍停在 2026-09-27：封面缺学号、日期 22 Sep，第 7 页数字为旧值）。
+- 已改 `PharmaColdOps .pptx` 三处（脚本 `scripts/fix_deck_facts.py`，运行前自动在 `proposal/` 生成带时间戳的备份）：
+  1. 封面成员行下补学号行（A0328771W · A0353769L · A0357864L · A0350940J，10pt，与其余两行同款字体，避免溢出）；
+  2. 封面演讲日期 `22 Sep 2026` → **`29 Sep 2026`**（实际演讲日）；
+  3. 第 7 页 `13 of them dispatch operations` → **`15`**、`305 test functions across 35 files` → **`34 test files`**。
+- 实测口径（2026-09-28，`scripts/check_deck_facts.py` 7/7 通过）：**23 条 API 路径／24 个操作，其中 dispatch 15 路径／16 操作；305 个测试函数分布在 34 个含测试的文件（第 35 个是 `conftest.py`）；25 条归档案例；`data/audit/dispatch.sqlite3` 的 `dispatch_runs` 56 行；Vue 客户端 23 个组件**。旧稿与 `build_presentation_final.py` 里写的「13 dispatch / 35 files」是硬编码字符串，已一并改正（生成版脚本第 426/435/721/724 行）。
+- 讲稿同步项：对应 deck 改为 `PharmaColdOps .pptx`、封面口播加学号、P5 补 Controlant 具名例子与用户需求、P6 区分 ICH 稳定性依据与 WHO/EU GDP/CDC 程序性引用、P7 改为 23 路径／24 操作／15 dispatch／34 文件并加「技术挑战＝首解策略构造失败」、P8 按新版 deck 重写（闭环开场 + agreement 措辞）、P9 补具体应对策略、求解器口径统一为 `PARALLEL_CHEAPEST_INSERTION` + GLS（不是 CP-SAT）、Q&A 补市场定位与求解器两问、位置与 Q&A 引用路径修正；文末新增「口径速查」六条。口播实测约 1260 词（≈8.4 分钟 @150 词/分），A/B/C/D ≈ 1:33/1:42/2:11/2:40。
+
+### 2026-09-28：第 8 页改版（闭环上主位）
+
+- **动机**：原第 8 页把「引擎 vs 人工 gold 54/57 = 94.7%」放成整页唯一英雄位，等于让评委把项目读成"一个标注一致性实验"；而 94.7% 度量的是引擎与**我们自己的 rubric** 的一致率，不是系统效果，也不含领域有效性验证。项目主体是"温度事件 → 处置 → 补发单 → 路线 → 证据"的冷链闭环。
+- **改版后**（`scripts/fix_deck_facts.py` 的第 4 项，可复跑）：标题改为 `The Loop Runs — and Every Number Reproduces`；左栏主数字为 `4`，**紧贴其右侧有两行解释**（`dispositions the rule engine can assign:` ＋ `release, quarantine, retest or scrap — reshipment is a separate logistics action, never a fifth outcome.`）——只写"4"或只加一个名词标签都会被读成装饰，必须就地说明它是什么；随后是「PROTOTYPE EVIDENCE」三条闭环事实（19 节点真实 OSM 路网／9 节点·8 类关系图谱证据；23 API 路径·24 操作·15 dispatch·25 归档案例·56 调度作业；声明的局限：模拟需求与时间窗、不声称运营节约）；右栏三层评测**等权并列**（处置层 54/57·κ=0.6434／路线层 142.63→133.81 km·−6.19%／风险层 F1 0.691·ROC-AUC 0.925 与低于基线的 Top-1 0.143）。原页面右侧描述框是 `word_wrap=False`，17pt 文字会冲出幻灯片右缘（改版前的截图即被裁切），现全部改为可换行、字号显式指定。
+- 布局实现要点（踩过的坑，改这一页前先看）：① 该页旧框名与视觉顺序不一致，且早期版本会删框，**不要按旧框名分配内容**——脚本改为把 4 条循环内容放进自建的 `loop_0..3`，卡片九槽全部按模板重建；② 主数字框高必须 ≥ 该字号的 1.17×行高（56pt 需 0.91in），否则 PowerPoint 会**静默缩小**字号；③ 任何 `Inches(...)` 不要对已是 `Inches` 的值二次换算。
+- **校验**：`scripts/check_deck_facts.py` 现在覆盖第 7、8 两页（7/7 + 14/14 通过）；新增 `scripts/check_deck_geometry.py` 全篇检查越界与文本框重叠（只剩第 10 页编号圆点与其文本的原设计重叠，属已知项）；新增 `scripts/check_speech_matches_deck.py` 逐条检查"deck 上要能答出来的事实是否都写进了讲稿"（31/31；封面日期故意不念，不计入）。
+- 备份：`PharmaColdOps .backup-before-slide8.pptx`（你换成新版第 7 页截图之后、第 8 页改版之前的状态）。改版前的原始版式见 git 历史。
+- 讲稿 `演讲稿-4人版.md` 的 P8 已按新版重写（闭环开场、逐层报数、`agreement` 而非 accuracy；隔离召回 0/3 与 15→3 条差异照旧说明）。
+
+> 已知小瑕疵：`演讲稿-4人版.docx` 第 5 页（PART D）估算约 103% 版心高，会多出 1 行；这是估算值（无字体度量），不影响讲稿，也不影响实际时长。
+
 
 本轮修订提案源稿、SVG 配图和中文 Word 提案，不改变程序行为、规则阈值、rubric 或 gold 标签。本次修订把 9/12 之后落地的实现同步进正文与配图：`/api/route` 与 `/api/qa` 已是真实端点（不再标 501），订单驱动的补发求解与调度运行状态持久化已实现并通过测试，前端对已归档补发案例会实时取路线与图谱回答；仍缺的是把中文静态页已有的配送调度台接入案例处置结论、补齐英文与 Vue 界面的对应界面，以及候选目的地池扩充。风险模型 §8.2 三行数字于 2026-09-13 用 `scripts/train_risk_full.py` 在 `requirements.txt` 记录的环境（seed 42）复跑得到，其中 LightGBM/XGBoost 的阈值与指标与原记录不同；原因实验（Top-1/Top-3/macro-F1）与新加坡路线结果仍为已有记录，本次未重跑。39/57 的引擎与 gold 一致计数已直接运行当前引擎复核。更早的 ground-truth 设计文档保留为历史设计，已完成的标注结果以正文 §8.3 和其链接的统计材料为准。
 
@@ -24,7 +55,7 @@
 **历史背景**：提交后才发现中文静态页 `frontend/index-zh.html` 里已有订单驱动的配送调度台（`63f75c6`，9/12 20:05，经 C 的 `/api/dispatch/*` 驱动），源稿里「调度界面待建设」的说法因此过时，当时做过一轮收紧修正。该页随后于 9/12 被团队整体退役（`frontend/` 删除，Vue 成为唯一前端），调度台迁入 Vue 并接上结案案例（`POST /api/dispatch/reshipments`），远程 9/13 一批又按实测对齐了 KG/问答状态——这两件事使下表多处口径再次变化。
 
 **基准与口径**
-- **英文提交件** ＝ `PharmaColdOps-Proposal-Group 52.pdf`（2026-09-13 交 Canvas）及其来源 `PharmaColdOps-Proposal-EN.docx`（版本之锚）。**二者自提交后未再重建**，是冻结的提交口径。
+- **英文提交件** ＝ `PharmaColdOps-Proposal-Group 41.pdf`（2026-09-13 交 Canvas）及其来源 `PharmaColdOps-Proposal-EN.docx`（版本之锚）。**二者自提交后未再重建**，是冻结的提交口径。（该 PDF 于 2026-09-28 随组号更正由 `…Group 52.pdf` 改名；内容未改，仍是 9/13 提交的那一版。）
 - **英文源稿** ＝ `PharmaColdOps-Proposal-EN.md`，提交后经两轮修订：① 远程 9/13 一批；② 2026-09-14 合并后的实测重写与 §6.2/§8.3 对齐 rubric v1.1。
 - **中文源稿** ＝ `PharmaColdOps-Proposal-ZH.md`；**中文 Word 已于 2026-09-14 按合并＋对齐后的源稿重建**。
 
@@ -47,7 +78,8 @@
 | §8.3 指标与判断句 | “Current engine agreement with gold 39/57, 68.4%”；“Eighteen differences …”；“scrap 18/33, 54.5%”；“Rule 4's quarantine/scrap choice remains an unresolved domain-policy question…”；“Tests freeze the eighteen known differences.” | **54/57，94.7%**（rubric v1.1；v1 下为 39/57）；残留 **3 条**（S034/S035/S052，gold 均为隔离，引擎分别为放行／放行／复检）；高后果召回**隔离 0/3、报废 33/33（100%）**；第 4 条已决为 `scrap`、不再是未决政策；测试冻结 3 条 | **本次**（本地 rubric v1.1 对齐；数字由当前引擎直接复算） |
 | §10.2 W0–W5 分工行 | W0 止于“Review and submission due 9/13;”，W1–W5 未列 B/C 的具体项 | W0 补“组名、成员姓名与学号已填入”；W1 补 B（task spec／多折风险）、C（order mapping）；W2 补 B（原因与切分对比）；W4 补 B（实验／失败分析）、C（Solomon 与新加坡对比）；W5 补 D（视频） | 本地 9/13–9/14 一轮 |
 | §11 风险表四行 | 缓解措施较短（如“Identify evidence level, product scope and assumptions;”、“Report κ, confusion and small-sample limits;”） | 分别补“retain human review”、“revise based on domain evidence”、“no audit-grade durability claim”、“keep personal annotations private”等 | 提交后、分叉前的 9/13 例行修订（两侧同源） |
-| §7.1 数据表 OSM 新加坡行 | “11 facilities, 11×11 matrices, 110 directed paths”（中文：“11 设施、11×11 矩阵、110 条有向路径”） | “**15 facilities, 15×15 matrices, 210 directed paths**”（中文：“15 设施、15×15 矩阵、210 条有向路径”）——2026-09-15 把本地路网由 1 仓库 + 10 公立医院扩至 **1 仓库 + 14 个接收点**（11 公立医院站点 + 3 私立医院），理由与取舍见 `docs/singapore_network_assumptions.md` | **本次**（本地扩网，与远程无关） |
+| §6.4 新加坡算例规模 ＋ §7.1 数据表 OSM 新加坡行 | §6.4：“one depot, ten hospitals”（中文：“1 仓、10 医院”）；§7.1：“11 facilities, 11×11 matrices, 110 directed paths”（中文：“11 设施、11×11 矩阵、110 条有向路径”） | **当前实测规模：19 节点／19×19 矩阵／342 条有向路径**——1 主仓（Scarlett Westgate）＋1 第三方仓（Kuehne+Nagel，降为对照）＋**14 个医院收货点**（11 公立＋3 私立）＋3 个分拨点。演进：9/15 由 1 仓库 + 10 公立医院扩至 1 仓库 + 14 个接收点；9/16 再扩至 19 节点并把主仓移至 Westgate。§6.4 与 §7.1 已于 2026-09-27 按实测改写（中英各两处），依据与取舍见 `docs/singapore_network_assumptions.md` | 2026-09-27 本地扩网对齐（与远程无关） |
+| 前端网络规模文案 | 前端 `i18n/{en,zh}.js` 的 `singapore.note` 曾写死“1 depot / 10 delivery sites”（中文“1 个仓库 / 10 个配送点”），`ReroutePanel.vue` 的 served 分母为 `nodes.length - 1`（会显示 /18） | 改为从已入库路网**计算**并在模板插值：`{nodes} facilities · {hospitals} hospitals + {distribution} distribution points · {depots} main depot`；served 分母改为医院数 14；`sandbox.js` 注释同步（该注释说“10 hospitals”，实际筛选 `role === "customer"` 得 14） | 2026-09-27 与提案口径同步 |
 
 **已还原一致的部分**：英文 Word 头部的 4 处人工修改（删副标题行、Course 行简化、组名与成员拆两行、`As of 2026-09-13` → `By now`）已回写进英文源稿，故英文 Markdown 与英文 Word 在头部逐句一致。
 

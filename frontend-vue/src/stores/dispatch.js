@@ -68,7 +68,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     const body = { run_id: runId, policy: policy.value };
     if (choice) Object.assign(body, choice);
     return postJson(`${decisions.apiBase}/api/dispatch/reshipments`, body)
-      .then((data) => { branch.value = null; return apply(data); })
+      .then((data) => { branch.value = null; branchOpen.value = false; return apply(data); })
       .catch((e) => {
         needsDailyPlan.value = e.status === 409;
         error.value = String(e.message || e);
@@ -85,6 +85,10 @@ export const useDispatchStore = defineStore("dispatch", () => {
   const branch = ref(null);          // preview response: order + candidates
   const branchError = ref("");
   const needsDailyPlan = ref(false); // last branch action was refused for 409
+  /* The comparison popup is a store flag rather than component state so the
+     commit path can close it, and so the "compare" button and the popup cannot
+     disagree about whether a comparison is on screen. */
+  const branchOpen = ref(false);
   const policy = ref("minimize_disruption");
   const POLICIES = ["minimize_disruption", "minimize_vehicles"];
 
@@ -94,6 +98,9 @@ export const useDispatchStore = defineStore("dispatch", () => {
     pending.value = true;
     branchError.value = "";
     needsDailyPlan.value = false;
+    /* Open the comparison popup straight away: the operator asked to compare, so
+       the popup shows either the options or the reason there are none. */
+    branchOpen.value = true;
     return postJson(`${decisions.apiBase}/api/dispatch/reshipments/preview`, {
       run_id: runId, policy: policy.value,
     })
@@ -105,6 +112,10 @@ export const useDispatchStore = defineStore("dispatch", () => {
         return null;
       })
       .finally(() => { pending.value = false; });
+  }
+
+  function closeBranchCompare() {
+    branchOpen.value = false;
   }
 
   /* Switching the ranking must re-rank what is already on screen, or the policy
@@ -498,7 +509,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     refresh, commitReshipment, depart, deliverNext, setSpeed,
     tick, watchClock, stopClock, stillReturning,
     branch, branchError, needsDailyPlan, policy, POLICIES,
-    previewBranch, setPolicy,
+    previewBranch, setPolicy, branchOpen, closeBranchCompare,
     branchVehicle, branchCandidate, branchOverlays, branchNodeIds, incidentNodeId,
     recent, replayError, loadRecent, replay, watchVisibility,
     dailyBatch, dailyPreview, dailyError,
