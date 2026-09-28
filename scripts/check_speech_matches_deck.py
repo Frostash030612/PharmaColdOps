@@ -13,6 +13,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 ROOT = Path(r"D:\2026第一学期\Group Project")
 DECK = ROOT / "proposal" / "PharmaColdOps .pptx"
 SPEECH = ROOT / "proposal" / "演讲稿-4人版.md"
+QA_DOC = ROOT / "proposal" / "QA准备-演讲稿配套.md"
 
 deck_slides = []
 for slide in Presentation(str(DECK)).slides:
@@ -67,4 +68,35 @@ for slide_no, label, phrase in checks:
           f"{'' if on_slide else '   (note: not literally on the slide either)'}")
 
 print(f"\n{len(checks) - failures}/{len(checks)} deck facts are also stated in the speech")
+
+#: the Q&A prep sheet must not contradict the deck or the speech either
+if QA_DOC.exists():
+    qa = QA_DOC.read_text(encoding="utf-8")
+    qa_checks = [
+        ("QA: leader-first framing", "commercial platforms already do temperature monitoring"),
+        ("QA: not CP-SAT", "不是 CP-SAT"),
+        ("QA: first-solution strategy", "PARALLEL_CHEAPEST_INSERTION"),
+        ("QA: 23 paths / 24 operations", "23 API 路径 / 24 个操作"),
+        ("QA: dispatch split", "15 个路径 / 16 个操作"),
+        ("QA: test files exclude conftest", "conftest.py"),
+        ("QA: 54/57 with rubric v1.1", "54/57 = 94.7% agreement"),
+        ("QA: submitted 39/57", "39/57"),
+        ("QA: kappa below target", "0.6434"),
+        ("QA: quarantine support limit", "0/3"),
+        ("QA: routing not a savings claim", "operational saving"),
+        ("QA: AI note location", "section 15 of the proposal"),
+        ("QA: offline demo trap", "离线模式点不开决策沙盒"),
+        ("QA: /api/route has no UI entry", "/api/route"),
+    ]
+    qa_failures = 0
+    print("\nQA prep sheet:")
+    for label, phrase in qa_checks:
+        ok = phrase in qa
+        if not ok:
+            qa_failures += 1
+        print(f"  [{'ok ' if ok else 'BAD'}] {label}"
+              f"{'' if ok else f'  -> missing {phrase!r}'}")
+    print(f"{len(qa_checks) - qa_failures}/{len(qa_checks)} claims present in the QA sheet")
+    failures += qa_failures
+
 sys.exit(1 if failures else 0)
