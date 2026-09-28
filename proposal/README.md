@@ -20,7 +20,29 @@
 | [`PharmaColdOps .pptx`](PharmaColdOps%20.pptx) | **演讲当天用这份**：10 页，队友在 `tune` 版基础上做了视觉美化（深蓝标题条、卡片版式、金色分隔线、侧栏配图），组号已为 41，第 7 页前端截图已恢复为未裁剪原图 | 直接在 PowerPoint 里改；文字与版式改动不会自动回流到生成器 |
 | [`PharmaColdOps-Proposal-Presentation-Final.pptx`](PharmaColdOps-Proposal-Presentation-Final.pptx) | **生成版与留存版**：同一内容由脚本产出（`scripts/build_presentation_final.py --short`），字体/配色已按原设计对齐（Libre Baskerville + DM Sans、#454240 系、金色点缀） | 改 `scripts/build_presentation_final.py` 后重跑；**不要手改**，会被下一次生成覆盖 |
 
-两份不要同时改同一处文案，否则会出现两个互相矛盾的版本；定稿前确认演讲用哪一份。运维脚本：`scripts/set_group_number.py`（统一改组号）、`scripts/restore_screenshot.py`（换回未裁剪截图）、`scripts/deck_theme.py`（配色与字体常量）、`scripts/check_decks.py` 与 `scripts/check_deck_theme.py`（校验）。
+两份不要同时改同一处文案，否则会出现两个互相矛盾的版本；**已定稿：演讲用 `PharmaColdOps .pptx`，它不再由脚本生成**（见下）。运维脚本：`scripts/set_group_number.py`（统一改组号）、`scripts/restore_screenshot.py`（换回未裁剪截图）、`scripts/deck_theme.py`（配色与字体常量）、`scripts/check_decks.py` 与 `scripts/check_deck_theme.py`（校验）、`scripts/check_deck_facts.py`（把 deck 第 7 页的实测数字与仓库重算比对，数字漂了就报错）。
+
+### 2026-09-28：演讲用 deck 定稿与事实同步
+
+- **定稿基准 = `PharmaColdOps .pptx`**（10 页，队友手工美化）。演讲稿 `演讲稿-4人版.md` 的页序、页码归属与数字口径**全部以这份为准**；`PharmaColdOps-Proposal-Presentation-Final.pptx` 降级为脚本生成/留存版，**不再用于现场**（它仍停在 2026-09-27：封面缺学号、日期 22 Sep，第 7 页数字为旧值）。
+- 已改 `PharmaColdOps .pptx` 三处（脚本 `scripts/fix_deck_facts.py`，运行前自动在 `proposal/` 生成带时间戳的备份）：
+  1. 封面成员行下补学号行（A0328771W · A0353769L · A0357864L · A0350940J，10pt，与其余两行同款字体，避免溢出）；
+  2. 封面演讲日期 `22 Sep 2026` → **`29 Sep 2026`**（实际演讲日）；
+  3. 第 7 页 `13 of them dispatch operations` → **`15`**、`305 test functions across 35 files` → **`34 test files`**。
+- 实测口径（2026-09-28，`scripts/check_deck_facts.py` 7/7 通过）：**23 条 API 路径／24 个操作，其中 dispatch 15 路径／16 操作；305 个测试函数分布在 34 个含测试的文件（第 35 个是 `conftest.py`）；25 条归档案例；`data/audit/dispatch.sqlite3` 的 `dispatch_runs` 56 行；Vue 客户端 23 个组件**。旧稿与 `build_presentation_final.py` 里写的「13 dispatch / 35 files」是硬编码字符串，已一并改正（生成版脚本第 426/435/721/724 行）。
+- 讲稿同步项：对应 deck 改为 `PharmaColdOps .pptx`、封面口播加学号、P5 补 Controlant 具名例子与用户需求、P6 区分 ICH 稳定性依据与 WHO/EU GDP/CDC 程序性引用、P7 改为 23 路径／24 操作／15 dispatch／34 文件并加「技术挑战＝首解策略构造失败」、P8 按新版 deck 重写（闭环开场 + agreement 措辞）、P9 补具体应对策略、求解器口径统一为 `PARALLEL_CHEAPEST_INSERTION` + GLS（不是 CP-SAT）、Q&A 补市场定位与求解器两问、位置与 Q&A 引用路径修正；文末新增「口径速查」六条。口播实测约 1260 词（≈8.4 分钟 @150 词/分），A/B/C/D ≈ 1:33/1:42/2:11/2:40。
+
+### 2026-09-28：第 8 页改版（闭环上主位）
+
+- **动机**：原第 8 页把「引擎 vs 人工 gold 54/57 = 94.7%」放成整页唯一英雄位，等于让评委把项目读成"一个标注一致性实验"；而 94.7% 度量的是引擎与**我们自己的 rubric** 的一致率，不是系统效果，也不含领域有效性验证。项目主体是"温度事件 → 处置 → 补发单 → 路线 → 证据"的冷链闭环。
+- **改版后**（`scripts/fix_deck_facts.py` 的第 4 项，可复跑）：标题改为 `The Loop Runs — and Every Number Reproduces`；左栏主数字为 `4`，**紧贴其右侧有两行解释**（`dispositions the rule engine can assign:` ＋ `release, quarantine, retest or scrap — reshipment is a separate logistics action, never a fifth outcome.`）——只写"4"或只加一个名词标签都会被读成装饰，必须就地说明它是什么；随后是「PROTOTYPE EVIDENCE」三条闭环事实（19 节点真实 OSM 路网／9 节点·8 类关系图谱证据；23 API 路径·24 操作·15 dispatch·25 归档案例·56 调度作业；声明的局限：模拟需求与时间窗、不声称运营节约）；右栏三层评测**等权并列**（处置层 54/57·κ=0.6434／路线层 142.63→133.81 km·−6.19%／风险层 F1 0.691·ROC-AUC 0.925 与低于基线的 Top-1 0.143）。原页面右侧描述框是 `word_wrap=False`，17pt 文字会冲出幻灯片右缘（改版前的截图即被裁切），现全部改为可换行、字号显式指定。
+- 布局实现要点（踩过的坑，改这一页前先看）：① 该页旧框名与视觉顺序不一致，且早期版本会删框，**不要按旧框名分配内容**——脚本改为把 4 条循环内容放进自建的 `loop_0..3`，卡片九槽全部按模板重建；② 主数字框高必须 ≥ 该字号的 1.17×行高（56pt 需 0.91in），否则 PowerPoint 会**静默缩小**字号；③ 任何 `Inches(...)` 不要对已是 `Inches` 的值二次换算。
+- **校验**：`scripts/check_deck_facts.py` 现在覆盖第 7、8 两页（7/7 + 14/14 通过）；新增 `scripts/check_deck_geometry.py` 全篇检查越界与文本框重叠（只剩第 10 页编号圆点与其文本的原设计重叠，属已知项）；新增 `scripts/check_speech_matches_deck.py` 逐条检查"deck 上要能答出来的事实是否都写进了讲稿"（31/31；封面日期故意不念，不计入）。
+- 备份：`PharmaColdOps .backup-before-slide8.pptx`（你换成新版第 7 页截图之后、第 8 页改版之前的状态）。改版前的原始版式见 git 历史。
+- 讲稿 `演讲稿-4人版.md` 的 P8 已按新版重写（闭环开场、逐层报数、`agreement` 而非 accuracy；隔离召回 0/3 与 15→3 条差异照旧说明）。
+
+> 已知小瑕疵：`演讲稿-4人版.docx` 第 5 页（PART D）估算约 103% 版心高，会多出 1 行；这是估算值（无字体度量），不影响讲稿，也不影响实际时长。
+
 
 本轮修订提案源稿、SVG 配图和中文 Word 提案，不改变程序行为、规则阈值、rubric 或 gold 标签。本次修订把 9/12 之后落地的实现同步进正文与配图：`/api/route` 与 `/api/qa` 已是真实端点（不再标 501），订单驱动的补发求解与调度运行状态持久化已实现并通过测试，前端对已归档补发案例会实时取路线与图谱回答；仍缺的是把中文静态页已有的配送调度台接入案例处置结论、补齐英文与 Vue 界面的对应界面，以及候选目的地池扩充。风险模型 §8.2 三行数字于 2026-09-13 用 `scripts/train_risk_full.py` 在 `requirements.txt` 记录的环境（seed 42）复跑得到，其中 LightGBM/XGBoost 的阈值与指标与原记录不同；原因实验（Top-1/Top-3/macro-F1）与新加坡路线结果仍为已有记录，本次未重跑。39/57 的引擎与 gold 一致计数已直接运行当前引擎复核。更早的 ground-truth 设计文档保留为历史设计，已完成的标注结果以正文 §8.3 和其链接的统计材料为准。
 
