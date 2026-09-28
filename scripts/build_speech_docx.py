@@ -52,7 +52,9 @@ def esc(text: str) -> str:
 # runs and paragraphs
 # --------------------------------------------------------------------------
 def run(text: str, *, bold=False, italic=False, size=21, color=INK,
-        font="Aptos", ea="Microsoft YaHei") -> str:
+        font="Arial", ea="Microsoft YaHei") -> str:
+    if any("\u3400" <= ch <= "\u9fff" for ch in text):
+        font = ea = "Microsoft YaHei"
     space = ' xml:space="preserve"' if text[:1].isspace() or text[-1:].isspace() else ""
     props = [f'<w:rFonts w:ascii="{font}" w:hAnsi="{font}" w:eastAsia="{ea}"/>',
              f'<w:sz w:val="{size}"/>', f'<w:szCs w:val="{size}"/>',
@@ -165,7 +167,7 @@ def parse(md: str) -> list[str]:
         for entry in quote_buf:
             is_cue = bool(re.match(r"^\*\*[^*]+\*\*[（(]\s*\d+\s*秒\s*[）)]\s*$", entry.strip()))
             if is_cue:
-                label = entry.strip()
+                label = re.sub(r"\*\*", "", entry.strip())
                 blocks.append(para(run(label, bold=True, size=22, color=ACCENT),
                                    before=200, after=60, keep_next=True,
                                    border_left=ACCENT, left=140, shade="F0FDFA"))
@@ -311,7 +313,7 @@ DOC_RELS = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 STYLES = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
           f'<w:styles xmlns:w="{W_NS}">'
           '<w:docDefaults><w:rPrDefault><w:rPr>'
-          '<w:rFonts w:ascii="Aptos" w:hAnsi="Aptos" w:eastAsia="Microsoft YaHei"/>'
+          '<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Microsoft YaHei"/>'
           '<w:sz w:val="21"/><w:szCs w:val="21"/>'
           '</w:rPr></w:rPrDefault>'
           '<w:pPrDefault><w:pPr><w:spacing w:after="100" w:line="288" w:lineRule="auto"/>'
