@@ -191,6 +191,15 @@
 **F4. "Can it be deployed in a real hospital?"**
 **Not as it stands, and we would not want it to be. It is an evaluable prototype: no production hardening, no validated thresholds, no integration with quality systems, and the final disposition is signed off by a human.**
 
+**F5. "What is the full name of your project?" / 「项目全称是什么？」**
+**PharmaColdOps — An Intelligent System for Temperature-Excursion Disposition and Delivery Re-routing in Cold-Chain Pharmaceuticals.** It is the title on our cover slide; in Chinese we say 「冷链药品温度偏移处置与配送改派决策支持原型」. The registered group is Project Group 41.
+
+- 注意：**提案正文里没有这串全名**（英文提案首行只有 `# PharmaColdOps`），它只存在于 deck 封面。所以不要在台上说"如提案标题所写"。
+- 口播不必念全名（29 词 ≈ 12 秒），被问到时再报；中文提问就报中文那串。
+
+**F6. "Which member did what, and how much did each contribute?"**
+**Same split as F1: A owns rules, evidence and evaluation; B data and offline models; C optimisation and dispatch; D graph, QA, API and frontend. Contribution is covered by the individual peer-review forms, and the git history shows cross-review rather than siloed modules.**
+
 ---
 
 ## 3. 兜底话术（真的答不上来时用）
