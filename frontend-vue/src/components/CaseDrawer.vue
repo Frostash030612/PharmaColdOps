@@ -15,10 +15,13 @@ import RuleList from "./RuleList.vue";
 import RiskIndex from "./RiskIndex.vue";
 import EvidencePanel from "./EvidencePanel.vue";
 import CaseActions from "./CaseActions.vue";
+import M4Panel from './M4Panel.vue';
+import { useDecisionsStore } from '../stores/decisions.js';
 import { locale, bundle } from "../i18n/index.js";
 
 const overlay = useOverlayStore();
 const sandbox = useSandboxStore();
+const decisions = useDecisionsStore();
 const L = computed(() => bundle(locale.value));
 function close() { sandbox.exitOfflinePreview(); overlay.closeCase(); }
 onBeforeUnmount(sandbox.exitOfflinePreview);
@@ -53,6 +56,9 @@ onBeforeUnmount(sandbox.exitOfflinePreview);
         <RuleList />
         <div class="section-label">{{ L.center.sectionRisk }} <span class="h2-note">{{ L.center.riskNote }}</span></div>
         <RiskIndex />
+        <M4Panel :model-value="sandbox.current.ml_contexts || []" @update:model-value="sandbox.current.ml_contexts = $event"
+          :saved="sandbox.currentRunId ? sandbox.archivedRecord?.ml_assessments || [] : []"
+          :readonly="!!sandbox.currentRunId" :offline="sandbox.offlinePreview || !decisions.useApi || decisions.apiUp !== true" />
         <div class="section-label">{{ L.center.sectionEvidence }}</div>
         <EvidencePanel />
         <details v-if="!sandbox.offlinePreview" class="case-advanced">

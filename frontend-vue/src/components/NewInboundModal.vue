@@ -12,6 +12,7 @@ import { useSandboxStore } from "../stores/sandbox.js";
 import { useOverlayStore } from "../stores/overlay.js";
 import { useDispatchStore } from "../stores/dispatch.js";
 import { useRegistrationStore } from "../stores/registration.js";
+import M4Panel from './M4Panel.vue';
 import routes from "../data/singaporeRoutes.json";
 import {
   PRODUCT_NUM, PRODUCT_IDS, STAGE_IDS, PACKAGING_IDS, DEFAULT_EVENT,
@@ -72,6 +73,7 @@ const archiving = ref(false);
 const error = ref(recoveryError);
 const showRules = ref(false);
 const remark = ref(recovered?.payload?.remark || "");
+const mlContexts = ref(recovered?.payload?.ml_contexts || []);
 
 const up = computed(() => decisions.apiUp === true);
 
@@ -135,6 +137,7 @@ async function archive() {
       ...eventPayload(ev.value),
       spec_override: overridePayload(spec.value),
       remark: remark.value.trim() || null,
+      ...(mlContexts.value.length ? { ml_contexts: mlContexts.value } : {}),
     });
     overlay.closeNewInbound();
     sandbox.restoreCase(res);        // now the whole flow appears on the page
@@ -264,6 +267,7 @@ function discardDraft() {
         </div>
 
         </fieldset>
+        <M4Panel v-model="mlContexts" :readonly="locked || archiving" :offline="!up" />
         <div class="ni-preview">
           <div class="section-label">{{ L.newInbound.preview }}</div>
           <div class="dispo-banner" :style="{ background: DISPO_COLOR[d.disposition] }">

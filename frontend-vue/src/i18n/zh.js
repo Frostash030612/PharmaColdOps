@@ -563,6 +563,30 @@ export default {
     connecting: "● API 连接中…",
   },
 
+  ml: {
+    title: 'M4 · 已训练的辅助模型', risk: '运输失效风险', cause: '候选原因（月度上下文）',
+    disclosure: '与规则处置和启发式风险分开显示。模型学习疑似／明确合成基准数据中的关联，概率尚未校准；不判断报废、不证明药品效价、不冒充实时传感器或调查根因。无需货量或仓库余额。',
+    offline: '离线规则沙箱不运行或模拟 ML 分数。需连接后端并生成本地模型产物才能使用 M4。',
+    noSnapshot: '这条记录没有保存 M4 评估，不会用当前模型自动补写或改算历史结论。',
+    unavailable: '模型尚不可用，请在后端环境运行 scripts/train_m4_models.py；不会自动训练或返回假分数。',
+    loading: '加载／推理中…', testMetric: '留出集基准（非真实业务准确率）：', weakCause: '候选原因模型的基准表现较弱，仅作为实验关联列表，不应当作调查诊断。',
+    samples: '加载留出集演示样本', choose: '选择样本', sampleNote: '这是基准样本，不是此订单的传感器读数；随案例保存表示人为指定的模拟上下文。',
+    riskInputs: '运输摘要特征（不从 MKT 捏造）', causeInputs: '设施／设备月度特征（非事件根因）',
+    predict: '调用训练模型', attach: '将此明确模拟的上下文随新登记保存（不改变处置）',
+    attached: '已选择随登记保存的上下文', probability: '基准运输静默失效概率', threshold: '验证集阈值',
+    above: '超过模型阈值 ≠ 报废', below: '低于模型阈值 ≠ 安全放行',
+    ood: '超出训练支持范围，未返回预测', sampleSource: '留出集样本', manualSource: '人工模拟上下文',
+    explanation: '敏感性：把单个特征替换为训练参考值，显示有符号概率变化（百分点）。不是可加和的 SHAP，也不是因果证据。',
+    snapshot: '保存首次评估的模型 ID、输入和结果，模型变化后不重算历史。',
+    features: { transit_days:'运输时长（天）', door_opens:'开门次数', temp_mean_c:'平均温度（°C）', temp_max_c:'最高温度（°C）',
+      temp_min_c:'最低温度（°C）', temp_std_c:'温度标准差（°C）', temp_recovery_rate:'温度恢复指标（0–1）',
+      rh_mean:'平均相对湿度（0–1）', rh_std:'湿度标准差（0–1）', rh_max:'最高相对湿度（0–1）', leg_count:'运输路段数',
+      sensor_gap_hours:'传感器缺测（小时）', vibration_index:'振动指标', facility_level:'设施级别', region_type:'地区类别',
+      equipment_type:'设备类型', equipment_functional:'设备正常（0／1）', backup_power_available:'备用电源（0／1）', monitoring_type:'监测方法',
+      monitoring_device_present:'监测设备存在（0／1）', temp_log_complete:'温度日志完整（0／1）', vaccine_name:'基准疫苗类别',
+      freeze_sensitive:'冻敏（0／1）', heat_sensitive:'热敏（0／1）', equipment_age_years:'设备年限', power_outage_hours_last_month:'上月断电小时', year:'基准年份', month:'基准月份' },
+  },
+
   qa: {
     answers: [
       { kw: ["mkt", "平均动力学"], reply: "平均动力学温度（MKT）把一段温度-时间曲线压缩成单个与稳定性相关的值，使一次短暂升温可对照产品的稳定性阈值来评估。" },

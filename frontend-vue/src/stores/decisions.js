@@ -90,7 +90,15 @@ export const useDecisionsStore = defineStore("decisions", () => {
         serverDecision.value = res;
         serverDecisionKey.value = k;
       })
-      .catch(() => apiDown());
+      .catch((error) => {
+        // A missing optional M4 artifact is not a dead rule/dispatch backend.
+        // Keep local rule preview available; registration with that explicit
+        // context still fails visibly instead of fabricating an ML snapshot.
+        if (error.status === 503 && error.detail?.startsWith('M4 artifact')) {
+          serverDecision.value = null; serverDecisionKey.value = null; return;
+        }
+        apiDown();
+      });
   }
 
   function syncGrid() {

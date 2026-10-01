@@ -22,6 +22,7 @@ const COMPONENTS = [
   "frontend-vue/src/components/NewInboundModal.vue",
   "frontend-vue/src/components/SimulationGenerator.vue",
   "frontend-vue/src/components/UrgentOrderPanel.vue",
+  "frontend-vue/src/components/M4Panel.vue",
 ].filter((f) => existsSync(f));
 
 const bundleOf = (file) =>

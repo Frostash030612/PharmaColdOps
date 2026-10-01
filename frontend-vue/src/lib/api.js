@@ -5,9 +5,10 @@
 import { pathLine } from "./engine.js";
 
 export function decisionKey(current, spec) {
-  return [current.product_id, current.excursion_temp_c, current.duration_min,
+  const key = [current.product_id, current.excursion_temp_c, current.duration_min,
           current.mkt_c, current.packaging, current.stage,
           spec.allowable, spec.mktThreshold, spec.retestable].join("|");
+  return current.ml_contexts?.length ? `${key}|ml:${JSON.stringify(current.ml_contexts)}` : key;
 }
 
 export function specKey(current, spec) {
@@ -26,6 +27,7 @@ export function eventPayload(current) {
     facility_id: current.facility_id || null,
     order_id: current.order_id || null,
     dispatch_id: current.dispatch_id || null,
+    ...(current.ml_contexts?.length ? { ml_contexts: JSON.parse(JSON.stringify(current.ml_contexts)) } : {}),
   };
 }
 

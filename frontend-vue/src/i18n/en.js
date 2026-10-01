@@ -574,6 +574,31 @@ export default {
     connecting: "● API connecting…",
   },
 
+  ml: {
+    title: 'M4 · learned advisory models', risk: 'Shipment failure risk', cause: 'Candidate causes (monthly context)',
+    disclosure: 'Separate from rule disposition and heuristic risk. These models learn associations in suspected/declared synthetic benchmark data; probabilities are uncalibrated. They do not decide scrap, verify potency, represent live sensors or confirm causes. No quantity or warehouse balance is needed.',
+    offline: 'Offline rule sandbox does not run or approximate ML. Connect the backend and train the local artifacts to use M4.',
+    noSnapshot: 'This record has no saved M4 assessment. No new model result is substituted into its history.',
+    unavailable: 'Model unavailable. Run scripts/train_m4_models.py in the backend environment; no automatic training or fake score.',
+    loading: 'Loading / predicting…', testMetric: 'Held-out benchmark (not real-world accuracy):', weakCause: 'Candidate-cause benchmark performance is weak. Treat the list only as an experimental association, not a diagnosis.',
+    samples: 'Load held-out demo samples', choose: 'Choose a sample', sampleNote: 'Benchmark sample, not a sensor reading of this order. Attaching it is an explicit simulated context assignment.',
+    riskInputs: 'Transport summary features (not derived from MKT)', causeInputs: 'Facility / equipment monthly features (not event root cause)',
+    predict: 'Run the trained model', attach: 'Save this explicitly simulated context with the new registration (does not change disposition)',
+    attached: 'Contexts selected for registration', probability: 'Benchmark silent-failure probability', threshold: 'Validation threshold',
+    above: 'Above model threshold ≠ scrap', below: 'Below model threshold ≠ safe release',
+    ood: 'Outside training support; prediction withheld', sampleSource: 'Held-out dataset sample', manualSource: 'Manually simulated context',
+    explanation: 'Sensitivity: replacing one feature with its training reference. Signed probability change in percentage points; not additive SHAP or causal proof.',
+    snapshot: 'Original saved model ID, inputs and result; not recomputed when the model changes.',
+    features: { transit_days:'Transport duration (days)', door_opens:'Door openings (count)', temp_mean_c:'Mean temperature (°C)',
+      temp_max_c:'Maximum temperature (°C)', temp_min_c:'Minimum temperature (°C)', temp_std_c:'Temperature standard deviation (°C)',
+      temp_recovery_rate:'Temperature recovery index (0–1)', rh_mean:'Mean relative humidity (0–1)', rh_std:'Humidity standard deviation (0–1)',
+      rh_max:'Maximum relative humidity (0–1)', leg_count:'Transport legs (count)', sensor_gap_hours:'Sensor gaps (hours)', vibration_index:'Vibration index',
+      facility_level:'Facility level', region_type:'Region type', equipment_type:'Equipment type', equipment_functional:'Equipment functional (0/1)',
+      backup_power_available:'Backup power (0/1)', monitoring_type:'Monitoring method', monitoring_device_present:'Monitoring device present (0/1)',
+      temp_log_complete:'Temperature log complete (0/1)', vaccine_name:'Benchmark vaccine category', freeze_sensitive:'Freeze sensitive (0/1)',
+      heat_sensitive:'Heat sensitive (0/1)', equipment_age_years:'Equipment age (years)', power_outage_hours_last_month:'Power outages last month (hours)', year:'Benchmark year', month:'Benchmark month' },
+  },
+
   qa: {
     answers: [
       { kw: ["mkt", "mean kinetic"], reply: "Mean Kinetic Temperature (MKT) compresses a temperature–time profile into a single stability-relevant value, so a short hot spike can be compared against the product's stability threshold." },
