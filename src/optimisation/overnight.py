@@ -33,6 +33,7 @@ from .dispatch_models import (
     DeliveryOrder, DispatchConstraints, DispatchVehicle, InventoryLot,
 )
 from .dispatch_planner import DISPATCH_ORIGIN, plan_delivery_orders
+from .parking_policy import validate_terminals, warehouse_ids
 from .singapore_loader import SINGAPORE_NETWORK_PATH, read_network
 
 ASSUMPTIONS = (
@@ -58,6 +59,7 @@ class ParkingChoice:
     saved_m: int                     # stay_deadhead_m − deadhead_m
     net_m: int                       # saved_m − reposition_m: the honest two-day balance
     note: str = ""                   # why the first choice was not taken
+    feasible: bool = True
 
 
 @dataclass(frozen=True)
@@ -94,9 +96,7 @@ def plan_overnight_parking(
     distance = network["matrix"]["distance_m"]
     today_distance_m = today_distance_m or {}
 
-    unknown = sorted(set(constraints.terminal_facility_ids or ()) - set(node_by_facility))
-    if unknown:
-        raise ValueError(f"unknown terminal facilities: {unknown}")
+    validate_terminals(network, constraints.terminal_facility_ids)
     terminals = [node_by_facility[fid] for fid in (constraints.terminal_facility_ids or ())]
 
     # Tomorrow's tentative plan: every truck assumed to start at the warehouse,
@@ -133,36 +133,23 @@ def plan_overnight_parking(
         note = ""
         if here is None:
             raise ValueError(f"vehicle {vehicle.vehicle_id}: unknown start facility")
-        if not terminals:
-            park = here
-            note = "no_terminal_given"
+        legal_warehouses = {node_by_facility[fid] for fid in warehouse_ids(network)}
+        allowed = terminals or ([here] if here in legal_warehouses else [node_by_facility[DISPATCH_ORIGIN]])
+        target = pickup if pickup is not None else here
+        ranked = ([here] if pickup is None and here in allowed else []) + [
+            candidate for candidate in sorted(allowed, key=lambda node: distance[node][target])
+            if not (pickup is None and candidate == here)]
+        driven = int(today_distance_m.get(vehicle.vehicle_id, 0))
+        affordable = [candidate for candidate in ranked if constraints.mileage_limit_m is None
+                      or driven + distance[here][candidate] <= constraints.mileage_limit_m]
+        feasible = bool(affordable)
+        park = affordable[0] if affordable else ranked[0]
+        if not affordable or park != ranked[0]:
+            note = "mileage_budget_exhausted"
+        elif not terminals:
+            note = "no_terminal_given" if park == here else "warehouse_required"
         elif pickup is None:
-            # Nothing to do tomorrow: stay where it is. Driving an idle truck to a
-            # nicer spot spends today's mileage for a benefit that does not exist —
-            # the first UI run moved one 17.7 km for nothing.
-            park = here
-            note = "unused_tomorrow"
-        else:
-            driven = int(today_distance_m.get(vehicle.vehicle_id, 0))
-            park = None
-            budget_blocked = False
-            for candidate in sorted(terminals, key=lambda node: distance[node][pickup]):
-                reposition = distance[here][candidate]
-                if (constraints.mileage_limit_m is not None
-                        and driven + reposition > constraints.mileage_limit_m):
-                    budget_blocked = True
-                    continue
-                park = candidate
-                break
-            if park is None:
-                # Stay put rather than break today's cap; say which limit bit.
-                park = here
-                note = "mileage_budget_exhausted" if budget_blocked else "kept_position"
-            elif budget_blocked and park == here:
-                # The truck happens to already stand on an allowed node, so "stay
-                # here" was affordable — but the *better* node was out of budget.
-                # Without this the operator would think this was the best choice.
-                note = "mileage_budget_exhausted"
+            note = "unused_tomorrow" if park == here else "warehouse_required"
 
         deadhead = distance[park][pickup] if pickup is not None else 0
         stay_deadhead = distance[here][pickup] if pickup is not None else 0
@@ -179,6 +166,7 @@ def plan_overnight_parking(
             saved_m=int(stay_deadhead - deadhead),
             net_m=int(stay_deadhead - deadhead) - int(distance[here][park]),
             note=note,
+            feasible=feasible,
         ))
 
     return OvernightPlan(

@@ -17,6 +17,8 @@ import datetime
 import json
 import logging
 import os
+import copy
+import math
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -71,6 +73,7 @@ from optimisation.daily_orders import (  # noqa: E402
     FLEET_LIMIT, MAX_STOPS_PER_VEHICLE, daily_delivery_batch,
 )
 from optimisation.simulated_orders import SimulationConfig, generate_simulated_batch  # noqa: E402
+from optimisation.parking_policy import warehouse_ids, validate_terminals, validate_end_node  # noqa: E402
 from optimisation.dynamic_problem import (  # noqa: E402
     DEFAULT_POLICY, accept_emergency_order, preview_emergency_order,
 )
@@ -491,7 +494,8 @@ def _bind_case_order(event: EventIn):
         raise ValueError("incident destination does not match linked order")
     return event.model_copy(update={"dispatch_id": dispatch_id,
         "destination_facility_id": order["destination_facility_id"]}), {
-        **order, "dispatch_id": dispatch_id, "operating_date": context.get("operating_date")}
+        **order, "dispatch_id": dispatch_id, "operating_date": context.get("operating_date"),
+        "quantity_is_nominal": event.order_id in context.get("nominal_order_ids", ())}
 
 
 def grid_view(req: GridIn) -> dict:
@@ -1256,6 +1260,8 @@ def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dic
     if context.get("clock"):
         clock = watched_now(context["clock"])
         next_day = clock > order.latest_min
+    if linked and linked.order_id in context.get("nominal_order_ids", ()):
+        context = {**context, "nominal_order_ids": [*context["nominal_order_ids"], order.order_id]}
     state, context, _ = _prepare_branch(state, context, order)
     if order.order_id in state.orders:  # already committed: show it, don't re-judge
         return {"dispatch_id": dispatch_id, "order_id": order.order_id,
@@ -1323,6 +1329,8 @@ def route_reshipment(record: dict, *, candidate_kind: str | None = None,
         next_day = clock > order.latest_min
         if next_day:
             raise ValueError("receiving window is closed today; start the next operating day before applying this reshipment")
+    if linked and linked.order_id in context.get("nominal_order_ids", ()):
+        context = {**context, "nominal_order_ids": [*context["nominal_order_ids"], order.order_id]}
     state, context, _ = _prepare_branch(state, context, order)
     if candidate_kind is None or vehicle_id is None:
         kind, carrier = _pick_candidate(state, context, order, clock, policy,
@@ -1376,6 +1384,110 @@ def _pick_candidate(state, context: dict, order: DeliveryOrder, clock: int,
             f"({preview.get('reason', 'no on-time candidate')})"
         )
     return candidate["kind"], candidate["vehicle_id"]
+
+
+def urgent_options():
+    """Capabilities, not warehouse balances. The comparison warehouse can park only."""
+    from optimisation.catalog import read_catalog, read_supply_points, supplies_product
+    catalog, points = read_catalog(), read_supply_points()
+    network = read_network()
+    by_point = {p.facility_id: p for p in points}
+    return {"products": [dataclasses.asdict(p) for p in catalog],
+        "warehouses": [{"facility_id": n["facility_id"], "name": n["name"],
+            "product_ids": [p.product_id for p in catalog if n["facility_id"] in by_point
+                            and supplies_product(by_point[n["facility_id"]], p.product_id)]}
+            for n in network["nodes"] if n["facility_id"] in warehouse_ids(network)],
+        "destinations": [{key: n[key] for key in ("facility_id", "name", "earliest_min", "latest_min")}
+                         for n in network["nodes"] if n["role"] == "customer"],
+        "resource_mode": "demo_nominal", "note": "No real order quantities or warehouse balances are required."}
+
+
+def _urgent_payload(req):
+    return {key: getattr(req, key) for key in (
+        "request_id", "product_id", "origin_facility_id", "destination_facility_id",
+        "earliest_min", "latest_min", "policy")}
+
+
+def _prepare_urgent(state, context, req):
+    from optimisation.catalog import product_zones, read_supply_points, supplies_product
+    zones = product_zones()
+    if req.product_id not in zones:
+        raise ValueError("unknown urgent product_id")
+    point = next((p for p in read_supply_points() if p.facility_id == req.origin_facility_id), None)
+    if point is None or not supplies_product(point, req.product_id):
+        raise ValueError("selected pickup warehouse cannot supply this product")
+    network = read_network()
+    destination = next((n for n in network["nodes"] if n["facility_id"] == req.destination_facility_id
+                        and n["role"] == "customer"), None)
+    if destination is None:
+        raise ValueError("urgent destination must be a receiving hospital")
+    validate_terminals(network, context["input"].get("constraints", {}).get("terminal_facility_ids"))
+    if state.status not in {"accepted", "in_transit"} or context.get("overnight"):
+        raise ValueError("urgent order needs an open delivery day; create or start the next day first")
+    now = watched_now(context["clock"]) if context.get("clock") else min(
+        o["earliest_min"] for o in context["input"]["orders"])
+    if req.current_time_min is not None:
+        now = max(now, req.current_time_min)
+    earliest = max(destination["earliest_min"], math.ceil(now), req.earliest_min or 0)
+    if req.latest_min < earliest:
+        raise ValueError("urgent deadline has passed or is before the receiving window")
+    if req.latest_min > destination["latest_min"]:
+        raise ValueError("urgent deadline must be within the hospital receiving window")
+    order_id = f"URG-{req.request_id}"
+    if order_id in state.orders:
+        raise ValueError("urgent order ID already exists")
+    order = DeliveryOrder(order_id, req.product_id, req.destination_facility_id, 1,
+                          earliest, req.latest_min, zones[req.product_id], origin_facility_id=req.origin_facility_id)
+    # One compatibility token, not a box count or a replenishment of real stock.
+    lot = InventoryLot(f"DEMO-{order_id}", order.product_id, req.origin_facility_id, 1, order.temperature_zone)
+    staged = copy.deepcopy(context)
+    staged.setdefault("nominal_order_ids", []).append(order_id)
+    staged["input"]["inventory"].append(_lot_dump(lot))
+    state = dataclasses.replace(state, available_by_lot={**state.available_by_lot, lot.lot_id: 1})
+    return state, staged, order, now
+
+
+def preview_urgent_dispatch(dispatch_id, req):
+    state = load_run(DISPATCH_DATABASE_URL, dispatch_id)
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    previous = context.get("urgent_requests", {}).get(req.request_id)
+    if previous:
+        if previous["payload"] != _urgent_payload(req):
+            raise ValueError("request_id already belongs to a different urgent order")
+        return {"dispatch_id": dispatch_id, "state_version": state.version, "already_committed": True,
+                "order": previous["order"], "candidates": [], "resource_mode": "demo_nominal"}
+    staged, context, order, now = _prepare_urgent(state, context, req)
+    preview = preview_emergency_order(staged, context, order, current_time_min=now, policy=req.policy)
+    return {"dispatch_id": dispatch_id, "state_version": state.version, "request_id": req.request_id,
+            "order": _order_dump(order), "already_committed": False, "resource_mode": "demo_nominal",
+            **_with_candidate_geometry(read_network(), preview)}
+
+
+def accept_urgent_dispatch(dispatch_id, req):
+    old = load_run(DISPATCH_DATABASE_URL, dispatch_id)
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    previous = context.get("urgent_requests", {}).get(req.request_id)
+    choice = {"candidate_kind": req.candidate_kind, "vehicle_id": req.vehicle_id, "command_id": req.command_id}
+    if previous:
+        if previous["payload"] != _urgent_payload(req) or previous["choice"] != choice:
+            raise ValueError("request_id already belongs to another urgent order or choice")
+        return {**get_dispatch(dispatch_id), "urgent_result": {"already_committed": True, "order_id": previous["order"]["order_id"]}}
+    if old.version != req.expected_version:
+        raise ValueError("dispatch changed after urgent preview; preview again")
+    if req.command_id in old.applied_commands:
+        raise ValueError("command_id is already in use")
+    staged, context, order, now = _prepare_urgent(old, context, req)
+    new = accept_emergency_order(staged, context, order, current_time_min=now,
+        candidate_kind=req.candidate_kind, vehicle_id=req.vehicle_id, command_id=req.command_id, policy=req.policy)
+    context["input"]["orders"].append(_order_dump(order))
+    if req.candidate_kind == "add_stop_in_transit":
+        token = f"DEMO-{order.order_id}"
+        new = dataclasses.replace(new, available_by_lot={k: v for k, v in new.available_by_lot.items() if k != token})
+        context["input"]["inventory"] = [lot for lot in context["input"]["inventory"] if lot["lot_id"] != token]
+    context.setdefault("urgent_requests", {})[req.request_id] = {"payload": _urgent_payload(req), "choice": choice,
+        "order": _order_dump(order), "resource_mode": "demo_nominal", "accepted_at_min": now}
+    update_run(DISPATCH_DATABASE_URL, dispatch_id, new, expected_version=old.version, context=context)
+    return {**get_dispatch(dispatch_id), "urgent_result": {"already_committed": False, "order_id": order.order_id}}
 
 
 def emergency_dispatch_preview(dispatch_id: str, req: EmergencyPreviewIn) -> dict:
@@ -1605,8 +1717,29 @@ def _overnight_run_preview(state, context, req):
             raise ValueError(f"invalid replenishment source/product/temperature for {lot.lot_id!r}")
         lot_ids.add(lot.lot_id)
         additions.append(lot.model_dump())
+    if req.demo_replenish:
+        # Route demo: product supply is a capability, not a real warehouse balance.
+        demand = {}
+        available = {}
+        for lot in (*carried, *additions):
+            key = (lot["facility_id"], lot["product_id"], lot["temperature_zone"])
+            available[key] = available.get(key, 0) + lot["available_quantity"]
+        for order in source["orders"]:
+            if order.get("source_run_id") or order.get("replaces_order_id") or order["order_id"] in context.get("nominal_order_ids", ()):
+                continue
+            key = (order.get("origin_facility_id") or DISPATCH_ORIGIN, order["product_id"], order["temperature_zone"])
+            demand[key] = demand.get(key, 0) + order["quantity"]
+        for index, ((origin, product, zone), needed) in enumerate(sorted(demand.items())):
+            shortfall = max(0, needed - available.get((origin, product, zone), 0))
+            if shortfall:
+                token = f"DEMO-NEXT-{next_operating_date}-{origin}-{product}"
+                while token in lot_ids:
+                    token += "-new"
+                lot_ids.add(token)
+                additions.append(_lot_dump(InventoryLot(token, product, origin, shortfall, zone)))
     source["inventory"] = carried + additions
-    source["orders"] = [o for o in source["orders"] if not o.get("source_run_id") and not o.get("replaces_order_id")]
+    source["orders"] = [o for o in source["orders"] if not o.get("source_run_id") and not o.get("replaces_order_id")
+                        and o["order_id"] not in context.get("nominal_order_ids", ())]
     if not source["orders"]:
         raise ValueError("the next day needs at least one fixed delivery order")
     declared = {v["vehicle_id"]: v for v in context["input"]["vehicles"]}
@@ -1643,7 +1776,8 @@ def _overnight_run_preview(state, context, req):
         park = req.parking_overrides.get(choice.vehicle_id, choice.park_facility_id)
         if park not in by_facility:
             raise ValueError(f"unknown parking facility {park!r}")
-        if park != choice.from_facility_id and park not in terminals:
+        validate_terminals(network, (park,))
+        if terminals and park not in terminals:
             raise ValueError(f"parking facility {park!r} is not an allowed terminal")
         progress = state.vehicles.get(choice.vehicle_id)
         if progress is None:
@@ -1689,7 +1823,9 @@ def _overnight_run_preview(state, context, req):
             "choices": choices, "tomorrow": source, "next_day_plan": future,
             "feasible": all(c["feasible"] for c in choices) and future["feasible"],
             "replenishments": additions,
-            "inventory_note": "Next-day inventory carries today's remaining available lots plus explicitly declared replenishment lots; consumed stock is never restored."}
+            "inventory_note": ("Demo supply is automatically assumed; numbers are compatibility markers, not real warehouse balances. Consumed lots are not restored."
+                               if req.demo_replenish else
+                               "Next-day inventory carries today's remaining available lots plus explicitly declared replenishment lots; consumed stock is never restored.")}
 
 
 def overnight_dispatch_preview(dispatch_id: str, req: OvernightRunPreviewIn):

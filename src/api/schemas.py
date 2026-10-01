@@ -255,6 +255,7 @@ class OvernightRunPreviewIn(BaseModel):
     tomorrow: Optional[DispatchPlanIn] = None
     parking_overrides: Dict[str, str] = Field(default_factory=dict)
     replenishments: List[InventoryLotIn] = Field(default_factory=list)
+    demo_replenish: bool = False
 
 
 class OvernightRunAcceptIn(OvernightRunPreviewIn):
@@ -305,6 +306,25 @@ class EmergencyAcceptIn(EmergencyPreviewIn):
     candidate_kind: CandidateKind
     vehicle_id: str
     command_id: str
+
+
+class UrgentPreviewIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    request_id: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
+    product_id: str
+    origin_facility_id: str
+    destination_facility_id: str
+    earliest_min: Optional[int] = Field(default=None, ge=0, le=1439)
+    latest_min: int = Field(ge=0, le=1439)
+    current_time_min: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+    policy: CandidatePolicy = "minimize_disruption"
+
+
+class UrgentAcceptIn(UrgentPreviewIn):
+    candidate_kind: CandidateKind
+    vehicle_id: str
+    command_id: str = Field(min_length=1)
+    expected_version: int = Field(ge=1)
 
 
 class VehicleFailurePreviewIn(BaseModel):

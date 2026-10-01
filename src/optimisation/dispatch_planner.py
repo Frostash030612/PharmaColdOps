@@ -12,6 +12,7 @@ from .feasibility import diagnose_unserved
 from .greedy import solve_greedy
 from .models import Node, RouteStop, ReplanResult
 from .tracking import LOADING_MIN, SERVICE_MIN
+from .parking_policy import validate_terminals, validate_end_node
 from .ortools_solver import solve_ortools
 from .routing import EndLeg, EndLegFn
 from .singapore_loader import (
@@ -97,8 +98,14 @@ def _assert_origins_can_supply(orders: tuple[DeliveryOrder, ...]) -> None:
         for product_id in sorted(products):
             if not supplies_product(point, product_id):
                 raise ValueError(
-                    f"origin {origin!r} does not supply {product_id!r}"
+                f"origin {origin!r} does not supply {product_id!r}"
                 )
+
+
+def _validate_route_ends(result, network, fallback):
+    for route in result.routes:
+        end = route.end_node_id if route.end_node_id is not None else route.start_node_id
+        validate_end_node(network, fallback if end is None else end)
 
 
 def _dispatch_starts(instance, leg_fn, source_ids, network, vehicles, orders, *, grouped=False):
@@ -275,6 +282,7 @@ def _plan_pickup_delivery(
                 max_stops_per_vehicle=constraints.max_stops_per_vehicle,
             ).items()
         }
+        _validate_route_ends(result, network, source_ids[0])
         zone_plans.append(ZonePlan(
             temperature_zone=zone,
             # Each order brings its own source; there is no single origin for the
@@ -348,6 +356,7 @@ def plan_delivery_orders(
     # pickup-delivery path used to skip this simply because the check lived further
     # down the grouped path (found by a test).
     _assert_origins_can_supply(orders)
+    validate_terminals(read_network(network_path), (constraints or DispatchConstraints()).terminal_facility_ids)
     if constraints.routing_model == "pickup_delivery":
         # The single-origin check below would reject a truck that starts at the
         # warehouse to collect from a distribution point, so the mode is decided
@@ -523,6 +532,7 @@ def plan_delivery_orders(
             node_by_facility[facility_id]: tuple(order_ids)
             for facility_id, order_ids in orders_by_facility.items()
         }
+        _validate_route_ends(result, network, source_ids[0])
         used_indices = {route.vehicle_id for route in result.routes}
         kept_indices = [index for index, v in enumerate(zone_vehicles, 1)
                         if index in used_indices or v.start_facility_id == origin]

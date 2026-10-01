@@ -21,6 +21,7 @@ from .schemas import (
     DelayAcceptIn, DelayPreviewIn,
     CaseWorkflowIn,
     SimulationBatchIn,
+    UrgentPreviewIn, UrgentAcceptIn,
     EmergencyAcceptIn, EmergencyPreviewIn,
     DispatchDeliverIn, DispatchPlanIn, DispatchReplayIn, DispatchSpeedIn, GridIn,
     OvernightPlanIn, QAIn, QAOut,
@@ -259,6 +260,31 @@ def simulated_orders(req: SimulationBatchIn):
         return service.simulated_plan_request(req)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.get("/api/dispatch/urgent-options")
+def urgent_options():
+    return service.urgent_options()
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/urgent-preview")
+def urgent_preview(dispatch_id: str, req: UrgentPreviewIn):
+    try:
+        return service.preview_urgent_dispatch(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown dispatch run")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/urgent-accept")
+def urgent_accept(dispatch_id: str, req: UrgentAcceptIn):
+    try:
+        return service.accept_urgent_dispatch(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown dispatch run")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.get("/api/dispatch/runs/{dispatch_id}")

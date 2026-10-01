@@ -9,6 +9,7 @@ from .dispatch_state import DispatchState, OrderProgress, VehicleProgress
 from .singapore_loader import read_network
 from .dispatch_constraints import price_work
 from .execution import install_schedule
+from .parking_policy import validate_terminals
 
 #: How on-time candidates are ranked against each other. Which one is "right"
 #: is a business call (fewest disrupted orders vs fewest vehicles), not a
@@ -115,6 +116,7 @@ def preview_emergency_order(
         raise ValueError(f"order {order.order_id!r} already exists")
 
     network = read_network()
+    validate_terminals(network, context.get("input", {}).get("constraints", {}).get("terminal_facility_ids"))
     nodes = {node["facility_id"]: node["node_id"] for node in network["nodes"]}
     if order.destination_facility_id not in nodes:
         raise ValueError(f"unknown destination {order.destination_facility_id!r}")
@@ -136,6 +138,9 @@ def preview_emergency_order(
     # Which supply points may hand this product over, and which of them actually
     # hold enough of it (B6: the pickup no longer has to be the main warehouse).
     carriers = _carriers_with_stock(order, lots, state)
+    nominal = order.order_id in context.get("nominal_order_ids", ())
+    if nominal:
+        carriers = {fid: units for fid, units in carriers.items() if fid == order.origin_facility_id}
     stock = max(carriers.values(), default=0)
     if not carriers and not any(_spare_available(v, order) >= order.quantity
                                 and v.status == "in_transit" for v in state.vehicles.values()):
@@ -170,6 +175,8 @@ def preview_emergency_order(
             if progress is not None else 0
         )
         free_capacity = vehicle["capacity"] - onboard
+        if nominal:
+            free_capacity = max(free_capacity, order.quantity)  # nominal task has no physical cargo weight
         if progress is None and vehicle.get("status", "available") == "available":
             if free_capacity < order.quantity or not carriers:
                 continue
@@ -220,7 +227,9 @@ def preview_emergency_order(
             # Option 1 — change this vehicle's route and serve the order from the
             # stock it is already carrying: no depot leg, only the extra stop.
             spare = _spare_available(progress, order)
-            if spare >= order.quantity:
+            source_matches = (not nominal or
+                (progress.start_facility_id or vehicle.get("start_facility_id")) == order.origin_facility_id)
+            if spare >= order.quantity and source_matches:
                 distance, travel = leg(
                     progress.current_facility_id, order.destination_facility_id)
                 eta = current_time_min + travel

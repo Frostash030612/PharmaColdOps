@@ -90,8 +90,9 @@ def test_the_reposition_is_charged_against_todays_mileage_cap(matrix):
                                   today_distance_m={"V1": 44_500})
 
     choice = plan.choices[0]
-    assert choice.park_facility_id == "H-CGH"      # did not move
-    assert choice.reposition_m == 0
+    assert choice.park_facility_id in TERMINALS
+    assert choice.reposition_m > 0
+    assert choice.feasible is False  # impossible parking is not disguised as staying at a hospital
     assert choice.note == "mileage_budget_exhausted"
 
 
@@ -102,7 +103,7 @@ def test_staying_put_on_an_allowed_node_still_says_the_better_node_was_blocked(m
     the node that would shorten tomorrow's first leg is out of today's budget.
     The decision is the same either way; the *reason* is what must not be lost.
     """
-    orders, inventory, vehicles = _inputs("H-SKH", vehicle_at="H-CGH")
+    orders, inventory, vehicles = _inputs("H-SKH", vehicle_at="D-NORTHPOINT")
     # 45 km cap, 44.5 km already driven: the 10.9 km hop to the better node is out
     constraints = DispatchConstraints(terminal_facility_ids=TERMINALS,
                                       mileage_limit_m=45_000)
@@ -111,7 +112,8 @@ def test_staying_put_on_an_allowed_node_still_says_the_better_node_was_blocked(m
 
     choice = plan.choices[0]
     assert choice.note == "mileage_budget_exhausted"
-    assert choice.park_facility_id == "H-CGH"
+    assert choice.park_facility_id == "D-NORTHPOINT"
+    assert choice.feasible
 
 
 def test_without_terminals_the_truck_simply_stays_put():
@@ -119,9 +121,9 @@ def test_without_terminals_the_truck_simply_stays_put():
     plan = plan_overnight_parking(orders, inventory, vehicles,
                                   constraints=DispatchConstraints())
     choice = plan.choices[0]
-    assert choice.park_facility_id == "H-CGH"
-    assert choice.reposition_m == 0
-    assert choice.note == "no_terminal_given"
+    assert choice.park_facility_id == DISPATCH_ORIGIN
+    assert choice.reposition_m > 0
+    assert choice.note == "warehouse_required"
 
 
 def test_a_truck_with_nothing_tomorrow_stays_where_it_is():
@@ -141,10 +143,10 @@ def test_a_truck_with_nothing_tomorrow_stays_where_it_is():
 
     idle_choice = next(c for c in plan.choices if c.vehicle_id == "V-IDLE")
     assert idle_choice.tomorrow_origin_facility_id is None
-    assert idle_choice.note == "unused_tomorrow"
-    assert idle_choice.park_facility_id == "H-CGH"     # stayed put
-    assert idle_choice.reposition_m == 0
-    assert idle_choice.net_m == 0
+    assert idle_choice.note == "warehouse_required"
+    assert idle_choice.park_facility_id in TERMINALS
+    assert idle_choice.reposition_m > 0
+    assert idle_choice.net_m == -idle_choice.reposition_m
 
 
 def test_unknown_parking_node_is_refused():

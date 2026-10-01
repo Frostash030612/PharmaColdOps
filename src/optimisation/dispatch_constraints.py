@@ -4,6 +4,7 @@ from .dispatch_state import PlannedStop
 from .execution import checkpoint, execution_view
 from .singapore_loader import read_network
 from .tracking import LOADING_MIN, vehicle_track
+from .parking_policy import validate_terminals, validate_end_node
 
 
 def price_work(state, context, *, vehicle_id, order_ids, current_time_min,
@@ -63,6 +64,7 @@ def price_work(state, context, *, vehicle_id, order_ids, current_time_min,
         dwell.append(stop.service_min)
     limits = inputs.get("constraints", {})
     terminals = limits.get("terminal_facility_ids") or ()
+    validate_terminals(network, terminals)
     if terminals:
         unknown = set(terminals) - set(by_facility)
         if unknown:
@@ -76,6 +78,8 @@ def price_work(state, context, *, vehicle_id, order_ids, current_time_min,
     tracks = [(end, vehicle_track(network, sequence, started, started,
                 start_node=start["node_id"], end_node=end, earliest_mins=earliest, service_mins=dwell))
               for end in ends]
+    for end in ends:
+        validate_end_node(network, end)
     viable = [(end, track) for end, track in tracks if
               max(track["finished_at_min"], by_node[end]["earliest_min"]) <= by_node[end]["latest_min"]]
     end, track = (viable or tracks)[0]
@@ -83,7 +87,8 @@ def price_work(state, context, *, vehicle_id, order_ids, current_time_min,
     fleet_limit = limits.get("max_vehicles")
     if starts_new_vehicle and fleet_limit and len(state.vehicles) + 1 > fleet_limit:
         blocked.append({"code": "fleet_limit_exceeded", "detail": {"limit": fleet_limit}})
-    rated_load = sum(catalogue[oid]["quantity"] for oid in order_ids)
+    nominal = set(context.get("nominal_order_ids", ()))
+    rated_load = sum(catalogue[oid]["quantity"] for oid in order_ids if oid not in nominal)
     if rated_load > fleet["capacity"]:
         blocked.append({"code": "capacity_exceeded", "detail": {"needed_units": rated_load, "capacity_units": fleet["capacity"]}})
     for oid in order_ids:
