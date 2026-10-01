@@ -43,6 +43,8 @@ class EndLeg:
     distance: float
     duration: float
     node_id: int | None = None
+    earliest_min: float | None = None
+    latest_min: float | None = None
 
 
 #: Given the last customer's node id (0 when the route is still empty), return the
@@ -93,7 +95,8 @@ def evaluate_route(
     if unknown:
         raise ValueError(f"unknown customer ids: {unknown}")
 
-    depot = instance.depot
+    depot = (by_id[instance.vehicle_start_node_ids[vehicle_id - 1]]
+             if instance.vehicle_start_node_ids else instance.depot)
     current = depot
     departure = float(depot.earliest)
     distance = 0.0
@@ -145,7 +148,7 @@ def evaluate_route(
     else:
         end = end_leg_fn(current.node_id)
     distance += end.distance
-    return_time = departure + end.duration
+    return_time = max(departure + end.duration, end.earliest_min or 0)
     return VehicleRoute(
         vehicle_id=vehicle_id,
         # ``customer_ids`` stays "the orders this route serves" — one per delivery.
@@ -160,15 +163,19 @@ def evaluate_route(
         time_window_violations=sum(stop.late_by > EPSILON for stop in stops),
         # The peak, not the final load: in a pickup-delivery route a vehicle can be
         # over capacity mid-tour and unload again before the end.
-        capacity_violation_units=max(0, peak_load - instance.capacity),
+        capacity_violation_units=max(0, peak_load - (instance.vehicle_capacities[vehicle_id - 1]
+                                                   if instance.vehicle_capacities else instance.capacity)),
         # Whether the vehicle goes home or parks, it must arrive before the
         # site closes: the flag keeps its name but now covers either end.
-        depot_return_violation=return_time > depot.latest + EPSILON,
+        depot_return_violation=return_time > (end.latest_min if end.latest_min is not None else depot.latest) + EPSILON,
         end_node_id=end.node_id,
         mileage_limit_violation=(
             mileage_limit is not None and distance > mileage_limit + EPSILON
         ),
         pairing_violation=pairing_broken,
+        start_node_id=depot.node_id,
+        start_time_min=float(depot.earliest),
+        end_time_min=return_time,
     )
 
 

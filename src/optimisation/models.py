@@ -36,7 +36,7 @@ class Node:
 
     @property
     def is_depot(self) -> bool:
-        return self.node_id == 0
+        return self.node_id == 0 or self.kind == "start"
 
     @property
     def is_pickup(self) -> bool:
@@ -59,6 +59,8 @@ class SolomonInstance:
     #: grows at each delivery. ``"pickup_delivery"``: load rises at a pickup node
     #: and falls at its delivery, so the route may interleave the two.
     load_model: str = "preloaded"
+    vehicle_start_node_ids: tuple[int, ...] = ()
+    vehicle_capacities: tuple[int, ...] = ()
 
     @property
     def depot(self) -> Node:
@@ -93,7 +95,7 @@ class SolomonInstance:
     @property
     def horizon_end(self) -> int:
         """Latest end of the whole planning horizon (depot latest)."""
-        return self.depot.latest
+        return max(node.latest for node in self.nodes if node.is_depot)
 
 
 @dataclass(frozen=True)
@@ -135,6 +137,9 @@ class VehicleRoute:
     #: A delivery was served before its own pickup (or with nothing on board).
     #: Always false for "preloaded" instances.
     pairing_violation: bool = False
+    start_node_id: int | None = None
+    start_time_min: float | None = None
+    end_time_min: float | None = None
 
     @property
     def feasible(self) -> bool:

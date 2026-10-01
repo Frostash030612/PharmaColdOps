@@ -107,16 +107,21 @@ def solve_ortools(
     # The dummy end node exists only for open routes; without it the model is the
     # original closed depot-to-depot VRPTW (unchanged for every legacy caller).
     dummy: int | None = len(nodes) if end_leg_fn is not None else None
+    starts = list(instance.vehicle_start_node_ids or (0,) * instance.vehicle_nr)
     if dummy is None:
         manager = pywrapcp.RoutingIndexManager(
-            len(nodes), instance.vehicle_nr, 0
+            len(nodes), instance.vehicle_nr, starts, starts
         )
     else:
         manager = pywrapcp.RoutingIndexManager(
             len(nodes) + 1, instance.vehicle_nr,
-            [0] * instance.vehicle_nr, [dummy] * instance.vehicle_nr,
+            starts, [dummy] * instance.vehicle_nr,
         )
     routing = pywrapcp.RoutingModel(manager)
+    for node in nodes:
+        if node.is_depot and node.node_id not in starts:
+            routing.AddDisjunction([manager.NodeToIndex(node.node_id)], 0)
+            routing.ActiveVar(manager.NodeToIndex(node.node_id)).SetValue(0)
 
     def end_leg(node_index: int) -> EndLeg:
         assert end_leg_fn is not None
@@ -163,7 +168,7 @@ def solve_ortools(
     routing.AddDimensionWithVehicleCapacity(
         demand_index,
         0,
-        [instance.capacity] * instance.vehicle_nr,
+        list(instance.vehicle_capacities or (instance.capacity,) * instance.vehicle_nr),
         True,
         "Capacity",
     )
@@ -186,7 +191,7 @@ def solve_ortools(
             node_index = manager.IndexToNode(from_index)
             if dummy is not None and node_index == dummy:
                 return 0
-            return int(node_index != 0)
+            return int(not nodes[node_index].is_depot)
 
         stop_count_index = routing.RegisterUnaryTransitCallback(stop_count)
         routing.AddDimensionWithVehicleCapacity(
@@ -221,7 +226,7 @@ def solve_ortools(
     )
     time_dimension = routing.GetDimensionOrDie("Time")
     for node_index, node in enumerate(nodes):
-        if node_index == 0:
+        if node.is_depot:
             continue
         index = manager.NodeToIndex(node_index)
         time_dimension.CumulVar(index).SetRange(
@@ -229,6 +234,7 @@ def solve_ortools(
         )
     depot = instance.depot
     for vehicle_id in range(instance.vehicle_nr):
+        depot = nodes[starts[vehicle_id]]
         time_dimension.CumulVar(routing.Start(vehicle_id)).SetRange(
             depot.earliest * time_scale, depot.latest * time_scale
         )
@@ -303,7 +309,7 @@ def solve_ortools(
         customer_ids: list[int] = []
         while not routing.IsEnd(index):
             node_index = manager.IndexToNode(index)
-            if node_index != 0:
+            if not nodes[node_index].is_depot:
                 customer_ids.append(nodes[node_index].node_id)
             index = solution.Value(routing.NextVar(index))
         if customer_ids:

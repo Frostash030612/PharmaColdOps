@@ -52,7 +52,9 @@ def _best_feasible_insertion(
             )
             if not candidate.feasible:
                 continue
-            predecessor_id = 0 if position == 0 else current_ids[position - 1]
+            predecessor_id = ((instance.vehicle_start_node_ids[vehicle_id - 1]
+                               if instance.vehicle_start_node_ids else 0)
+                              if position == 0 else current_ids[position - 1])
             nearest_leg, _ = leg_fn(by_id[predecessor_id], customer)
             added_distance = candidate.total_distance - current.total_distance
             key = (
@@ -123,7 +125,9 @@ def _best_feasible_pair_insertion(
                 )
                 if not candidate.feasible:
                     continue
-                predecessor_id = 0 if pickup_at == 0 else current_ids[pickup_at - 1]
+                predecessor_id = ((instance.vehicle_start_node_ids[vehicle_id - 1]
+                                   if instance.vehicle_start_node_ids else 0)
+                                  if pickup_at == 0 else current_ids[pickup_at - 1])
                 nearest_leg, _ = leg_fn(by_id[predecessor_id], pickup)
                 added_distance = candidate.total_distance - current.total_distance
                 key = (
@@ -177,7 +181,7 @@ def _solve_greedy_pairs(
                                    if delivery_id == served))
             ids = route.node_sequence
         if route is None:
-            break
+            continue
         routes.append(route)
         if not unassigned:
             break
@@ -236,7 +240,7 @@ def solve_greedy(
             unassigned.remove(accepted.pop())
 
         if route is None:
-            break
+            continue
         routes.append(route)
         if not unassigned:
             break

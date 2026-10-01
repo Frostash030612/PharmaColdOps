@@ -250,24 +250,72 @@ def update_context(target: str | Path, dispatch_id: str, context: dict) -> None:
         raise KeyError(dispatch_id)
 
 
-def update_run(target: str | Path, dispatch_id: str, state: DispatchState, *, expected_version: int) -> None:
-    """Persist only if nobody changed the run after it was read."""
+def update_run(target: str | Path, dispatch_id: str, state: DispatchState, *,
+               expected_version: int, context: dict | None = None) -> None:
+    """Persist only if nobody changed the run after it was read.
+
+    When supplied, context (including an audit decision) is committed by the
+    same conditional UPDATE, so state and that decision cannot split.
+    """
     state_json = json.dumps(state_to_dict(state))
     if _is_postgres(target):
         with _postgres_connect(target) as db, db.cursor() as cursor:
+            context_sql = ", context_json = %s::jsonb" if context is not None else ""
+            parameters = [state.version, state_json]
+            if context is not None:
+                parameters.append(json.dumps(context))
             cursor.execute(
-                "UPDATE dispatch_runs SET version = %s, state_json = %s::jsonb, "
+                f"UPDATE dispatch_runs SET version = %s, state_json = %s::jsonb{context_sql}, "
                 "updated_at = CURRENT_TIMESTAMP WHERE dispatch_id = %s AND version = %s",
-                (state.version, state_json, dispatch_id, expected_version),
+                (*parameters, dispatch_id, expected_version),
             )
             changed = cursor.rowcount
     else:
         with _sqlite_connect(target) as db:
+            context_sql = ", context_json = ?" if context is not None else ""
+            parameters = [state.version, state_json]
+            if context is not None:
+                parameters.append(json.dumps(context))
             changed = db.execute(
-                "UPDATE dispatch_runs SET version = ?, state_json = ?, "
+                f"UPDATE dispatch_runs SET version = ?, state_json = ?{context_sql}, "
                 "updated_at = strftime('%Y-%m-%dT%H:%M:%f','now') "
                 "WHERE dispatch_id = ? AND version = ?",
-                (state.version, state_json, dispatch_id, expected_version),
+                (*parameters, dispatch_id, expected_version),
             ).rowcount
     if changed != 1:
         raise ValueError("dispatch state changed; reload before retrying")
+
+
+def create_successor(target, parent_id, parent_state, parent_context, *, expected_version,
+                     successor_id, successor_state, successor_context):
+    """Atomically close a day and create exactly one dated successor."""
+    parent_json = json.dumps(state_to_dict(parent_state))
+    child_json = json.dumps(state_to_dict(successor_state))
+    if _is_postgres(target):
+        with _postgres_connect(target) as db, db.cursor() as cursor:
+            cursor.execute("UPDATE dispatch_runs SET version=%s,state_json=%s::jsonb,context_json=%s::jsonb "
+                           "WHERE dispatch_id=%s AND version=%s",
+                           (parent_state.version, parent_json, json.dumps(parent_context), parent_id, expected_version))
+            if cursor.rowcount != 1:
+                raise ValueError("dispatch state changed; reload before creating the next day")
+            try:
+                cursor.execute("INSERT INTO dispatch_runs(dispatch_id,version,state_json,context_json) "
+                               "VALUES (%s,%s,%s::jsonb,%s::jsonb)",
+                               (successor_id, successor_state.version, child_json, json.dumps(successor_context)))
+            except Exception as exc:
+                if getattr(exc, "sqlstate", None) == "23505":
+                    raise ValueError(f"dispatch {successor_id!r} already exists") from exc
+                raise
+    else:
+        with _sqlite_connect(target) as db:
+            changed = db.execute("UPDATE dispatch_runs SET version=?,state_json=?,context_json=? "
+                                 "WHERE dispatch_id=? AND version=?",
+                                 (parent_state.version, parent_json, json.dumps(parent_context), parent_id, expected_version)).rowcount
+            if changed != 1:
+                raise ValueError("dispatch state changed; reload before creating the next day")
+            try:
+                db.execute("INSERT INTO dispatch_runs(dispatch_id,version,state_json,context_json,updated_at) "
+                           "VALUES (?,?,?,?,strftime('%Y-%m-%dT%H:%M:%f','now'))",
+                           (successor_id, successor_state.version, child_json, json.dumps(successor_context)))
+            except sqlite3.IntegrityError as exc:
+                raise ValueError(f"dispatch {successor_id!r} already exists") from exc

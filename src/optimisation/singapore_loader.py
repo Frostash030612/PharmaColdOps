@@ -322,6 +322,9 @@ def restore_network_node_ids(result: ReplanResult, source_ids: tuple[int, ...]) 
         end_node_id=route.end_node_id,
         mileage_limit_violation=route.mileage_limit_violation,
         pairing_violation=route.pairing_violation,
+        start_node_id=source(route.start_node_id) if route.start_node_id is not None else None,
+        start_time_min=route.start_time_min,
+        end_time_min=route.end_time_min,
     ) for route in result.routes)
     old = result.metrics
     metrics = ReplanMetrics(

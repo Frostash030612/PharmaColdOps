@@ -18,10 +18,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import service
 from .schemas import (
     BatchIn, BranchPolicyIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
+    DelayAcceptIn, DelayPreviewIn,
     EmergencyAcceptIn, EmergencyPreviewIn,
     DispatchDeliverIn, DispatchPlanIn, DispatchReplayIn, DispatchSpeedIn, GridIn,
     OvernightPlanIn, QAIn, QAOut,
+    OvernightRunPreviewIn, OvernightRunAcceptIn, NextDayIn,
     RouteIn, RouteOut,
+    VehicleFailureAcceptIn, VehicleFailurePreviewIn,
 )
 
 app = FastAPI(
@@ -292,6 +295,8 @@ def tick_dispatch_run(dispatch_id: str):
         return service.tick_dispatch(dispatch_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.post("/api/dispatch/runs/{dispatch_id}/speed")
@@ -336,9 +341,87 @@ def accept_emergency_dispatch(dispatch_id: str, req: EmergencyAcceptIn):
         raise HTTPException(status_code=409, detail=str(exc))
 
 
+@app.post("/api/dispatch/runs/{dispatch_id}/failure-preview")
+def preview_vehicle_failure_dispatch(dispatch_id: str, req: VehicleFailurePreviewIn):
+    """Read-only mechanical-failure rescue assessment for an in-transit vehicle."""
+    try:
+        return service.vehicle_failure_preview(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/failure-accept")
+def accept_vehicle_failure_dispatch(dispatch_id: str, req: VehicleFailureAcceptIn):
+    """Mark the selected vehicle failed and send replacement stock in a spare truck."""
+    try:
+        return service.accept_vehicle_failure_dispatch(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/delay-preview")
+def preview_dispatch_delay(dispatch_id: str, req: DelayPreviewIn):
+    """Inspect every active route for forecast delivery-window misses.
+
+    Read-only.  The response names the exact current and improved stop queues;
+    the operator must call ``delay-accept`` to make a re-sequence real.
+    """
+    try:
+        return service.delay_dispatch_preview(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/delay-accept")
+def accept_dispatch_delay(dispatch_id: str, req: DelayAcceptIn):
+    """Apply one previewed delay remedy once, after revalidating it."""
+    try:
+        return service.accept_delay_dispatch(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
 @app.post("/api/qa", response_model=QAOut)
 def qa(req: QAIn):
     try:
         return service.qa_view(req)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/overnight-preview")
+def preview_overnight_dispatch(dispatch_id: str, req: OvernightRunPreviewIn):
+    try:
+        return service.overnight_dispatch_preview(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/overnight-accept")
+def accept_overnight_dispatch(dispatch_id: str, req: OvernightRunAcceptIn):
+    try:
+        return service.accept_overnight_dispatch(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.post("/api/dispatch/runs/{dispatch_id}/next-day")
+def start_next_dispatch_day(dispatch_id: str, req: NextDayIn):
+    try:
+        return service.create_next_day(dispatch_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))

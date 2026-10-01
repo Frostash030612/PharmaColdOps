@@ -40,7 +40,7 @@ ASSUMPTIONS = (
     "停靠位移按 2026-09-16 口径计入当日里程上限（含空驶）。",
     "本版为贪心选址：先用『车都在主仓』试排一次次日计划取首站，再选离首站最近的停靠点；"
     "不做停车与次日路线的联合优化，也不做多日滚动。",
-    "次日『从停靠点出发』的排线需要每车起点支持（B4 多起点批次）；本模块先产出并回报该决定。",
+    "本端点只读；实际停车位移和次日建单通过作业级 overnight-preview / overnight-accept / next-day 执行。",
     "注意：按三角不等式，停靠位移通常不小于次日省下的首段空驶，因此本决策买到的是**次日更短的首段"
     "与更早出发**，而非两日总里程更省；net_two_day_m 就是这笔账（负值表示总里程反而多一点）。",
 )
@@ -120,7 +120,11 @@ def plan_overnight_parking(
             # The truck must REACH its pickup point before anything else, so that
             # is what tonight's parking has to be close to (B4 made the origin a
             # real route start, 2026-09-16).
-            first_stop[vehicle_id] = node_by_facility[zone_plan.origin_facility_id]
+            origin = zone_plan.origin_facility_id
+            if origin is None:
+                origin = next(facility for kind, _, facility in
+                              zone_plan.stop_plan_by_vehicle[route.vehicle_id] if kind == "pickup")
+            first_stop[vehicle_id] = node_by_facility[origin]
 
     choices: list[ParkingChoice] = []
     for vehicle in vehicles:

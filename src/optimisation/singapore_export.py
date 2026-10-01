@@ -75,7 +75,9 @@ def sequences_geojson(network: dict, sequences: dict[str, list[int]]) -> dict:
 def routes_geojson(network: dict, result: ReplanResult) -> dict:
     features = []
     for route in result.routes:
-        order = (0, *route.customer_ids, 0)
+        start = route.start_node_id if route.start_node_id is not None else 0
+        end = route.end_node_id if route.end_node_id is not None else start
+        order = (start, *route.node_sequence, end)
         coords = []
         for a, b in zip(order, order[1:]):
             if a == b:

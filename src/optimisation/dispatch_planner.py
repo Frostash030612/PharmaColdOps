@@ -1,7 +1,7 @@
 """Order-driven static dispatch planning over the Singapore road matrix."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from .dispatch_models import (
@@ -10,7 +10,8 @@ from .dispatch_models import (
 )
 from .feasibility import diagnose_unserved
 from .greedy import solve_greedy
-from .models import ReplanResult
+from .models import Node, RouteStop, ReplanResult
+from .tracking import LOADING_MIN, SERVICE_MIN
 from .ortools_solver import solve_ortools
 from .routing import EndLeg, EndLegFn
 from .singapore_loader import (
@@ -100,6 +101,54 @@ def _assert_origins_can_supply(orders: tuple[DeliveryOrder, ...]) -> None:
                 )
 
 
+def _dispatch_starts(instance, leg_fn, source_ids, network, vehicles, orders, *, grouped=False):
+    """Price each truck's actual start, including grouped-source deadhead.
+
+    Dispatch uses the declared zero per-stop dwell, shared with the simulator;
+    research loaders retain their own service-time assumptions.
+    """
+    by_facility = {n["facility_id"]: n for n in network["nodes"]}
+    by_node = {n["node_id"]: n for n in network["nodes"]}
+    source = by_node[source_ids[0]]
+    day_start = min(order.earliest_min for order in orders)
+    nodes = [replace(n, service=SERVICE_MIN) for n in instance.nodes]
+    nodes[0] = replace(nodes[0], earliest=max(source["earliest_min"], day_start) + LOADING_MIN)
+    mapping = list(source_ids)
+    starts = []
+    for vehicle in vehicles:
+        if vehicle.start_facility_id not in by_facility:
+            raise ValueError(f"unknown vehicle start {vehicle.start_facility_id!r}")
+        facility = by_facility[vehicle.start_facility_id]
+        start_at = max(day_start, vehicle.available_from_min, facility["earliest_min"])
+        reposition = grouped and facility["node_id"] != source["node_id"]
+        start_at += 0 if reposition else LOADING_MIN
+        if facility["node_id"] == source["node_id"] and start_at == nodes[0].earliest:
+            starts.append(0)
+            continue
+        index = len(nodes)
+        nodes.append(Node(index, 0, 0, 0, start_at, network["nodes"][0]["latest_min"],
+                          0, kind="start"))
+        mapping.append(facility["node_id"])
+        starts.append(index)
+    mapping = tuple(mapping)
+
+    def actual_leg(a, b):
+        if grouped and a.kind == "start" and not b.is_depot:
+            i, pickup, j = mapping[a.node_id], source["node_id"], mapping[b.node_id]
+            matrix = network["matrix"]
+            travel = matrix["duration_s"][i][pickup] / 60
+            wait = max(0, source["earliest_min"] - (a.earliest + travel))
+            return ((matrix["distance_m"][i][pickup] + matrix["distance_m"][pickup][j]) / 1000,
+                    travel + wait + LOADING_MIN + matrix["duration_s"][pickup][j] / 60)
+        i, j = mapping[a.node_id], mapping[b.node_id]
+        return (network["matrix"]["distance_m"][i][j] / 1000,
+                network["matrix"]["duration_s"][i][j] / 60)
+
+    usable = tuple(max(0, v.capacity - sum(q for _, _, q in v.onboard_spare)) for v in vehicles)
+    return replace(instance, nodes=tuple(nodes), vehicle_start_node_ids=tuple(starts),
+                   vehicle_capacities=usable), actual_leg, mapping
+
+
 
 def _plan_pickup_delivery(
     orders: tuple[DeliveryOrder, ...],
@@ -143,17 +192,9 @@ def _plan_pickup_delivery(
             raise ValueError(f"no available vehicle for temperature zone {zone}")
         if vehicles_remaining is not None:
             zone_vehicles = zone_vehicles[:vehicles_remaining]
-            vehicles_remaining -= len(zone_vehicles)
         if not zone_vehicles:
             raise ValueError(f"fleet limit leaves no available vehicle for zone {zone}")
-        capacities = {vehicle.capacity for vehicle in zone_vehicles}
-        if len(capacities) != 1:
-            raise ValueError(f"vehicles in zone {zone} must currently share one capacity")
-        spares = {sum(qty for _, _, qty in vehicle.onboard_spare)
-                  for vehicle in zone_vehicles}
-        if len(spares) != 1:
-            raise ValueError(f"vehicles in zone {zone} must currently share one onboard spare")
-        usable_capacity = next(iter(capacities)) - next(iter(spares))
+        usable_capacity = max(v.capacity - sum(qty for _, _, qty in v.onboard_spare) for v in zone_vehicles)
         if usable_capacity <= 0:
             raise ValueError(f"onboard spare leaves no usable capacity in zone {zone}")
 
@@ -169,6 +210,8 @@ def _plan_pickup_delivery(
             network_path,
             vehicle_nr=len(zone_vehicles), capacity=usable_capacity,
         )
+        instance, leg_fn, source_ids = _dispatch_starts(
+            instance, leg_fn, source_ids, network, zone_vehicles, zone_orders)
         mileage_limit_km = (
             None if constraints.mileage_limit_m is None
             else constraints.mileage_limit_m / 1000.0
@@ -195,6 +238,8 @@ def _plan_pickup_delivery(
                 end_leg_fn=end_leg_fn, mileage_limit=mileage_limit_km,
             )
         result = restore_network_node_ids(dense_result, source_ids)
+        if vehicles_remaining is not None:
+            vehicles_remaining -= len(result.routes)
         order_ids_by_node = {
             source_ids[node.node_id]: (node.pair_id,)
             for node in instance.deliveries
@@ -259,8 +304,10 @@ def _end_leg_fn(network: dict, source_ids: tuple[int, ...],
         last = source_ids[dense_id]
         best = min(terminal_node_ids,
                    key=lambda terminal: distance_matrix[last][terminal])
+        terminal = next(node for node in network["nodes"] if node["node_id"] == best)
         return EndLeg(distance=distance_matrix[last][best] / 1000.0,
-                      duration=duration_matrix[last][best] / 60.0, node_id=best)
+                      duration=duration_matrix[last][best] / 60.0, node_id=best,
+                      earliest_min=terminal["earliest_min"], latest_min=terminal["latest_min"])
 
     return end_leg
 
@@ -276,8 +323,8 @@ def plan_delivery_orders(
     """Plan available inventory orders, with one independent fleet per zone.
 
     This is a preview: it validates resources but does not reserve inventory or
-    vehicles. Vehicles within one temperature zone must currently share a
-    capacity because the existing solver model has one fleet-wide capacity.
+    vehicles. Each vehicle's own rated capacity minus its remaining onboard
+    spare is passed to the solver; starts and capacities may differ.
 
     ``constraints.mileage_limit_m`` caps each vehicle's total driven distance and
     ``constraints.terminal_facility_ids`` makes routes open (they end at a supply
@@ -310,7 +357,7 @@ def plan_delivery_orders(
             network_path=network_path, constraints=constraints,
         )
     validate_dispatch_inputs(
-        orders, inventory, vehicles, origin_facility_id=DISPATCH_ORIGIN
+        orders, inventory, vehicles, origin_facility_id=DISPATCH_ORIGIN, vehicles_anywhere=True
     )
 
     constraints = constraints or DispatchConstraints()
@@ -346,12 +393,15 @@ def plan_delivery_orders(
                 distance=distance_matrix[last][best] / 1000.0,
                 duration=duration_matrix[last][best] / 60.0,
                 node_id=best,
+                earliest_min=next(n["earliest_min"] for n in network["nodes"] if n["node_id"] == best),
+                latest_min=next(n["latest_min"] for n in network["nodes"] if n["node_id"] == best),
             )
 
         return end_leg
 
     zone_plans = []
     vehicles_remaining = constraints.max_vehicles
+    used_vehicles = set()
     # One independent fleet per (temperature zone, origin). Grouping by origin is
     # what makes "every order carries an origin" real (B4, 2026-09-16): a route
     # starts at the supply point its orders load from, so the mileage, capacity,
@@ -370,8 +420,9 @@ def plan_delivery_orders(
         at_origin = tuple(
             vehicle for vehicle in vehicles
             if vehicle.temperature_zone == zone and vehicle.status == "available"
-            and vehicle.start_facility_id == origin
+            and vehicle.vehicle_id not in used_vehicles
         )
+        at_origin = tuple(sorted(at_origin, key=lambda v: (v.start_facility_id != origin, v.vehicle_id)))
         if not at_origin:
             raise ValueError(
                 f"no available vehicle for temperature zone {zone} at {origin}"
@@ -379,23 +430,15 @@ def plan_delivery_orders(
         zone_vehicles = at_origin
         if vehicles_remaining is not None:
             zone_vehicles = at_origin[:vehicles_remaining]
-            vehicles_remaining -= len(zone_vehicles)
         if not zone_vehicles:
             raise ValueError(
                 f"fleet limit leaves no available vehicle for zone {zone} at {origin}"
             )
-        capacities = {vehicle.capacity for vehicle in zone_vehicles}
-        if len(capacities) != 1:
-            raise ValueError(f"vehicles in zone {zone} must currently share one capacity")
         # Onboard spare occupies space, so the planner must not fill a vehicle to
         # its rated capacity and then also claim it carries spare stock. The
-        # solver model has one fleet-wide capacity, so all vehicles in a zone must
-        # currently carry the same spare.
-        spares = {sum(qty for _, _, qty in vehicle.onboard_spare)
-                  for vehicle in zone_vehicles}
-        if len(spares) != 1:
-            raise ValueError(f"vehicles in zone {zone} must currently share one onboard spare")
-        usable_capacity = next(iter(capacities)) - next(iter(spares))
+        # usable capacity is recorded per vehicle, including different leftover
+        # spare quantities inherited from the previous operating day.
+        usable_capacity = max(v.capacity - sum(qty for _, _, qty in v.onboard_spare) for v in zone_vehicles)
         if usable_capacity <= 0:
             raise ValueError(f"onboard spare leaves no usable capacity in zone {zone}")
         demands: dict[str, int] = {}
@@ -422,7 +465,15 @@ def plan_delivery_orders(
             vehicle_nr=len(zone_vehicles), capacity=usable_capacity,
             facility_windows=windows, origin_facility_id=origin,
         )
+        instance, leg_fn, source_ids = _dispatch_starts(
+            instance, leg_fn, source_ids, network, zone_vehicles, zone_orders, grouped=True)
         end_leg_fn = make_end_leg_fn(source_ids)
+        if end_leg_fn is None and any(v.start_facility_id != origin for v in zone_vehicles):
+            origin_node = node_by_facility[origin]
+            def end_leg_fn(dense_id):
+                last = source_ids[dense_id]
+                return EndLeg(distance_matrix[last][origin_node] / 1000,
+                              duration_matrix[last][origin_node] / 60, origin_node)
         if algorithm == "greedy":
             dense_result = solve_greedy(
                 instance, leg_fn=leg_fn,
@@ -436,6 +487,21 @@ def plan_delivery_orders(
                 end_leg_fn=end_leg_fn, mileage_limit=mileage_limit_km,
             )
         result = restore_network_node_ids(dense_result, source_ids)
+        for route in result.routes:
+            used_vehicles.add(zone_vehicles[route.vehicle_id - 1].vehicle_id)
+        if vehicles_remaining is not None:
+            vehicles_remaining -= len(result.routes)
+        physical_routes = []
+        for route in result.routes:
+            if route.start_node_id != node_by_facility[origin]:
+                source_node = node_by_facility[origin]
+                arrival = route.start_time_min + duration_matrix[route.start_node_id][source_node] / 60
+                opening = next(n["earliest_min"] for n in network["nodes"] if n["node_id"] == source_node)
+                service = max(arrival, opening)
+                prefix = RouteStop(source_node, arrival, service, service + LOADING_MIN, 0, 0, kind="pickup")
+                route = replace(route, stops=(prefix, *route.stops))
+            physical_routes.append(route)
+        result = replace(result, routes=tuple(physical_routes))
         # Measure why anything was left out, in the solver's own units, so the
         # client can explain it instead of printing "did not fit" (B7).
         dense_reasons = diagnose_unserved(
@@ -457,6 +523,13 @@ def plan_delivery_orders(
             node_by_facility[facility_id]: tuple(order_ids)
             for facility_id, order_ids in orders_by_facility.items()
         }
+        used_indices = {route.vehicle_id for route in result.routes}
+        kept_indices = [index for index, v in enumerate(zone_vehicles, 1)
+                        if index in used_indices or v.start_facility_id == origin]
+        renumber = {index: new for new, index in enumerate(kept_indices, 1)}
+        result = replace(result, routes=tuple(replace(route, vehicle_id=renumber[route.vehicle_id])
+                                             for route in result.routes))
+        zone_vehicles = tuple(zone_vehicles[index - 1] for index in kept_indices)
         zone_plans.append(ZonePlan(
             temperature_zone=zone,
             origin_facility_id=origin,

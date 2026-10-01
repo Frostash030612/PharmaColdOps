@@ -15,6 +15,7 @@ class OrderProgress:
     quantity: int
     vehicle_id: str
     status: str = "planned"
+    replaces_order_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,7 @@ class PlannedStop:
     kind: str                      # "pickup" | "delivery"
     order_id: str
     facility_id: str | None = None  # pickups only
+    service_min: float = 0.0
 
     @property
     def is_pickup(self) -> bool:
@@ -62,6 +64,23 @@ class VehicleProgress:
     #: the truck's position is computed from the whole run — and ``stops_done``
     #: says how much of it has happened.
     drive_plan: tuple[PlannedStop, ...] = ()
+    #: A delay remedy starts a new *remaining-route* schedule at the last
+    #: audited facility.  The original plan is retained for audit/map history;
+    #: these fields let the live tracker avoid replaying already driven legs
+    #: after an operator accepts a re-sequence (B2, 2026-09-30).
+    replan_started_min: float | None = None
+    replan_start_facility_id: str | None = None
+    replan_order_ids: tuple[str, ...] = ()
+    start_facility_id: str | None = None
+    schedule_start_min: float | None = None
+    schedule_start_facility_id: str | None = None
+    schedule_stops: tuple[PlannedStop, ...] = ()
+    distance_before_schedule_m: float = 0.0
+    historical_legs: tuple[dict, ...] = ()
+    approach_from_facility_id: str | None = None
+    approach_depart_min: float | None = None
+    failed_position: tuple[float, float] | None = None
+    ready_from_min: float | None = None
 
 
 @dataclass(frozen=True)
@@ -89,9 +108,12 @@ def state_to_dict(state: DispatchState) -> dict:
             # draws and what a replay reads back (2026-09-16, PDPTW step 4).
             "drive_plan": [
                 {"kind": stop.kind, "order_id": stop.order_id,
-                 "facility_id": stop.facility_id}
+                 "facility_id": stop.facility_id, "service_min": stop.service_min}
                 for stop in value.drive_plan
             ],
+            "replan_order_ids": list(value.replan_order_ids),
+            "schedule_stops": [vars(stop) for stop in value.schedule_stops],
+            "historical_legs": list(value.historical_legs),
         } for key, value in state.vehicles.items()},
         "available_by_lot": state.available_by_lot,
         "reserved_by_order": {
@@ -117,9 +139,13 @@ def state_from_dict(raw: dict) -> DispatchState:
                    tuple(part) for part in value.get("onboard_spare", ())
                ),
                "drive_plan": tuple(
-                   PlannedStop(stop["kind"], stop["order_id"], stop.get("facility_id"))
+                   PlannedStop(**stop)
                    for stop in value.get("drive_plan", ())
-               )}
+               ),
+               "replan_order_ids": tuple(value.get("replan_order_ids", ())),
+               "schedule_stops": tuple(PlannedStop(**stop) for stop in value.get("schedule_stops", ())),
+               "historical_legs": tuple(value.get("historical_legs", ())),
+               "failed_position": tuple(value["failed_position"]) if value.get("failed_position") else None}
         ) for key, value in raw["vehicles"].items()},
         available_by_lot=dict(raw["available_by_lot"]),
         reserved_by_order={
@@ -153,11 +179,18 @@ def accept_plan(
     sequences: dict[str, list[str]] = {}
     end_nodes: dict[str, int] = {}
     drive_plans: dict[str, list[PlannedStop]] = {}
+    starts, start_times, pickups = {}, {}, {}
+    declared = {vehicle.vehicle_id: vehicle for vehicle in vehicles}
     for zone_plan in plan.zone_plans:
         for route in zone_plan.result.routes:
             if not route.customer_ids:
                 continue
             vehicle_id = zone_plan.vehicle_ids[route.vehicle_id - 1]
+            starts[vehicle_id] = (declared[vehicle_id].start_facility_id if vehicle_id in declared
+                                 else zone_plan.origin_facility_id or DISPATCH_ORIGIN)
+            start_times[vehicle_id] = route.start_time_min
+            if zone_plan.routing_model == "grouped" and starts[vehicle_id] != zone_plan.origin_facility_id:
+                pickups[vehicle_id] = (zone_plan.origin_facility_id,)
             sequence = sequences.setdefault(vehicle_id, [])
             if route.end_node_id is not None:
                 end_nodes[vehicle_id] = route.end_node_id
@@ -210,14 +243,26 @@ def accept_plan(
         order_id: OrderProgress(
             order_id, order.product_id, order.destination_facility_id,
             order.quantity, assignments[order_id],
+            replaces_order_id=order.replaces_order_id,
         ) for order_id, order in by_order.items()
     }
     spare_by_vehicle = {vehicle.vehicle_id: vehicle.onboard_spare for vehicle in vehicles}
     vehicle_states = {
-        vehicle_id: VehicleProgress(vehicle_id, DISPATCH_ORIGIN, tuple(sequence),
+        vehicle_id: VehicleProgress(vehicle_id, starts[vehicle_id], tuple(sequence),
                                     onboard_spare=spare_by_vehicle.get(vehicle_id, ()),
                                     end_node_id=end_nodes.get(vehicle_id),
-                                    drive_plan=tuple(drive_plans.get(vehicle_id, ())))
+                                    drive_plan=tuple(drive_plans.get(vehicle_id, ())),
+                                    start_facility_id=starts[vehicle_id],
+                                    schedule_start_min=start_times.get(vehicle_id),
+                                    ready_from_min=(None if start_times.get(vehicle_id) is None else
+                                        start_times[vehicle_id] - (0 if pickups.get(vehicle_id) else 15)),
+                                    schedule_start_facility_id=starts[vehicle_id],
+                                    pickup_facility_ids=pickups.get(vehicle_id, ()),
+                                    schedule_stops=(tuple(drive_plans[vehicle_id])
+                                      if vehicle_id in drive_plans else
+                                      tuple(PlannedStop("pickup", "", fid, 15)
+                                            for fid in pickups.get(vehicle_id, ()))
+                                      + tuple(PlannedStop("delivery", oid) for oid in sequence)))
         for vehicle_id, sequence in sequences.items()
     }
     return DispatchState(1, "accepted", order_states, vehicle_states,

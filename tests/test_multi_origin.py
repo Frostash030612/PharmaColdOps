@@ -129,10 +129,11 @@ def test_the_goods_must_be_at_the_orders_own_origin():
         plan_delivery_orders(orders, (_lot(DISPATCH_ORIGIN),), (_vehicle("V-1", "D-NORTHPOINT"),))
 
 
-def test_a_vehicle_must_be_available_at_the_origin():
+def test_a_vehicle_can_reposition_to_the_origin():
     orders = (_order("O-1", "H-KKH", origin="D-NORTHPOINT"),)
-    with pytest.raises(ValueError, match="no available vehicle .*at D-NORTHPOINT"):
-        plan_delivery_orders(orders, (_lot("D-NORTHPOINT"),), (_vehicle("V-1", DISPATCH_ORIGIN),))
+    plan = plan_delivery_orders(orders, (_lot("D-NORTHPOINT"),), (_vehicle("V-1", DISPATCH_ORIGIN),))
+    assert plan.feasible
+    assert plan.zone_plans[0].result.routes[0].start_node_id == 0
 
 
 def test_an_order_cannot_be_picked_up_where_it_is_delivered():

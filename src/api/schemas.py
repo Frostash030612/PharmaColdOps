@@ -130,6 +130,7 @@ class DispatchOrderIn(BaseModel):
     latest_min: int = Field(ge=0)
     temperature_zone: Literal["chilled", "frozen", "ultracold"]
     source_run_id: Optional[str] = None
+    replaces_order_id: Optional[str] = None
 
 
 class InventoryLotIn(BaseModel):
@@ -212,6 +213,25 @@ class OvernightPlanIn(DispatchPlanIn):
     today_distance_m: Dict[str, int] = Field(default_factory=dict)
 
 
+class OvernightRunPreviewIn(BaseModel):
+    tomorrow: Optional[DispatchPlanIn] = None
+    parking_overrides: Dict[str, str] = Field(default_factory=dict)
+    replenishments: List[InventoryLotIn] = Field(default_factory=list)
+
+
+class OvernightRunAcceptIn(OvernightRunPreviewIn):
+    command_id: str = Field(min_length=1)
+    expected_version: int = Field(ge=1)
+
+
+class NextDayIn(BaseModel):
+    dispatch_id: str = Field(min_length=1)
+    command_id: str = Field(min_length=1)
+    expected_version: int = Field(ge=1)
+    depart: bool = True
+    speed: float = Field(default=60, ge=0)
+
+
 class DispatchCommandIn(BaseModel):
     command_id: str
     #: Departure speed. Present here because the service has always accepted it
@@ -247,6 +267,43 @@ class EmergencyAcceptIn(EmergencyPreviewIn):
     candidate_kind: CandidateKind
     vehicle_id: str
     command_id: str
+
+
+class VehicleFailurePreviewIn(BaseModel):
+    """Read-only rescue assessment for one failed in-transit vehicle."""
+
+    failed_vehicle_id: str
+    current_time_min: int = Field(ge=0)
+
+
+class VehicleFailureAcceptIn(VehicleFailurePreviewIn):
+    """Accept one replacement-vehicle option from a failure preview."""
+
+    replacement_vehicle_id: str
+    command_id: str
+
+
+class DelayPreviewIn(BaseModel):
+    """Read-only inspection of delivery-window risk in a running dispatch.
+
+    ``current_time_min`` is optional because the normal UI reads the live
+    dispatch clock.  It remains injectable for an external tracking feed or a
+    deterministic replay.  ``delay_min`` is an observed extra delay — this
+    prototype deliberately does not fabricate a traffic signal it does not
+    have.
+    """
+
+    current_time_min: Optional[float] = Field(default=None, ge=0, allow_inf_nan=False)
+    delay_min: float = Field(default=0, ge=0, allow_inf_nan=False)
+
+
+class DelayAcceptIn(DelayPreviewIn):
+    """Commit the re-sequenced remaining queue for one inspected vehicle."""
+
+    vehicle_id: str
+    command_id: str = Field(min_length=1)
+    expected_version: int = Field(ge=1)
+    remaining_order_ids_after: List[str] = Field(min_length=1)
 
 
 class EvidenceOut(BaseModel):

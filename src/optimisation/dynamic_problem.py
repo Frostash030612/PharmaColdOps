@@ -7,6 +7,8 @@ from dataclasses import replace
 
 from .dispatch_state import DispatchState, OrderProgress, VehicleProgress
 from .singapore_loader import read_network
+from .dispatch_constraints import price_work
+from .execution import install_schedule
 
 #: How on-time candidates are ranked against each other. Which one is "right"
 #: is a business call (fewest disrupted orders vs fewest vehicles), not a
@@ -135,7 +137,8 @@ def preview_emergency_order(
     # hold enough of it (B6: the pickup no longer has to be the main warehouse).
     carriers = _carriers_with_stock(order, lots, state)
     stock = max(carriers.values(), default=0)
-    if not carriers:
+    if not carriers and not any(_spare_available(v, order) >= order.quantity
+                                and v.status == "in_transit" for v in state.vehicles.values()):
         return {
             "feasible": False,
             "order_id": order.order_id,
@@ -162,12 +165,13 @@ def preview_emergency_order(
             _spare_total(progress) if progress is not None
             else sum(quantity for _, _, quantity in declared_spare)
         ) + (
-            sum(state.orders[order_id].quantity for order_id in progress.remaining_order_ids)
+            sum(state.orders[order_id].quantity for order_id in progress.remaining_order_ids
+                if order_id != spoiled_order_id)
             if progress is not None else 0
         )
         free_capacity = vehicle["capacity"] - onboard
         if progress is None and vehicle.get("status", "available") == "available":
-            if free_capacity < order.quantity:
+            if free_capacity < order.quantity or not carriers:
                 continue
             start = vehicle.get("start_facility_id") or DISPATCH_ORIGIN
             pickup = _nearest_carrier(carriers, start, order.destination_facility_id, leg)
@@ -246,7 +250,7 @@ def preview_emergency_order(
                 candidates.append(item)
             # Option 2 — change this vehicle's route but fetch the goods from the
             # depot first. Only offered when the truck can still take them aboard.
-            if free_capacity < order.quantity:
+            if free_capacity < order.quantity or not carriers:
                 continue
             # The kind keeps its historical name, but the stop is now the nearest
             # supply point that holds the product — which is only the depot when
@@ -289,42 +293,42 @@ def preview_emergency_order(
             item["on_time"] = item["on_time"] and not any(a["newly_late"] for a in affected)
             candidates.append(item)
 
-    # What each option would make the vehicle drive, as network node ids, so the
-    # caller can draw "before vs after" on the map (docs/C_配送模块.md §4.3).
-    # The sequences start where the vehicle actually is, not at the depot: the
-    # cost being compared is the work that is still ahead of it.
-    baselines: dict[str, dict] = {}
+    checked = []
     for item in candidates:
         progress = state.vehicles.get(item["vehicle_id"])
-        remaining: list[int] = []
-        if progress is not None:
-            for order_id in progress.remaining_order_ids:
-                known = order_lookup.get(order_id)
-                if known is not None:
-                    remaining.append(nodes[known["destination_facility_id"]])
-            current = nodes[progress.current_facility_id]
-            baselines.setdefault(item["vehicle_id"], {
-                "node_sequence": [current, *remaining, 0],
-                "current_node_id": current,
+        tail = [oid for oid in item.get("remaining_order_ids_after", ())
+                if oid != spoiled_order_id]
+        pickups = (list(carriers) if item["kind"] in {"return_to_depot", "spare_vehicle"}
+                   else [item.get("pickup_facility_id") if item["kind"] != "add_stop_in_transit" else None])
+        variants = []
+        for pickup in pickups:
+            candidate = {**item, "pickup_facility_id": pickup}
+            queue = (order.order_id, *tail)
+            priced = price_work(state, context, vehicle_id=item["vehicle_id"], order_ids=queue,
+                current_time_min=current_time_min, orders={order.order_id: vars(order)},
+                pickup_facility_id=pickup if item["kind"] != "load_before_departure" else None,
+                loading_min=loading_min if item["kind"] == "load_before_departure" else 0,
+                starts_new_vehicle=item["kind"] == "spare_vehicle", removed_order_id=spoiled_order_id)
+            candidate.update(priced)
+            candidate["remaining_order_ids_after"] = tail
+            candidate["eta_min"] = round(priced["arrivals"][order.order_id], 2)
+            candidate["lateness_min"] = round(max(0, candidate["eta_min"] - order.latest_min), 2)
+            variants.append(candidate)
+        if variants:
+            checked.append(min(variants, key=lambda c: (not c["feasible"], c["distance_m"], c["eta_min"])))
+    candidates = checked
+
+    baselines = {}
+    for item in candidates:
+        progress = state.vehicles.get(item["vehicle_id"])
+        if progress is not None and item["vehicle_id"] not in baselines:
+            original = price_work(state, context, vehicle_id=item["vehicle_id"],
+                order_ids=progress.remaining_order_ids, current_time_min=current_time_min)
+            baselines[item["vehicle_id"]] = {
+                "node_sequence": original["node_sequence"],
+                "current_node_id": original["node_sequence"][0],
                 "has_work": bool(progress.remaining_order_ids),
-            })
-        else:
-            current = 0
-        destination = nodes[order.destination_facility_id]
-        pickup = item.get("pickup_facility_id")
-        pickup_node = None if pickup is None else nodes[pickup]
-        if item["kind"] == "spare_vehicle":
-            start = nodes.get(item.get("start_facility_id") or DISPATCH_ORIGIN, 0)
-            item["node_sequence"] = [start, *( [pickup_node] if pickup_node is not None else [] ),
-                                     destination, 0]
-        elif item["kind"] == "load_before_departure":
-            # the vehicle is already standing on the pickup point
-            item["node_sequence"] = [current, destination, *remaining, 0]
-        elif item["kind"] == "return_to_depot":
-            item["node_sequence"] = [current, *([pickup_node] if pickup_node is not None else []),
-                                     destination, *remaining, 0]
-        else:                                   # add_stop_in_transit
-            item["node_sequence"] = [current, destination, *remaining, 0]
+            }
 
     # A candidate that stops at a pickup point hands the scrapped goods over
     # there — the cold-chain reality is "return the spoiled batch, collect the
@@ -361,6 +365,7 @@ def preview_emergency_order(
             "onboard_spare_is_a_load_assumption_not_a_depot_lot",
             "affected_order_etas_ignore_per_stop_service_dwell_time",
         ],
+        "reason": None if any(item["feasible"] for item in candidates) else "no_feasible_emergency_schedule",
     }
 
 
@@ -709,6 +714,26 @@ def accept_emergency_order(
     status = "in_transit" if any(
         item.status == "in_transit" for item in vehicles.values()
     ) else state.status
+    # A later quality-event branch must also update an accepted delay schedule.
+    # Otherwise the order table gains a new queue but the tracker continues to
+    # drive the old fixed tail and can never reach the inserted order.
+    for carrier_id, carrier in tuple(vehicles.items()):
+        previous = state.vehicles.get(carrier_id)
+        if (previous is not None and carrier.replan_started_min is not None
+                and carrier.remaining_order_ids != previous.remaining_order_ids):
+            vehicles[carrier_id] = replace(
+                carrier, replan_started_min=float(current_time_min),
+                replan_start_facility_id=carrier.current_facility_id,
+                replan_order_ids=carrier.remaining_order_ids)
+        if (previous is not None and carrier_id != vehicle_id
+                and carrier.remaining_order_ids != previous.remaining_order_ids):
+            cleanup = price_work(state, context, vehicle_id=carrier_id,
+                order_ids=carrier.remaining_order_ids, current_time_min=current_time_min,
+                removed_order_id=spoiled_order_id)
+            vehicles[carrier_id] = install_schedule(
+                replace(vehicles[carrier_id], end_node_id=cleanup["end_node_id"]), cleanup)
+    vehicles[vehicle_id] = install_schedule(
+        replace(vehicles[vehicle_id], end_node_id=candidate["end_node_id"]), candidate)
     return replace(
         state,
         version=state.version + 1,

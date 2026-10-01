@@ -95,6 +95,10 @@ class DeliveryOrder:
     #: Where this order is picked up (2026-09-16, B1b). ``None`` means the
     #: planner's default origin, so every existing caller keeps its behaviour.
     origin_facility_id: str | None = None
+    #: When a mechanical failure makes an undelivered shipment unavailable, the
+    #: replacement order names the original order it replaces. Normal orders and
+    #: temperature-excursion reshipments leave this unset.
+    replaces_order_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.order_id or not self.product_id or not self.destination_facility_id:

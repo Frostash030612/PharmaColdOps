@@ -162,8 +162,10 @@ def point_along(coords: list, fraction: float) -> list:
 
 
 def vehicle_track(network: dict, node_sequence: list[int], depart_min: float,
-                  sim_now: float, end_node: int = 0) -> dict:
-    """Position and stop progress for one vehicle's depot→…→end run.
+                  sim_now: float, end_node: int = 0, start_node: int = 0,
+                  earliest_mins: list[float] | None = None,
+                  service_mins: list[float] | None = None) -> dict:
+    """Position and stop progress for one vehicle's start→…→end run.
 
     ``node_sequence`` is the vehicle's remaining stops in order (network node
     ids). Returns the interpolated position, which leg it is on, and how many
@@ -175,12 +177,22 @@ def vehicle_track(network: dict, node_sequence: list[int], depart_min: float,
     charged, otherwise the map would drive the truck home while the plan says it
     parks.
     """
-    route = [0, *node_sequence, end_node]
+    route = [start_node, *node_sequence, end_node]
     arrivals: list[float] = []
     clock = depart_min
-    position = point_along(_leg(network, 0, route[1])[0], 0.0) if len(route) > 1 else [0.0, 0.0]
-    leg_from, leg_to, fraction = 0, route[1] if len(route) > 1 else 0, 0.0
+    position = (point_along(_leg(network, start_node, route[1])[0], 0.0)
+                if len(route) > 1 else [0.0, 0.0])
+    if route[1] == start_node:
+        start = next(node for node in network["nodes"] if node["node_id"] == start_node)
+        position = [start["lon"], start["lat"]]
+    leg_from, leg_to, fraction = start_node, route[1] if len(route) > 1 else start_node, 0.0
     stop_count = len(node_sequence)
+    if earliest_mins is not None and len(earliest_mins) != stop_count:
+        raise ValueError("one receiving-window start is required per stop")
+    if service_mins is not None and len(service_mins) != stop_count:
+        raise ValueError("one service time is required per stop")
+    driven_distance, total_distance = 0.0, 0.0
+    leg_departure, leg_arrival, active_index = depart_min, depart_min, 0
 
     # A stop is a leg that ends at ``node_sequence[i]``. Judging it by "the leg
     # does not end at the depot" was equivalent until a pickup-delivery run put a
@@ -190,25 +202,37 @@ def vehicle_track(network: dict, node_sequence: list[int], depart_min: float,
     for index, (a, b) in enumerate(zip(route, route[1:])):
         is_stop = index < stop_count
         coords, minutes = _leg(network, a, b)
-        arrive = clock + minutes
+        distance = network["matrix"]["distance_m"][a][b]
+        total_distance += distance
+        road_arrival = clock + minutes
+        arrive = (max(road_arrival, earliest_mins[index])
+                  if is_stop and earliest_mins is not None else road_arrival)
         if is_stop:
             arrivals.append(arrive)
+        dwell = (service_mins[index] if service_mins is not None else SERVICE_MIN) if is_stop else 0
+        if sim_now >= road_arrival:
+            driven_distance += distance
+        elif clock <= sim_now < road_arrival:
+            driven_distance += distance * (sim_now - clock) / minutes
         if minutes <= 0:
             # A zero-length leg (the same node twice in a row): the truck does
             # not move, so the marker stays where it is. There is no geometry to
             # interpolate and no time passes beyond the stop's own service.
             if sim_now >= arrive:
                 leg_from, leg_to, fraction = a, b, 1.0
-            clock = arrive + (SERVICE_MIN if is_stop else 0)
+                leg_departure, leg_arrival, active_index = clock, road_arrival, index
+            clock = arrive + dwell
             continue
-        if clock <= sim_now < arrive:
+        if clock <= sim_now < road_arrival:
             fraction = (sim_now - clock) / minutes
             leg_from, leg_to = a, b
             position = point_along(coords, fraction)
-        elif sim_now >= arrive:
+            leg_departure, leg_arrival, active_index = clock, road_arrival, index
+        elif sim_now >= road_arrival:
             leg_from, leg_to, fraction = a, b, 1.0
             position = list(coords[-1])
-        clock = arrive + (SERVICE_MIN if is_stop else 0)
+            leg_departure, leg_arrival, active_index = clock, road_arrival, index
+        clock = arrive + dwell
 
     reached = sum(1 for arrive in arrivals if sim_now >= arrive)
     return {
@@ -218,5 +242,12 @@ def vehicle_track(network: dict, node_sequence: list[int], depart_min: float,
         "leg_fraction": round(fraction, 4),
         "reached_stops": reached,
         "arrivals": [round(a, 2) for a in arrivals],
+        "service_starts": list(arrivals),
         "finished": bool(route) and sim_now >= clock,
+        "finished_at_min": clock,
+        "leg_depart_min": leg_departure,
+        "leg_arrival_min": leg_arrival,
+        "leg_index": active_index,
+        "distance_driven_m": driven_distance,
+        "total_distance_m": total_distance,
     }
