@@ -6,6 +6,8 @@ Different registration keys may intentionally contain identical incidents.
 import json
 import time
 import uuid
+import sqlite3
+from pathlib import Path
 from contextlib import contextmanager
 
 from .dispatch_repository import _is_postgres, _postgres_connect, _sqlite_connect
@@ -148,9 +150,60 @@ def finish_graph_claim(target, claim, *, success, error=None):
         return cursor.rowcount == 1
 
 
-def requeue_graph_records(target):
+def requeue_graph_records(target, *, run_ids=None):
     """Explicit recovery after a graph rebuild; never clears business records."""
     with _connection(target) as cursor:
-        cursor.execute("UPDATE case_graph_outbox SET status='pending',next_attempt_at=0,synced_at=NULL "
-                       "WHERE status='synced'")
+        query = "UPDATE case_graph_outbox SET status='pending',next_attempt_at=0,synced_at=NULL WHERE status='synced'"
+        if run_ids is not None:
+            if not run_ids:
+                return 0
+            marker = "%s" if _is_postgres(target) else "?"
+            query += " AND run_id IN (" + ",".join(marker for _ in run_ids) + ")"
+            cursor.execute(query, tuple(run_ids))
+        else:
+            cursor.execute(query)
         return cursor.rowcount
+
+
+def read_case_originals(target, *, legacy_file=None):
+    """Read-only coverage inventory: no schema migration, queue or DB creation.
+
+    Relational originals win over JSONL; immutable outbox payloads cover legacy
+    imports that never had a registration row. Malformed legacy data is refused.
+    """
+    originals, states = {}, {}
+    if legacy_file and Path(legacy_file).exists():
+        for line in Path(legacy_file).read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                record = json.loads(line)
+                originals.setdefault(record["run_id"], record)
+    if _is_postgres(target):
+        import psycopg
+        db = psycopg.connect(str(target))
+        db.execute("SET TRANSACTION READ ONLY")
+        table_query = "SELECT table_name FROM information_schema.tables WHERE table_schema=current_schema()"
+    else:
+        value = str(target)
+        if value.startswith("sqlite:///"):
+            value = "/" + value[len("sqlite:///"):].lstrip("/")
+        path = Path(value)
+        if not path.exists():
+            return list(originals.values()), states
+        db = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+        table_query = "SELECT name FROM sqlite_master WHERE type='table'"
+    try:
+        with db.cursor() if _is_postgres(target) else _cursor(db) as cursor:
+            cursor.execute(table_query)
+            tables = {row[0] for row in cursor.fetchall()}
+            if "case_graph_outbox" in tables:
+                cursor.execute("SELECT run_id,record_json,status FROM case_graph_outbox")
+                for rid, payload, status in cursor.fetchall():
+                    originals[rid] = json.loads(payload)
+                    states[rid] = status
+            if "case_registrations" in tables:
+                cursor.execute("SELECT run_id,record_json FROM case_registrations")
+                for rid, payload in cursor.fetchall():
+                    originals[rid] = json.loads(payload)
+        return list(originals.values()), states
+    finally:
+        db.close()

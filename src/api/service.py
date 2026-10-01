@@ -79,6 +79,7 @@ from optimisation.parking_policy import warehouse_ids, validate_terminals, valid
 from optimisation.case_repository import (  # noqa: E402
     RegistrationConflict, lookup_registration, register_once, registered_records,
     claim_graph_records, finish_graph_claim, graph_sync_status,
+    read_case_originals,
 )
 from optimisation.dynamic_problem import (  # noqa: E402
     DEFAULT_POLICY, accept_emergency_order, preview_emergency_order,
@@ -2117,6 +2118,7 @@ def qa_view(req: QAIn) -> dict:
     evidence / unsupported question / database failure). A graph failure is
     raised as ``RuntimeError`` and becomes HTTP 503.
     """
+    sync = None
     if req.run_id and req.question_type in {"why_disposition", "audit_chain", "cause_context"}:
         try:
             sync = graph_sync_status(DISPATCH_DATABASE_URL, req.run_id)
@@ -2126,16 +2128,27 @@ def qa_view(req: QAIn) -> dict:
             raise RuntimeError("case graph synchronization pending; retry after graph recovery")
     try:
         if req.question_type == "why_disposition":
-            return kg_qa.why_disposition(req.run_id)
-        if req.question_type == "audit_chain":
-            return kg_qa.audit_chain(req.run_id)
-        if req.question_type == "product_requirements":
+            answer = kg_qa.why_disposition(req.run_id)
+        elif req.question_type == "audit_chain":
+            answer = kg_qa.audit_chain(req.run_id)
+        elif req.question_type == "cause_context":
+            answer = kg_qa.cause_context(req.run_id, req.cause_code)
+        elif req.question_type == "product_requirements":
             return kg_qa.product_requirements(req.product_id)
-        if req.question_type == "cause_context":
-            return kg_qa.cause_context(req.run_id, req.cause_code)
-        if req.question_type == "disposition_stats":
+        elif req.question_type == "disposition_stats":
             return kg_qa.disposition_stats()
-        return kg_qa.unsupported_response(req.question_type)
+        else:
+            return kg_qa.unsupported_response(req.question_type)
     except Exception as exc:
         log.warning("qa query failed: %s", exc, exc_info=True)
         raise RuntimeError("knowledge graph unavailable") from exc
+    if answer.get("status") == "no_case":
+        # A graph rebuild may have removed an already acknowledged mirror.
+        # Never tell the operator their still-archived incident does not exist.
+        try:
+            originals, _ = read_case_originals(DISPATCH_DATABASE_URL, legacy_file=RUNS_FILE)
+        except Exception as exc:
+            raise RuntimeError("case registration storage unavailable") from exc
+        if sync or any(r["run_id"] == req.run_id for r in originals):
+            raise RuntimeError("registered case graph chain missing; run coverage audit and repair")
+    return answer
