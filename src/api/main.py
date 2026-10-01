@@ -19,6 +19,7 @@ from . import service
 from .schemas import (
     BatchIn, BranchPolicyIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
     DelayAcceptIn, DelayPreviewIn,
+    CaseWorkflowIn,
     EmergencyAcceptIn, EmergencyPreviewIn,
     DispatchDeliverIn, DispatchPlanIn, DispatchReplayIn, DispatchSpeedIn, GridIn,
     OvernightPlanIn, QAIn, QAOut,
@@ -90,11 +91,23 @@ def case_close(req: CaseCloseIn):
     """
     try:
         return service.close_case(req, req.spec_override, req.started_at, req.remark)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except KeyError:
         raise HTTPException(
             status_code=422,
             detail=f"unknown product_id {req.product_id!r}; valid: {service.valid_product_ids()}",
         )
+
+
+@app.post("/api/runs/{run_id}/workflow")
+def update_case_workflow(run_id: str, req: CaseWorkflowIn):
+    try:
+        return service.update_case_progress(run_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown incident run_id")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.post("/api/grid")

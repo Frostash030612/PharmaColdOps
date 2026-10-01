@@ -67,7 +67,7 @@ def build_reshipment_order(record: dict) -> ReshipmentOrder | None:
     )
 
 
-def build_delivery_order(record: dict, *, linked_order=None) -> DeliveryOrder | None:
+def build_delivery_order(record: dict, *, linked_order=None, linked_input=None) -> DeliveryOrder | None:
     """Derive a dispatch ``DeliveryOrder`` from one ``close_case()`` record.
 
     This is the bridge that keeps resupply on ONE pathway: the order carries
@@ -115,10 +115,11 @@ def build_delivery_order(record: dict, *, linked_order=None) -> DeliveryOrder | 
         product_id=product_id,
         destination_facility_id=destination,
         quantity=(linked_order.quantity if linked_order is not None else node["demand"]),
-        earliest_min=node["earliest_min"],
-        latest_min=node["latest_min"],
+        earliest_min=(linked_input["earliest_min"] if linked_input else node["earliest_min"]),
+        latest_min=(linked_input["latest_min"] if linked_input else node["latest_min"]),
         temperature_zone=zone,
         source_run_id=record["run_id"],
+        origin_facility_id=(linked_input.get("origin_facility_id") if linked_input else None),
     )
 
 

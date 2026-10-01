@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 from .dispatch_state import DispatchState, state_from_dict, state_to_dict
@@ -24,11 +25,11 @@ def _sqlite_connect(target: str | Path) -> sqlite3.Connection:
     connection.execute(
         "CREATE TABLE IF NOT EXISTS dispatch_runs ("
         "dispatch_id TEXT PRIMARY KEY, version INTEGER NOT NULL, "
-        "state_json TEXT NOT NULL, context_json TEXT NOT NULL DEFAULT '{}')"
+        "state_json TEXT NOT NULL, context_json TEXT NOT NULL DEFAULT '{}', updated_at TEXT)"
     )
     columns = {row[1] for row in connection.execute("PRAGMA table_info(dispatch_runs)")}
     if "context_json" not in columns:
-        connection.execute("ALTER TABLE dispatch_runs ADD COLUMN context_json TEXT NOT NULL DEFAULT '{}'")
+        _sqlite_add_column(connection, "context_json", "TEXT NOT NULL DEFAULT '{}'")
     if "updated_at" not in columns:
         # The Postgres schema has carried updated_at since the beginning; the
         # local SQLite one did not, which made "which operation was touched
@@ -36,8 +37,17 @@ def _sqlite_connect(target: str | Path) -> sqlite3.Connection:
         # column).  SQLite refuses a non-constant DEFAULT on ALTER TABLE, so the
         # column is added nullable and written explicitly on insert/update;
         # back-filled rows stay NULL and therefore sort after new ones.
-        connection.execute("ALTER TABLE dispatch_runs ADD COLUMN updated_at TEXT")
+        _sqlite_add_column(connection, "updated_at", "TEXT")
     return connection
+
+
+def _sqlite_add_column(connection, name, declaration):
+    try:
+        connection.execute(f"ALTER TABLE dispatch_runs ADD COLUMN {name} {declaration}")
+    except sqlite3.OperationalError:
+        # Two page boot reads can migrate the same old SQLite file concurrently.
+        if name not in {row[1] for row in connection.execute("PRAGMA table_info(dispatch_runs)")}:
+            raise
 
 
 def _postgres_connect(target: str | Path):
@@ -61,6 +71,46 @@ def ensure_schema(target: str | Path) -> None:
     connect = _postgres_connect if _is_postgres(target) else _sqlite_connect
     with connect(target):
         pass
+
+
+def case_workflows(target):
+    """Durable operator actions, separate from immutable quality assessments."""
+    connect = _postgres_connect if _is_postgres(target) else _sqlite_connect
+    with connect(target) as db:
+        with db.cursor() if _is_postgres(target) else _sqlite_cursor(db) as cursor:
+            cursor.execute("CREATE TABLE IF NOT EXISTS case_workflows (run_id TEXT PRIMARY KEY, "
+                           "version INTEGER NOT NULL, workflow_json TEXT NOT NULL)")
+            cursor.execute("SELECT run_id, version, workflow_json FROM case_workflows")
+            return {row[0]: {**json.loads(row[2]), "version": row[1]} for row in cursor.fetchall()}
+
+
+@contextmanager
+def _sqlite_cursor(db):
+    cursor = db.cursor()
+    try:
+        yield cursor
+    finally:
+        cursor.close()
+
+
+def save_case_workflow(target, run_id, workflow, *, expected_version):
+    """Optimistic operator-action write; racing tabs cannot silently overwrite."""
+    case_workflows(target)  # schema migration, also for existing installations
+    postgres = _is_postgres(target)
+    connect = _postgres_connect if postgres else _sqlite_connect
+    marker = "%s" if postgres else "?"
+    payload = json.dumps(workflow)
+    with connect(target) as db:
+        with db.cursor() if postgres else _sqlite_cursor(db) as cursor:
+            if expected_version == 0:
+                cursor.execute(f"INSERT INTO case_workflows VALUES ({marker},1,{marker}) "
+                               "ON CONFLICT (run_id) DO NOTHING", (run_id, payload))
+            else:
+                cursor.execute(f"UPDATE case_workflows SET version=version+1, workflow_json={marker} "
+                               f"WHERE run_id={marker} AND version={marker}",
+                               (payload, run_id, expected_version))
+            if cursor.rowcount != 1:
+                raise ValueError("incident workflow changed; reload before retrying")
 
 
 def create_run(target: str | Path, dispatch_id: str, state: DispatchState, *, context: dict) -> None:

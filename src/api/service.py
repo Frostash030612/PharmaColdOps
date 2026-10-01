@@ -64,6 +64,7 @@ from optimisation.dispatch_state import (  # noqa: E402
 from optimisation.dispatch_repository import (  # noqa: E402
     create_run, latest_dispatch_id, latest_open_dispatch_id, load_context, load_run,
     recent_runs, update_context, update_run, create_successor,
+    case_workflows, save_case_workflow,
 )
 from optimisation.daily_orders import (  # noqa: E402
     ASSUMPTIONS as DAILY_PLAN_ASSUMPTIONS,
@@ -260,7 +261,7 @@ def _audit(kind: str, ev, spec=None, decision=None) -> None:
 
 def _new_run_id() -> str:
     """Readable unique-ish id for one archived case (timestamp, µs resolution)."""
-    return "R" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")[:-3]
+    return "R" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
 
 
 def _record_run(view: dict, *, started_at: str | None = None,
@@ -304,7 +305,80 @@ def list_runs(limit: int = 200) -> dict:
     except (OSError, json.JSONDecodeError):
         log.warning("could not read %s", RUNS_FILE, exc_info=True)
     records.reverse()
-    return {"count": len(records), "runs": records[:limit]}
+    workflows = case_workflows(DISPATCH_DATABASE_URL) if records else {}
+    cache = {}
+    return {"count": len(records), "runs": [
+        _case_progress(record, workflows.get(record["run_id"], {}), cache)
+        for record in records[:limit]]}
+
+
+def _case_progress(record, workflow, cache):
+    """Processing follows actual replacement delivery, never the scrap/release label."""
+    status = workflow.get("status") or record.get("processing_status") or (
+        "pending" if record.get("reshipment_required") else "handled")
+    dispatch_id = record.get("event", {}).get("dispatch_id") or workflow.get("dispatch_id")
+    replacement = None
+    if record.get("reshipment_required") and status != "closed":
+        if not dispatch_id:  # old unbound cases: find their actual replacement, not the latest day
+            if "_legacy_case_dispatches" not in cache:
+                legacy = {}
+                for item in recent_runs(DISPATCH_DATABASE_URL, limit=200):
+                    candidate = item["dispatch_id"]
+                    if candidate not in cache:
+                        cache[candidate] = load_run(DISPATCH_DATABASE_URL, candidate)
+                    for oid in cache[candidate].orders:
+                        if oid.startswith("RO-"):
+                            legacy.setdefault(oid, candidate)
+                cache["_legacy_case_dispatches"] = legacy
+            dispatch_id = cache["_legacy_case_dispatches"].get(f"RO-{record['run_id']}")
+        if dispatch_id:
+            try:
+                if dispatch_id not in cache:
+                    cache[dispatch_id] = load_run(DISPATCH_DATABASE_URL, dispatch_id)
+                state = cache[dispatch_id]
+                replacement = state.orders.get(f"RO-{record['run_id']}")
+                # Mechanical rescue can replace the case's replacement shipment too.
+                seen = set()
+                while replacement and replacement.status == "failed" and replacement.order_id not in seen:
+                    seen.add(replacement.order_id)
+                    successor = next((o for o in state.orders.values()
+                                      if o.replaces_order_id == replacement.order_id), None)
+                    if not successor:
+                        break
+                    replacement = successor
+            except KeyError:
+                replacement = None
+        if replacement:
+            status = ("handled" if replacement.status == "delivered" else
+                      "pending" if replacement.status in {"failed", "scrapped"} else "processing")
+    return {**record, "processing_status": status,
+            "workflow_version": workflow.get("version", 0),
+            "workflow_history": workflow.get("history", []),
+            "handling_dispatch_id": dispatch_id,
+            "replacement_status": replacement.status if replacement else None}
+
+
+def update_case_progress(run_id, req):
+    record = find_run(run_id)
+    if record is None:
+        raise KeyError(run_id)
+    current = record["processing_status"]
+    if record["workflow_version"] != req.expected_version:
+        raise ValueError("incident workflow changed; reload before retrying")
+    allowed = {"pending": {"processing", "handled"}, "processing": {"handled"},
+               "handled": {"closed"}, "closed": set()}
+    if req.status not in allowed[current]:
+        raise ValueError(f"cannot change incident status from {current} to {req.status}")
+    if req.status == "handled" and record.get("reshipment_required"):
+        raise ValueError("reshipment must actually be delivered before the incident is handled")
+    if req.status in {"handled", "closed"} and not req.remark.strip():
+        raise ValueError("a handling/closure note is required")
+    action = {"status": req.status, "remark": req.remark.strip(),
+              "at": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+    save_case_workflow(DISPATCH_DATABASE_URL, run_id, {
+        "status": req.status, "dispatch_id": record.get("handling_dispatch_id"),
+        "history": [*record["workflow_history"], action]}, expected_version=req.expected_version)
+    return find_run(run_id)
 
 
 def _event_dump(event: EventIn) -> dict:
@@ -322,7 +396,7 @@ def _event_dump(event: EventIn) -> dict:
         "packaging": event.packaging,
         "stage": event.stage,
     }
-    for field in ("facility_id", "destination_facility_id"):
+    for field in ("facility_id", "destination_facility_id", "order_id", "dispatch_id"):
         if getattr(event, field, None):
             dump[field] = getattr(event, field)
     return dump
@@ -367,17 +441,56 @@ def close_case(event: EventIn, override: SpecOverride | None,
     record to RUNS_FILE and returns it with the run_id / created_at stamps the
     front-end shows in the case history.
     """
+    event, linked_snapshot = _bind_case_order(event)
     spec = resolve_spec(event.product_id, override)
     decision = _engine_for(spec).evaluate(_as_event(
         event.product_id, event.excursion_temp_c, event.duration_min,
         event.mkt_c, event.packaging, event.stage, scenario_id="case_close"))
     _audit("close", event, spec, decision)
-    record = _record_run(_decision_view(event, spec, decision),
+    view = _decision_view(event, spec, decision)
+    view["processing_status"] = "pending"
+    if linked_snapshot:
+        view["linked_order"] = linked_snapshot
+    record = _record_run(view,
                          started_at=started_at, remark=remark)
     # Mirror the chain into the knowledge graph (best-effort: the runs log
     # stays authoritative; a down graph must never fail the close).
     write_case(record)
-    return record
+    return {**record, "workflow_version": 0, "workflow_history": []}
+
+
+def _bind_case_order(event: EventIn):
+    """Persist an unambiguous simulation-run/order link, not just a daily ID."""
+    nodes = {n["facility_id"]: n for n in read_network()["nodes"]}
+    if event.facility_id and event.facility_id not in nodes:
+        raise ValueError("unknown incident facility_id")
+    if event.destination_facility_id and (
+        event.destination_facility_id not in nodes
+        or nodes[event.destination_facility_id]["role"] != "customer"
+    ):
+        raise ValueError("destination_facility_id must be a receiving hospital")
+    if not event.order_id:
+        if event.dispatch_id:
+            raise ValueError("dispatch_id requires order_id")
+        return event, None
+    dispatch_id = event.dispatch_id
+    if not dispatch_id:  # older API clients: capture the active run NOW, not at rescue time
+        dispatch_id, _ = _require_plan()
+    try:
+        state = load_run(DISPATCH_DATABASE_URL, dispatch_id)
+        context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    except KeyError as exc:
+        raise ValueError("unknown linked dispatch_id") from exc
+    order = next((o for o in context["input"]["orders"] if o["order_id"] == event.order_id), None)
+    if order is None or event.order_id not in state.orders:
+        raise ValueError("linked order is not part of the selected dispatch")
+    if order["product_id"] != event.product_id:
+        raise ValueError("incident product does not match linked order")
+    if event.destination_facility_id and event.destination_facility_id != order["destination_facility_id"]:
+        raise ValueError("incident destination does not match linked order")
+    return event.model_copy(update={"dispatch_id": dispatch_id,
+        "destination_facility_id": order["destination_facility_id"]}), {
+        **order, "dispatch_id": dispatch_id, "operating_date": context.get("operating_date")}
 
 
 def grid_view(req: GridIn) -> dict:
@@ -1006,7 +1119,7 @@ def _prepare_branch(state, context: dict, order: DeliveryOrder):
     the read-only preview and the committing call run through here, so what the
     operator was shown and what is then applied cannot disagree.
     """
-    lot = InventoryLot(f"LOT-{order.order_id}", order.product_id, DISPATCH_ORIGIN,
+    lot = InventoryLot(f"LOT-{order.order_id}", order.product_id, order.origin_facility_id or DISPATCH_ORIGIN,
                        order.quantity, order.temperature_zone)
     inventory = [*context["input"]["inventory"], _lot_dump(lot)]
     vehicles = list(context["input"]["vehicles"])
@@ -1080,6 +1193,16 @@ def _linked_order(record: dict, state) -> object | None:
     return order
 
 
+def _case_operation(record):
+    dispatch_id = record.get("event", {}).get("dispatch_id") or record.get("handling_dispatch_id")
+    if not dispatch_id:
+        return _require_plan()  # compatibility for previously unbound demo cases
+    try:
+        return dispatch_id, load_run(DISPATCH_DATABASE_URL, dispatch_id)
+    except KeyError as exc:
+        raise ValueError("the incident's linked dispatch no longer exists") from exc
+
+
 def _live_minute(context: dict, requested: float) -> float:
     return max(float(requested), watched_now(context["clock"])) if context.get("clock") else float(requested)
 
@@ -1096,9 +1219,11 @@ def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dic
     # case, and must not be masked by "no plan is open".
     if not record.get("reshipment_required"):
         raise ValueError(f"case {record['run_id']} does not require reshipment")
-    dispatch_id, state = _require_plan()
+    dispatch_id, state = _case_operation(record)
     linked = _linked_order(record, state)
-    order = build_delivery_order(record, linked_order=linked)
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    source = next((o for o in context["input"]["orders"] if linked and o["order_id"] == linked.order_id), None)
+    order = build_delivery_order(record, linked_order=linked, linked_input=source)
     if order is None:  # pragma: no cover - guarded just above
         raise ValueError(f"case {record['run_id']} does not require reshipment")
     clock, next_day = _dispatch_clock(record, order)
@@ -1117,6 +1242,8 @@ def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dic
                 "spoiled_order_id": spoiled_id,
                 "order": _order_dump(order), "policy": policy, "candidates": [],
                 "baselines": {}}
+    if state.status == "completed" or context.get("next_day_dispatch_id"):
+        raise ValueError("the incident's operating day is completed; it cannot be inserted into another day")
     preview = ({"feasible": False, "reason": "receiving_window_closed_today",
                 "candidates": [], "baselines": {}, "current_time_min": clock}
                if next_day and context.get("clock") else
@@ -1147,9 +1274,11 @@ def route_reshipment(record: dict, *, candidate_kind: str | None = None,
     """
     if not record.get("reshipment_required"):
         raise ValueError(f"case {record['run_id']} does not require reshipment")
-    dispatch_id, state = _require_plan()
+    dispatch_id, state = _case_operation(record)
     linked = _linked_order(record, state)
-    order = build_delivery_order(record, linked_order=linked)
+    context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    source = next((o for o in context["input"]["orders"] if linked and o["order_id"] == linked.order_id), None)
+    order = build_delivery_order(record, linked_order=linked, linked_input=source)
     if order is None:  # pragma: no cover - guarded just above
         raise ValueError(f"case {record['run_id']} does not require reshipment")
     clock, next_day = _dispatch_clock(record, order)
@@ -1165,6 +1294,8 @@ def route_reshipment(record: dict, *, candidate_kind: str | None = None,
                 **state_to_dict(state), **context}
 
     context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    if state.status == "completed" or context.get("next_day_dispatch_id"):
+        raise ValueError("the incident's operating day is completed; it cannot be inserted into another day")
     if context.get("clock"):
         clock = watched_now(context["clock"])
         next_day = clock > order.latest_min

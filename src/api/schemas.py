@@ -36,6 +36,7 @@ class EventIn(BaseModel):
     #: hospital and the quantity — so the rescue no longer has to guess a
     #: destination from a dropdown or a quantity from the node's demo demand.
     order_id: Optional[str] = None
+    dispatch_id: Optional[str] = None
 
 
 class DecideIn(EventIn):
@@ -54,6 +55,12 @@ class CaseCloseIn(DecideIn):
 
     started_at: Optional[str] = None
     remark: Optional[str] = None
+
+
+class CaseWorkflowIn(BaseModel):
+    status: Literal["processing", "handled", "closed"]
+    expected_version: int = Field(ge=0)
+    remark: str = ""
 
 
 class GridIn(BaseModel):
