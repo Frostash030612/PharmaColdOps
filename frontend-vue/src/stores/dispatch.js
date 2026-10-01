@@ -15,6 +15,8 @@ import { useDecisionsStore } from "./decisions.js";
 import { useSandboxStore } from "./sandbox.js";
 import { postJson } from "../lib/api.js";
 import data from "../data/singaporeRoutes.json";
+import { simulationRequest } from "../lib/simulation.js";
+import { localDay } from "../lib/dayScope.js";
 
 export const useDispatchStore = defineStore("dispatch", () => {
   const decisions = useDecisionsStore();
@@ -323,6 +325,43 @@ export const useDispatchStore = defineStore("dispatch", () => {
   const dailyBatch = ref(null);     // { note, plan: {orders, inventory, vehicles} }
   const dailyPreview = ref(null);   // POST /api/dispatch/plan response
   const dailyError = ref("");
+  const simulationForm = reactive({ scenario: "routine", operating_date: localDay(new Date()),
+    seed: "", order_count: 8, product_ids: [], origin_facility_ids: [],
+    quantity_min: "", quantity_max: "", window_min: "", window_max: "", fleet_size: "",
+    vehicle_capacity: 100, spare_quantity: 10, urgent_slack_min: 20 });
+  const generatedSignature = ref(null);
+  const simulationInputsCurrent = computed(() => generatedSignature.value === null
+    || generatedSignature.value === JSON.stringify(simulationRequest(simulationForm)));
+  function setSimulationScenario(scenario) {
+    simulationForm.scenario = scenario;
+    simulationForm.product_ids = []; simulationForm.origin_facility_ids = [];
+    for (const field of ["quantity_min", "quantity_max", "window_min", "window_max", "fleet_size"]) simulationForm[field] = "";
+    simulationForm.vehicle_capacity = 100; simulationForm.spare_quantity = 10;
+    simulationForm.order_count = scenario === "legacy" ? 4 : 8;
+    if (scenario === "legacy") simulationForm.operating_date = "";
+    else if (!simulationForm.operating_date) simulationForm.operating_date = localDay(new Date());
+  }
+
+  async function generateSimulation() {
+    if (!ready() || pending.value) return null;
+    if (simulationForm.scenario === "legacy") {
+      const seed = simulationForm.seed === "" ? "today" : Number(simulationForm.seed);
+      return loadDailyPlan(seed);
+    }
+    pending.value = true; dailyError.value = "";
+    dailyBatch.value = null; dailyPreview.value = null; overnightPlan.value = null;
+    try {
+      const batch = await postJson(`${decisions.apiBase}/api/dispatch/simulated-orders`, simulationRequest(simulationForm));
+      dailyBatch.value = batch;
+      simulationForm.seed = batch.seed;
+      simulationForm.operating_date = batch.plan.operating_date;
+      generatedSignature.value = JSON.stringify(simulationRequest(simulationForm));
+      absorbConstraints(batch.plan);
+      dailyPreview.value = await postJson(`${decisions.apiBase}/api/dispatch/plan`, planBody());
+      return batch;
+    } catch (e) { dailyError.value = String(e.message || e); return null; }
+    finally { pending.value = false; }
+  }
 
   /* Operator-editable hard limits (B3, 2026-09-16).
 
@@ -541,8 +580,11 @@ export const useDispatchStore = defineStore("dispatch", () => {
 
   async function loadDailyPlan(seed = null) {
     if (!ready()) return null;
+    setSimulationScenario("legacy");
     pending.value = true;
     dailyError.value = "";
+    dailyBatch.value = null; dailyPreview.value = null; overnightPlan.value = null;
+    generatedSignature.value = null;
     try {
       const query = seed === null ? "" : `?seed=${encodeURIComponent(seed)}`;
       const response = await fetch(
@@ -550,6 +592,8 @@ export const useDispatchStore = defineStore("dispatch", () => {
       if (!response.ok) throw new Error("HTTP " + response.status);
       const batch = await response.json();
       dailyBatch.value = batch;
+      simulationForm.seed = batch.seed ?? "";
+      generatedSignature.value = JSON.stringify(simulationRequest(simulationForm));
       absorbConstraints(batch.plan);
       dailyPreview.value = await postJson(
         `${decisions.apiBase}/api/dispatch/plan`, planBody());
@@ -564,7 +608,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
 
   async function confirmDailyPlan() {
     const body = planBody();
-    if (!ready() || !body) return null;
+    if (!ready() || !body || !simulationInputsCurrent.value || !dailyPreview.value?.feasible) return null;
     const dispatchId = `PLAN-${Math.floor(Date.now() / 1000)}`;
     pending.value = true;
     dailyError.value = "";
@@ -705,6 +749,10 @@ export const useDispatchStore = defineStore("dispatch", () => {
   /* A different batch from the same generator, for eyeballing several days'
      worth quickly. Random seed only — replay it by passing the printed seed. */
   function rerollDailyPlan() {
+    if (dailyBatch.value?.metadata) {
+      simulationForm.seed = Math.floor(Math.random() * 1_000_000_000);
+      return generateSimulation();
+    }
     return loadDailyPlan(Math.floor(Math.random() * 1_000_000_000));
   }
 
@@ -719,6 +767,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     branchVehicle, branchCandidate, branchOverlays, branchNodeIds, incidentNodeId,
     recent, replayError, loadRecent, replay, watchVisibility,
     dailyBatch, dailyPreview, dailyError,
+    simulationForm, simulationInputsCurrent, setSimulationScenario, generateSimulation,
     constraintsForm, previewDailyPlan, overnightPlan, loadOvernightPlan,
     endOfDayPreview, endOfDayError, parkingOverrides, parkingPreviewCurrent, nextDayRestock,
     loadRun, previewEndOfDay, acceptEndOfDay, startNextDay,

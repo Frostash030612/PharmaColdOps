@@ -15,6 +15,7 @@ import { eventPayload, overridePayload, postJson } from "../lib/api.js";
 import data from "../data/singaporeRoutes.json";
 import LeafletMap from "./LeafletMap.vue";
 import TransportView from "./TransportView.vue";
+import SimulationGenerator from "./SimulationGenerator.vue";
 import { locale, bundle } from "../i18n/index.js";
 import { DISPO_COLOR } from "../data/products.js";
 import { STATUS_COLORS, summarizeZones, previewMap } from "../lib/incidentWorkflow.js";
@@ -343,9 +344,7 @@ const dailyOutcome = computed(() => {
          review is kept for debugging, folded away so it cannot be mistaken for
          a second equally-important primary button (item 4, 2026-09-27). -->
     <div v-if="online" class="sg-daily">
-      <button :disabled="dispatch.pending" @click="dispatch.loadDailyPlan('today')">
-        {{ dispatch.pending ? text.dailyCreating : text.dailyPlan }}
-      </button>
+      <SimulationGenerator />
       <details class="sg-advanced">
         <summary>{{ text.dailyAdvanced }}</summary>
         <button class="sg-secondary" :disabled="dispatch.pending" @click="dispatch.oneClickDailyPlan()">
@@ -440,7 +439,7 @@ const dailyOutcome = computed(() => {
           </li>
         </ul>
         </section>
-        <button class="sg-primary" :disabled="dispatch.pending || !dispatch.dailyPreview.feasible" @click="dispatch.confirmDailyPlan()">
+        <button class="sg-primary" :disabled="dispatch.pending || !dispatch.dailyPreview.feasible || !dispatch.simulationInputsCurrent" @click="dispatch.confirmDailyPlan()">
           {{ text.dailyConfirm }}
         </button>
         <button :disabled="dispatch.pending" @click="dispatch.rerollDailyPlan()">

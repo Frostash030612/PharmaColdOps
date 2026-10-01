@@ -59,12 +59,12 @@ export default {
   "dailyCreating": "Planning…",
   "dailyPreview": "Plan preview",
   "dailyConfirm": "Confirm plan and create the operation",
-  "dailyOneClick": "⚡ Generate and create the operation in one press",
-  "dailyOneClickNote": "Debug shortcut: skips the review step and creates the delivery operation immediately. The demo path is generate → review → confirm.",
+  "dailyOneClick": "⚡ Create legacy fixed demo in one press (skip review)",
+  "dailyOneClickNote": "Legacy debug shortcut: ignores the new scenario parameters and creates the fixed demo operation without review. Normal flow: generate → review → confirm.",
   "dailyAdvanced": "Advanced: one-press shortcut (skips the review)",
   "dailyReroll": "🔀 Reroll a random batch",
   "dailySeed": "seed",
-  "dailySimulated": "Simulated data: hospitals and receiving windows come from the committed road network, but the daily demand and fleet are this project's demo assumptions, not hospital orders.",
+  "dailySimulated": "Simulated data: facilities and roads come from committed sources; demand, receiving windows, deadlines, inventory and fleet are demo assumptions, not real hospital orders.",
   "dailyConstraints": "Hard limits: at most {vehicles} vehicles · at most {stops} hospitals per vehicle",
   "dailyLimits": "Dispatch limits (press “Apply and re-plan” after editing)",
   "dailyMaxVehicles": "Fleet size",
@@ -280,6 +280,23 @@ export default {
     sectionEvidence: "Why this decision",
   },
 
+  simulation: {
+    title: "Simulated order generator", disclosure: "Orders, deadlines, inventory and fleet are demo assumptions, not real hospital business data. The same date, seed, parameters and source version reproduce the same batch.",
+    scenario: "Scenario", date: "Delivery date", seed: "Random seed", autoSeed: "Empty = delivery date", count: "Orders / hospitals",
+    routine: "Routine (multiple products)", urgent: "Urgent deadline (within batch)", multi_source: "Multiple origins / temperatures", capacity_shortage: "Insufficient fleet", legacy: "Legacy fixed demo",
+    routineHint: "Multiple products from the main warehouse, with varied quantities and windows. The planner decides feasibility.",
+    urgentHint: "One deadline is close to direct travel time; this is not an in-transit insertion.",
+    multi_sourceHint: "Use permitted regional sources to show separate origin and temperature groups.",
+    capacity_shortageHint: "One vehicle and high demand by default; retain unserved orders to explain the shortage. Overrides may remove it.",
+    legacyHint: "Keep the original quantities, receiving windows and fleet. Only the seed is used in this mode.",
+    parameters: "Custom parameters", presetHint: "Empty fields / no selection use scenario defaults. Set both range bounds together. Changing scenario resets advanced parameters.",
+    products: "Products (multiple selection)", origins: "Allowed origins (multiple selection)", quantityMin: "Min boxes per order", quantityMax: "Max boxes per order",
+    windowMin: "Min regular window (minutes)", windowMax: "Max regular window (minutes)", fleet: "Available vehicles", capacity: "Capacity per vehicle (boxes)",
+    spare: "Spare per vehicle per product (boxes)", slack: "Extra urgent deadline slack (minutes)", generating: "Generating and planning…", generate: "Generate simulated orders and preview",
+    changed: "Generator parameters changed. Generate again before confirming the operation.", snapshot: "Generated batch snapshot", export: "Download batch JSON with reproduction parameters",
+    orders: "View source orders", orderId: "Simulated order ID", source: "Pickup point", quantity: "Quantity (boxes)", window: "Earliest / latest delivery", urgentTag: "Tight deadline",
+  },
+
   workflow: {
     title: "Incident handling", orderLink: "Linked simulated delivery order", unlinked: "Unlinked simulated incident",
     location: "Incident location", unknownLocation: "Location unknown (not inferred from vehicle position)", selectDestination: "Select receiving hospital",
@@ -293,7 +310,7 @@ export default {
   },
 
   workspace: {
-    mapTitle: "Today's cold-chain delivery map",
+    mapTitle: "Cold-chain delivery map",
     eventsTitle: "Excursion events",
     eventsNote: "Select a map marker or event below to inspect its readings and decision.",
     /* scope on the event rail (IncidentList.vue): today / this case / all */

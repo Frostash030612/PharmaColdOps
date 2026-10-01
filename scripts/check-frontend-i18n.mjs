@@ -20,6 +20,7 @@ const COMPONENTS = [
   "frontend-vue/src/components/CaseDrawer.vue",
   "frontend-vue/src/components/IncidentFilters.vue",
   "frontend-vue/src/components/NewInboundModal.vue",
+  "frontend-vue/src/components/SimulationGenerator.vue",
 ].filter((f) => existsSync(f));
 
 const bundleOf = (file) =>

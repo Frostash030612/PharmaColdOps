@@ -26,6 +26,7 @@ const history = useHistoryStore();
 const dispatch = useDispatchStore();
 const overlay = useOverlayStore();
 const L = computed(() => bundle(locale.value));
+const mapDate = computed(() => dispatch.run?.operating_date || dispatch.dailyBatch?.plan?.operating_date || "");
 
 onMounted(() => {
   sandbox.applyScenario(SCENARIOS[2]);   // open on R03 (retest-boundary case)
@@ -39,7 +40,7 @@ onMounted(() => {
 
   <main class="operations-layout">
     <section class="card operations-map">
-      <h2>{{ L.workspace.mapTitle }}</h2>
+      <h2>{{ L.workspace.mapTitle }}<span v-if="mapDate"> · {{ mapDate }}</span></h2>
       <ReroutePanel primary />
     </section>
     <aside class="card operations-side">

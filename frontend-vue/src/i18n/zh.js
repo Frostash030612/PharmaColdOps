@@ -58,12 +58,12 @@ export default {
   "dailyCreating": "正在排线…",
   "dailyPreview": "排线预览",
   "dailyConfirm": "确认该计划并建立配送作业",
-  "dailyOneClick": "⚡ 一键生成并建作业（跳过复核）",
-  "dailyOneClickNote": "调试用快捷方式：跳过上一步的复核，直接建立配送作业。演示路径是「生成 → 复核 → 确认」。",
+  "dailyOneClick": "⚡ 旧版固定批次一键建作业（跳过复核）",
+  "dailyOneClickNote": "旧版调试快捷方式：不使用上面的新场景参数，跳过复核直接建立固定演示作业。正常路径是「生成 → 复核 → 确认」。",
   "dailyAdvanced": "高级：一键快捷方式（会跳过复核）",
   "dailyReroll": "🔀 换随机一批",
   "dailySeed": "种子",
-  "dailySimulated": "模拟数据：医院与收货窗口来自已入库路网，但每日需求量与车队是本项目的演示假设，不是医院真实订单。",
+  "dailySimulated": "模拟数据：设施与道路取自已入库资料；需求量、收货窗口、截止时间、库存和车队均为演示假设，不是医院真实订单。",
   "dailyConstraints": "硬约束：最多 {vehicles} 辆车 · 每车最多 {stops} 个医院",
   "dailyLimits": "调度约束（改了点「应用并重新预览」）",
   "dailyMaxVehicles": "车队上限",
@@ -278,6 +278,23 @@ export default {
     sectionEvidence: "为什么这么判",
   },
 
+  simulation: {
+    title: "模拟订单生成器", disclosure: "订单、截止时间、库存和车队均为演示假设，不是医院真实业务数据。相同日期、种子、参数及数据版本可重现同一批次。",
+    scenario: "场景", date: "配送日期", seed: "随机种子", autoSeed: "留空＝按配送日期", count: "订单数／医院数",
+    routine: "普通配送（多药品）", urgent: "紧急截止时间（批次内）", multi_source: "多货源／多温区", capacity_shortage: "运力不足", legacy: "旧版固定演示",
+    routineHint: "主仓供应多种药品，数量和时间窗变化；是否可行由规划器判断。",
+    urgentHint: "一张订单使用接近直接行驶时间的紧截止要求，不代表在途插单。",
+    multi_sourceHint: "按供货表选择合法分拨点，展示不同货源及温区的配送组。",
+    capacity_shortageHint: "默认一辆车与较高需求量，保留未服务订单用于解释资源不足。手动改参数后不保证仍不足。",
+    legacyHint: "保留原固定数量、收货窗和车队；此模式仅使用种子，其他生成参数不适用。",
+    parameters: "可调参数", presetHint: "留空或不选使用场景默认值；填写数量／窗口范围时请同时设置上下限。切换场景会重置高级参数。",
+    products: "药品（可多选）", origins: "允许货源（可多选）", quantityMin: "每单最少箱数", quantityMax: "每单最多箱数",
+    windowMin: "普通时间窗最短（分钟）", windowMax: "普通时间窗最长（分钟）", fleet: "可用车数", capacity: "每车容量（箱）",
+    spare: "每车每品类备用量（箱）", slack: "紧急订单额外时间余量（分钟）", generating: "生成与预览中…", generate: "生成模拟订单并预览",
+    changed: "生成参数已修改，请重新生成后再确认作业。", snapshot: "已生成批次快照", export: "下载批次 JSON（含复现参数）",
+    orders: "查看原始订单", orderId: "模拟订单号", source: "提货点", quantity: "数量（箱）", window: "最早／最晚送达", urgentTag: "紧截止",
+  },
+
   workflow: {
     title: "异常处理闭环", orderLink: "关联模拟配送订单", unlinked: "不关联订单（独立模拟异常）",
     location: "异常发生地点", unknownLocation: "发生地点未知（不推断车辆位置）", selectDestination: "选择收货医院",
@@ -291,7 +308,7 @@ export default {
   },
 
   workspace: {
-    mapTitle: "今日冷链配送地图",
+    mapTitle: "冷链配送地图",
     eventsTitle: "异常事件",
     eventsNote: "点击地图标记或下方事件，查看该次温度参数与判定。",
     /* 事件栏的范围切换（IncidentList.vue）：今日 / 该记录 / 全部 */
