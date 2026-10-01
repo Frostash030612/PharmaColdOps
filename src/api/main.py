@@ -20,6 +20,7 @@ from .schemas import (
     BatchIn, BranchPolicyIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
     DelayAcceptIn, DelayPreviewIn,
     CaseWorkflowIn,
+    SimulationBatchIn,
     EmergencyAcceptIn, EmergencyPreviewIn,
     DispatchDeliverIn, DispatchPlanIn, DispatchReplayIn, DispatchSpeedIn, GridIn,
     OvernightPlanIn, QAIn, QAOut,
@@ -248,6 +249,14 @@ def get_daily_orders(hospitals: int = 4, seed: str | None = None,
         return service.daily_plan_request(
             hospitals=hospitals, seed=seed, temperature_zone=temperature_zone
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/dispatch/simulated-orders")
+def simulated_orders(req: SimulationBatchIn):
+    try:
+        return service.simulated_plan_request(req)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 

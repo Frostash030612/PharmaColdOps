@@ -70,6 +70,7 @@ from optimisation.daily_orders import (  # noqa: E402
     ASSUMPTIONS as DAILY_PLAN_ASSUMPTIONS,
     FLEET_LIMIT, MAX_STOPS_PER_VEHICLE, daily_delivery_batch,
 )
+from optimisation.simulated_orders import SimulationConfig, generate_simulated_batch  # noqa: E402
 from optimisation.dynamic_problem import (  # noqa: E402
     DEFAULT_POLICY, accept_emergency_order, preview_emergency_order,
 )
@@ -748,7 +749,9 @@ def _prepare_dispatch(req: DispatchCreateIn):
     }
     from zoneinfo import ZoneInfo
     context["fixed_daily_input"]["vehicles"] = context["input"]["vehicles"]
-    context["operating_date"] = datetime.datetime.now(ZoneInfo("Asia/Singapore")).date().isoformat()
+    context["operating_date"] = req.operating_date or datetime.datetime.now(ZoneInfo("Asia/Singapore")).date().isoformat()
+    if req.simulation:
+        context["simulation"] = req.simulation
     return state, context
 
 
@@ -893,6 +896,25 @@ def daily_plan_request(
             "inventory": [_lot_dump(lot) for lot in inventory],
             "vehicles": [_vehicle_dump(vehicle) for vehicle in vehicles],
         },
+    }
+
+
+def simulated_plan_request(req) -> dict:
+    """Generate only; the existing plan/create endpoints decide feasibility."""
+    values = req.model_dump()
+    for field in ("product_ids", "origin_facility_ids"):
+        if values[field] is not None:
+            values[field] = tuple(values[field])
+    batch = generate_simulated_batch(SimulationConfig(**values))
+    return {
+        "note": batch.metadata["assumptions"], "metadata": batch.metadata,
+        "seed": batch.metadata["config"]["seed"], "scenario": req.scenario,
+        "hospitals": len(batch.orders),
+        "plan": {"algorithm": "greedy", "operating_date": batch.metadata["config"]["operating_date"],
+            "simulation": batch.metadata, "constraints": dataclasses.asdict(batch.constraints),
+            "orders": [_order_dump(o) for o in batch.orders],
+            "inventory": [_lot_dump(lot) for lot in batch.inventory],
+            "vehicles": [_vehicle_dump(vehicle) for vehicle in batch.vehicles]},
     }
 
 
@@ -1557,6 +1579,15 @@ def _overnight_run_preview(state, context, req):
         **(context.get("fixed_daily_input") or context["input"]),
         "algorithm": context.get("plan", {}).get("algorithm", "greedy")}
     source = DispatchPlanIn(**source).model_dump()
+    current_day = datetime.date.fromisoformat(context.get("operating_date") or
+        datetime.datetime.fromisoformat(context["clock"]["started_real"]).date().isoformat())
+    next_operating_date = (current_day + datetime.timedelta(days=1)).isoformat()
+    if req.tomorrow and req.tomorrow.operating_date and req.tomorrow.operating_date != next_operating_date:
+        raise ValueError("tomorrow's operating_date must be the next day of this dispatch")
+    source["operating_date"] = next_operating_date
+    if source.get("simulation"):
+        source["simulation"] = {**source["simulation"], "carried_forward_to": next_operating_date,
+                                "note": "Fixed simulated batch carried forward; not newly generated orders."}
     from optimisation.catalog import product_zones, read_supply_points, supplies_product
     carried = [{**lot, "available_quantity": state.available_by_lot.get(lot["lot_id"], 0)}
                for lot in context["input"]["inventory"] if lot.get("status", "available") == "available"]

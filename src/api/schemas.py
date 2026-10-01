@@ -8,8 +8,9 @@ thresholds from ``rules_config.json`` are used.
 from __future__ import annotations
 
 from typing import Dict, List, Literal, Optional
+from datetime import date
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class SpecOverride(BaseModel):
@@ -202,6 +203,36 @@ class DispatchPlanIn(BaseModel):
     vehicles: List[DispatchVehicleIn]
     algorithm: Literal["greedy", "ortools"] = "greedy"
     constraints: DispatchConstraintsIn = Field(default_factory=DispatchConstraintsIn)
+    operating_date: Optional[str] = None
+    simulation: Optional[dict] = None
+
+    @field_validator("operating_date")
+    @classmethod
+    def valid_day(cls, value):
+        return date.fromisoformat(value).isoformat() if value is not None else None
+
+
+class SimulationBatchIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    scenario: Literal["routine", "urgent", "multi_source", "capacity_shortage"] = "routine"
+    operating_date: Optional[str] = None
+    seed: Optional[int] = Field(default=None, ge=0, le=2**32 - 1, strict=True)
+    order_count: int = Field(default=8, ge=2, le=14)
+    product_ids: Optional[List[str]] = None
+    origin_facility_ids: Optional[List[str]] = None
+    quantity_min: Optional[int] = Field(default=None, ge=1, le=1000)
+    quantity_max: Optional[int] = Field(default=None, ge=1, le=1000)
+    window_min: Optional[int] = Field(default=None, ge=30, le=480)
+    window_max: Optional[int] = Field(default=None, ge=30, le=480)
+    fleet_size: Optional[int] = Field(default=None, ge=1, le=20)
+    vehicle_capacity: int = Field(default=100, ge=1, le=10000)
+    spare_quantity: int = Field(default=10, ge=0, le=1000)
+    urgent_slack_min: int = Field(default=20, ge=0, le=120)
+
+    @field_validator("operating_date")
+    @classmethod
+    def valid_day(cls, value):
+        return date.fromisoformat(value).isoformat() if value is not None else None
 
 
 class DispatchCreateIn(DispatchPlanIn):
