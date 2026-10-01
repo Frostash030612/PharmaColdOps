@@ -16,6 +16,12 @@ see [proposal version status](proposal/README.md) for the documented differences
 
 ## Modules (IRS technique groups)
 
+The API-mode delivery panel now includes a reproducible simulated-order generator:
+routine, tight-deadline, multi-source/multi-temperature and insufficient-fleet scenarios,
+with editable date, seed, demand, windows and resources. Generated JSON includes the
+effective configuration and source-data hashes; business inputs remain entirely simulated.
+The legacy fixed demo is retained. See [generator guide](docs/模拟订单生成器.md).
+
 新加坡路网与前端的完成范围、实测结果及复用方式：[交付记录](docs/M5_singapore_handover.md)。
 
 | Module | Directory | Technique group |
