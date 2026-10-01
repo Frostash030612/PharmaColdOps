@@ -32,7 +32,9 @@ from .schemas import (
     OvernightRunPreviewIn, OvernightRunAcceptIn, NextDayIn,
     RouteIn, RouteOut,
     VehicleFailureAcceptIn, VehicleFailurePreviewIn,
+    MLContextIn,
 )
+from ml import runtime as ml_runtime
 
 @asynccontextmanager
 async def lifespan(app):
@@ -101,10 +103,41 @@ def runs(limit: int = 200) -> dict:
         raise HTTPException(status_code=503, detail=str(exc))
 
 
+@app.get("/api/ml/models")
+def ml_models():
+    return {task: ml_runtime.model_info(task) for task in ["risk", "cause"]}
+
+
+@app.get("/api/ml/samples/{task}")
+def ml_samples(task: str):
+    if task not in {"risk", "cause"}:
+        raise HTTPException(status_code=422, detail="unknown M4 task")
+    try:
+        _, meta = ml_runtime.load_model(task)
+        return {"task": task, "model_id": meta["model_id"], "source": "held_out_benchmark_demo_not_live_order",
+                "samples": meta["samples"]}
+    except ml_runtime.ModelUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@app.post("/api/ml/predict")
+def ml_predict(req: MLContextIn):
+    try:
+        return ml_runtime.predict(req)
+    except ml_runtime.ModelUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
 @app.post("/api/decide")
 def decide(req: DecideIn):
     try:
         return service.decide_view(req, req.spec_override)
+    except ml_runtime.ModelUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     except KeyError:
         raise HTTPException(
             status_code=422,

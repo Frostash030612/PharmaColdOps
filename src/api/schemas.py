@@ -11,6 +11,8 @@ from typing import Dict, List, Literal, Optional
 from datetime import date
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import StrictFloat, StrictInt, StrictStr
+from ml.contracts import normalize_features
 
 
 class SpecOverride(BaseModel):
@@ -40,10 +42,35 @@ class EventIn(BaseModel):
     dispatch_id: Optional[str] = None
 
 
+class MLContextIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    task: Literal["risk", "cause"]
+    source: Literal["manual_simulated", "dataset_sample"] = "manual_simulated"
+    sample_id: Optional[str] = Field(default=None, max_length=80)
+    features: Dict[str, StrictFloat | StrictInt | StrictStr]
+
+    @model_validator(mode="after")
+    def declared_features(self):
+        self.features = normalize_features(self.task, self.features)
+        if self.source == "dataset_sample" and not self.sample_id:
+            raise ValueError("dataset sample identity is required")
+        if self.source == "manual_simulated" and self.sample_id is not None:
+            raise ValueError("manual context cannot claim a sample identity")
+        return self
+
+
 class DecideIn(EventIn):
     """One event + optional threshold overrides → full decision view."""
 
     spec_override: Optional[SpecOverride] = None
+    ml_contexts: List[MLContextIn] = Field(default_factory=list, max_length=2)
+
+    @field_validator("ml_contexts")
+    @classmethod
+    def distinct_tasks(cls, value):
+        if len({c.task for c in value}) != len(value):
+            raise ValueError("at most one context per M4 task")
+        return value
 
 
 class CaseCloseIn(DecideIn):

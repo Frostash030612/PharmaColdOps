@@ -42,6 +42,7 @@ if str(SRC) not in sys.path:
 
 from rule_engine.engine import RuleEngine  # noqa: E402
 from rule_engine.models import ExcursionEvent, ProductSpec  # noqa: E402
+from ml import runtime as ml_runtime  # noqa: E402
 
 from knowledge_graph.writer import write_case, evidence_snapshot  # noqa: E402
 from knowledge_graph import qa as kg_qa  # noqa: E402
@@ -425,7 +426,7 @@ def _event_dump(event: EventIn) -> dict:
 
 def _decision_view(event: EventIn, spec: ProductSpec, decision) -> dict:
     """The full semantic decision the demo panels render (codes, not wording)."""
-    return {
+    view = {
         "disposition": decision.disposition.value,
         "rule_no": decision.rule_no,
         "reason": decision.reason,
@@ -437,6 +438,13 @@ def _decision_view(event: EventIn, spec: ProductSpec, decision) -> dict:
         "evidence": classify_evidence(spec, event),
         "risk": risk_score(spec, event),
     }
+    contexts = getattr(event, "ml_contexts", [])
+    if contexts:
+        # Advisory snapshots never mutate disposition, risk_score, cause_code,
+        # reshipment or dispatch constraints. Missing models fail explicitly.
+        view["ml_assessments"] = [ml_runtime.predict(context) for context in contexts]
+        view["ml_contexts"] = [context.model_dump() for context in contexts]
+    return view
 
 
 def decide_view(event: EventIn, override: SpecOverride | None) -> dict:
@@ -467,6 +475,10 @@ def close_case(event: EventIn, override: SpecOverride | None,
     canonical = {"event": {field: getattr(event, field) for field in EventIn.model_fields},
                  "override": override.model_dump(exclude_none=True) if override else {},
                  "started_at": started_at, "remark": remark.strip() if remark and remark.strip() else None}
+    contexts = getattr(event, "ml_contexts", [])
+    # Preserve the legacy fingerprint when no context was supplied.
+    if contexts:
+        canonical["ml_contexts"] = [context.model_dump() for context in contexts]
     digest = hashlib.sha256(json.dumps(canonical, sort_keys=True, allow_nan=False).encode()).hexdigest()
     try:
         existing = lookup_registration(DISPATCH_DATABASE_URL, key, digest)

@@ -10,6 +10,8 @@ pyarrow>=25.0
 
 # M4 风险预测 / 根因诊断
 scikit-learn>=1.9
+joblib>=1.6
+threadpoolctl>=3.7
 lightgbm>=4.7
 xgboost>=3.4
 shap>=0.52
