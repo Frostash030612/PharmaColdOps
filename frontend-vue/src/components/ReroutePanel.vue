@@ -18,6 +18,7 @@ import TransportView from "./TransportView.vue";
 import { locale, bundle } from "../i18n/index.js";
 import { DISPO_COLOR } from "../data/products.js";
 import { interp } from "../lib/format.js";
+import { dispatchReasonText } from "../lib/dispatchReasons.js";
 
 const props = defineProps({ primary: { type: Boolean, default: false } });
 
@@ -121,7 +122,7 @@ const SPEEDS = [
   { value: 60, key: "speedFast" },
   { value: 300, key: "speedFaster" },
 ];
-const speed = computed(() => dispatch.run?.clock?.speed || 60);
+const speed = computed(() => dispatch.run?.clock?.speed ?? 60);
 const selectedVehicle = ref(null);
 function pickVehicle(id) {
   selectedVehicle.value = selectedVehicle.value === id ? null : id;
@@ -222,7 +223,7 @@ const dailyConstraintText = computed(() => {
    Warehouses and distribution points are what a truck may finish at — that set
    is exactly what turns the route open (no drive home). */
 const terminalOptions = computed(() =>
-  nodes.filter((n) => n.role !== "customer")
+  nodes
     .map((n) => ({ facility_id: n.facility_id, name: n.name, role: n.role })));
 
 const nameByFacility = Object.fromEntries(nodes.map((n) => [n.facility_id, n.name]));
@@ -254,14 +255,7 @@ function safeClock(minutes) {
   return minutes === undefined || minutes === null ? "—" : clock(minutes);
 }
 function reasonText(reason) {
-  const d = reason.detail || {};
-  return interp(text.value[REASON_KEYS[reason.code]] || reason.code, {
-    needed: km(d.needed_distance_m), limit: km(d.limit_m),
-    earliest: safeClock(d.earliest_arrival_min), latest: safeClock(d.latest_min),
-    late: d.late_by_min ?? "", units: d.needed_units ?? "",
-    capacity: d.capacity_units ?? "", max: d.max_stops_per_vehicle ?? "",
-    closing: safeClock(d.closing_min),
-  });
+  return dispatchReasonText(reason, text.value, clock);
 }
 
 /* Where the fleet should spend the night (B5). */
@@ -324,6 +318,7 @@ const dailyOutcome = computed(() => {
     <div v-if="isLive" class="sg-metrics">
       <div><b>{{ dispatch.run.status }}</b><span>{{ text.dispatchStatus }}</span></div>
       <div><b>{{ dispatch.live.metrics.orders_delivered }}/{{ dispatch.live.metrics.orders_total }}</b><span>{{ text.ordersDelivered }}</span></div>
+      <div v-if="dispatch.live.metrics.orders_failed"><b>{{ dispatch.live.metrics.orders_failed }}</b><span>{{ text.ordersFailed }}</span></div>
       <div><b>{{ dispatch.live.metrics.vehicles_used }}</b><span>{{ text.vehicles }}</span></div>
       <div><b>{{ dispatch.live.metrics.stock_remaining }}</b><span>{{ text.stockLeft }}</span></div>
     </div>
@@ -417,6 +412,7 @@ const dailyOutcome = computed(() => {
         <ul class="sg-daily-stops">
           <li v-for="route in dispatch.dailyPreview.zones[0].routes" :key="route.vehicle_id">
             <b>{{ route.vehicle_id }}</b>:
+            <span v-if="route.start_facility_id" class="sg-origin">{{ interp(text.dailyVehicleStart, { start: facilityName(route.start_facility_id) }) }}</span>
             <em class="sg-origin">{{ dispatch.dailyPreview.zones[0].origin_facility_id
               ? interp(text.dailyFrom, {
                   origin: facilityName(dispatch.dailyPreview.zones[0].origin_facility_id) })
@@ -424,7 +420,7 @@ const dailyOutcome = computed(() => {
             {{ routeSequence(route) }}
             <span class="sg-route-end">
               → {{ text.dailyEndsAt }}
-              <b>{{ route.end_facility_id ? (terminalName(route.end_facility_id) || route.end_facility_id) : text.dailyBackToDepot }}</b>
+              <b>{{ facilityName(route.actual_end_facility_id || route.end_facility_id || route.start_facility_id) }}</b>
               · {{ route.total_distance.toFixed(1) }} {{ text.km }}
               <em v-if="route.mileage_limit_violation"> ⚠ {{ text.dailyOverLimit }}</em>
             </span>
@@ -515,13 +511,66 @@ const dailyOutcome = computed(() => {
     </div>
     <p v-if="dispatch.error" class="sg-error" role="status">{{ dispatch.error }}</p>
 
+    <div v-if="isLive && dispatch.run.status === 'completed'" class="sg-overnight sg-end-day">
+      <strong>{{ text.endDayTitle }} · {{ dispatch.run.operating_date }}</strong>
+      <p class="sg-note">{{ text.endDayHint }}</p>
+      <div v-if="!dispatch.run.overnight" class="sg-end-restocks">
+        <p class="sg-note">{{ text.endDayInventory }}</p>
+        <label v-for="lot in dispatch.run.input.inventory.filter((lot) => (lot.status || 'available') === 'available')" :key="lot.lot_id">
+          {{ facilityName(lot.facility_id) }} · {{ lot.product_id }} · {{ text.stockLeft }} {{ dispatch.run.available_by_lot[lot.lot_id] || 0 }}
+          <span>{{ text.endDayRestock }}</span>
+          <input v-model.number="dispatch.nextDayRestock[lot.lot_id]" type="number" min="0" step="1" :disabled="dispatch.pending" />
+        </label>
+      </div>
+      <button v-if="!dispatch.run.overnight" :disabled="dispatch.pending || dispatch.stillReturning"
+        @click="dispatch.previewEndOfDay()">{{ text.endDayPreview }}</button>
+      <template v-if="dispatch.endOfDayPreview">
+        <ul class="sg-daily-stops">
+          <li v-for="choice in dispatch.endOfDayPreview.choices" :key="choice.vehicle_id">
+            <b>{{ choice.vehicle_id }}</b> · {{ facilityName(choice.from_facility_id) }} →
+            <select v-model="dispatch.parkingOverrides[choice.vehicle_id]" :disabled="dispatch.pending">
+              <option :value="choice.from_facility_id">{{ facilityName(choice.from_facility_id) }}</option>
+              <option v-for="facility in (dispatch.endOfDayPreview.tomorrow.constraints.terminal_facility_ids || []).filter((id) => id !== choice.from_facility_id)"
+                :key="facility" :value="facility">{{ facilityName(facility) }}</option>
+            </select>
+            · {{ text.overnightReposition }} {{ km(choice.reposition_m) }} {{ text.km }}
+            · {{ text.endDayDeadhead }} {{ km(choice.deadhead_m) }} {{ text.km }}
+            · {{ text.overnightFirstStop }} {{ choice.tomorrow_origin_facility_id ? facilityName(choice.tomorrow_origin_facility_id) : text.overnightIdle }}
+            <span v-if="choice.blocked_by.length" class="sg-error">
+              {{ choice.blocked_by.map(reasonText).join(' · ') }}
+            </span>
+          </li>
+        </ul>
+        <p>{{ text.endDayPlan }} · {{ dispatch.endOfDayPreview.next_operating_date }}</p>
+        <ul class="sg-daily-stops">
+          <li v-for="route in dispatch.endOfDayPreview.next_day_plan.zones.flatMap((zone) => zone.routes)" :key="route.vehicle_id">
+            <b>{{ route.vehicle_id }}</b> · {{ facilityName(route.start_facility_id) }} →
+            {{ routeSequence(route) }} → {{ facilityName(route.actual_end_facility_id || route.end_facility_id || route.start_facility_id) }}
+            · {{ route.total_distance.toFixed(1) }} {{ text.km }}
+          </li>
+        </ul>
+        <p class="sg-note">{{ text.endDayInventory }}</p>
+        <button :disabled="dispatch.pending" @click="dispatch.previewEndOfDay()">{{ text.endDayRecalculate }}</button>
+        <button :disabled="dispatch.pending || !dispatch.parkingPreviewCurrent || !dispatch.endOfDayPreview.feasible"
+          @click="dispatch.acceptEndOfDay()">{{ text.endDayAccept }}</button>
+        <p v-if="!dispatch.endOfDayPreview.feasible" class="sg-error">{{ text.endDayInfeasible }}</p>
+      </template>
+      <p v-if="dispatch.run.overnight?.status === 'repositioning'" role="status">{{ text.endDayMoving }}</p>
+      <button v-if="dispatch.run.overnight?.status === 'parked'" :disabled="dispatch.pending"
+        @click="dispatch.startNextDay()">{{ text.endDayStartNext }} · {{ dispatch.run.overnight.next_operating_date }}</button>
+      <p v-if="dispatch.run.overnight?.status === 'next_day_created'" class="sg-note">
+        <button :disabled="dispatch.pending" @click="dispatch.loadRun(dispatch.run.overnight.next_dispatch_id)">{{ text.endDayOpenNext }}</button>
+      </p>
+      <p v-if="dispatch.endOfDayError" class="sg-error" role="status">{{ dispatch.endOfDayError }}</p>
+    </div>
+
     <!-- Operating the run: depart, then the simulated clock drives arrivals. -->
     <div v-if="isLive" class="sg-ops">
       <button v-if="canDepart" :disabled="dispatch.pending" @click="dispatch.depart()">
         {{ text.depart }}
       </button>
       <template v-if="dispatch.run?.clock">
-        <span class="sim">{{ text.simClock }} {{ simClock() }}</span>
+        <span class="sim">{{ dispatch.run.operating_date }} · {{ text.simClock }} {{ simClock() }}</span>
         <span class="speeds">
           <button v-for="s in SPEEDS" :key="s.value" :class="{ on: speed === s.value }"
             @click="dispatch.setSpeed(s.value)">{{ text[s.key] }}</button>
@@ -530,6 +579,93 @@ const dailyOutcome = computed(() => {
       <button class="sg-replay" :disabled="dispatch.pending" @click="dispatch.replay()">
         {{ text.replay }}
       </button>
+    </div>
+
+    <!-- Independent B2 path: scan the running work before a late delivery is
+         committed, compare each vehicle's remaining queue, then let the
+         operator apply one verified improvement.  No route changes merely from
+         pressing "inspect". -->
+    <div v-if="underway" class="sg-delay">
+      <strong>{{ text.delayTitle }}</strong>
+      <p class="sg-note">{{ text.delayHint }}</p>
+      <p v-if="dispatch.delayInspection?.predicted_late_order_count" class="sg-error" role="status">
+        {{ interp(text.delayAutomaticRisk, { n: dispatch.delayInspection.predicted_late_order_count }) }}
+      </p>
+      <div class="sg-delay-controls">
+        <label>
+          <span>{{ text.delayInput }}</span>
+          <input v-model.number="dispatch.delayMinutes" type="number" min="0" step="1" />
+          <em>{{ text.branchMinutes }}</em>
+        </label>
+        <button :disabled="dispatch.pending" @click="dispatch.previewDelayRisk()">
+          {{ dispatch.pending ? text.delayInspecting : text.delayInspect }}
+        </button>
+      </div>
+      <p v-if="dispatch.delayError" class="sg-error" role="status">{{ dispatch.delayError }}</p>
+      <template v-else-if="dispatch.delay">
+        <p v-if="!dispatch.delay.predicted_late_order_count" class="sg-delay-clear" role="status">
+          {{ text.delayClear }}
+        </p>
+        <div v-for="candidate in dispatch.delay.candidates" :key="`delay-${candidate.vehicle_id}`"
+          class="sg-delay-candidate">
+          <b>{{ candidate.vehicle_id }}</b>
+          <span>{{ interp(text.delayFound, {
+            n: candidate.baseline.predicted_late_order_count,
+            min: candidate.baseline.total_lateness_min,
+          }) }}</span>
+          <div class="sg-delay-queues">
+            <span>{{ text.delayBefore }} {{ candidate.original_order_ids.join(' → ') }}</span>
+            <span>{{ text.delayAfter }} {{ candidate.remaining_order_ids_after.join(' → ') }}</span>
+          </div>
+          <ul class="sg-delay-effects">
+            <li v-for="effect in candidate.affected_orders" :key="effect.order_id">
+              {{ effect.order_id }} · {{ clock(effect.baseline_eta_min) }} →
+              {{ clock(effect.replanned_eta_min) }} · {{ text.branchLateness }}
+              {{ effect.baseline_lateness_min }} → {{ effect.replanned_lateness_min }} {{ text.branchMinutes }}
+            </li>
+          </ul>
+          <p v-if="candidate.replan_available" class="sg-note">
+            {{ interp(text.delayReplan, {
+              n: candidate.replanned.predicted_late_order_count,
+              min: candidate.replanned.total_lateness_min,
+            }) }}
+          </p>
+          <p v-else class="sg-note">{{ text.delayNoBetter }}</p>
+          <button v-if="candidate.replan_available" :disabled="dispatch.pending"
+            @click="dispatch.acceptDelayReplan(candidate)">{{ text.delayApply }}</button>
+        </div>
+      </template>
+    </div>
+
+    <!-- Mechanical-failure rescue is deliberately explicit: the operator marks
+         a truck failed, compares replacement-vehicle options, then accepts one.
+         No cold-transfer path is implied when the model has not established it. -->
+    <div v-if="underway" class="sg-failure">
+      <strong>{{ text.failureTitle }}</strong>
+      <p class="sg-note">{{ text.failureHint }}</p>
+      <div class="sg-branch-actions">
+        <button v-for="route in plan.routes.filter((r) => r.status === 'in_transit')"
+          :key="`fail-${route.vehicle_id}`" :disabled="dispatch.pending"
+          @click="dispatch.previewVehicleFailure(route.vehicle_id)">
+          {{ interp(text.failurePreview, { vehicle: route.vehicle_id }) }}
+        </button>
+      </div>
+      <p v-if="dispatch.failureError" class="sg-error" role="status">{{ dispatch.failureError }}</p>
+      <template v-else-if="dispatch.failure">
+        <p v-if="!dispatch.failure.feasible" class="sg-error" role="status">
+          {{ text.failureNoRescue }}: {{ dispatch.failure.reason }}
+        </p>
+        <div v-else class="sg-failure-options">
+          <p class="sg-note">{{ text.failureBoundary }}</p>
+          <button v-for="candidate in dispatch.failure.candidates"
+            :key="`failure-${candidate.vehicle_id}`" :disabled="dispatch.pending || !candidate.on_time"
+            @click="dispatch.acceptVehicleFailure(candidate)">
+            {{ interp(text.failureUse, { vehicle: candidate.vehicle_id }) }} ·
+            {{ candidate.distance_m ? (candidate.distance_m / 1000).toFixed(2) : '0.00' }} {{ text.km }}
+            <template v-if="!candidate.on_time"> · {{ text.branchLateness }} {{ candidate.lateness_min }} {{ text.branchMinutes }}</template>
+          </button>
+        </div>
+      </template>
     </div>
 
     <!-- A finished operation is history, and the panel used to fall back to the
@@ -542,6 +678,8 @@ const dailyOutcome = computed(() => {
         @click="dispatch.replay(dispatch.recent[0].dispatch_id)">
         {{ text.replayLast }}
       </button>
+      <button v-if="dispatch.recent.length" :disabled="dispatch.pending"
+        @click="dispatch.loadRun(dispatch.recent[0].dispatch_id)">{{ text.endDayOpenCompleted }}</button>
       <span v-else class="hint">{{ text.noRunYet }}</span>
     </div>
     <p v-if="dispatch.replayError" class="sg-error" role="status">{{ dispatch.replayError }}</p>
@@ -551,11 +689,13 @@ const dailyOutcome = computed(() => {
       <b :style="{ color: color(index) }" class="veh-name" role="button" tabindex="0"
         @click="pickVehicle(route.vehicle_id)" @keydown.enter="pickVehicle(route.vehicle_id)">
         ● {{ text.vehicle }} {{ route.vehicle_id }}
+        <em v-if="route.status === 'failed'" class="sg-failed">· {{ text.failureVehicleFailed }}</em>
         <em v-if="route.track">· {{ route.track.reached_stops }}/{{ route.customer_ids.length }}</em>
       </b>
       <span v-if="route.total_distance != null">{{ route.total_distance.toFixed(2) }} {{ text.km }}</span>
       <div class="sg-stops">
-        <button :class="{ selected: selectedId === 0 }" @click="selectedId = 0">{{ text.depot }}</button>
+        <button :class="{ selected: selectedId === (route.start_node_id ?? 0) }"
+          @click="selectedId = route.start_node_id ?? 0">{{ route.start_facility_id ? facilityName(route.start_facility_id) : text.depot }}</button>
         <!-- A pickup-delivery run interleaves collecting and delivering, so a stop
              says which one it is: an unmarked stop list would read as if the truck
              handed goods over at a supply point (2026-09-16, PDPTW step 4). -->
@@ -566,7 +706,7 @@ const dailyOutcome = computed(() => {
                     mine: route.stops[i]?.order_id === thisCaseOrderId }"
           @click="selectedId = id">{{ i + 1 }} · {{ nodes[id].facility_id.replace(/^H-/, '') }}
           <em v-if="route.stops[i]?.kind === 'pickup'">↑{{ text.stopPickup }}</em></button>
-        <span>→ {{ text.depot }}</span>
+        <span v-if="route.status !== 'failed'">→ {{ route.end_facility_id ? facilityName(route.end_facility_id) : text.depot }}</span>
       </div>
     </div>
 
@@ -693,6 +833,32 @@ const dailyOutcome = computed(() => {
 .sg-branch-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .sg-branch-actions > button { background: #7c3aed; color: #fff; border: 0; border-radius: 7px; padding: 6px 11px; cursor: pointer; font-size: 12px; font-weight: 600; }
 .sg-branch-actions > button:disabled { opacity: .6; cursor: default; }
+.sg-failure { margin-top: 10px; padding: 10px; border: 1px solid #fbbf24; border-radius: 9px; background: #fffbeb; }
+.sg-failure > strong { color: #92400e; }
+.sg-failure-options { display: flex; flex-wrap: wrap; gap: 7px; }
+.sg-failure-options button { border: 1px solid #d97706; background: #fff; color: #92400e; border-radius: 7px; padding: 6px 9px; cursor: pointer; font-size: 11.5px; font-weight: 700; }
+.sg-failure-options button:disabled { opacity: .55; cursor: default; }
+.sg-failed { color: #dc2626; font-style: normal; font-weight: 700; }
+.sg-delay { margin-top: 10px; padding: 10px; border: 1px solid #93c5fd; border-radius: 9px; background: #eff6ff; }
+.sg-delay > strong { color: #1d4ed8; }
+.sg-delay-controls { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+.sg-delay-controls label { display: grid; grid-template-columns: auto 62px auto; gap: 5px; align-items: center; color: #1e40af; font-size: 11.5px; }
+.sg-delay-controls input { width: 62px; padding: 4px; border: 1px solid #93c5fd; border-radius: 5px; }
+.sg-delay-controls em { color: #64748b; font-style: normal; }
+.sg-delay-controls button, .sg-delay-candidate button { border: 1px solid #2563eb; background: #2563eb; color: #fff; border-radius: 7px; padding: 6px 9px; cursor: pointer; font-size: 11.5px; font-weight: 700; }
+.sg-delay-controls button:disabled, .sg-delay-candidate button:disabled { opacity: .55; cursor: default; }
+.sg-delay-clear { margin: 8px 0 0; color: #047857; font-weight: 700; }
+.sg-delay-candidate { margin-top: 8px; padding: 8px; border-radius: 7px; background: #fff; color: #1e3a8a; }
+.sg-delay-candidate > span { margin-left: 6px; font-size: 11.5px; }
+.sg-delay-candidate .sg-note { margin: 5px 0; }
+.sg-delay-queues { display: grid; gap: 3px; margin: 6px 0; color: #475569; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; }
+.sg-delay-effects { padding-left: 16px; font-size: 11px; line-height: 1.7; color: #475569; }
+.sg-end-day { margin-top: 12px; padding: 12px; border: 1px solid #a5b4fc; border-radius: 9px; background: #eef2ff; }
+.sg-end-day button { margin: 4px 8px 4px 0; padding: 6px 9px; border: 1px solid #4f46e5; border-radius: 6px; background: white; color: #3730a3; cursor: pointer; }
+.sg-end-day button:disabled { opacity: .5; cursor: default; }
+.sg-end-day select { max-width: 210px; margin: 4px; }
+.sg-end-restocks label { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 5px 0; font-size: 11px; }
+.sg-end-restocks input { width: 75px; padding: 4px; border: 1px solid #a5b4fc; border-radius: 5px; }
 /* Way back into the comparison popup after closing it (the options themselves
    live in BranchCompareModal, not in a table here). */
 .sg-reopen { border: 1px solid var(--teal); background: #fff; color: var(--teal); border-radius: 8px;

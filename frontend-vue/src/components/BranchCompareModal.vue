@@ -14,6 +14,7 @@ import { useHistoryStore } from "../stores/history.js";
 import { useSandboxStore } from "../stores/sandbox.js";
 import { locale, bundle } from "../i18n/index.js";
 import { fmt, interp } from "../lib/format.js";
+import { dispatchReasonText } from "../lib/dispatchReasons.js";
 import { candidateOverlays, candidateNodeIds, candidateDeltas, buildTimeline } from "../lib/branchCompare.js";
 import { DISPO_COLOR } from "../data/products.js";
 import routes from "../data/singaporeRoutes.json";
@@ -259,7 +260,7 @@ function choose() {
               @click="picked = i">
               <span class="compare-card-top">
                 <b>{{ kindLabel(c.kind) }}</b>
-                <em v-if="i === 0" class="tag-best">{{ text.compareRecommended }}</em>
+                <em v-if="i === 0 && c.on_time" class="tag-best">{{ text.compareRecommended }}</em>
               </span>
               <!-- "ETA" prefix: without it the card time read like a departure
                    and looked inconsistent with the timeline's axis. -->
@@ -269,7 +270,8 @@ function choose() {
                 <span :class="{ warn: worstDelay(c) > 0 }">
                   {{ (c.affected_orders || []).length }} {{ text.compareAffected }}
                 </span>
-                <span v-if="!c.on_time" class="warn">{{ text.branchLateness }} {{ minutes(c.lateness_min) }}</span>
+                <span v-if="c.lateness_min > 0" class="warn">{{ text.branchLateness }} {{ minutes(c.lateness_min) }}</span>
+                <span v-else-if="!c.on_time" class="warn">{{ text.branchBlocked }}</span>
               </span>
               <span v-if="c.pickup_facility_id" class="compare-note">
                 {{ text.branchPickup }} {{ c.pickup_facility_id }}
@@ -293,6 +295,9 @@ function choose() {
             </span>
           </div>
           <p v-if="tradeoff" class="compare-tradeoff">{{ tradeoff }}</p>
+          <ul v-if="candidate.blocked_by?.length" class="sg-error" role="status">
+            <li v-for="(reason, i) in candidate.blocked_by" :key="i">{{ dispatchReasonText(reason, text, clock) }}</li>
+          </ul>
 
           <LeafletMap :nodes="nodes" :plan="planForMap" :text="text" height="240px"
             :overlays="overlays" :branch-node-ids="branchNodeIds"

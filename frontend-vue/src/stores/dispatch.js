@@ -33,6 +33,17 @@ export const useDispatchStore = defineStore("dispatch", () => {
   }
 
   function apply(data) {
+    if (run.value?.dispatch_id !== data.dispatch_id) {
+      delay.value = null;
+      delayError.value = "";
+      delayInspection.value = null;
+      endOfDayPreview.value = null;
+      endOfDayError.value = "";
+      parkingOverrides.value = {};
+      nextDayRestock.value = {};
+    }
+    if (data.delay_inspection !== undefined) delayInspection.value = data.delay_inspection;
+    if (delay.value && delay.value.state_version !== data.version) delay.value = null;
     run.value = data;
     error.value = "";
     return data;
@@ -188,6 +199,108 @@ export const useDispatchStore = defineStore("dispatch", () => {
 
   function depart() { return command("depart", { command_id: `depart-${Date.now()}` }); }
 
+  /* ---- mechanical vehicle failure -------------------------------------
+     A failure is deliberately separate from a temperature-excursion branch.
+     The backend never pretends the failed truck's cargo can be transferred:
+     it marks its undelivered orders failed and offers compatible spare vehicles
+     carrying newly reserved replacement stock. */
+  const failure = ref(null);
+  const failureError = ref("");
+
+  function failureMinute() {
+    return Math.max(0, Math.round(run.value?.route_view?.sim_now_min || 0));
+  }
+
+  function previewVehicleFailure(failedVehicleId) {
+    if (!ready() || !run.value || !failedVehicleId) return Promise.resolve(null);
+    pending.value = true;
+    failureError.value = "";
+    failure.value = null;
+    return postJson(
+      `${decisions.apiBase}/api/dispatch/runs/${run.value.dispatch_id}/failure-preview`,
+      { failed_vehicle_id: failedVehicleId, current_time_min: failureMinute() },
+    )
+      .then((data) => { failure.value = data; return data; })
+      .catch((e) => { failureError.value = String(e.message || e); return null; })
+      .finally(() => { pending.value = false; });
+  }
+
+  function acceptVehicleFailure(candidate) {
+    if (!ready() || !run.value || !failure.value || !candidate) return Promise.resolve(null);
+    pending.value = true;
+    failureError.value = "";
+    return postJson(
+      `${decisions.apiBase}/api/dispatch/runs/${run.value.dispatch_id}/failure-accept`,
+      {
+        failed_vehicle_id: failure.value.failed_vehicle_id,
+        replacement_vehicle_id: candidate.vehicle_id,
+        current_time_min: failureMinute(),
+        command_id: `failure-${failure.value.failed_vehicle_id}-${Date.now()}`,
+      },
+    )
+      .then((data) => { failure.value = null; return apply(data); })
+      .catch((e) => { failureError.value = String(e.message || e); return null; })
+      .finally(() => { pending.value = false; });
+  }
+
+  /* ---- proactive delay inspection -------------------------------------
+     A route is never silently re-ordered.  The inspection asks the backend to
+     forecast every remaining delivery window from the last audited facility;
+     an operator can then see the old/new queue and explicitly apply one
+     improvement. ``delayMinutes`` is an observed exception (driver/GPS feed in
+     a production integration), not invented traffic data. */
+  const delay = ref(null);
+  const delayError = ref("");
+  const delayMinutes = ref(0);
+  const delayInspection = ref(null);
+  let delayChecking = false;
+
+  function delayMinute() {
+    return Math.max(0, Math.round(run.value?.route_view?.sim_now_min || 0));
+  }
+
+  function delayOffset() {
+    return Math.max(0, Number(delayMinutes.value) || 0);
+  }
+
+  function previewDelayRisk() {
+    if (!ready() || !run.value || delayChecking) return Promise.resolve(null);
+    const dispatchId = run.value.dispatch_id;
+    delayChecking = true;
+    pending.value = true;
+    delayError.value = "";
+    delay.value = null;
+    return postJson(
+      `${decisions.apiBase}/api/dispatch/runs/${run.value.dispatch_id}/delay-preview`,
+      { current_time_min: delayMinute(), delay_min: delayOffset() },
+    )
+      .then((data) => {
+        if (run.value?.dispatch_id === dispatchId) delay.value = data;
+        return data;
+      })
+      .catch((e) => { delayError.value = String(e.message || e); return null; })
+      .finally(() => { delayChecking = false; pending.value = false; });
+  }
+
+  function acceptDelayReplan(candidate) {
+    if (!ready() || !run.value || !delay.value || !candidate) return Promise.resolve(null);
+    pending.value = true;
+    delayError.value = "";
+    return postJson(
+      `${decisions.apiBase}/api/dispatch/runs/${run.value.dispatch_id}/delay-accept`,
+      {
+        vehicle_id: candidate.vehicle_id,
+        delay_min: delay.value.delay_min,
+        expected_version: delay.value.state_version,
+        remaining_order_ids_after: candidate.remaining_order_ids_after,
+        command_id: `delay-${candidate.vehicle_id}-${Date.now()}`,
+      },
+    )
+      .then((data) => { delay.value = null; return apply(data); })
+      .catch((e) => { delayError.value = String(e.message || e); return null; })
+      .finally(() => { pending.value = false; });
+  }
+
   /* ---- today's delivery plan (doc §4.1) --------------------------------
      A *batch* of ordinary hospital orders is the only input that exercises the
      multi-stop planner. Committing a reshipment case always plans exactly one
@@ -300,6 +413,86 @@ export const useDispatchStore = defineStore("dispatch", () => {
      pass today's driven distance per truck when a live operation knows it, so
      the repositioning drive is charged against the remaining mileage cap. */
   const overnightPlan = ref(null);
+  const endOfDayPreview = ref(null);
+  const endOfDayError = ref("");
+  const parkingOverrides = ref({});
+  const nextDayRestock = ref({});
+  const parkingPreviewBody = ref(null);
+  const parkingPreviewCurrent = computed(() => !!endOfDayPreview.value
+    && endOfDayPreview.value.state_version === run.value?.version
+    && JSON.stringify(nextDayRestock.value) === JSON.stringify(parkingPreviewBody.value?.restockQuantities || {})
+    && endOfDayPreview.value.choices.every((c) => parkingOverrides.value[c.vehicle_id] === c.park_facility_id));
+
+  async function loadRun(dispatchId) {
+    if (!ready() || !dispatchId) return null;
+    pending.value = true;
+    try {
+      const response = await fetch(`${decisions.apiBase}/api/dispatch/runs/${encodeURIComponent(dispatchId)}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return apply(await response.json());
+    } catch (e) { endOfDayError.value = String(e.message || e); return null; }
+    finally { pending.value = false; }
+  }
+
+  async function previewEndOfDay() {
+    if (!ready() || !run.value) return null;
+    pending.value = true;
+    endOfDayError.value = "";
+    endOfDayPreview.value = null;
+    try {
+      const stamp = Date.now();
+      const lots = run.value.input.inventory || [];
+      const replenishments = lots.flatMap((lot, index) => {
+        const quantity = Math.max(0, Math.round(Number(nextDayRestock.value[lot.lot_id]) || 0));
+        return quantity ? [{ ...lot, lot_id: `RESTOCK-${stamp}-${index}`,
+          available_quantity: quantity, status: "available" }] : [];
+      });
+      parkingPreviewBody.value = { replenishments, restockQuantities: { ...nextDayRestock.value } };
+      endOfDayPreview.value = await postJson(
+        `${decisions.apiBase}/api/dispatch/runs/${run.value.dispatch_id}/overnight-preview`,
+        { parking_overrides: parkingOverrides.value, replenishments });
+      parkingOverrides.value = Object.fromEntries(endOfDayPreview.value.choices.map(
+        (choice) => [choice.vehicle_id, choice.park_facility_id]));
+      return endOfDayPreview.value;
+    } catch (e) { endOfDayError.value = String(e.message || e); return null; }
+    finally { pending.value = false; }
+  }
+
+  async function acceptEndOfDay() {
+    if (!parkingPreviewCurrent.value || !endOfDayPreview.value?.feasible) return null;
+    pending.value = true;
+    endOfDayError.value = "";
+    try {
+      const data = await postJson(
+        `${decisions.apiBase}/api/dispatch/runs/${run.value.dispatch_id}/overnight-accept`, {
+          expected_version: endOfDayPreview.value.state_version,
+          command_id: `park-${run.value.dispatch_id}-${Date.now()}`,
+          parking_overrides: parkingOverrides.value,
+          replenishments: parkingPreviewBody.value.replenishments,
+        });
+      endOfDayPreview.value = null;
+      return apply(data);
+    } catch (e) { endOfDayError.value = String(e.message || e); return null; }
+    finally { pending.value = false; }
+  }
+
+  async function startNextDay() {
+    if (!ready() || run.value?.overnight?.status !== "parked") return null;
+    const sourceId = run.value.dispatch_id;
+    pending.value = true;
+    endOfDayError.value = "";
+    try {
+      const data = await postJson(`${decisions.apiBase}/api/dispatch/runs/${sourceId}/next-day`, {
+        dispatch_id: `PLAN-${run.value.overnight.next_operating_date}-${Date.now()}`,
+        command_id: `next-${sourceId}-${Date.now()}`, expected_version: run.value.version,
+        depart: true, speed: run.value.clock?.speed || 60,
+      });
+      branch.value = null;
+      failure.value = null;
+      return apply(data);
+    } catch (e) { endOfDayError.value = String(e.message || e); return null; }
+    finally { pending.value = false; }
+  }
 
   async function loadOvernightPlan() {
     const body = planBody();
@@ -400,7 +593,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
   function watchVisibility() {
     if (typeof document === "undefined") return;
     document.addEventListener("visibilitychange", () => {
-      if (!run.value || run.value.status !== "in_transit") return;
+      if (!run.value || (run.value.status !== "in_transit" && !stillReturning.value)) return;
       if (document.hidden) {
         hiddenSpeed = run.value.clock?.speed ?? 60;
         if (hiddenSpeed > 0) setSpeed(0);
@@ -460,14 +653,18 @@ export const useDispatchStore = defineStore("dispatch", () => {
   const stillReturning = computed(() =>
     (run.value?.route_view?.routes || []).some((r) => r.track && !r.track.finished));
 
+  let tickRunning = false;
   function tick() {
-    if (!run.value) return Promise.resolve(null);
+    if (!run.value || pending.value || tickRunning) return Promise.resolve(null);
     if (run.value.status !== "in_transit" && !stillReturning.value) {
       return Promise.resolve(null);
     }
+    const dispatchId = run.value.dispatch_id;
+    tickRunning = true;
     return postJson(
-      `${decisions.apiBase}/api/dispatch/runs/${run.value.dispatch_id}/tick`, {})
-      .then(apply).catch(() => null);
+      `${decisions.apiBase}/api/dispatch/runs/${dispatchId}/tick`, {})
+      .then((data) => run.value?.dispatch_id === dispatchId ? apply(data) : null)
+      .catch(() => null).finally(() => { tickRunning = false; });
   }
 
   /* One poller for the whole app: started when an operation is under way,
@@ -507,6 +704,8 @@ export const useDispatchStore = defineStore("dispatch", () => {
   return {
     run, pending, error, live, orders, vehicles, stock,
     refresh, commitReshipment, depart, deliverNext, setSpeed,
+    failure, failureError, previewVehicleFailure, acceptVehicleFailure,
+    delay, delayError, delayMinutes, delayInspection, previewDelayRisk, acceptDelayReplan,
     tick, watchClock, stopClock, stillReturning,
     branch, branchError, needsDailyPlan, policy, POLICIES,
     previewBranch, setPolicy, branchOpen, closeBranchCompare,
@@ -514,6 +713,8 @@ export const useDispatchStore = defineStore("dispatch", () => {
     recent, replayError, loadRecent, replay, watchVisibility,
     dailyBatch, dailyPreview, dailyError,
     constraintsForm, previewDailyPlan, overnightPlan, loadOvernightPlan,
+    endOfDayPreview, endOfDayError, parkingOverrides, parkingPreviewCurrent, nextDayRestock,
+    loadRun, previewEndOfDay, acceptEndOfDay, startNextDay,
     loadDailyPlan, confirmDailyPlan, oneClickDailyPlan, rerollDailyPlan,
   };
 });

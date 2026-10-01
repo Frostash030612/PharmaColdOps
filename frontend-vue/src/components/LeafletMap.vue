@@ -305,10 +305,10 @@ function drawVehicles() {
     const track = route.track;
     // A truck that is home is not on the road any more — but one whose orders
     // are all delivered and is still driving back IS, and stays visible.
-    if (!track || !track.position || track.finished) return;
+    if (!track || !track.position || (track.finished && route.status !== "failed")) return;
     live.add(route.vehicle_id);
     const key = legKey(route.vehicle_id, track.leg_from, track.leg_to);
-    const leg = registry.get(key);
+    const leg = route.status === "failed" ? null : registry.get(key);
     const target = pointAlong(leg, track.leg_fraction);
     const latLng = target ? L.latLng(target[1], target[0])
       : L.latLng(track.position[1], track.position[0]);
@@ -343,6 +343,10 @@ function drawVehicles() {
     }
     const el = entry.marker.getElement();
     if (el) el.classList.toggle("focus", props.selectedVehicle === route.vehicle_id);
+    if (el && route.status === "failed") {
+      const badge = el.querySelector("span");
+      if (badge) { badge.style.background = "#dc2626"; badge.textContent = "⚠"; }
+    }
   });
   for (const [id, entry] of markers) {
     if (!live.has(id)) { entry.marker.remove(); markers.delete(id); }

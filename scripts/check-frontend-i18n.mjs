@@ -38,6 +38,7 @@ for (const file of COMPONENTS) {
      text.value[...] is dynamic (a computed key), so it is skipped: the key is
      only known at runtime and cannot be checked statically. */
   for (const m of src.matchAll(/(?<!\.)\btext\.(?:value\.)?([a-zA-Z_]\w*)\b(?!\s*\[)/g)) {
+    if (m[1] === "value") continue; // passing the ref's whole bundle to a helper
     refs.add(`singapore.${m[1]}`);
   }
   /* L.<section>.<key>, never L.value.<...> */
