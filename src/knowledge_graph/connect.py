@@ -34,6 +34,11 @@ def get_driver():
     Raises on unreachable graphs so callers can decide how to handle it
     (writer swallows it; build_graph lets it crash).
     """
-    driver = GraphDatabase.driver(URI, auth=(USER, PASSWORD))
-    driver.verify_connectivity()
+    driver = GraphDatabase.driver(URI, auth=(USER, PASSWORD), connection_timeout=3,
+                                 connection_acquisition_timeout=5, max_transaction_retry_time=5)
+    try:
+        driver.verify_connectivity()
+    except Exception:
+        driver.close()
+        raise
     return driver

@@ -43,7 +43,7 @@ if str(SRC) not in sys.path:
 from rule_engine.engine import RuleEngine  # noqa: E402
 from rule_engine.models import ExcursionEvent, ProductSpec  # noqa: E402
 
-from knowledge_graph.writer import write_case  # noqa: E402
+from knowledge_graph.writer import write_case, evidence_snapshot  # noqa: E402
 from knowledge_graph import qa as kg_qa  # noqa: E402
 from optimisation.reshipment import (  # noqa: E402
     build_delivery_order,
@@ -78,6 +78,7 @@ from optimisation.simulated_orders import SimulationConfig, generate_simulated_b
 from optimisation.parking_policy import warehouse_ids, validate_terminals, validate_end_node  # noqa: E402
 from optimisation.case_repository import (  # noqa: E402
     RegistrationConflict, lookup_registration, register_once, registered_records,
+    claim_graph_records, finish_graph_claim, graph_sync_status,
 )
 from optimisation.dynamic_problem import (  # noqa: E402
     DEFAULT_POLICY, accept_emergency_order, preview_emergency_order,
@@ -105,7 +106,7 @@ ENGINE = RuleEngine()
 # (/api/case_close). Live /api/decide previews are never archived. A runtime
 # artifact (gitignored via `data/audit/`), served newest-first over GET /api/runs.
 # Tests monkeypatch RUNS_FILE to a temp path so pytest never writes into the repo.
-RUNS_FILE = ROOT / "data" / "audit" / "runs.jsonl"
+RUNS_FILE = Path(os.environ.get("CASE_RUNS_FILE", str(ROOT / "data" / "audit" / "runs.jsonl")))
 DISPATCH_DATABASE_URL = os.environ.get(
     "DATABASE_URL", str(ROOT / "data" / "audit" / "dispatch.sqlite3")
 )
@@ -483,6 +484,7 @@ def close_case(event: EventIn, override: SpecOverride | None,
     view = _decision_view(event, spec, decision)
     view["processing_status"] = "pending"
     view["registration_id"] = key
+    view["graph_evidence"] = evidence_snapshot(view["rule_no"])
     if linked_snapshot:
         view["linked_order"] = linked_snapshot
     record = _record_run(view,
@@ -493,15 +495,28 @@ def close_case(event: EventIn, override: SpecOverride | None,
         raise
     except Exception as exc:
         raise RuntimeError("case registration storage unavailable; retry the same registration_id") from exc
-    # Mirror the chain into the knowledge graph (best-effort: the runs log
-    # stays authoritative; a down graph must never fail the close).
+    # DB registration + outbox are authoritative; graph failures stay retryable.
     if created:
         _mirror_record(record)
         try:
-            write_case(record)
+            sync_case_graph(run_id=record["run_id"], limit=1)
         except Exception:
             log.warning("best-effort graph mirror failed for %s", record["run_id"], exc_info=True)
     return _registration_response(record)
+
+
+def sync_case_graph(*, run_id=None, limit=50, force=False):
+    results = {"synced": 0, "failed": 0}
+    for claim in claim_graph_records(DISPATCH_DATABASE_URL, run_id=run_id, limit=limit, force=force):
+        try:
+            success = write_case(claim["record"]) is True
+        except Exception:
+            log.warning("graph mirror attempt failed for %s", claim["run_id"], exc_info=True)
+            success = False
+        finish_graph_claim(DISPATCH_DATABASE_URL, claim, success=success,
+                           error=None if success else "Neo4j unavailable or required static evidence missing")
+        results["synced" if success else "failed"] += 1
+    return {**results, "queue": graph_sync_status(DISPATCH_DATABASE_URL)}
 
 
 def _registered_records():
@@ -2102,6 +2117,13 @@ def qa_view(req: QAIn) -> dict:
     evidence / unsupported question / database failure). A graph failure is
     raised as ``RuntimeError`` and becomes HTTP 503.
     """
+    if req.run_id and req.question_type in {"why_disposition", "audit_chain", "cause_context"}:
+        try:
+            sync = graph_sync_status(DISPATCH_DATABASE_URL, req.run_id)
+        except Exception as exc:
+            raise RuntimeError("case registration storage unavailable") from exc
+        if sync and sync["status"] != "synced":
+            raise RuntimeError("case graph synchronization pending; retry after graph recovery")
     try:
         if req.question_type == "why_disposition":
             return kg_qa.why_disposition(req.run_id)

@@ -193,10 +193,11 @@ def test_facility_edges_when_case_carries_facility_ids():
         (n["node_type"], n["node_id"]) for n in audit["evidence"]
     }
 
-    # unknown facility id → no edge, but the write still succeeds
+    # Missing evidence must keep the outbox pending, not claim partial success.
     rec2 = _record(run_id="RTEST-4")
     rec2["event"]["facility_id"] = "NOT-A-FACILITY"
-    assert writer.write_case(rec2) is True
+    assert writer.write_case(rec2) is False
+    assert _query("MATCH (:ExcursionEvent {run_id: 'RTEST-4'}) RETURN 1") == []
     assert _query(
         "MATCH (:ExcursionEvent {run_id: 'RTEST-4'})-[:EVENT_OCCURRED_AT]->() RETURN 1"
     ) == []

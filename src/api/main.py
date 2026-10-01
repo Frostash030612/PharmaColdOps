@@ -12,6 +12,10 @@ VRPTW demo. The QA endpoint exposes structured knowledge-graph queries.
 """
 from __future__ import annotations
 
+import asyncio
+import logging
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -30,7 +34,30 @@ from .schemas import (
     VehicleFailureAcceptIn, VehicleFailurePreviewIn,
 )
 
+@asynccontextmanager
+async def lifespan(app):
+    async def retry_graph():
+        while True:
+            try:
+                await asyncio.to_thread(service.sync_case_graph)
+            except Exception:
+                logging.getLogger("uvicorn.error").warning("graph outbox retry unavailable", exc_info=True)
+            await asyncio.sleep(15)
+
+    task = asyncio.create_task(retry_graph()) if os.environ.get("KG_SYNC_ENABLED", "0") == "1" else None
+    try:
+        yield
+    finally:
+        if task:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="PharmaColdOps disposition API",
     version="0.1.0",
     description=(
@@ -83,6 +110,15 @@ def decide(req: DecideIn):
             status_code=422,
             detail=f"unknown product_id {req.product_id!r}; valid: {service.valid_product_ids()}",
         )
+
+
+@app.get("/api/graph-sync")
+def graph_sync_status():
+    """Read-only durable delivery status, not a Neo4j connectivity claim."""
+    try:
+        return service.graph_sync_status(service.DISPATCH_DATABASE_URL)
+    except Exception:
+        raise HTTPException(status_code=503, detail="case registration storage unavailable")
 
 
 @app.post("/api/case_close")
