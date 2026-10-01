@@ -19,6 +19,8 @@ import logging
 import os
 import copy
 import math
+import hashlib
+import uuid
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -74,6 +76,9 @@ from optimisation.daily_orders import (  # noqa: E402
 )
 from optimisation.simulated_orders import SimulationConfig, generate_simulated_batch  # noqa: E402
 from optimisation.parking_policy import warehouse_ids, validate_terminals, validate_end_node  # noqa: E402
+from optimisation.case_repository import (  # noqa: E402
+    RegistrationConflict, lookup_registration, register_once, registered_records,
+)
 from optimisation.dynamic_problem import (  # noqa: E402
     DEFAULT_POLICY, accept_emergency_order, preview_emergency_order,
 )
@@ -265,17 +270,15 @@ def _audit(kind: str, ev, spec=None, decision=None) -> None:
 
 def _new_run_id() -> str:
     """Readable unique-ish id for one archived case (timestamp, µs resolution)."""
-    return "R" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    return "R" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f") + "-" + uuid.uuid4().hex[:8]
 
 
 def _record_run(view: dict, *, started_at: str | None = None,
-                remark: str | None = None) -> dict:
-    """Append one closed case to the runs log and return the stored record.
+                remark: str | None = None, persist: bool = True) -> dict:
+    """Build an immutable assessment record, optionally mirror it for legacy callers.
 
-    Best-effort on disk: an OSError must never take the close down with it —
-    the caller still gets the record back (the log is advisory). Each line is
-    the full semantic decision view plus run_id / created_at / started_at
-    stamps and an optional remark.
+    Registration commits the returned record to the DB first (persist=False),
+    then writes the advisory JSONL mirror only for the winning new registration.
     """
     now = datetime.datetime.now()
     record = {
@@ -286,29 +289,41 @@ def _record_run(view: dict, *, started_at: str | None = None,
     }
     if remark:
         record["remark"] = remark
+    if persist:
+        _mirror_record(record)
+    return record
+
+
+def _mirror_record(record):
+    """Advisory JSONL mirror. Committed DB records survive mirror failures."""
     try:
         RUNS_FILE.parent.mkdir(parents=True, exist_ok=True)
         with RUNS_FILE.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
     except OSError:
         log.warning("could not append run record to %s", RUNS_FILE, exc_info=True)
-    return record
 
 
 def list_runs(limit: int = 200) -> dict:
     """Every archived decision, newest first (empty list when none recorded yet)."""
-    if not RUNS_FILE.exists():
-        return {"count": 0, "runs": []}
     records = []
     try:
         with RUNS_FILE.open(encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if line:
-                    records.append(json.loads(line))
+                    try:
+                        records.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        log.warning("skipped incomplete legacy case mirror line")
+    except FileNotFoundError:
+        pass
     except (OSError, json.JSONDecodeError):
         log.warning("could not read %s", RUNS_FILE, exc_info=True)
-    records.reverse()
+    # Prefer immutable DB originals over the legacy mirror; count each run once.
+    unique = {record["run_id"]: record for record in records}
+    unique.update({record["run_id"]: record for record in _registered_records()})
+    records = sorted(unique.values(), key=lambda r: (r.get("created_at", ""), r["run_id"]), reverse=True)
     workflows = case_workflows(DISPATCH_DATABASE_URL) if records else {}
     cache = {}
     return {"count": len(records), "runs": [
@@ -437,7 +452,8 @@ def decide_view(event: EventIn, override: SpecOverride | None) -> dict:
 
 
 def close_case(event: EventIn, override: SpecOverride | None,
-               started_at: str | None = None, remark: str | None = None) -> dict:
+               started_at: str | None = None, remark: str | None = None,
+               registration_id: str | None = None) -> dict:
     """Close one inbound case: decide its current inputs and append ONE record.
 
     The disposition is recomputed from the posted inputs (deterministic, so it
@@ -445,6 +461,19 @@ def close_case(event: EventIn, override: SpecOverride | None,
     record to RUNS_FILE and returns it with the run_id / created_at stamps the
     front-end shows in the case history.
     """
+    key = registration_id or uuid.uuid4().hex  # legacy calls remain distinct without a client key
+    canonical = {"event": {field: getattr(event, field) for field in EventIn.model_fields},
+                 "override": override.model_dump(exclude_none=True) if override else {},
+                 "started_at": started_at, "remark": remark.strip() if remark and remark.strip() else None}
+    digest = hashlib.sha256(json.dumps(canonical, sort_keys=True, allow_nan=False).encode()).hexdigest()
+    try:
+        existing = lookup_registration(DISPATCH_DATABASE_URL, key, digest)
+    except RegistrationConflict:
+        raise
+    except Exception as exc:
+        raise RuntimeError("case registration storage unavailable; retry the same registration_id") from exc
+    if existing is not None:
+        return _registration_response(existing)
     event, linked_snapshot = _bind_case_order(event)
     spec = resolve_spec(event.product_id, override)
     decision = _engine_for(spec).evaluate(_as_event(
@@ -453,14 +482,41 @@ def close_case(event: EventIn, override: SpecOverride | None,
     _audit("close", event, spec, decision)
     view = _decision_view(event, spec, decision)
     view["processing_status"] = "pending"
+    view["registration_id"] = key
     if linked_snapshot:
         view["linked_order"] = linked_snapshot
     record = _record_run(view,
-                         started_at=started_at, remark=remark)
+                         started_at=started_at, remark=canonical["remark"], persist=False)
+    try:
+        record, created = register_once(DISPATCH_DATABASE_URL, key, digest, record)
+    except RegistrationConflict:
+        raise
+    except Exception as exc:
+        raise RuntimeError("case registration storage unavailable; retry the same registration_id") from exc
     # Mirror the chain into the knowledge graph (best-effort: the runs log
     # stays authoritative; a down graph must never fail the close).
-    write_case(record)
-    return {**record, "workflow_version": 0, "workflow_history": []}
+    if created:
+        _mirror_record(record)
+        try:
+            write_case(record)
+        except Exception:
+            log.warning("best-effort graph mirror failed for %s", record["run_id"], exc_info=True)
+    return _registration_response(record)
+
+
+def _registered_records():
+    try:
+        return registered_records(DISPATCH_DATABASE_URL)
+    except Exception as exc:
+        raise RuntimeError("case registration storage unavailable") from exc
+
+
+def _registration_response(record):
+    try:
+        workflow = case_workflows(DISPATCH_DATABASE_URL).get(record["run_id"], {})
+        return _case_progress(record, workflow, {})
+    except Exception as exc:
+        raise RuntimeError("case registered but progress read unavailable; retry the same registration_id") from exc
 
 
 def _bind_case_order(event: EventIn):
@@ -536,7 +592,7 @@ def batch_view(events: list) -> dict:
 def find_run(run_id: str) -> dict | None:
     """One archived case by id, or None when the id is unknown."""
     return next(
-        (item for item in list_runs()["runs"] if item["run_id"] == run_id),
+        (item for item in list_runs(limit=None)["runs"] if item["run_id"] == run_id),
         None,
     )
 

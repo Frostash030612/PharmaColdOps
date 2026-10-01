@@ -68,7 +68,10 @@ def runs(limit: int = 200) -> dict:
     gitignored). Only ``/api/case_close`` appends — ``/api/decide`` previews are
     never archived. The front-end calls this on load and after each close.
     """
-    return service.list_runs(limit)
+    try:
+        return service.list_runs(limit)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
 
 
 @app.post("/api/decide")
@@ -92,7 +95,11 @@ def case_close(req: CaseCloseIn):
     is, so the history reads one line per closed case.
     """
     try:
-        return service.close_case(req, req.spec_override, req.started_at, req.remark)
+        return service.close_case(req, req.spec_override, req.started_at, req.remark, req.registration_id)
+    except service.RegistrationConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except KeyError:

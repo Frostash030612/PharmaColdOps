@@ -56,6 +56,7 @@ class CaseCloseIn(DecideIn):
 
     started_at: Optional[str] = None
     remark: Optional[str] = None
+    registration_id: Optional[str] = Field(default=None, min_length=1, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
 
 
 class CaseWorkflowIn(BaseModel):
