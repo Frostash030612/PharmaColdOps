@@ -8,6 +8,11 @@ local risk/candidate-cause artifacts. The online registration panel accepts expl
 transport/monthly contexts, preserves model snapshots, and never maps a failure score to scrap.
 See [M4 integration, limitations and input contracts](docs/M4模型集成.md).
 
+M2 now calculates duration-weighted MKT from explicit simulated temperature intervals,
+detects contiguous hot/cold windows, and archives the original series with a selected event.
+The new-case panel supports seeded generation and JSON editing; gaps and unsupported cold
+rules block automatic registration. See [M2 contracts and demo guide](docs/M2温度序列与MKT.md).
+
 Proposal & related documents live in [`proposal/`](proposal/):
 
 The current working baseline is the **2026-09-28 revised EN/ZH Markdown, presentation materials,
@@ -56,6 +61,7 @@ See [QA evaluation safety and options](docs/问答评测工具.md); existing tes
 | Module | Directory | Technique group |
 |---|---|---|
 | Disposition rule engine | `src/rule_engine/` | Decision automation |
+| Temperature excursions & MKT (M2) | `src/temperature_monitoring.py` | Knowledge discovery & data mining |
 | Risk prediction & root cause | `src/ml/` | Knowledge discovery & data mining |
 | Re-routing optimiser (VRPTW) | `src/optimisation/` | Resource optimisation |
 | Knowledge graph & Q&A | `src/knowledge_graph/` | Cognitive systems |

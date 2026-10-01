@@ -4,6 +4,21 @@
    audit.scenTmpl, timeline.badge, packagingVal, durUnit …), never code branches. */
 
 export default {
+  temperature: {
+    title: "M2 · Temperature series and excursions", disclosure: "Simulated data, not live sensors. MKT uses interval durations and Kelvin temperatures; activation energy is a demo assumption, not validated product stability. MKT cannot rule out freezing damage.",
+    offline: "Temperature analysis requires the backend; offline mode cannot create or archive M2 results.",
+    manual: "Manual demo values", sequence: "Calculate from series", manualNote: "Manual temperature, duration and MKT are demo inputs, not computed monitoring results.",
+    scenario: "Scenario", seed: "Seed", horizon: "Observation end (min)", cadence: "Simulation interval (min)", generate: "Generate and analyse",
+    edit: "Edit simulated series JSON", intervalHelp: "Each item has start_min, end_min and temp_c: constant temperature over [start,end). Time starts at minute 0. Nulls and gaps are missing data, never interpolated. Intervals must be ordered and non-overlapping.",
+    energy: "Activation energy", json: "Temperature intervals JSON", analyse: "Analyse edited series", loading: "Analysing…", chart: "Original simulated temperature intervals (gaps left blank)",
+    coverage: "Coverage", fullMkt: "Known-interval MKT", hotTotal: "Total hot exposure", coldTotal: "Total cold exposure",
+    scope: "Registration covers the selected contiguous window only. Window MKT excludes normal periods; minutes round up. Other windows and cumulative exposure require separate review, not batch release.",
+    gap: "Missing data: MKT covers known intervals only; automatic registration is blocked", noWindows: "No excursion in known intervals; this is not a quality guarantee and creates no incident case.",
+    extreme: "Extreme", coldBlocked: "M3 currently supports only ≤0°C freezing for freeze-sensitive products. This cold window cannot be automatically released; manual review is required.",
+    select: "Use window for registration", selected: "Selected window", frozenDraft: "Retry draft frozen; submit the original series and selected window", mustSelect: "Select an eligible excursion window or explicitly switch to manual demo mode.",
+    syntheticTimeline: "This curve is reconstructed from manual event values for illustration, not original monitoring data or an MKT calculation source.",
+    scenarios: { normal: "Normal", hot: "Hot", cold: "Cold", mixed: "Multiple hot/cold windows", gap: "Missing data" },
+  },
   singapore: {
   "title": "Singapore delivery network",
   "overnightWarehouseRequired": "Move to an allowed warehouse; hospitals cannot be parking terminals",

@@ -22,6 +22,7 @@ function onScrub(e) {
 
 <template>
   <div>
+    <p class="timeline-source-note">{{ L.temperature.syntheticTimeline }}</p>
     <div v-html="view.svg"></div>
     <div class="timeline-controls">
       <button class="btn" @click="sandbox.toggleTimeline()">

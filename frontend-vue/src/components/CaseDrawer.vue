@@ -16,6 +16,7 @@ import RiskIndex from "./RiskIndex.vue";
 import EvidencePanel from "./EvidencePanel.vue";
 import CaseActions from "./CaseActions.vue";
 import M4Panel from './M4Panel.vue';
+import M2Panel from './M2Panel.vue';
 import { useDecisionsStore } from '../stores/decisions.js';
 import { locale, bundle } from "../i18n/index.js";
 
@@ -45,7 +46,10 @@ onBeforeUnmount(sandbox.exitOfflinePreview);
         </details>
         <DecisionBanner />
         <div class="section-label">{{ L.center.sectionTimeline }}</div>
-        <Timeline />
+        <M2Panel v-if="sandbox.currentRunId && sandbox.archivedRecord?.temperature_context"
+          :product-id="sandbox.archivedRecord.event.product_id" :model-value="sandbox.archivedRecord.temperature_context"
+          :saved="sandbox.archivedRecord.temperature_assessment" readonly />
+        <Timeline v-else />
         <div class="section-label">{{ L.center.sectionInputs }}</div>
         <ExcursionInputs />
         <div class="section-label">{{ L.center.sectionZone }}</div>

@@ -13,6 +13,7 @@ import { useOverlayStore } from "../stores/overlay.js";
 import { useDispatchStore } from "../stores/dispatch.js";
 import { useRegistrationStore } from "../stores/registration.js";
 import M4Panel from './M4Panel.vue';
+import M2Panel from './M2Panel.vue';
 import routes from "../data/singaporeRoutes.json";
 import {
   PRODUCT_NUM, PRODUCT_IDS, STAGE_IDS, PACKAGING_IDS, DEFAULT_EVENT,
@@ -74,6 +75,9 @@ const error = ref(recoveryError);
 const showRules = ref(false);
 const remark = ref(recovered?.payload?.remark || "");
 const mlContexts = ref(recovered?.payload?.ml_contexts || []);
+const temperatureContext = ref(recovered?.payload?.temperature_context || null);
+const temperaturePending = ref(false);
+function applyTemperature(event) { Object.assign(ev.value, event); }
 
 const up = computed(() => decisions.apiUp === true);
 
@@ -129,15 +133,14 @@ function cancel() {
 }
 
 async function archive() {
-  if (archiving.value || decisions.apiUp !== true) return;
+  if (archiving.value || decisions.apiUp !== true || (!locked.value && temperaturePending.value)) return;
   archiving.value = true;
   error.value = false;
   try {
     const res = await registration.submit(locked.value ? null : {
-      ...eventPayload(ev.value),
+      ...eventPayload({ ...ev.value, ml_contexts: mlContexts.value, temperature_context: temperatureContext.value }),
       spec_override: overridePayload(spec.value),
       remark: remark.value.trim() || null,
-      ...(mlContexts.value.length ? { ml_contexts: mlContexts.value } : {}),
     });
     overlay.closeNewInbound();
     sandbox.restoreCase(res);        // now the whole flow appears on the page
@@ -218,30 +221,30 @@ function discardDraft() {
 
           <div class="ctl">
             <label>{{ L.center.temp }}</label>
-            <div class="range-line">
+            <div class="range-line"><fieldset :disabled="!!temperatureContext || temperaturePending">
               <input type="range" step="0.5" :min="tempLo" :max="tempHi" :value="cTemp"
                      @input="onNum('excursion_temp_c', $event)">
               <input type="number" class="num" step="0.5" :value="ev.excursion_temp_c"
                      @input="onNum('excursion_temp_c', $event)">
-            </div>
+            </fieldset></div>
           </div>
           <div class="ctl">
             <label>{{ L.center.dur }}</label>
-            <div class="range-line">
+            <div class="range-line"><fieldset :disabled="!!temperatureContext || temperaturePending">
               <input type="range" step="1" min="0" :max="durMax" :value="cDur"
                      @input="onNum('duration_min', $event, true)">
               <input type="number" class="num" step="1" :value="ev.duration_min"
                      @input="onNum('duration_min', $event, true)">
-            </div>
+            </fieldset></div>
           </div>
           <div class="ctl">
             <label>{{ L.center.mkt }}</label>
-            <div class="range-line">
+            <div class="range-line"><fieldset :disabled="!!temperatureContext || temperaturePending">
               <input type="range" step="0.1" :min="mktLo" :max="mktHi" :value="cMkt"
                      @input="onNum('mkt_c', $event)">
               <input type="number" class="num" step="0.1" :value="ev.mkt_c"
                      @input="onNum('mkt_c', $event)">
-            </div>
+            </fieldset></div>
           </div>
         </div>
 
@@ -267,8 +270,10 @@ function discardDraft() {
         </div>
 
         </fieldset>
+        <M2Panel v-model="temperatureContext" :product-id="ev.product_id" :readonly="locked || archiving" :offline="!up"
+          @event="applyTemperature" @pending="temperaturePending = $event" />
         <M4Panel v-model="mlContexts" :readonly="locked || archiving" :offline="!up" />
-        <div class="ni-preview">
+        <div v-if="!temperaturePending || locked" class="ni-preview">
           <div class="section-label">{{ L.newInbound.preview }}</div>
           <div class="dispo-banner" :style="{ background: DISPO_COLOR[d.disposition] }">
             <div class="dispo-badge">{{ badge }}</div>
@@ -302,7 +307,7 @@ function discardDraft() {
           <button class="btn inline" type="button" :disabled="archiving" @click="cancel">
             {{ L.newInbound.cancel }}
           </button>
-          <button class="btn inline modal-primary" type="button" :disabled="!up || archiving || (!locked && d.reshipment && !ev.destination_facility_id)" @click="archive">
+          <button class="btn inline modal-primary" type="button" :disabled="!up || archiving || (!locked && (temperaturePending || (d.reshipment && !ev.destination_facility_id)))" @click="archive">
             {{ archiving ? "…" : locked ? L.registration.retry : L.newInbound.archive }}
           </button>
         </div>
@@ -313,5 +318,6 @@ function discardDraft() {
 
 <style scoped>
 .registration-fields { margin: 0; padding: 0; border: 0; min-width: 0; }
+.range-line fieldset { display: flex; gap: 8px; padding: 0; border: 0; min-width: 0; width: 100%; }
 .registration-note { padding: 10px; border: 1px solid #fbbf24; background: #fffbeb; border-radius: 8px; overflow-wrap: anywhere; }
 </style>

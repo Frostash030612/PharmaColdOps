@@ -8,7 +8,8 @@ export function decisionKey(current, spec) {
   const key = [current.product_id, current.excursion_temp_c, current.duration_min,
           current.mkt_c, current.packaging, current.stage,
           spec.allowable, spec.mktThreshold, spec.retestable].join("|");
-  return current.ml_contexts?.length ? `${key}|ml:${JSON.stringify(current.ml_contexts)}` : key;
+  const mlKey = current.ml_contexts?.length ? `${key}|ml:${JSON.stringify(current.ml_contexts)}` : key;
+  return current.temperature_context ? `${mlKey}|m2:${JSON.stringify(current.temperature_context)}` : mlKey;
 }
 
 export function specKey(current, spec) {
@@ -28,6 +29,7 @@ export function eventPayload(current) {
     order_id: current.order_id || null,
     dispatch_id: current.dispatch_id || null,
     ...(current.ml_contexts?.length ? { ml_contexts: JSON.parse(JSON.stringify(current.ml_contexts)) } : {}),
+    ...(current.temperature_context ? { temperature_context: JSON.parse(JSON.stringify(current.temperature_context)) } : {}),
   };
 }
 
@@ -53,6 +55,7 @@ export function postJson(path, body) {
     try {
       const payload = await r.json();
       detail = typeof payload?.detail === "string" ? payload.detail : "";
+      if (Array.isArray(payload?.detail)) detail = payload.detail.slice(0, 6).map(e => `${(e.loc || []).join('.')}: ${e.msg}`).join('; ');
     } catch { /* not a JSON error body: fall back to the status line */ }
     const error = new Error(detail || ("HTTP " + r.status));
     error.status = r.status;

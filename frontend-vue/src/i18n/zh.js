@@ -3,6 +3,21 @@
    translated stage/evidence values, minutes unit, narrower timeline badge …). */
 
 export default {
+  temperature: {
+    title: "M2 · 温度序列与偏移识别", disclosure: "全部为模拟数据，不声称接入真实传感器。MKT 按区间时长与开尔文温度计算；活化能是演示假设，不是药品稳定性验证。MKT 不能排除冻结损伤。",
+    offline: "温度分析需要后端；离线模式不生成或归档 M2 计算结果。",
+    manual: "手填演示值", sequence: "序列计算", manualNote: "手填温度、时长和 MKT 仅为演示输入，不是从监测序列算出的结果。",
+    scenario: "模拟场景", seed: "随机种子", horizon: "观察终点 (min)", cadence: "模拟区间 (min)", generate: "生成并分析",
+    edit: "编辑模拟序列 JSON", intervalHelp: "每项含 start_min、end_min、temp_c，表示 [开始,结束) 内恒温。时间从 0 分钟计；null 或间隙表示缺测，不插值。按时间排序，不得重叠。",
+    energy: "活化能", json: "温度区间 JSON", analyse: "分析编辑后的序列", loading: "正在分析…", chart: "原始模拟温度区间图（缺测处留白）",
+    coverage: "数据覆盖率", fullMkt: "已知区间 MKT", hotTotal: "累计高温偏移", coldTotal: "累计低温偏移",
+    scope: "登记只针对选中的连续偏移窗口。窗口 MKT 不混入正常段；分钟时长向上取整。多个窗口与累计暴露需分别审核，不代表整批放行。",
+    gap: "存在缺测：MKT 仅覆盖已知区间，禁止进入自动处置登记", noWindows: "已知区间没有偏移；这不构成药品质量保证，也不生成异常案例。",
+    extreme: "极值", coldBlocked: "当前 M3 仅支持冻结敏感药品的 ≤0°C 冻结规则；此低温窗口不能自动判为放行，请人工审核。",
+    select: "选用此窗口登记", selected: "已选用此窗口", frozenDraft: "重试草稿已冻结，按原始序列与选中窗口提交", mustSelect: "请选择可登记的偏移窗口，或明确切回手填演示模式。",
+    syntheticTimeline: "此曲线由手填事件反向生成，仅作示意，不是原始监测序列或 MKT 计算依据。",
+    scenarios: { normal: "正常", hot: "高温", cold: "低温", mixed: "高低温多窗口", gap: "缺测" },
+  },
   singapore: {
   "title": "新加坡配送网络",
   "overnightWarehouseRequired": "车辆须移到允许的仓库，不能停在医院",

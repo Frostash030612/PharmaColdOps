@@ -13,6 +13,7 @@ from datetime import date
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic import StrictFloat, StrictInt, StrictStr
 from ml.contracts import normalize_features
+from temperature_monitoring import TemperatureContext
 
 
 class SpecOverride(BaseModel):
@@ -64,6 +65,7 @@ class DecideIn(EventIn):
 
     spec_override: Optional[SpecOverride] = None
     ml_contexts: List[MLContextIn] = Field(default_factory=list, max_length=2)
+    temperature_context: Optional[TemperatureContext] = None
 
     @field_validator("ml_contexts")
     @classmethod

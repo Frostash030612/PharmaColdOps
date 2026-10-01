@@ -424,7 +424,26 @@ def _event_dump(event: EventIn) -> dict:
     return dump
 
 
-def _decision_view(event: EventIn, spec: ProductSpec, decision) -> dict:
+def _temperature_event(event, spec):
+    """Recompute the source, verify submitted scalars, and freeze the snapshot."""
+    from temperature_monitoring import analyse
+    context = getattr(event, "temperature_context", None)
+    if context is None:
+        return event, None
+    assessment = analyse(context.series, spec)
+    window = next((w for w in assessment["windows"] if w["window_id"] == context.window_id), None)
+    if window is None:
+        raise ValueError("selected temperature window does not exist")
+    if not window["registration_allowed"]:
+        raise ValueError("temperature window cannot enter M3: " + window["blocked_reason"])
+    for field, value in window["event"].items():
+        if not math.isclose(getattr(event, field), value, rel_tol=0, abs_tol=1e-8):
+            raise ValueError("temperature-derived event mismatch: " + field)
+    assessment["selected_window_id"] = context.window_id
+    return event.model_copy(update=window["event"]), assessment
+
+
+def _decision_view(event: EventIn, spec: ProductSpec, decision, temperature_assessment=None) -> dict:
     """The full semantic decision the demo panels render (codes, not wording)."""
     view = {
         "disposition": decision.disposition.value,
@@ -439,6 +458,9 @@ def _decision_view(event: EventIn, spec: ProductSpec, decision) -> dict:
         "risk": risk_score(spec, event),
     }
     contexts = getattr(event, "ml_contexts", [])
+    if temperature_assessment is not None:
+        view["temperature_context"] = event.temperature_context.model_dump()
+        view["temperature_assessment"] = temperature_assessment
     if contexts:
         # Advisory snapshots never mutate disposition, risk_score, cause_code,
         # reshipment or dispatch constraints. Missing models fail explicitly.
@@ -454,11 +476,12 @@ def decide_view(event: EventIn, override: SpecOverride | None) -> dict:
     a run record, so the history stays one line per completed inbound case.
     """
     spec = resolve_spec(event.product_id, override)
+    event, temperature_assessment = _temperature_event(event, spec)
     decision = _engine_for(spec).evaluate(_as_event(
         event.product_id, event.excursion_temp_c, event.duration_min,
         event.mkt_c, event.packaging, event.stage, scenario_id="api"))
     _audit("decide", event, spec, decision)
-    return _decision_view(event, spec, decision)
+    return _decision_view(event, spec, decision, temperature_assessment)
 
 
 def close_case(event: EventIn, override: SpecOverride | None,
@@ -479,6 +502,9 @@ def close_case(event: EventIn, override: SpecOverride | None,
     # Preserve the legacy fingerprint when no context was supplied.
     if contexts:
         canonical["ml_contexts"] = [context.model_dump() for context in contexts]
+    temperature_context = getattr(event, "temperature_context", None)
+    if temperature_context is not None:
+        canonical["temperature_context"] = temperature_context.model_dump()
     digest = hashlib.sha256(json.dumps(canonical, sort_keys=True, allow_nan=False).encode()).hexdigest()
     try:
         existing = lookup_registration(DISPATCH_DATABASE_URL, key, digest)
@@ -490,11 +516,12 @@ def close_case(event: EventIn, override: SpecOverride | None,
         return _registration_response(existing)
     event, linked_snapshot = _bind_case_order(event)
     spec = resolve_spec(event.product_id, override)
+    event, temperature_assessment = _temperature_event(event, spec)
     decision = _engine_for(spec).evaluate(_as_event(
         event.product_id, event.excursion_temp_c, event.duration_min,
         event.mkt_c, event.packaging, event.stage, scenario_id="case_close"))
     _audit("close", event, spec, decision)
-    view = _decision_view(event, spec, decision)
+    view = _decision_view(event, spec, decision, temperature_assessment)
     view["processing_status"] = "pending"
     view["registration_id"] = key
     view["graph_evidence"] = evidence_snapshot(view["rule_no"])

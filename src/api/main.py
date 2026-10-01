@@ -35,6 +35,7 @@ from .schemas import (
     MLContextIn,
 )
 from ml import runtime as ml_runtime
+from temperature_monitoring import AnalyseIn, SimulateIn, analyse, simulate
 
 @asynccontextmanager
 async def lifespan(app):
@@ -143,6 +144,24 @@ def decide(req: DecideIn):
             status_code=422,
             detail=f"unknown product_id {req.product_id!r}; valid: {service.valid_product_ids()}",
         )
+
+
+@app.post("/api/m2/analyse")
+def m2_analyse(req: AnalyseIn):
+    try:
+        return analyse(req.series, service.resolve_spec(req.product_id, None))
+    except KeyError:
+        raise HTTPException(status_code=422, detail="unknown product_id")
+
+
+@app.post("/api/m2/simulate")
+def m2_simulate(req: SimulateIn):
+    try:
+        spec = service.resolve_spec(req.product_id, None)
+        series = simulate(req, spec)
+        return {"series": series.model_dump(), "simulation": req.model_dump(), "analysis": analyse(series, spec)}
+    except KeyError:
+        raise HTTPException(status_code=422, detail="unknown product_id")
 
 
 @app.get("/api/graph-sync")
