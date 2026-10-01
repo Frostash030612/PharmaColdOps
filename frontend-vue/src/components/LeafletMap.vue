@@ -179,7 +179,7 @@ function drawIncidentEvents() {
         iconSize: [30, 30], iconAnchor: [15, 30],
       }),
     }).addTo(layer).on("click", () => emit("selectIncident", latest.id));
-    marker.bindTooltip(`${node.name} · ${events.length} ${props.text.incidentCount || "incident(s)"}`,
+    marker.bindTooltip(`${latest.label || node.name} · ${events.length} ${props.text.incidentCount || "incident(s)"}`,
       { direction: "top" });
   }
 }

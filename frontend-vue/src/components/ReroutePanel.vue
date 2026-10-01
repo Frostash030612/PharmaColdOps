@@ -17,6 +17,7 @@ import LeafletMap from "./LeafletMap.vue";
 import TransportView from "./TransportView.vue";
 import { locale, bundle } from "../i18n/index.js";
 import { DISPO_COLOR } from "../data/products.js";
+import { STATUS_COLORS, summarizeZones, previewMap } from "../lib/incidentWorkflow.js";
 import { interp } from "../lib/format.js";
 import { dispatchReasonText } from "../lib/dispatchReasons.js";
 
@@ -54,14 +55,14 @@ const counts = computed(() => ({
    (history.scope), the same value the event rail uses: leaving old excursions
    on the map buried the current day's markers under them. */
 const incidentEvents = computed(() => history.scopedRuns.flatMap((run) => {
-  const facilityId = run.event?.destination_facility_id;
+  const facilityId = run.event?.facility_id || run.event?.destination_facility_id;
   const nodeId = nodeByFacility[facilityId];
   if (nodeId == null) return [];
   return [{
     id: run.run_id,
     nodeId,
-    color: DISPO_COLOR[run.disposition] || "#dc2626",
-    label: `${run.run_id} · ${names[nodeId]}`,
+    color: STATUS_COLORS[history.statusOf(run)],
+    label: `${run.run_id} · ${bundle(locale.value).workflow[history.statusOf(run)]} · ${run.event?.facility_id ? names[nodeId] : bundle(locale.value).workflow.unknownLocation}`,
   }];
 }));
 
@@ -69,12 +70,13 @@ function openIncident(runId) {
   const record = history.runs.find((run) => run.run_id === runId);
   if (!record) return;
   sandbox.restoreCase(record);
-  selectedId.value = nodeByFacility[record.event?.destination_facility_id] ?? null;
+  selectedId.value = nodeByFacility[record.event?.facility_id || record.event?.destination_facility_id] ?? null;
   overlay.openCase();
 }
 
 /* The plan the map draws: live operation when there is one, else the demo. */
-const plan = computed(() => dispatch.live || data.plans[mode.value]);
+const plan = computed(() => dispatch.live || (dispatch.dailyPreview
+  ? previewMap(dispatch.dailyPreview.zones) : data.plans[mode.value]));
 
 /* The current decision needs a resupply and the backend can act on it. */
 const needsReshipment = computed(() => decisions.decisionFor.reshipment);
@@ -239,7 +241,13 @@ const dailyEndsText = computed(() => interp(text.value.dailyMileageLine, {
 
 /* Why an order did not fit (B7). The backend returns stable codes plus the
    measured numbers; the wording lives here, like every other code in this app. */
-const unservedOrders = computed(() => dispatch.dailyPreview?.zones?.[0]?.unserved || []);
+const dailyZones = computed(() => dispatch.dailyPreview?.zones || []);
+const dailyTotals = computed(() => summarizeZones(dailyZones.value));
+const unservedOrders = computed(() => dailyZones.value.flatMap((zone, index) =>
+  (zone.unserved || []).map((entry) => ({ ...entry, zoneIndex: index, temperature_zone: zone.temperature_zone,
+    origin_facility_id: zone.origin_facility_id }))));
+const unservedOrderCount = computed(() => unservedOrders.value.reduce((sum, entry) =>
+  sum + (entry.order_ids?.length || 1), 0));
 
 const REASON_KEYS = {
   mileage_limit_exceeded: "reasonMileage",
@@ -276,13 +284,13 @@ function facilityName(facilityId) {
 /* The daily preview answers whether the limits actually bite: it can come back
    with fewer trucks, more trucks, or orders it could not place at all. */
 const dailyOutcome = computed(() => {
-  const zone = dispatch.dailyPreview?.zones?.[0];
-  if (!zone) return null;
+  const zones = dailyZones.value;
+  if (!zones.length) return null;
   return {
-    vehicles: zone.routes.length,
-    unserved: zone.unserved_customer_ids?.length || 0,
-    mileageViolations: zone.mileage_violations || 0,
-    overLimit: zone.routes.some((r) => r.mileage_limit_violation),
+    vehicles: dailyTotals.value.vehicles,
+    unserved: unservedOrderCount.value,
+    mileageViolations: zones.reduce((sum, zone) => sum + (zone.mileage_violations || 0), 0),
+    overLimit: zones.some((zone) => zone.routes.some((r) => r.mileage_limit_violation)),
   };
 });
 </script>
@@ -292,7 +300,7 @@ const dailyOutcome = computed(() => {
     <strong>{{ text.title }}</strong>
     <p class="sg-note">{{ interp(text.note, counts) }}</p>
     <p class="sg-source" :class="{ live: isLive }">
-      {{ isLive ? text.liveOperation : text.demoRoute }}
+      {{ isLive ? text.liveOperation : dispatch.dailyPreview ? text.dailyPreview : text.demoRoute }}
     </p>
 
     <!-- Algorithm choice only means something for the committed demo plan;
@@ -325,7 +333,7 @@ const dailyOutcome = computed(() => {
     <div v-else class="sg-metrics">
       <div><b>{{ plan.metrics.total_distance.toFixed(2) }}</b><span>{{ text.distance }} · {{ text.km }}</span></div>
       <div><b>{{ plan.metrics.vehicles_used }}</b><span>{{ text.vehicles }}</span></div>
-      <div><b>{{ plan.metrics.served_customers }}/{{ counts.hospitals }}</b><span>{{ text.served }}</span></div>
+      <div><b>{{ plan.metrics.served_customers }}/{{ plan.metrics.target_customers ?? counts.hospitals }}</b><span>{{ text.served }}</span></div>
       <div><b>{{ plan.metrics.time_window_violations + plan.metrics.capacity_violations + plan.metrics.depot_return_violations + plan.metrics.vehicle_limit_violations }}</b><span>{{ text.violations }}</span></div>
     </div>
 
@@ -393,15 +401,17 @@ const dailyOutcome = computed(() => {
         <p class="sg-constraints">{{ dailyEndsText }}</p>
         <p class="sg-source">
           {{ text.dailyPreview }}<template v-if="dispatch.dailyBatch && dispatch.dailyBatch.seed != null"> · {{ text.dailySeed }} {{ dispatch.dailyBatch.seed }}</template>:
-          <b>{{ dispatch.dailyPreview.zones[0].total_distance.toFixed(2) }}</b> {{ text.km }} ·
-          <b>{{ dispatch.dailyPreview.zones[0].routes.length }}</b> {{ text.vehicles }} ·
-          {{ dispatch.dailyPreview.zones[0].served_facilities }}/{{ dispatch.dailyPreview.zones[0].target_facilities }} {{ text.served }}
+          <b>{{ dailyTotals.distance.toFixed(2) }}</b> {{ text.km }} ·
+          <b>{{ dailyTotals.vehicles }}</b> {{ text.vehicles }} ·
+          {{ dailyTotals.served }}/{{ dailyTotals.target }} {{ text.served }}
         </p>
         <div v-if="unservedOrders.length" class="sg-unserved" role="status">
-          <p class="sg-error">{{ interp(text.dailyUnserved, { n: unservedOrders.length }) }}</p>
+          <p class="sg-error">{{ interp(text.dailyUnserved, { n: unservedOrderCount }) }}</p>
           <ul>
-            <li v-for="entry in unservedOrders" :key="entry.node_id">
+            <li v-for="entry in unservedOrders" :key="`${entry.zoneIndex}-${entry.node_id}`">
               <b>{{ names[entry.node_id] || entry.facility_id }}</b>
+              · {{ text[entry.temperature_zone] || entry.temperature_zone }} · {{ facilityName(entry.origin_facility_id) }}
+              <small>{{ (entry.order_ids || []).join(', ') }}</small>
               <span v-for="reason in entry.reasons" :key="reason.code" class="sg-reason">
                 {{ reasonText(reason) }}
               </span>
@@ -409,13 +419,16 @@ const dailyOutcome = computed(() => {
           </ul>
         </div>
         <p v-if="dailyOutcome && dailyOutcome.overLimit" class="sg-error">{{ text.dailyOverLimit }}</p>
+        <section v-for="(zone, zoneIndex) in dailyZones" :key="`${zone.temperature_zone}-${zone.origin_facility_id}-${zoneIndex}`" class="sg-daily-zone">
+        <h4>{{ text[zone.temperature_zone] || zone.temperature_zone }} · {{ zone.origin_facility_id ? facilityName(zone.origin_facility_id) : text.dailyFromMany }}</h4>
+        <p>{{ zone.served_facilities }}/{{ zone.target_facilities }} {{ text.served }} · {{ zone.total_distance.toFixed(2) }} {{ text.km }}</p>
         <ul class="sg-daily-stops">
-          <li v-for="route in dispatch.dailyPreview.zones[0].routes" :key="route.vehicle_id">
+          <li v-for="route in zone.routes" :key="route.vehicle_id">
             <b>{{ route.vehicle_id }}</b>:
             <span v-if="route.start_facility_id" class="sg-origin">{{ interp(text.dailyVehicleStart, { start: facilityName(route.start_facility_id) }) }}</span>
-            <em class="sg-origin">{{ dispatch.dailyPreview.zones[0].origin_facility_id
+            <em class="sg-origin">{{ zone.origin_facility_id
               ? interp(text.dailyFrom, {
-                  origin: facilityName(dispatch.dailyPreview.zones[0].origin_facility_id) })
+                  origin: facilityName(zone.origin_facility_id) })
               : text.dailyFromMany }}</em>
             {{ routeSequence(route) }}
             <span class="sg-route-end">
@@ -426,7 +439,8 @@ const dailyOutcome = computed(() => {
             </span>
           </li>
         </ul>
-        <button class="sg-primary" :disabled="dispatch.pending" @click="dispatch.confirmDailyPlan()">
+        </section>
+        <button class="sg-primary" :disabled="dispatch.pending || !dispatch.dailyPreview.feasible" @click="dispatch.confirmDailyPlan()">
           {{ text.dailyConfirm }}
         </button>
         <button :disabled="dispatch.pending" @click="dispatch.rerollDailyPlan()">

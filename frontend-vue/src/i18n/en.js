@@ -6,6 +6,7 @@
 export default {
   singapore: {
   "title": "Singapore delivery network",
+  "chilled": "Chilled", "frozen": "Frozen", "ultracold": "Ultracold",
   /* Counts come from the committed network (singaporeRoutes.json), interpolated
      in ReroutePanel — never hard-code the network size here again. */
   "note": "{nodes} facilities · {hospitals} hospitals + {distribution} distribution points · {depots} main depot · close a case to load its route · {thirdParty} third-party warehouse kept for comparison",
@@ -279,6 +280,18 @@ export default {
     sectionEvidence: "Why this decision",
   },
 
+  workflow: {
+    title: "Incident handling", orderLink: "Linked simulated delivery order", unlinked: "Unlinked simulated incident",
+    location: "Incident location", unknownLocation: "Location unknown (not inferred from vehicle position)", selectDestination: "Select receiving hospital",
+    quantityWindow: "Order quantity / delivery window", pending: "Pending", processing: "Processing", handled: "Handled", closed: "Closed",
+    begin: "Start handling", compare: "Compare delivery options here", apply: "Use this option", option: "Option / vehicle",
+    distance: "Added distance", arrival: "Estimated arrival", impact: "Affected orders / max delay",
+    awaitDelivery: "Replacement is assigned or being handled; closure requires actual delivery.", noCandidates: "No executable option is available",
+    note: "Handling / closure note (confirm actual action)", markHandled: "Confirm handling completed", close: "Close incident",
+    date: "Date", hospital: "Receiving hospital", status: "Processing status", all: "All", sort: "Sort",
+    newest: "Newest first", oldest: "Oldest first", reset: "Clear filters", noMatches: "No events match this scope and filters.",
+  },
+
   workspace: {
     mapTitle: "Today's cold-chain delivery map",
     eventsTitle: "Excursion events",
@@ -359,21 +372,21 @@ export default {
     loading: "Loading past cases…",
     error: "Could not load case history from the backend.",
     waiting: "Waiting for the backend connection…",
-    empty: "No archived cases yet — start one with “New inbound” and close it, and it appears here.",
+    empty: "No archived assessments yet — use “+” to register a simulated incident and archive its assessment.",
     offline: "Case history is stored with the Python backend and shown in API mode. Reopen this page with ?api=<backend> (or reconnect) to see past records.",
   },
 
   /* centered modal: add a new inbound case (opened from the header + button) */
   newInbound: {
-    openTip: "New inbound — fill in the shipment case, then close & archive",
+    openTip: "Register simulated incident — link order and location, then archive the assessment",
     title: "New inbound",
-    sub: "Record this new shipment's excursion. The disposition previews live; nothing is saved until you close the case.",
+    sub: "Register a simulated incident, delivery order and location. Archive the assessment, then handle and close the incident.",
     batch: "Batch / remark (optional)",
     batchPh: "e.g. batch 2026-0901",
     rules: "Rule config (optional)",
     resetSpec: "Product defaults",
     preview: "Live preview",
-    archive: "✓ Close & archive",
+    archive: "✓ Register & archive",
     cancel: "Cancel",
     error: "Could not archive this case — please retry.",
   },

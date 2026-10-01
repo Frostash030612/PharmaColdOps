@@ -11,6 +11,9 @@ import { computed, ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { useDecisionsStore } from "../stores/decisions.js";
 import { useSandboxStore } from "../stores/sandbox.js";
 import { useDispatchStore } from "../stores/dispatch.js";
+import { useHistoryStore } from "../stores/history.js";
+import { useOverlayStore } from "../stores/overlay.js";
+import { previewMap, STATUS_COLORS } from "../lib/incidentWorkflow.js";
 import data from "../data/singaporeRoutes.json";
 import LeafletMap from "./LeafletMap.vue";
 import { locale, bundle } from "../i18n/index.js";
@@ -19,12 +22,26 @@ const emit = defineEmits(["close"]);
 const decisions = useDecisionsStore();
 const sandbox = useSandboxStore();
 const dispatch = useDispatchStore();
+const history = useHistoryStore();
+const overlay = useOverlayStore();
 const L = computed(() => bundle(locale.value));
 const text = computed(() => L.value.singapore);
 
 const nodes = data.nodes;
 const names = Object.fromEntries(nodes.map((node) => [node.node_id, node.name]));
-const plan = computed(() => dispatch.live || data.plans.ortools);
+const plan = computed(() => dispatch.live || (dispatch.dailyPreview
+  ? previewMap(dispatch.dailyPreview.zones) : data.plans.ortools));
+const incidentEvents = computed(() => history.scopedRuns.flatMap((record) => {
+  const facility = record.event?.facility_id || record.event?.destination_facility_id;
+  const node = nodes.find((n) => n.facility_id === facility);
+  return node ? [{ id: record.run_id, nodeId: node.node_id,
+    color: STATUS_COLORS[history.statusOf(record)],
+    label: `${record.run_id} · ${L.value.workflow[history.statusOf(record)]}` }] : [];
+}));
+function openIncident(id) {
+  const record = history.runs.find((r) => r.run_id === id);
+  if (record) { sandbox.restoreCase(record); emit("close"); overlay.openCase(); }
+}
 
 const selectedVehicle = ref(null);
 const follow = ref(true);
@@ -127,8 +144,9 @@ onBeforeUnmount(() => {
       <LeafletMap :nodes="nodes" :plan="plan" :text="text" :selected-id="null"
         :selected-vehicle="selectedVehicle" height="calc(100vh - 240px)" legend follow
         :overlays="overlays" :branch-node-ids="branchNodeIds" :incident-node-id="incidentNodeId"
+        :incident-events="incidentEvents"
         :compare-vehicle="overlays.length ? dispatch.branchCandidate?.vehicle_id : null"
-        @select-vehicle="pickVehicle" />
+        @select-vehicle="pickVehicle" @select-incident="openIncident" />
 
       <ul class="tv-vehicles">
         <li v-for="(route, index) in plan.routes" :key="route.vehicle_id"

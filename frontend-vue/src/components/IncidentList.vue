@@ -1,7 +1,6 @@
 <script setup>
-/* Map-first event rail.  The archive is currently the only durable event data
-   source, so every item here is a closed case.  Status-specific colours stay a
-   second-batch task until the backend exposes a processing-status contract.
+/* Map-first event rail. Archived quality assessments carry independent,
+   durable processing progress; status colours are not disposition colours.
 
    The scope ("today" / "case" / "all") lives in the history store rather than
    here, because the map overlay in ReroutePanel draws the same set of cases:
@@ -17,6 +16,8 @@ import { locale, bundle } from "../i18n/index.js";
 import { interp } from "../lib/format.js";
 import { localDay } from "../lib/dayScope.js";
 import { DISPO_COLOR } from "../data/products.js";
+import { STATUS_COLORS } from "../lib/incidentWorkflow.js";
+import IncidentFilters from "./IncidentFilters.vue";
 
 const decisions = useDecisionsStore();
 const history = useHistoryStore();
@@ -35,7 +36,9 @@ function shape(run) {
     temp: ev.excursion_temp_c,
     duration: ev.duration_min,
     disposition: L.value.dispo[run.disposition]?.label || run.disposition,
-    color: DISPO_COLOR[run.disposition] || "#dc2626",
+    color: STATUS_COLORS[history.statusOf(run)],
+    status: L.value.workflow[history.statusOf(run)],
+    location: names[ev.facility_id] || ev.facility_id || L.value.workflow.unknownLocation,
     when: String(run.created_at || "").replace("T", " "),
   };
 }
@@ -78,6 +81,7 @@ function openEvent(item) {
       @click="history.refresh()">{{ L.history.refresh }}</button>
   </div>
 
+  <IncidentFilters v-if="decisions.useApi" />
   <!-- Scope. Filters the event rail AND the map overlay (ReroutePanel reads the
        same store value). Shown even with no archive, so the operator can tell
        "nothing happened today" apart from "history is not loaded". -->
@@ -99,9 +103,8 @@ function openEvent(item) {
     <button class="incident-more" @click="history.scope = 'today'">{{ labels.today }}</button>
   </div>
   <div v-else-if="!events.length" class="incident-empty">
-    <p>{{ L.workspace.eventsNoneToday }}</p>
-    <p class="incident-fallback">{{ todayFallback }}</p>
-    <button class="incident-more" @click="history.scope = 'all'">{{ labels.all }}</button>
+    <p>{{ L.workflow.noMatches }}</p>
+    <button class="incident-more" @click="history.resetFilters(); history.scope = 'all'">{{ L.workflow.reset }}</button>
   </div>
 
   <div v-else class="incident-list">
@@ -109,9 +112,10 @@ function openEvent(item) {
       :class="{ active: sandbox.currentRunId === item.id }" @click="openEvent(item)">
       <span class="incident-dot" :style="{ background: item.color }"></span>
       <span class="incident-copy">
-        <span class="incident-row"><b>{{ item.facility }}</b><em>{{ L.workspace.closed }}</em></span>
+        <span class="incident-row"><b>{{ item.facility }}</b><em>{{ item.status }}</em></span>
+        <small>{{ L.workflow.location }}: {{ item.location }}</small>
         <span>{{ item.product }} · {{ item.temp }} °C / {{ item.duration }} {{ L.workspace.minutes }}</span>
-        <span class="incident-row"><small>{{ item.when }}</small><strong :style="{ color: item.color }">{{ item.disposition }}</strong></span>
+        <span class="incident-row"><small>{{ item.when }}</small><strong :style="{ color: DISPO_COLOR[item.run.disposition] }">{{ item.disposition }}</strong></span>
       </span>
     </button>
   </div>

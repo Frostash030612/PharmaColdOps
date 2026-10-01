@@ -81,7 +81,10 @@ export const useSandboxStore = defineStore("sandbox", () => {
   }
 
   /* ---- event input mutations ---- */
-  function setDestination(v) { currentRunId.value = null; current.value.destination_facility_id = v; }
+  function setDestination(v) {
+    currentRunId.value = null; current.value.destination_facility_id = v;
+    current.value.order_id = null; current.value.dispatch_id = null;
+  }
   function setStage(v) { currentRunId.value = null; current.value.stage = v; }
   function setPackaging(v) { currentRunId.value = null; current.value.packaging = v; }
   function setTemp(v) { currentRunId.value = null; current.value.excursion_temp_c = v; }
@@ -98,6 +101,8 @@ export const useSandboxStore = defineStore("sandbox", () => {
   function randomize() {
     currentRunId.value = null;
     stopTimeline();
+    current.value.order_id = null;
+    current.value.dispatch_id = null;
     const [tLo, tHi] = TEMP_RANGE[current.value.product_id];
     current.value.excursion_temp_c = Math.round((tLo + Math.random() * (tHi - tLo)) * 10) / 10;
     current.value.duration_min = Math.round(Math.random() * 2.5 * spec.value.allowable);
@@ -126,6 +131,9 @@ export const useSandboxStore = defineStore("sandbox", () => {
       packaging: ev.packaging || "intact",
       stage: ev.stage || "transit",
       destination_facility_id: ev.destination_facility_id || randomDestination(),
+      facility_id: ev.facility_id || null,
+      order_id: ev.order_id || null,
+      dispatch_id: ev.dispatch_id || null,
     };
     spec.value = {
       ...base,

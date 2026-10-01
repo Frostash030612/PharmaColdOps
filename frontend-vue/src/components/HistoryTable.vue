@@ -11,9 +11,13 @@ import { useOverlayStore } from "../stores/overlay.js";
 import { locale, bundle } from "../i18n/index.js";
 import { DISPO_COLOR } from "../data/products.js";
 import { fmt, interp } from "../lib/format.js";
+import { filterIncidents } from "../lib/incidentWorkflow.js";
+import { useDispatchStore } from "../stores/dispatch.js";
+import IncidentFilters from "./IncidentFilters.vue";
 
 const decisions = useDecisionsStore();
 const history = useHistoryStore();
+const dispatch = useDispatchStore();
 const sandbox = useSandboxStore();
 const overlay = useOverlayStore();
 const L = computed(() => bundle(locale.value));
@@ -51,7 +55,10 @@ function cells(run) {
   };
 }
 
-const rows = computed(() => history.runs.map(cells));
+const rows = computed(() => filterIncidents(history.runs, {
+  date: history.dateFilter, hospital: history.hospitalFilter,
+  status: history.statusFilter, sort: history.sort,
+}, dispatch.run).map(cells));
 
 /* Rows render pre-computed display cells; the restore must target the RAW
    backend record (event + spec live on it), so look it up again by run_id. */
@@ -60,11 +67,13 @@ function select(cell) {
   if (!run) return;
   sandbox.restoreCase(run);
   overlay.closeHistory();
+  overlay.openCase();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 </script>
 
 <template>
+  <IncidentFilters v-if="hasApi" />
   <p v-if="!hasApi" class="hist-note">{{ L.history.offline }}</p>
   <p v-else-if="history.error && !rows.length" class="hist-note">{{ L.history.error }}</p>
   <p v-else-if="!up && !rows.length" class="hist-note">{{ L.history.waiting }}</p>

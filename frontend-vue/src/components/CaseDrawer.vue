@@ -14,6 +14,7 @@ import RulePath from "./RulePath.vue";
 import RuleList from "./RuleList.vue";
 import RiskIndex from "./RiskIndex.vue";
 import EvidencePanel from "./EvidencePanel.vue";
+import CaseActions from "./CaseActions.vue";
 import { locale, bundle } from "../i18n/index.js";
 
 const overlay = useOverlayStore();
@@ -32,6 +33,7 @@ const L = computed(() => bundle(locale.value));
         <button class="modal-x" :title="L.modal.close" @click="overlay.closeCase()">×</button>
       </div>
       <div class="case-drawer-body">
+        <CaseActions />
         <DecisionBanner />
         <div class="section-label">{{ L.center.sectionTimeline }}</div>
         <Timeline />

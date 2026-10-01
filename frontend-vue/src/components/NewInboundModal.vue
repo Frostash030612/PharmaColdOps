@@ -10,6 +10,8 @@ import { useDecisionsStore } from "../stores/decisions.js";
 import { useHistoryStore } from "../stores/history.js";
 import { useSandboxStore } from "../stores/sandbox.js";
 import { useOverlayStore } from "../stores/overlay.js";
+import { useDispatchStore } from "../stores/dispatch.js";
+import routes from "../data/singaporeRoutes.json";
 import {
   PRODUCT_NUM, PRODUCT_IDS, STAGE_IDS, PACKAGING_IDS, DEFAULT_EVENT,
   TEMP_RANGE, DISPO_COLOR,
@@ -24,6 +26,19 @@ const decisions = useDecisionsStore();
 const history = useHistoryStore();
 const sandbox = useSandboxStore();
 const overlay = useOverlayStore();
+const dispatch = useDispatchStore();
+const facilities = routes.nodes;
+const orderChoices = computed(() => dispatch.run?.input?.orders || []);
+const linkedOrder = computed(() => orderChoices.value.find((o) => o.order_id === ev.value.order_id));
+function selectOrder(e) {
+  const order = orderChoices.value.find((o) => o.order_id === e.target.value);
+  if (!order) { ev.value.order_id = null; ev.value.dispatch_id = null; return; }
+  const d = defaultsOf(order.product_id);
+  ev.value = { ...d.ev, facility_id: ev.value.facility_id || null,
+    order_id: order.order_id, dispatch_id: dispatch.run.dispatch_id,
+    destination_facility_id: order.destination_facility_id };
+  spec.value = d.spec;
+}
 const L = computed(() => bundle(locale.value));
 
 /* ---- draft (local; sandbox stays untouched until archive) ---- */
@@ -40,7 +55,7 @@ const ev = ref(init.ev);
 const spec = ref(init.spec);
 
 const archiving = ref(false);
-const error = ref(false);
+const error = ref("");
 const showRules = ref(false);
 const remark = ref("");
 
@@ -112,8 +127,9 @@ async function archive() {
     sandbox.restoreCase(res);        // now the whole flow appears on the page
     history.refresh();               // archive panel picks up the new record
     window.scrollTo({ top: 0, behavior: "smooth" });
-  } catch {
-    error.value = true;
+    overlay.openCase();
+  } catch (e) {
+    error.value = String(e.message || e);
   } finally {
     archiving.value = false;
   }
@@ -134,8 +150,32 @@ async function archive() {
       <div class="modal-body ni-body">
         <div class="controls">
           <div class="ctl">
+            <label>{{ L.workflow.orderLink }}</label>
+            <select :value="ev.order_id || ''" @change="selectOrder">
+              <option value="">{{ L.workflow.unlinked }}</option>
+              <option v-for="order in orderChoices" :key="order.order_id" :value="order.order_id">
+                {{ order.order_id }} · {{ order.quantity }} · {{ order.destination_facility_id }}
+              </option>
+            </select>
+            <small v-if="linkedOrder">{{ ev.dispatch_id }} · {{ linkedOrder.quantity }} · {{ linkedOrder.earliest_min }}–{{ linkedOrder.latest_min }} min</small>
+          </div>
+          <div class="ctl">
+            <label>{{ L.workflow.location }}</label>
+            <select v-model="ev.facility_id">
+              <option :value="null">{{ L.workflow.unknownLocation }}</option>
+              <option v-for="node in facilities" :key="node.facility_id" :value="node.facility_id">{{ node.name }}</option>
+            </select>
+          </div>
+          <div class="ctl">
+            <label>{{ L.center.destination }}</label>
+            <select v-model="ev.destination_facility_id" :disabled="!!ev.order_id">
+              <option :value="undefined">{{ L.workflow.selectDestination }}</option>
+              <option v-for="node in facilities.filter((n) => n.role === 'customer')" :key="node.facility_id" :value="node.facility_id">{{ node.name }}</option>
+            </select>
+          </div>
+          <div class="ctl">
             <label>{{ L.center.product }}</label>
-            <select :value="ev.product_id" @change="onProduct">
+            <select :value="ev.product_id" :disabled="!!ev.order_id" @change="onProduct">
               <option v-for="id in PRODUCT_IDS" :key="id" :value="id">{{ L.products[id] }}</option>
             </select>
           </div>
@@ -223,7 +263,7 @@ async function archive() {
           <div class="rulepath">{{ d.rulePath }}</div>
         </div>
 
-        <p v-if="error" class="modal-error">{{ L.newInbound.error }}</p>
+        <p v-if="error" class="modal-error">{{ L.newInbound.error }}: {{ error }}</p>
       </div>
 
       <div class="modal-foot">
@@ -235,7 +275,7 @@ async function archive() {
           <button class="btn inline" type="button" :disabled="archiving" @click="cancel">
             {{ L.newInbound.cancel }}
           </button>
-          <button class="btn inline modal-primary" type="button" :disabled="!up || archiving" @click="archive">
+          <button class="btn inline modal-primary" type="button" :disabled="!up || archiving || (d.reshipment && !ev.destination_facility_id)" @click="archive">
             {{ archiving ? "…" : L.newInbound.archive }}
           </button>
         </div>

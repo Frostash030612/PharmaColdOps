@@ -12,11 +12,13 @@
 import { defineStore } from "pinia";
 import { ref, reactive, computed } from "vue";
 import { useDecisionsStore } from "./decisions.js";
+import { useSandboxStore } from "./sandbox.js";
 import { postJson } from "../lib/api.js";
 import data from "../data/singaporeRoutes.json";
 
 export const useDispatchStore = defineStore("dispatch", () => {
   const decisions = useDecisionsStore();
+  const sandbox = useSandboxStore();
 
   const run = ref(null);       // full dispatch response (state + context + route_view)
   const pending = ref(false);
@@ -103,7 +105,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
   const policy = ref("minimize_disruption");
   const POLICIES = ["minimize_disruption", "minimize_vehicles"];
 
-  function previewBranch(runId, nextPolicy = policy.value) {
+  function previewBranch(runId, nextPolicy = policy.value, { inline = false } = {}) {
     if (!ready() || !runId) return Promise.resolve(null);
     if (POLICIES.includes(nextPolicy)) policy.value = nextPolicy;
     pending.value = true;
@@ -111,12 +113,17 @@ export const useDispatchStore = defineStore("dispatch", () => {
     needsDailyPlan.value = false;
     /* Open the comparison popup straight away: the operator asked to compare, so
        the popup shows either the options or the reason there are none. */
-    branchOpen.value = true;
+    branch.value = null;
+    branchOpen.value = !inline;
     return postJson(`${decisions.apiBase}/api/dispatch/reshipments/preview`, {
       run_id: runId, policy: policy.value,
     })
-      .then((data) => { branch.value = data; return data; })
+      .then((data) => {
+        if (sandbox.currentRunId !== runId) return null; // user switched incidents during preview
+        branch.value = { ...data, run_id: runId }; return data;
+      })
       .catch((e) => {
+        if (sandbox.currentRunId !== runId) return null;
         branch.value = null;
         needsDailyPlan.value = e.status === 409;
         branchError.value = String(e.message || e);

@@ -23,6 +23,9 @@ export function eventPayload(current) {
     packaging: current.packaging,
     stage: current.stage,
     destination_facility_id: current.destination_facility_id || null,
+    facility_id: current.facility_id || null,
+    order_id: current.order_id || null,
+    dispatch_id: current.dispatch_id || null,
   };
 }
 

@@ -16,6 +16,10 @@ const COMPONENTS = [
   "frontend-vue/src/components/IncidentList.vue",
   "frontend-vue/src/components/LeafletMap.vue",
   "frontend-vue/src/components/HeaderBar.vue",
+  "frontend-vue/src/components/CaseActions.vue",
+  "frontend-vue/src/components/CaseDrawer.vue",
+  "frontend-vue/src/components/IncidentFilters.vue",
+  "frontend-vue/src/components/NewInboundModal.vue",
 ].filter((f) => existsSync(f));
 
 const bundleOf = (file) =>

@@ -5,6 +5,7 @@
 export default {
   singapore: {
   "title": "新加坡配送网络",
+  "chilled": "冷藏", "frozen": "冷冻", "ultracold": "超低温",
   /* 节点数由已入库路网（singaporeRoutes.json）算出并在 ReroutePanel 插值，
      不要在这里再写死网络规模。 */
   "note": "{nodes} 个设施 · {hospitals} 家医院 + {distribution} 个分拨点 · {depots} 个主仓 · 结案后可读取当前案例路线 · 另有 {thirdParty} 个第三方仓作对比",
@@ -277,6 +278,18 @@ export default {
     sectionEvidence: "为什么这么判",
   },
 
+  workflow: {
+    title: "异常处理闭环", orderLink: "关联模拟配送订单", unlinked: "不关联订单（独立模拟异常）",
+    location: "异常发生地点", unknownLocation: "发生地点未知（不推断车辆位置）", selectDestination: "选择收货医院",
+    quantityWindow: "订单数量／送达时间窗", pending: "待处理", processing: "处理中", handled: "已处理", closed: "已结案",
+    begin: "开始处理", compare: "在此比较配送方案", apply: "采用此方案", option: "方案／车辆",
+    distance: "新增里程", arrival: "预计送达", impact: "受影响订单／最大延误",
+    awaitDelivery: "补送已纳入作业或正在处理；实际送达后才可结案。", noCandidates: "当前没有可执行方案",
+    note: "处理／结案备注（确认实际处置）", markHandled: "确认处置完成", close: "确认结案",
+    date: "日期", hospital: "收货医院", status: "处理进度", all: "全部", sort: "排序",
+    newest: "最新优先", oldest: "最早优先", reset: "清除筛选", noMatches: "当前范围与筛选条件下没有事件。",
+  },
+
   workspace: {
     mapTitle: "今日冷链配送地图",
     eventsTitle: "异常事件",
@@ -356,21 +369,21 @@ export default {
     loading: "正在载入过往记录…",
     error: "无法从后端载入过往记录。",
     waiting: "等待后端连接…",
-    empty: "暂无归档——开一个入库案例并点「结案入库」，记录就会出现在这里。",
+    empty: "暂无归档——点击「+」登记模拟异常并归档判定，记录就会出现在这里。",
     offline: "过往记录随 Python 后端保存，仅在 API 模式下显示。用 ?api=<后端> 打开本页（或重连）即可看到。",
   },
 
   /* 居中弹窗：新增入库（由标题栏的 ＋ 打开） */
   newInbound: {
-    openTip: "新增入库——填写整批流程后结案归档",
+    openTip: "登记模拟异常——关联订单和发生地点，并归档质控判定",
     title: "新增入库",
-    sub: "记录这批新入库药品的超限情况：下方实时预览处置；结案入库后才归档并切到主页面流程。",
+    sub: "登记模拟异常、关联配送订单和发生地点；归档判定后进入处理流程，完成处置后再结案。",
     batch: "批次 / 备注（可选）",
     batchPh: "例如 batch 2026-0901",
     rules: "规则配置（可选）",
     resetSpec: "恢复产品默认",
     preview: "判定预览",
-    archive: "✓ 结案入库",
+    archive: "✓ 登记判定并归档",
     cancel: "取消",
     error: "结案失败，请重试。",
   },

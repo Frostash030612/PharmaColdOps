@@ -13,12 +13,22 @@ import { defineStore } from "pinia";
 import { computed, ref, watch } from "vue";
 import { useDecisionsStore } from "./decisions.js";
 import { useSandboxStore } from "./sandbox.js";
-import { fetchRuns } from "../lib/api.js";
+import { fetchRuns, postJson } from "../lib/api.js";
+import { useDispatchStore } from "./dispatch.js";
+import { filterIncidents, incidentStatus } from "../lib/incidentWorkflow.js";
 import { localDay, resolveShownDay, isReallyToday } from "../lib/dayScope.js";
 
 export const useHistoryStore = defineStore("history", () => {
   const decisions = useDecisionsStore();
   const sandbox = useSandboxStore();
+  const dispatch = useDispatchStore();
+  const dateFilter = ref("");
+  const hospitalFilter = ref("");
+  const statusFilter = ref("");
+  const sort = ref("newest");
+  const workflowPending = ref(false);
+  const workflowError = ref("");
+  const statusOf = (record) => incidentStatus(record, dispatch.run);
 
   /* ---- archive state ---- */
   const runs = ref([]);        // raw /api/runs records, newest first (server order)
@@ -51,11 +61,29 @@ export const useHistoryStore = defineStore("history", () => {
   const caseRuns = computed(() => (currentRun.value ? [currentRun.value] : []));
 
   /* What every scoped view renders. */
-  const scopedRuns = computed(() => {
+  const scopeRuns = computed(() => {
     if (scope.value === "case") return caseRuns.value;
     if (scope.value === "all") return runs.value;
     return todayRuns.value;
   });
+  const scopedRuns = computed(() => filterIncidents(scopeRuns.value, {
+    date: dateFilter.value, hospital: hospitalFilter.value,
+    status: statusFilter.value, sort: sort.value,
+  }, dispatch.run));
+  function resetFilters() {
+    dateFilter.value = ""; hospitalFilter.value = ""; statusFilter.value = ""; sort.value = "newest";
+  }
+  async function changeStatus(record, status, remark) {
+    if (workflowPending.value) return;
+    workflowPending.value = true; workflowError.value = "";
+    try {
+      const updated = await postJson(`${decisions.apiBase}/api/runs/${record.run_id}/workflow`, {
+        status, expected_version: record.workflow_version || 0, remark,
+      });
+      runs.value = runs.value.map((r) => r.run_id === record.run_id ? updated : r);
+    } catch (e) { workflowError.value = String(e.message || e); refresh(); }
+    finally { workflowPending.value = false; }
+  }
 
   /* One GET /api/runs. Requests arriving mid-flight queue one follow-up so a
      close that landed while a fetch ran is never dropped. Idempotent read — a
@@ -68,7 +96,7 @@ export const useHistoryStore = defineStore("history", () => {
     inflight = true;
     loading.value = true;
     error.value = false;
-    fetchRuns(decisions.apiBase)
+    return fetchRuns(decisions.apiBase)
       .then((res) => {
         runs.value = res.runs;
         count.value = res.count;
@@ -82,7 +110,7 @@ export const useHistoryStore = defineStore("history", () => {
       });
   }
 
-  function refresh() { fetchOnce(); }
+  function refresh() { return fetchOnce(); }
 
   /* Boot / reconnect entry. Offline mode has no archive to show. */
   function load() {
@@ -104,8 +132,16 @@ export const useHistoryStore = defineStore("history", () => {
       timer = setTimeout(refresh, 200);
     }
   });
+  // Route acceptance and delivered checkpoints update both rail and map immediately.
+  watch(() => JSON.stringify(dispatch.orders.map((o) => [o.order_id, o.status])), refresh);
+  watch(() => sandbox.currentRunId, (id) => {
+    if (dispatch.branch?.run_id !== id) {
+      dispatch.branch = null; dispatch.branchOpen = false; dispatch.branchError = "";
+    }
+  });
 
   return { runs, count, loading, loaded, error, refresh, load,
            scope, shownDay, todayRuns, scopedRuns, days, isToday, dayOfRun,
-           currentRun, caseRuns };
+           currentRun, caseRuns, dateFilter, hospitalFilter, statusFilter, sort,
+           statusOf, resetFilters, changeStatus, workflowPending, workflowError };
 });
