@@ -4,8 +4,9 @@ An explainable decision-support prototype for cold-chain pharmaceutical temperat
 
 Proposal & related documents live in [`proposal/`](proposal/):
 
-The current proposal baseline is the **2026-09-12 revised EN/ZH Markdown, SVG figures, and regenerated Chinese Word proposal**.
-PPT exports are retained as older reference files until the team synchronises them; see [proposal version status](proposal/README.md).
+The current working baseline is the **2026-09-28 revised EN/ZH Markdown, presentation materials,
+and regenerated speech document**. The submitted English PDF remains a frozen 2026-09-13 record;
+see [proposal version status](proposal/README.md) for the documented differences.
 
 - Proposal (EN): [proposal/PharmaColdOps-Proposal-EN.md](proposal/PharmaColdOps-Proposal-EN.md)
 - Proposal (中文): [proposal/PharmaColdOps-Proposal-ZH.md](proposal/PharmaColdOps-Proposal-ZH.md)
@@ -27,9 +28,9 @@ PPT exports are retained as older reference files until the team synchronises th
 
 ## Web demo — front-end ↔ back-end
 
-Two front-end trees share one dual-mode behaviour (`?api=` → FastAPI backend; offline → built-in JS
-engine, byte-identical results). New work goes in **`frontend-vue/`** (Vue 3 + Vite); the older
-zero-build `frontend/` was retired on 2026-09-12, so **`frontend-vue/` is the only client**.
+The single **`frontend-vue/`** client supports two modes: `?api=` uses the FastAPI backend and the
+default offline mode uses the built-in JS rule-engine equivalent. The older zero-build `frontend/`
+tree was retired on 2026-09-12.
 
 **Vue app (`frontend-vue/`, recommended)** — needs Node.js LTS (see below). Uses **pnpm**;
 with Node ≥ 16.9 run `corepack enable pnpm` once (no global install needed) and install from the
@@ -38,7 +39,7 @@ committed `pnpm-lock.yaml`:
 ```bash
 cd frontend-vue
 corepack enable pnpm    # one-off
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev                       # http://localhost:5173          (offline)
 # http://localhost:5173/?api=http://127.0.0.1:8000               (backend mode)
 ```
@@ -52,10 +53,14 @@ pnpm dev                       # http://localhost:5173          (offline)
 wifi (it falls back to the online OpenStreetMap layer, then to a route-only view; force the online
 layer with `?tiles=osm`). See [docs/前端地图底图说明.md](docs/前端地图底图说明.md).
 
-Backend (terminal 1, either case):
+Backend (terminal 1):
 
 ```bash
-.venv/Scripts/python.exe -m uvicorn --app-dir src api.main:app --port 8000
+# macOS / Linux
+.venv/bin/python -m uvicorn --app-dir src api.main:app --port 8000
+
+# Windows PowerShell
+.venv\Scripts\python.exe -m uvicorn --app-dir src api.main:app --port 8000
 ```
 
 **Where the code lives**
@@ -64,6 +69,20 @@ Backend (terminal 1, either case):
   offline fallback + `?api=` backend mode), Leaflet map, dispatch console, `src/components/`,
   `src/stores/`, `src/lib/`, `src/i18n/`; data is the generated `src/data/realData.mjs`.
 - 🌐 **Back-end service** — [`src/api/`](src/api/): FastAPI + Uvicorn routes.
+- 🔄 **Integration endpoints** — `POST /api/route` is a stateless reshipment-route preview;
+  `POST /api/dispatch/reshipments` commits a selected candidate into the live delivery operation;
+  `POST /api/dispatch/runs/{id}/failure-preview` and `failure-accept` handle a mechanical
+  vehicle failure through replacement delivery; `POST /api/dispatch/runs/{id}/delay-preview`
+  and `delay-accept` inspect forecast delivery-window misses and commit an operator-approved
+  remaining-stop re-sequence; `POST /api/qa` runs bounded, case-specific Neo4j evidence queries.
+  The run-level `overnight-preview`, `overnight-accept`, and `next-day` endpoints
+  execute parking moves and create the next dated fixed-order run from the actual parked fleet.
+  Next-day inventory carries remaining lots; any extra supply must be declared explicitly.
+
+In backend mode, reopen a completed run with **Open closing-day record**. Review parking,
+declare any additional next-day supply, confirm the moves, advance the clock until parked,
+then create/depart the next fixed-order day. The parked fleet starts from its actual locations;
+consumed inventory is not restored and daily mileage starts afresh.
 - 🧠 **Decision core** (what the back-end calls) — [`src/rule_engine/`](src/rule_engine/); behaviour is driven by [`rules_config.json`](src/rule_engine/rules_config.json).
 - 🔗 **Contract tests** — [`tests/test_api_contract.py`](tests/test_api_contract.py): change `front-end ↔ back-end` fields together with this file.
 
@@ -87,13 +106,27 @@ with `python scripts/audit_datasets.py` → `data/processed/ml_audit_report.md`.
 
 ## Quickstart
 
-Python side:
+Python 3.12 is the supported runtime. From a clean checkout:
 
 ```bash
-python -m venv .venv
-# activate the venv, then:
-pip install -r requirements.txt
-pytest
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+docker compose up -d
+.venv/bin/python -m pytest -q
+```
+
+Windows users can replace `.venv/bin/...` with `.venv\Scripts\...`.
+The current 2026-10-01 baseline is **351 passed / 20 skipped**; the skipped tests
+require a reachable Neo4j. The earlier 2026-09-30 revision was verified with
+**341 passed** with Neo4j connected; see [PROGRESS.md](PROGRESS.md) for versioned checks.
+Run `docker compose down` when the local graph is no longer needed; it preserves the graph volume.
+
+Then verify the Vue production build:
+
+```bash
+cd frontend-vue
+pnpm install --frozen-lockfile
+pnpm build
 ```
 
 Vue front-end (`frontend-vue/`) additionally needs **Node.js LTS** (`node -v`; Windows:
@@ -101,7 +134,7 @@ Vue front-end (`frontend-vue/`) additionally needs **Node.js LTS** (`node -v`; W
 (one run, two outputs — they cannot drift):
 
 ```bash
-.venv/Scripts/python.exe scripts/export_demo_data.py \
+.venv/bin/python scripts/export_demo_data.py \
   --out-esm frontend-vue/src/data/realData.mjs
 ```
 
@@ -110,8 +143,8 @@ Vue front-end (`frontend-vue/`) additionally needs **Node.js LTS** (`node -v`; W
 Shared evaluation helpers live in [`src/ml/evaluate.py`](src/ml/evaluate.py). Run the full experiments:
 
 ```bash
-python scripts/train_risk_full.py    # LR / LightGBM / XGBoost + SHAP on Kaggle silent-failure
-python scripts/train_root_cause.py   # 10-class excursion-cause classifier (vaccine-cold-chain)
+.venv/bin/python scripts/train_risk_full.py    # LR / LightGBM / XGBoost + SHAP on Kaggle silent-failure
+.venv/bin/python scripts/train_root_cause.py   # 10-class excursion-cause classifier (vaccine-cold-chain)
 ```
 
 Results land in `data/processed/` (gitignored); see `PROGRESS.md` for the current numbers and the honesty caveats (no timestamp → non-chronological split; datasets likely synthetic).
@@ -144,7 +177,8 @@ A temperature excursion in → a disposition decision out.
 C's solvers now accept a directed `(distance, travel_time)` callback. Solomon
 remains the default; Singapore uses cached road matrices in km/min. The committed
 `data/optimisation/singapore/network.json` contains real OSM matrices and road
-geometry for 1 depot + 10 healthcare facilities. Solve and export fully offline
+geometry for **19 nodes**: 1 main depot, 1 third-party warehouse, 14 hospital receiving sites and
+3 distribution points. Solve and export fully offline
 with `python scripts/export_singapore_routes.py`. Rebuild with
 `python scripts/build_singapore_network.py --osm-file path/to/Singapore.osm.gz`
 (OSMnx; public extract download avoids Overpass throttling).
