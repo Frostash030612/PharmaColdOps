@@ -2,6 +2,12 @@
 
 An explainable decision-support prototype for cold-chain pharmaceutical temperature excursions. When an excursion occurs, PharmaColdOps issues a traceable disposition recommendation (release / quarantine / retest / scrap) and flags whether a separate reshipment workflow should be considered, grounded in WHO / EU GDP / ICH principles and product-specific stability assumptions.
 
+M4 advisory inference is now available alongside (not instead of) the rule decision.
+Run `.venv/bin/python scripts/train_m4_models.py` before starting the API to generate trusted
+local risk/candidate-cause artifacts. The online registration panel accepts explicit simulated
+transport/monthly contexts, preserves model snapshots, and never maps a failure score to scrap.
+See [M4 integration, limitations and input contracts](docs/M4模型集成.md).
+
 Proposal & related documents live in [`proposal/`](proposal/):
 
 The current working baseline is the **2026-09-28 revised EN/ZH Markdown, presentation materials,

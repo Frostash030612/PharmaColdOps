@@ -99,7 +99,7 @@ Archiving a case does not establish its real-world outcome. Automatic feedback l
 | Knowledge discovery and data mining | Shipment failure classification, facility-level candidate causes and SHAP |
 | Cognitive systems | Neo4j, template Cypher queries and evidence tracing |
 
-M1 and M7 provide engineering support. ML scores do not enter the decision API; the rule engine is the sole semantic source of online disposition recommendations.
+M1 and M7 provide engineering support. **User-authorised integration update, 2026-10-02:** M4 now has separate advisory inference APIs and UI, with explicitly supplied simulated transport/monthly contexts and optional immutable registration snapshots. No features are fabricated from event MKT or orders. Rules remain the sole source of disposition/reshipment/dispatch semantics. See [M4 integration and limitations](../docs/M4模型集成.md).
 
 ### 6.2 Rule-Based Disposition
 
@@ -115,7 +115,7 @@ rules_config.json and the Python engine define behaviour, with a semantic port f
 
 ### 6.3 Risk Classification and Candidate Causes
 
-The risk task predicts silent_failure from 8,000 shipment summaries, comparing LR, LightGBM and XGBoost and contrasting interpretable features with an extended anonymous-feature set. The current split is 70/15/15, randomly stratified. The validation set selects the F1 threshold; imputation and scaling are fitted on training data only. Features include transit duration, temperature summaries, door openings and humidity statistics, not the current API's MKT or stage fields.
+The historical offline risk experiment predicts silent_failure from 8,000 shipment summaries, comparing LR, LightGBM and XGBoost and contrasting interpretable features with an extended anonymous-feature set. The split is 70/15/15, randomly stratified. The validation set selects the F1 threshold; imputation and scaling are fitted on training data only. Features include transit duration, temperature summaries, door openings and humidity statistics, not the event API's MKT or stage fields. The new deployment training uses 13 summary features without IDs, cargo quantities or warehouse balances; model selection is validation-only, and the actual deployed algorithm/results are documented separately in the M4 integration guide.
 
 The dataset has no timestamp or forward-looking label relative to a prediction time. This is shipment-level failure classification, not demonstrated 30/60-minute early warning. The UI risk index and cause_code are deterministic heuristics, not ML inference.
 
