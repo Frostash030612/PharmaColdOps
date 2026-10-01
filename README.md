@@ -28,6 +28,10 @@ restricted to the five warehouse nodes selected by the operator; hospitals canno
 end-of-day terminals. Default overnight demos assume supply automatically rather than
 requiring quantity entry. See [urgent and parking rules](docs/独立加急与仓库停车规则.md).
 
+Incident registration is now durable and idempotent by draft identity, with a recoverable
+browser retry envelope. A header-level offline rule sandbox works without the API and
+does not register cases or dispatch routes. See [registration and offline guide](docs/异常登记与离线沙箱.md).
+
 新加坡路网与前端的完成范围、实测结果及复用方式：[交付记录](docs/M5_singapore_handover.md)。
 
 | Module | Directory | Technique group |
