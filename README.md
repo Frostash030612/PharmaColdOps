@@ -32,6 +32,13 @@ Incident registration is now durable and idempotent by draft identity, with a re
 browser retry envelope. A header-level offline rule sandbox works without the API and
 does not register cases or dispatch routes. See [registration and offline guide](docs/异常登记与离线沙箱.md).
 
+Run `.venv/bin/python scripts/run_demo_acceptance.py` for the reproducible full API workflow
+in isolated storage; add `--graph` to verify a configured, seeded test Neo4j. A separate
+Playwright CLI script drives the visible Vue main flow. See [full acceptance guide](docs/完整演示与端到端验收.md).
+Case registration now commits a durable graph outbox in the same DB transaction. Enable
+automatic retry with `KG_SYNC_ENABLED=1`, or run `scripts/sync_knowledge_graph.py`.
+See [graph reliability and recovery](docs/知识图谱可靠性与恢复.md), especially before rebuilding a graph.
+
 新加坡路网与前端的完成范围、实测结果及复用方式：[交付记录](docs/M5_singapore_handover.md)。
 
 | Module | Directory | Technique group |
@@ -93,10 +100,10 @@ Backend (terminal 1):
   remaining-stop re-sequence; `POST /api/qa` runs bounded, case-specific Neo4j evidence queries.
   The run-level `overnight-preview`, `overnight-accept`, and `next-day` endpoints
   execute parking moves and create the next dated fixed-order run from the actual parked fleet.
-  Next-day inventory carries remaining lots; any extra supply must be declared explicitly.
+  Next-day inventory carries remaining model lots; the default demo assumes extra supply automatically.
 
 In backend mode, reopen a completed run with **Open closing-day record**. Review parking,
-declare any additional next-day supply, confirm the moves, advance the clock until parked,
+use the disclosed demo supply assumption, confirm the moves, advance the clock until parked,
 then create/depart the next fixed-order day. The parked fleet starts from its actual locations;
 consumed inventory is not restored and daily mileage starts afresh.
 - 🧠 **Decision core** (what the back-end calls) — [`src/rule_engine/`](src/rule_engine/); behaviour is driven by [`rules_config.json`](src/rule_engine/rules_config.json).

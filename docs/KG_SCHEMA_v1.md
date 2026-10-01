@@ -34,7 +34,7 @@
 | property | type | 说明 |
 |---|---|---|
 | `product_id` | string | PK。当前 4 值：`vaccine_2_8` / `frozen_m20` / `insulin_2_8` / `mrna_ultracold` |
-| `storage_min_c` | float | 存储下限（有真实来源：WHO TRS 961 Annex 9 / FDA 说明书 / Pfizer EUA） |
+| `storage_min_c` | float | 存储下限；逐产品／类别级出处来自 config `_sources`，核实等级见 `阈值证据表_v1.md`，不得一概归属 WHO Annex 9 |
 | `storage_max_c` | float | 存储上限（同上） |
 | `allowable_duration_min` | int | 允许超限时长（原则锚定默认值，量级为工程取值，无公开逐产品数字） |
 | `mkt_threshold_c` | float | MKT 阈值（原则锚定默认值，同上） |
@@ -49,7 +49,7 @@
 
 > 数值与出处的唯一入口是 `rules_config.json`；KG/前端/测试都不得另存一份阈值（同源原则）。出处属性由 `build_graph.py` 从 `_sources` 逐字载入，不在此文件起草。
 
-### `Regulation` — 合规文档（来源：build_graph 8 条，条款号/摘要 2026-09-10 对官方 PDF 逐条核对）
+### `Regulation` — 合规文档（来源：build_graph 8 条；各条 `verified` 区分条款级核实、文档级参照与工程假设，非全部已逐字核实）
 
 | property | type | 说明 |
 |---|---|---|
@@ -142,7 +142,7 @@
 | `EVENT_CAUSED_BY` | `(:ExcursionEvent)-[]->(:Cause)` | Event N—1 Cause | 本次事件主因 | 冻结事件 → `frozen` |
 | `EVENT_LEADS_TO_DISPOSITION` | `(:ExcursionEvent)-[d]->(:Disposition)` | Event N—1 Disposition | **决策链实例**：边属性存现场（见下） | `run_id=…` → `quarantine` |
 | `CITES` | `(:ExcursionEvent)-[:CITES]->(:Regulation)` | Event N—M Regulation | **本次案例**引用了哪条法规（由本次触发的 `rule_no` 经 `RULE_TO_REGULATIONS` 映射）。2026-09-13 修正：原先挂在共享的 `Disposition` 节点上（`DISPOSITION_CITED_BY`），导致同处置、不同规则的案例互相串证据；现与 `FOLLOWS` 一样挂在案例上 | `run_id=…` → `R-WHO-TRS961-EXCURSION` |
-| ✚ `EVENT_OCCURRED_AT` | `(:ExcursionEvent)-[]->(:Facility)` | Event N—1 Facility | 事件发生在哪个设施（stage 词 → facility.role）；`EventIn.facility_id` 已于 9/12 进契约并落边，结案表单尚未传参（9/13） | `warehouse` 事件 → 对应 depot |
+| ✚ `EVENT_OCCURRED_AT` | `(:ExcursionEvent)-[]->(:Facility)` | Event N—1 Facility | 前端选择的实际模拟发生地点 `facility_id`；不从 stage 或 GPS 猜测；表单与原订单已贯通（2026-10-01） | 事件 → 已选择的已知设施 |
 | ✚ `TRIGGERS_RESHIPMENT` | `(:ExcursionEvent)-[]->(:ReshipmentOrder)` | Event 0—1 Order | 判定需补发 → 生成补发单（M3→M5 锚点） | `scrap`/`quarantine` 事件 → 补发单 |
 | ✚ `RESHIPS_TO` | `(:ReshipmentOrder)-[]->(:Facility)` | Order 0—1 Facility | 补发单目的地；`destination_facility_id` 已进契约，9/13 起该目的地同时进入 `audit_chain` 的证据列表 | `RO-…` → `H-NUH` |
 | ✚ `FOLLOWS` | `(:ExcursionEvent)-[]->(:SOP)` | Event N—M SOP | 本次结案依循的操作流程（由 `rule_no` 经 `RULE_TO_SOPS` 映射；2026-09-11 随 writer 落地，**待 A/C 评审**；实现与 §4 问答路径均用 `FOLLOWS`，2026-09-12 命名对齐） | `run_id=…` → `SOP-GDP-001` |
