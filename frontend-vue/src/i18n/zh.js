@@ -448,7 +448,7 @@ export default {
     vaccine_2_8: "疫苗（2–8 °C）",
     frozen_m20: "冷冻生物制品（−25…−15 °C）",
     insulin_2_8: "胰岛素（2–8 °C）",
-    mrna_ultracold: "mRNA 疫苗（−90…−60 °C）",
+    mrna_ultracold: "mRNA 疫苗（−80…−60 °C）",
   },
 
   stages: {

@@ -20,7 +20,9 @@ quarantine、API 模式说 scrap，**演示里能同时看到两个答案，而�
 from __future__ import annotations
 
 import json
+import csv
 import re
+import pytest
 from pathlib import Path
 
 from rule_engine.engine import RuleEngine
@@ -62,6 +64,27 @@ def test_frontend_thresholds_match_rules_config():
             assert needle.search(f.read_text(encoding="utf-8")), (
                 f"{p['product_id']} thresholds out of sync in {f.name}"
             )
+
+
+@pytest.mark.parametrize("locale", ["en", "zh"])
+def test_mrna_product_label_matches_actual_storage_range(locale):
+    product = next(p for p in json.loads(CONFIG.read_text())["products"] if p["product_id"] == "mrna_ultracold")
+    source = (REPO / "frontend-vue" / "src" / "i18n" / f"{locale}.js").read_text(encoding="utf-8")
+    label = re.search(r'mrna_ultracold:\s*"([^"]+)"', source).group(1)
+    interval = re.search(r"\(([^()]+°C)\)", label.replace("（", "(").replace("）", ")")).group(1)
+    values = [float(n.replace("−", "-")) for n in re.findall(r"[-−]?\d+(?:\.\d+)?", interval)]
+    assert values == [product["storage_min_c"], product["storage_max_c"]]
+
+
+@pytest.mark.parametrize("language", ["en", "zh"])
+def test_mrna_catalog_label_matches_rule_config(language):
+    product = next(p for p in json.loads(CONFIG.read_text())["products"] if p["product_id"] == "mrna_ultracold")
+    with (REPO / "data" / "optimisation" / "product_catalog.csv").open(encoding="utf-8") as file:
+        row = next(r for r in csv.DictReader(file) if r["product_id"] == "mrna_ultracold")
+    label = row["name_" + language].replace("（", "(").replace("）", ")")
+    interval = re.search(r"\(([^()]+°C)\)", label).group(1)
+    values = [float(n.replace("−", "-")) for n in re.findall(r"[-−]?\d+(?:\.\d+)?", interval)]
+    assert values == [product["storage_min_c"], product["storage_max_c"]]
 
 
 def test_clause4_disposition_matches_engine_in_all_js_copies():

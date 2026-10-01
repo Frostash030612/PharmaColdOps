@@ -452,7 +452,7 @@ export default {
     vaccine_2_8: "Vaccine (2–8 °C)",
     frozen_m20: "Frozen biologic (−25…−15 °C)",
     insulin_2_8: "Insulin (2–8 °C)",
-    mrna_ultracold: "mRNA vaccine (−90…−60 °C)",
+    mrna_ultracold: "mRNA vaccine (−80…−60 °C)",
   },
 
   /* --- stage display names (keys = stage id) --- */

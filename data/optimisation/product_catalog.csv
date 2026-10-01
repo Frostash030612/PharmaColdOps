@@ -2,4 +2,4 @@ product_id,name_zh,name_en,temperature_zone,unit
 vaccine_2_8,疫苗（2–8 °C）,Vaccine (2–8 °C),chilled,箱
 frozen_m20,冷冻生物制品（−25…−15 °C）,Frozen biologic (−25…−15 °C),frozen,箱
 insulin_2_8,胰岛素（2–8 °C）,Insulin (2–8 °C),chilled,箱
-mrna_ultracold,mRNA 疫苗（−90…−60 °C）,mRNA vaccine (−90…−60 °C),ultracold,箱
+mrna_ultracold,mRNA 疫苗（−80…−60 °C）,mRNA vaccine (−80…−60 °C),ultracold,箱
