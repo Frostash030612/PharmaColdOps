@@ -38,6 +38,9 @@ Playwright CLI script drives the visible Vue main flow. See [full acceptance gui
 Case registration now commits a durable graph outbox in the same DB transaction. Enable
 automatic retry with `KG_SYNC_ENABLED=1`, or run `scripts/sync_knowledge_graph.py`.
 See [graph reliability and recovery](docs/知识图谱可靠性与恢复.md), especially before rebuilding a graph.
+`scripts/check_case_graph.py` performs a read-only check of actual per-case graph coverage;
+`--repair` replays only non-conflicting missing chains. `scripts/verify_graph_recovery.py`
+verifies actual graph stop/restart and automatic recovery using only its own temporary container.
 
 新加坡路网与前端的完成范围、实测结果及复用方式：[交付记录](docs/M5_singapore_handover.md)。
 
