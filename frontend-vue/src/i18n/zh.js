@@ -5,6 +5,10 @@
 export default {
   singapore: {
   "title": "新加坡配送网络",
+  "overnightWarehouseRequired": "车辆须移到允许的仓库，不能停在医院",
+  "endDayDemoSupply": "演示版自动假设次日有可供应的货物，无需维护仓库余额或填写补货数量；内部数字仅为兼容模型标记。",
+  "nominalUrgentTask": "独立加急演示任务，不表示一箱货物或真实量货库存。",
+  "modelQuantityOnly": "模型实验参数（非真实业务货量）",
   "chilled": "冷藏", "frozen": "冷冻", "ultracold": "超低温",
   /* 节点数由已入库路网（singaporeRoutes.json）算出并在 ReroutePanel 插值，
      不要在这里再写死网络规模。 */
@@ -36,7 +40,7 @@ export default {
   "km": "公里",
   "liveRoute": "当前案例真实路线",
   "demoRoute": "固定演示路线",
-  "liveOperation": "当前配送作业（真实库存与车辆）",
+  "liveOperation": "当前模拟配送作业（共享车辆与执行状态）",
   "dispatchStatus": "调度状态",
   "ordersDelivered": "已送达 / 订单",
   "ordersFailed": "故障车未完成订单",
@@ -50,7 +54,7 @@ export default {
   "speedFaster": "300×",
   "needsApi": "本次处置需要补发；连接后端（?api=）后可派车。",
   "noReshipment": "本次处置无需补发。",
-  "committing": "正在核对库存与车辆…",
+  "committing": "正在核对路径与车辆…",
   "committed": "✓ 本次补发已纳入配送作业",
   "fromCase": "来自案例",
   "loadingRoute": "正在计算当前案例路线…",
@@ -70,7 +74,7 @@ export default {
   "dailyMileageCap": "每车里程上限（km）",
   "dailyUnlimited": "留空＝不限",
   "dailyMaxStops": "每车最多站点",
-  "dailyTerminals": "可作终点站（车辆最后停靠，勾选后不再开回仓库）",
+  "dailyTerminals": "允许当天最后停靠的仓库（五仓多选，医院不可选）",
   "dailyApply": "应用并重新预览",
   "dailyEndsAt": "收车于",
   "dailyBackToDepot": "回主仓",
@@ -276,6 +280,15 @@ export default {
     sectionRisk: "风险指数",
     riskNote: "（规则启发式 · 确定性，非 ML 模型）",
     sectionEvidence: "为什么这么判",
+  },
+
+  urgent: {
+    nominal: "演示任务（无具体货量）",
+    title: "独立加急配送", demo: "只填写药品、提货仓库、收货医院和时间要求。不管理具体货量或仓库余额；内部用一个无实际载货重量的演示任务标记。停车点只能是已允许的仓库。",
+    needsRun: "先生成并确认当天配送作业，再添加独立加急单；不会自动另建作业。", paired: "当前 PDPTW 取送作业暂不支持在途加急，请使用 grouped 配送模型。",
+    day: "所属配送日／作业", origin: "提货仓库", unavailableSource: "该品类不可供货／仅停靠", latest: "最晚送达（当天）", earliest: "最早送达（可留空）",
+    preview: "比较加急配送方案", loading: "正在核对路径…", accept: "采用选中方案并纳入作业", terminal: "最后停靠仓库",
+    success: "加急任务已纳入同一作业，地图与路线已更新", changed: "录入条件或作业状态已改变，请重新预览。", none: "当前没有可执行候选；请调整时间或检查可用车辆。",
   },
 
   simulation: {

@@ -6,6 +6,10 @@
 export default {
   singapore: {
   "title": "Singapore delivery network",
+  "overnightWarehouseRequired": "Move to an allowed warehouse; hospitals cannot be parking terminals",
+  "endDayDemoSupply": "The demo assumes next-day product supply automatically. No warehouse balance or replenishment quantity is required; numbers are compatibility markers only.",
+  "nominalUrgentTask": "Independent urgent demo task; not one box of real cargo or a real inventory balance.",
+  "modelQuantityOnly": "Experimental model values (not real business quantities)",
   "chilled": "Chilled", "frozen": "Frozen", "ultracold": "Ultracold",
   /* Counts come from the committed network (singaporeRoutes.json), interpolated
      in ReroutePanel — never hard-code the network size here again. */
@@ -37,7 +41,7 @@ export default {
   "km": "km",
   "liveRoute": "Live route for this case",
   "demoRoute": "Fixed demo route",
-  "liveOperation": "Live delivery operation (real stock and vehicles)",
+  "liveOperation": "Current simulated operation (shared vehicle and execution state)",
   "dispatchStatus": "Dispatch status",
   "ordersDelivered": "Delivered / orders",
   "ordersFailed": "Orders failed on vehicle",
@@ -51,7 +55,7 @@ export default {
   "speedFaster": "300x",
   "needsApi": "This disposition needs a resupply; connect the backend (?api=) to dispatch.",
   "noReshipment": "This disposition needs no resupply.",
-  "committing": "Checking stock and vehicles\u2026",
+  "committing": "Checking routes and vehicles\u2026",
   "committed": "\u2713 Resupply added to the operation",
   "fromCase": "from case",
   "loadingRoute": "Calculating this case route…",
@@ -71,7 +75,7 @@ export default {
   "dailyMileageCap": "Mileage cap per truck (km)",
   "dailyUnlimited": "blank = unlimited",
   "dailyMaxStops": "Stops per truck",
-  "dailyTerminals": "Allowed parking nodes (a truck may finish here instead of driving back)",
+  "dailyTerminals": "Allowed final parking warehouses (choose from five; no hospitals)",
   "dailyApply": "Apply and re-plan",
   "dailyEndsAt": "ends at",
   "dailyBackToDepot": "back to the warehouse",
@@ -278,6 +282,15 @@ export default {
     sectionRisk: "Risk index",
     riskNote: "(rule-derived · deterministic, not an ML model)",
     sectionEvidence: "Why this decision",
+  },
+
+  urgent: {
+    nominal: "Demo task (no cargo quantity)",
+    title: "Independent urgent delivery", demo: "Enter product, pickup warehouse, receiving hospital and timing only. No real cargo quantities or warehouse balances are managed; one weightless demo task token is used internally. End at an allowed warehouse only.",
+    needsRun: "Create and confirm the day's operation first. Urgent orders do not bootstrap a separate operation.", paired: "In-transit urgent insertion is not supported for PDPTW yet; use grouped dispatch.",
+    day: "Delivery day / operation", origin: "Pickup warehouse", unavailableSource: "Product unavailable / parking only", latest: "Latest delivery (same day)", earliest: "Earliest delivery (optional)",
+    preview: "Compare urgent delivery options", loading: "Checking routes…", accept: "Use selected option and apply", terminal: "Final parking warehouse",
+    success: "Urgent task added to the same operation; map and routes updated", changed: "Inputs or operation state changed. Preview again before applying.", none: "No executable option. Adjust timing or check available vehicles.",
   },
 
   simulation: {

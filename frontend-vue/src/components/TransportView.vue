@@ -59,8 +59,12 @@ watch(focusedVehicle, (id) => { dispatch.branchVehicle = id; }, { immediate: tru
 
 /* "改道前 vs 改道后": both lines come from the backend already drawn. */
 const overlays = computed(() =>
-  showComparison.value ? dispatch.branchOverlays : []);
-const branchNodeIds = computed(() => (showComparison.value ? dispatch.branchNodeIds : []));
+  showComparison.value ? (dispatch.urgentOverlays.length ? dispatch.urgentOverlays : dispatch.branchOverlays) : []);
+const branchNodeIds = computed(() => {
+  if (!showComparison.value) return [];
+  if (!dispatch.urgentOverlays.length) return dispatch.branchNodeIds;
+  return nodes.filter((n) => [dispatch.urgentForm.origin_facility_id, dispatch.urgentForm.destination_facility_id].includes(n.facility_id)).map((n) => n.node_id);
+});
 const incidentNodeId = computed(() => dispatch.incidentNodeId);
 
 const simClock = computed(() => {
@@ -145,7 +149,7 @@ onBeforeUnmount(() => {
         :selected-vehicle="selectedVehicle" height="calc(100vh - 240px)" legend follow
         :overlays="overlays" :branch-node-ids="branchNodeIds" :incident-node-id="incidentNodeId"
         :incident-events="incidentEvents"
-        :compare-vehicle="overlays.length ? dispatch.branchCandidate?.vehicle_id : null"
+        :compare-vehicle="overlays.length ? (dispatch.urgentOverlays.length ? dispatch.urgentCandidate?.vehicle_id : dispatch.branchCandidate?.vehicle_id) : null"
         @select-vehicle="pickVehicle" @select-incident="openIncident" />
 
       <ul class="tv-vehicles">

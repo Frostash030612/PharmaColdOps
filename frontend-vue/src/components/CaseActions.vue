@@ -43,7 +43,7 @@ async function choose(candidate) {
       <dt>{{ L.workflow.location }}</dt><dd>{{ name(record.event.facility_id) }}</dd>
       <dt>{{ L.center.destination }}</dt><dd>{{ name(record.event.destination_facility_id) }}</dd>
       <template v-if="record.linked_order">
-        <dt>{{ L.workflow.quantityWindow }}</dt><dd>{{ record.linked_order.quantity }} · {{ clock(record.linked_order.earliest_min) }}–{{ clock(record.linked_order.latest_min) }}</dd>
+        <dt>{{ L.workflow.quantityWindow }}</dt><dd>{{ record.linked_order.quantity_is_nominal ? L.urgent.nominal : record.linked_order.quantity }} · {{ clock(record.linked_order.earliest_min) }}–{{ clock(record.linked_order.latest_min) }}</dd>
       </template>
     </dl>
     <div class="workflow-controls">

@@ -17,6 +17,7 @@ import { postJson } from "../lib/api.js";
 import data from "../data/singaporeRoutes.json";
 import { simulationRequest } from "../lib/simulation.js";
 import { localDay } from "../lib/dayScope.js";
+import { urgentPayload } from "../lib/urgent.js";
 
 export const useDispatchStore = defineStore("dispatch", () => {
   const decisions = useDecisionsStore();
@@ -38,6 +39,8 @@ export const useDispatchStore = defineStore("dispatch", () => {
 
   function apply(data) {
     if (run.value?.dispatch_id !== data.dispatch_id) {
+      urgent.value = null; urgentSignature.value = null; urgentSuccess.value = "";
+      urgentForm.request_id = requestId();
       delay.value = null;
       delayError.value = "";
       delayInspection.value = null;
@@ -109,6 +112,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
 
   function previewBranch(runId, nextPolicy = policy.value, { inline = false } = {}) {
     if (!ready() || !runId) return Promise.resolve(null);
+    urgent.value = null;
     if (POLICIES.includes(nextPolicy)) policy.value = nextPolicy;
     pending.value = true;
     branchError.value = "";
@@ -145,6 +149,76 @@ export const useDispatchStore = defineStore("dispatch", () => {
     const runId = branch.value?.run_id || null;
     return runId ? previewBranch(runId, next) : Promise.resolve(null);
   }
+
+  /* Independent urgent orders: no excursion and no warehouse-quantity form. */
+  function requestId() { return `u-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`; }
+  const urgentOptions = ref(null);
+  const urgent = ref(null);
+  const urgentError = ref("");
+  const urgentSuccess = ref("");
+  const urgentSignature = ref(null);
+  const urgentPicked = ref(0);
+  const urgentForm = reactive({ request_id: requestId(), product_id: "vaccine_2_8",
+    origin_facility_id: "W-WESTGATE", destination_facility_id: "H-SGH", earliest_time: "", latest_time: "17:00",
+    policy: "minimize_disruption" });
+  const urgentInputsCurrent = computed(() => {
+    try { return urgent.value?.dispatch_id === run.value?.dispatch_id
+      && urgent.value?.state_version === run.value?.version
+      && urgentSignature.value === JSON.stringify(urgentPayload(urgentForm)); }
+    catch { return false; }
+  });
+  const urgentCandidate = computed(() => urgentInputsCurrent.value ? urgent.value?.candidates?.[urgentPicked.value] || null : null);
+  async function loadUrgentOptions() {
+    if (!ready()) return null;
+    try {
+      const response = await fetch(`${decisions.apiBase}/api/dispatch/urgent-options`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      urgentOptions.value = await response.json();
+      return urgentOptions.value;
+    } catch (e) { urgentError.value = String(e.message || e); return null; }
+  }
+  async function previewUrgent() {
+    if (!ready() || !run.value || pending.value) return null;
+    pending.value = true; urgentError.value = ""; urgent.value = null; urgentSuccess.value = "";
+    branch.value = null; branchOpen.value = false;
+    const dispatchId = run.value.dispatch_id;
+    try {
+      const body = urgentPayload(urgentForm);
+      const preview = await postJson(`${decisions.apiBase}/api/dispatch/runs/${dispatchId}/urgent-preview`, body);
+      if (run.value?.dispatch_id !== dispatchId) return null;
+      if (preview.already_committed) {
+        await loadRun(dispatchId); urgentSuccess.value = preview.order.order_id;
+        urgentForm.request_id = requestId(); return preview;
+      }
+      urgent.value = preview; urgentPicked.value = 0;
+      urgentSignature.value = JSON.stringify(body);
+      return preview;
+    } catch (e) { urgentError.value = String(e.message || e); return null; }
+    finally { pending.value = false; }
+  }
+  async function acceptUrgent() {
+    const candidate = urgentCandidate.value;
+    if (!ready() || pending.value || !candidate?.feasible || !urgent.value || !urgentInputsCurrent.value) return null;
+    const dispatchId = run.value.dispatch_id;
+    pending.value = true; urgentError.value = "";
+    try {
+      const body = { ...urgentPayload(urgentForm), candidate_kind: candidate.kind, vehicle_id: candidate.vehicle_id,
+        expected_version: urgent.value.state_version, command_id: `accept-${urgentForm.request_id}` };
+      const data = await postJson(`${decisions.apiBase}/api/dispatch/runs/${dispatchId}/urgent-accept`, body);
+      if (run.value?.dispatch_id !== dispatchId) return null;
+      apply(data); urgentSuccess.value = data.urgent_result.order_id;
+      urgent.value = null; urgentSignature.value = null; urgentForm.request_id = requestId();
+      return data;
+    } catch (e) { urgentError.value = String(e.message || e); return null; }
+    finally { pending.value = false; }
+  }
+  const urgentOverlays = computed(() => {
+    const candidate = urgentCandidate.value;
+    if (!candidate || urgent.value.state_version !== run.value?.version) return [];
+    const baseline = urgent.value.baselines?.[candidate.vehicle_id];
+    return [baseline?.route_geojson ? { id: "urgent-before", geojson: baseline.route_geojson, color: "#64748b", dashed: true, labelKey: "beforeRoute" } : null,
+      candidate.route_geojson ? { id: "urgent-after", geojson: candidate.route_geojson, color: "#ea580c", weight: 5, labelKey: "afterRoute" } : null].filter(Boolean);
+  });
 
   /* ---- what the map needs to draw a branch event -------------------------
      Kept here rather than in each map so the small map and the transport view
@@ -496,7 +570,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
       parkingPreviewBody.value = { replenishments, restockQuantities: { ...nextDayRestock.value } };
       endOfDayPreview.value = await postJson(
         `${decisions.apiBase}/api/dispatch/runs/${run.value.dispatch_id}/overnight-preview`,
-        { parking_overrides: parkingOverrides.value, replenishments });
+        { parking_overrides: parkingOverrides.value, replenishments, demo_replenish: true });
       parkingOverrides.value = Object.fromEntries(endOfDayPreview.value.choices.map(
         (choice) => [choice.vehicle_id, choice.park_facility_id]));
       return endOfDayPreview.value;
@@ -515,6 +589,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
           command_id: `park-${run.value.dispatch_id}-${Date.now()}`,
           parking_overrides: parkingOverrides.value,
           replenishments: parkingPreviewBody.value.replenishments,
+          demo_replenish: true,
         });
       endOfDayPreview.value = null;
       return apply(data);
@@ -758,6 +833,8 @@ export const useDispatchStore = defineStore("dispatch", () => {
 
   return {
     run, pending, error, live, orders, vehicles, stock,
+    urgentOptions, urgent, urgentError, urgentSuccess, urgentForm, urgentPicked, urgentCandidate, urgentInputsCurrent,
+    loadUrgentOptions, previewUrgent, acceptUrgent, urgentOverlays,
     refresh, commitReshipment, depart, deliverNext, setSpeed,
     failure, failureError, previewVehicleFailure, acceptVehicleFailure,
     delay, delayError, delayMinutes, delayInspection, previewDelayRisk, acceptDelayReplan,

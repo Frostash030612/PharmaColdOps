@@ -16,6 +16,8 @@ import data from "../data/singaporeRoutes.json";
 import LeafletMap from "./LeafletMap.vue";
 import TransportView from "./TransportView.vue";
 import SimulationGenerator from "./SimulationGenerator.vue";
+import UrgentOrderPanel from "./UrgentOrderPanel.vue";
+import { warehouseOptions } from "../lib/urgent.js";
 import { locale, bundle } from "../i18n/index.js";
 import { DISPO_COLOR } from "../data/products.js";
 import { STATUS_COLORS, summarizeZones, previewMap } from "../lib/incidentWorkflow.js";
@@ -78,6 +80,11 @@ function openIncident(runId) {
 /* The plan the map draws: live operation when there is one, else the demo. */
 const plan = computed(() => dispatch.live || (dispatch.dailyPreview
   ? previewMap(dispatch.dailyPreview.zones) : data.plans[mode.value]));
+const mapOverlays = computed(() => dispatch.urgentOverlays.length ? dispatch.urgentOverlays : dispatch.branchOverlays);
+const mapBranchNodes = computed(() => dispatch.urgentOverlays.length ? [
+  nodeByFacility[dispatch.urgentForm.origin_facility_id], nodeByFacility[dispatch.urgentForm.destination_facility_id],
+].filter((id) => id != null) : dispatch.branchNodeIds);
+const mapCompareVehicle = computed(() => dispatch.urgentOverlays.length ? dispatch.urgentCandidate?.vehicle_id : dispatch.branchCandidate?.vehicle_id);
 
 /* The current decision needs a resupply and the backend can act on it. */
 const needsReshipment = computed(() => decisions.decisionFor.reshipment);
@@ -226,7 +233,7 @@ const dailyConstraintText = computed(() => {
    Warehouses and distribution points are what a truck may finish at — that set
    is exactly what turns the route open (no drive home). */
 const terminalOptions = computed(() =>
-  nodes
+  warehouseOptions(nodes)
     .map((n) => ({ facility_id: n.facility_id, name: n.name, role: n.role })));
 
 const nameByFacility = Object.fromEntries(nodes.map((n) => [n.facility_id, n.name]));
@@ -274,6 +281,7 @@ const OVERNIGHT_NOTES = {
   no_terminal_given: "overnightNoTerminal",
   unused_tomorrow: "overnightUnused",
   kept_position: "overnightKept",
+  warehouse_required: "overnightWarehouseRequired",
 };
 function overnightNoteText(note) {
   return text.value[OVERNIGHT_NOTES[note]] || note;
@@ -317,10 +325,10 @@ const dailyOutcome = computed(() => {
     <LeafletMap :nodes="nodes" :plan="plan" :selected-id="selectedId" :text="text"
       :height="props.primary ? '520px' : '290px'" :legend="props.primary"
       :selected-vehicle="selectedVehicle"
-      :overlays="dispatch.branchOverlays" :branch-node-ids="dispatch.branchNodeIds"
+      :overlays="mapOverlays" :branch-node-ids="mapBranchNodes"
       :incident-node-id="dispatch.incidentNodeId"
       :incident-events="incidentEvents"
-      :compare-vehicle="dispatch.branchOverlays.length ? dispatch.branchCandidate?.vehicle_id : null"
+      :compare-vehicle="mapOverlays.length ? mapCompareVehicle : null"
       @select="selectedId = $event" @select-vehicle="pickVehicle($event)"
       @select-incident="openIncident" />
 
@@ -329,7 +337,6 @@ const dailyOutcome = computed(() => {
       <div><b>{{ dispatch.live.metrics.orders_delivered }}/{{ dispatch.live.metrics.orders_total }}</b><span>{{ text.ordersDelivered }}</span></div>
       <div v-if="dispatch.live.metrics.orders_failed"><b>{{ dispatch.live.metrics.orders_failed }}</b><span>{{ text.ordersFailed }}</span></div>
       <div><b>{{ dispatch.live.metrics.vehicles_used }}</b><span>{{ text.vehicles }}</span></div>
-      <div><b>{{ dispatch.live.metrics.stock_remaining }}</b><span>{{ text.stockLeft }}</span></div>
     </div>
     <div v-else class="sg-metrics">
       <div><b>{{ plan.metrics.total_distance.toFixed(2) }}</b><span>{{ text.distance }} · {{ text.km }}</span></div>
@@ -522,19 +529,13 @@ const dailyOutcome = computed(() => {
           @click="dispatch.branchOpen = true">{{ text.compareReopen }}</button>
       </p>
     </div>
+    <UrgentOrderPanel v-if="online" />
     <p v-if="dispatch.error" class="sg-error" role="status">{{ dispatch.error }}</p>
 
     <div v-if="isLive && dispatch.run.status === 'completed'" class="sg-overnight sg-end-day">
       <strong>{{ text.endDayTitle }} · {{ dispatch.run.operating_date }}</strong>
       <p class="sg-note">{{ text.endDayHint }}</p>
-      <div v-if="!dispatch.run.overnight" class="sg-end-restocks">
-        <p class="sg-note">{{ text.endDayInventory }}</p>
-        <label v-for="lot in dispatch.run.input.inventory.filter((lot) => (lot.status || 'available') === 'available')" :key="lot.lot_id">
-          {{ facilityName(lot.facility_id) }} · {{ lot.product_id }} · {{ text.stockLeft }} {{ dispatch.run.available_by_lot[lot.lot_id] || 0 }}
-          <span>{{ text.endDayRestock }}</span>
-          <input v-model.number="dispatch.nextDayRestock[lot.lot_id]" type="number" min="0" step="1" :disabled="dispatch.pending" />
-        </label>
-      </div>
+      <p v-if="!dispatch.run.overnight" class="sg-note">{{ text.endDayDemoSupply }}</p>
       <button v-if="!dispatch.run.overnight" :disabled="dispatch.pending || dispatch.stillReturning"
         @click="dispatch.previewEndOfDay()">{{ text.endDayPreview }}</button>
       <template v-if="dispatch.endOfDayPreview">
@@ -542,8 +543,7 @@ const dailyOutcome = computed(() => {
           <li v-for="choice in dispatch.endOfDayPreview.choices" :key="choice.vehicle_id">
             <b>{{ choice.vehicle_id }}</b> · {{ facilityName(choice.from_facility_id) }} →
             <select v-model="dispatch.parkingOverrides[choice.vehicle_id]" :disabled="dispatch.pending">
-              <option :value="choice.from_facility_id">{{ facilityName(choice.from_facility_id) }}</option>
-              <option v-for="facility in (dispatch.endOfDayPreview.tomorrow.constraints.terminal_facility_ids || []).filter((id) => id !== choice.from_facility_id)"
+              <option v-for="facility in (dispatch.endOfDayPreview.tomorrow.constraints.terminal_facility_ids || terminalOptions.map((n) => n.facility_id)).filter((id) => terminalOptions.some((n) => n.facility_id === id))"
                 :key="facility" :value="facility">{{ facilityName(facility) }}</option>
             </select>
             · {{ text.overnightReposition }} {{ km(choice.reposition_m) }} {{ text.km }}
@@ -738,8 +738,11 @@ const dailyOutcome = computed(() => {
           <div v-if="selected.stop.arrival != null">
             {{ text.arrival }} {{ clock(selected.stop.arrival) }} · {{ text.service }} {{ clock(selected.stop.service_start) }}
           </div>
-          <div>{{ text.demand }} {{ selected.stop.quantity ?? selected.node.demand }} {{ text.units }} ·
-            {{ text.window }} {{ clock(selected.stop.earliest_min ?? selected.node.earliest_min) }}–{{ clock(selected.stop.latest_min ?? selected.node.latest_min) }}</div>
+          <div>{{ text.window }} {{ clock(selected.stop.earliest_min ?? selected.node.earliest_min) }}–{{ clock(selected.stop.latest_min ?? selected.node.latest_min) }}</div>
+          <p v-if="dispatch.run?.nominal_order_ids?.includes(selected.stop.order_id)" class="sg-note">{{ text.nominalUrgentTask }}</p>
+          <details v-else class="sg-advanced"><summary>{{ text.modelQuantityOnly }}</summary>
+            {{ text.demand }} {{ selected.stop.quantity ?? selected.node.demand }} {{ text.units }}
+          </details>
         </template>
         <div v-else>{{ text.noStop }} · {{ clock(selected.node.earliest_min) }}–{{ clock(selected.node.latest_min) }}</div>
       </template>
