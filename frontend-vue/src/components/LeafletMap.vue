@@ -382,7 +382,7 @@ function followVehicle() {
   if (!map || !props.follow) return;
   const id = props.selectedVehicle || props.plan.routes?.[0]?.vehicle_id;
   const entry = id && markers.get(id);
-  if (entry) map.panTo(entry.to, { animate: true, duration: 0.4 });
+  if (entry?.toPoint) map.panTo(entry.toPoint, { animate: true, duration: 0.4 });
 }
 
 onMounted(() => {

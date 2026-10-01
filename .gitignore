@@ -59,3 +59,5 @@ proposal/figures/raw/
 .pytmp/
 # OSMnx/Nominatim geocoder response cache written by the road-network build
 cache/
+output/playwright/
+.playwright-cli/

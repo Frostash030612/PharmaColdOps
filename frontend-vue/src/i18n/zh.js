@@ -115,7 +115,7 @@ export default {
   "endDayPreview": "预览今晚停车与次日固定计划",
   "endDayRecalculate": "修改停车点后重新计算",
   "endDayAccept": "确认并执行停车位移",
-  "endDayInventory": "次日沿用固定订单并继承实际剩余可用库存；不足时请在预览前明确登记额外供货量，已消耗库存不会恢复。",
+  "endDayInventory": "次日沿用固定订单和剩余模型批次；演示版自动假设不足的供货，不要求填写具体数量，已消耗批次不会恢复。",
   "endDayRestock": "明确登记次日额外供货",
   "endDayInfeasible": "停车位移或次日配送无法满足约束，请复核里程限制或停车点。",
   "endDayMoving": "车辆正在开往停车点。继续推进时钟，全部停妥后即可开启次日配送。",

@@ -117,7 +117,7 @@ export default {
   "endDayPreview": "Review tonight's parking and tomorrow's fixed plan",
   "endDayRecalculate": "Recalculate after changing parking",
   "endDayAccept": "Confirm and drive the parking moves",
-  "endDayInventory": "Tomorrow repeats the fixed orders using remaining available stock. If more stock is needed, explicitly declare replenishment quantities before reviewing; consumed stock is never restored.",
+  "endDayInventory": "Tomorrow repeats the fixed orders and carries remaining model lots. The demo automatically assumes additional supply without quantity entry; consumed lots are never restored.",
   "endDayRestock": "Extra stock declared for tomorrow",
   "endDayInfeasible": "A parking move or tomorrow's delivery plan cannot meet the constraints. Review the limits or parking nodes.",
   "endDayMoving": "Parking moves are under way. Continue the clock; tomorrow can start when every vehicle is parked.",

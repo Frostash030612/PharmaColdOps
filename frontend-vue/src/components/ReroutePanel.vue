@@ -321,7 +321,7 @@ const dailyOutcome = computed(() => {
         :aria-pressed="mode === key" @click="mode = key">{{ text[key] }}</button>
     </div>
 
-    <div v-if="!props.primary" class="sg-map-head">
+    <div class="sg-map-head">
       <button class="sg-expand" @click="transportOpen = true">{{ text.transportOpen }}</button>
     </div>
     <LeafletMap :nodes="nodes" :plan="plan" :selected-id="selectedId" :text="text"
@@ -590,6 +590,7 @@ const dailyOutcome = computed(() => {
           <button v-for="s in SPEEDS" :key="s.value" :class="{ on: speed === s.value }"
             @click="dispatch.setSpeed(s.value)">{{ text[s.key] }}</button>
         </span>
+        <button :disabled="dispatch.pending || speed === 0" @click="dispatch.setSpeed(0)">{{ text.transportPause }}</button>
       </template>
       <button class="sg-replay" :disabled="dispatch.pending" @click="dispatch.replay()">
         {{ text.replay }}
