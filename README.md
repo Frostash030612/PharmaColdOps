@@ -41,6 +41,9 @@ See [graph reliability and recovery](docs/知识图谱可靠性与恢复.md), es
 `scripts/check_case_graph.py` performs a read-only check of actual per-case graph coverage;
 `--repair` replays only non-conflicting missing chains. `scripts/verify_graph_recovery.py`
 verifies actual graph stop/restart and automatic recovery using only its own temporary container.
+`scripts/evaluate_qa.py` now defaults to its own disposable graph and isolated SQLite/JSONL,
+cleans graph cases and registration/outbox/archive together, and preserves a manifest/report.
+See [QA evaluation safety and options](docs/问答评测工具.md); existing test graphs require explicit opt-in.
 
 新加坡路网与前端的完成范围、实测结果及复用方式：[交付记录](docs/M5_singapore_handover.md)。
 
