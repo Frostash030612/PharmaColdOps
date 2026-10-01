@@ -31,9 +31,36 @@ export const useSandboxStore = defineStore("sandbox", () => {
   const selectedPharm = ref(null);
   const activeId = ref(null);          // highlighted scenario card (like .active)
   const currentRunId = ref(null);      // archived case currently shown, if any
+  const archivedRecord = ref(null);
+  const offlinePreview = ref(false);
+  let returnContext = null;
   const auditRows = ref([]);           // html <tr> strings, newest first, cap 8
 
   let animTimer = null;
+
+  function enterOfflinePreview() {
+    if (offlinePreview.value) return;
+    returnContext = JSON.parse(JSON.stringify({ current: current.value, spec: spec.value,
+      nowTime: nowTime.value, activeId: activeId.value, currentRunId: currentRunId.value,
+      selectedPharm: selectedPharm.value, auditRows: auditRows.value, archivedRecord: archivedRecord.value }));
+    stopTimeline(); offlinePreview.value = true;
+    const pid = current.value.product_id;
+    current.value = { product_id: pid, ...DEFAULT_EVENT[pid], destination_facility_id: randomDestination() };
+    spec.value = { ...PRODUCT_NUM[pid] }; currentRunId.value = null;
+    activeId.value = null; nowTime.value = 0;
+  }
+  function exitOfflinePreview() {
+    if (!offlinePreview.value) return;
+    stopTimeline();
+    if (returnContext) {
+      current.value = returnContext.current; spec.value = returnContext.spec;
+      nowTime.value = returnContext.nowTime; activeId.value = returnContext.activeId;
+      currentRunId.value = returnContext.currentRunId; selectedPharm.value = returnContext.selectedPharm;
+      auditRows.value = returnContext.auditRows;
+      archivedRecord.value = returnContext.archivedRecord;
+    }
+    returnContext = null; offlinePreview.value = false;
+  }
 
   /* ---- timeline replay ---- */
   function stopTimeline() {
@@ -118,6 +145,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
      evidence / risk) re-derive everything from event + spec, so restoring those
      two is enough to show that case's whole workflow again. */
   function restoreCase(record) {
+    exitOfflinePreview();
     stopTimeline();
     const ev = record.event || {};
     const sp = record.spec || {};
@@ -149,6 +177,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
     activeId.value = null;
     selectedPharm.value = null;
     currentRunId.value = record.run_id || null;
+    archivedRecord.value = JSON.parse(JSON.stringify(record));
   }
 
   /* ---- re-route panel selection ---- */
@@ -162,6 +191,7 @@ export const useSandboxStore = defineStore("sandbox", () => {
 
   return {
     spec, current, nowTime, playing, routeMode, selectedPharm, activeId, currentRunId, auditRows,
+    offlinePreview, enterOfflinePreview, exitOfflinePreview, archivedRecord,
     switchProduct, applyScenario, restoreCase,
     setStage, setPackaging, setTemp, setDur, setMkt, setDestination,
     setAllowable, setMktThreshold, setRetestable, resetCfg, randomize,

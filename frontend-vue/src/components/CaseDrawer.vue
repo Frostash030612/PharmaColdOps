@@ -1,7 +1,7 @@
 <script setup>
 /* The decision sandbox is now contextual: it opens for the event selected on
    the map/event rail instead of occupying the centre of every page load. */
-import { computed } from "vue";
+import { computed, onBeforeUnmount } from "vue";
 import { useOverlayStore } from "../stores/overlay.js";
 import { useSandboxStore } from "../stores/sandbox.js";
 import ScenarioList from "./ScenarioList.vue";
@@ -20,20 +20,26 @@ import { locale, bundle } from "../i18n/index.js";
 const overlay = useOverlayStore();
 const sandbox = useSandboxStore();
 const L = computed(() => bundle(locale.value));
+function close() { sandbox.exitOfflinePreview(); overlay.closeCase(); }
+onBeforeUnmount(sandbox.exitOfflinePreview);
 </script>
 
 <template>
-  <div class="case-backdrop" @click.self="overlay.closeCase()">
-    <aside class="case-drawer" role="dialog" aria-modal="true" :aria-label="L.workspace.caseTitle">
+  <div class="case-backdrop" @click.self="close">
+    <aside class="case-drawer" role="dialog" aria-modal="true" :aria-label="sandbox.offlinePreview ? L.localSandbox.title : L.workspace.caseTitle">
       <div class="case-drawer-head">
         <div>
-          <strong>{{ L.workspace.caseTitle }}</strong>
-          <span>{{ sandbox.currentRunId || L.workspace.previewCase }}</span>
+          <strong>{{ sandbox.offlinePreview ? L.localSandbox.title : L.workspace.caseTitle }}</strong>
+          <span>{{ sandbox.offlinePreview ? L.localSandbox.badge : sandbox.currentRunId || L.workspace.previewCase }}</span>
         </div>
-        <button class="modal-x" :title="L.modal.close" @click="overlay.closeCase()">×</button>
+        <button class="modal-x" :title="L.modal.close" @click="close">×</button>
       </div>
       <div class="case-drawer-body">
-        <CaseActions />
+        <p v-if="sandbox.offlinePreview" class="local-sandbox-note">{{ L.localSandbox.note }}</p>
+        <CaseActions v-else />
+        <details v-if="sandbox.offlinePreview" open class="case-advanced">
+          <summary>{{ L.workspace.presetsAndRules }}</summary><ScenarioList /><RuleConfig />
+        </details>
         <DecisionBanner />
         <div class="section-label">{{ L.center.sectionTimeline }}</div>
         <Timeline />
@@ -49,7 +55,7 @@ const L = computed(() => bundle(locale.value));
         <RiskIndex />
         <div class="section-label">{{ L.center.sectionEvidence }}</div>
         <EvidencePanel />
-        <details class="case-advanced">
+        <details v-if="!sandbox.offlinePreview" class="case-advanced">
           <summary>{{ L.workspace.presetsAndRules }}</summary>
           <ScenarioList />
           <RuleConfig />
@@ -58,3 +64,7 @@ const L = computed(() => bundle(locale.value));
     </aside>
   </div>
 </template>
+
+<style scoped>
+.local-sandbox-note { padding: 12px; border-radius: 8px; border: 1px solid #93c5fd; background: #eff6ff; color: #1e40af; }
+</style>

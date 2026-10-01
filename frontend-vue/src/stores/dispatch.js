@@ -34,7 +34,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     Object.values(run.value?.available_by_lot || {}).reduce((a, b) => a + b, 0));
 
   function ready() {
-    return decisions.useApi && decisions.apiUp === true;
+    return !sandbox.offlinePreview && decisions.useApi && decisions.apiUp === true;
   }
 
   function apply(data) {
@@ -270,7 +270,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
   });
 
   function command(path, body) {
-    if (!run.value) return Promise.resolve(null);
+    if (!run.value || sandbox.offlinePreview) return Promise.resolve(null);
     pending.value = true;
     error.value = "";
     return postJson(
@@ -720,6 +720,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
     if (typeof document === "undefined") return;
     document.addEventListener("visibilitychange", () => {
       if (!run.value || (run.value.status !== "in_transit" && !stillReturning.value)) return;
+      if (sandbox.offlinePreview) return;
       if (document.hidden) {
         hiddenSpeed = run.value.clock?.speed ?? 60;
         if (hiddenSpeed > 0) setSpeed(0);
@@ -781,7 +782,7 @@ export const useDispatchStore = defineStore("dispatch", () => {
 
   let tickRunning = false;
   function tick() {
-    if (!run.value || pending.value || tickRunning) return Promise.resolve(null);
+    if (sandbox.offlinePreview || !run.value || pending.value || tickRunning) return Promise.resolve(null);
     if (run.value.status !== "in_transit" && !stillReturning.value) {
       return Promise.resolve(null);
     }

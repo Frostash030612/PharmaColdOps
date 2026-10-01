@@ -17,7 +17,7 @@ const L = computed(() => bundle(locale.value));
 const items = computed(() =>
   SCENARIOS.map((sc) => {
     const spec = PRODUCT_NUM[sc.product_id];
-    const disp = (decisions.presets && decisions.presets[sc.id])
+    const disp = (!sandbox.offlinePreview && decisions.presets && decisions.presets[sc.id])
       || dispositionOf({ ...sc }, spec);
     const stage = L.value.stages[sc.stage] || sc.stage;
     return {

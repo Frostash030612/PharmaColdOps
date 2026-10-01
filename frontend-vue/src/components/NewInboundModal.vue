@@ -11,6 +11,7 @@ import { useHistoryStore } from "../stores/history.js";
 import { useSandboxStore } from "../stores/sandbox.js";
 import { useOverlayStore } from "../stores/overlay.js";
 import { useDispatchStore } from "../stores/dispatch.js";
+import { useRegistrationStore } from "../stores/registration.js";
 import routes from "../data/singaporeRoutes.json";
 import {
   PRODUCT_NUM, PRODUCT_IDS, STAGE_IDS, PACKAGING_IDS, DEFAULT_EVENT,
@@ -27,9 +28,18 @@ const history = useHistoryStore();
 const sandbox = useSandboxStore();
 const overlay = useOverlayStore();
 const dispatch = useDispatchStore();
+const registration = useRegistrationStore();
+let recovered = null;
+let recoveryError = "";
+try { recovered = registration.restore(); } catch (e) { recoveryError = String(e.message || e); }
+if (recovered && !(recovered.payload.product_id in PRODUCT_NUM)) {
+  recoveryError = "Stored registration product is unsupported; retry or discard the local draft explicitly";
+  recovered = null;
+}
 const facilities = routes.nodes;
 const orderChoices = computed(() => dispatch.run?.input?.orders || []);
-const linkedOrder = computed(() => orderChoices.value.find((o) => o.order_id === ev.value.order_id));
+const linkedOrder = computed(() => ev.value.dispatch_id === dispatch.run?.dispatch_id
+  ? orderChoices.value.find((o) => o.order_id === ev.value.order_id) : null);
 function selectOrder(e) {
   const order = orderChoices.value.find((o) => o.order_id === e.target.value);
   if (!order) { ev.value.order_id = null; ev.value.dispatch_id = null; return; }
@@ -48,16 +58,20 @@ function defaultsOf(pid) {
     spec: { ...PRODUCT_NUM[pid] },
   };
 }
-const initPid = (sandbox.current.product_id in PRODUCT_NUM)
-  ? sandbox.current.product_id : "vaccine_2_8";
+const initPid = (recovered?.payload?.product_id in PRODUCT_NUM ? recovered.payload.product_id : null) || ((sandbox.current.product_id in PRODUCT_NUM)
+  ? sandbox.current.product_id : "vaccine_2_8");
 const init = defaultsOf(initPid);
-const ev = ref(init.ev);
-const spec = ref(init.spec);
+const ev = ref(recovered ? { ...init.ev, ...recovered.payload } : init.ev);
+const override = recovered?.payload?.spec_override || {};
+const spec = ref({ ...init.spec, allowable: override.allowable_duration_min ?? init.spec.allowable,
+  mktThreshold: override.mkt_threshold_c ?? init.spec.mktThreshold,
+  retestable: override.retestable ?? init.spec.retestable });
+const locked = computed(() => !!registration.pending);
 
 const archiving = ref(false);
-const error = ref("");
+const error = ref(recoveryError);
 const showRules = ref(false);
-const remark = ref("");
+const remark = ref(recovered?.payload?.remark || "");
 
 const up = computed(() => decisions.apiUp === true);
 
@@ -117,10 +131,9 @@ async function archive() {
   archiving.value = true;
   error.value = false;
   try {
-    const res = await postJson(decisions.apiBase + "/api/case_close", {
+    const res = await registration.submit(locked.value ? null : {
       ...eventPayload(ev.value),
       spec_override: overridePayload(spec.value),
-      started_at: new Date().toISOString(),
       remark: remark.value.trim() || null,
     });
     overlay.closeNewInbound();
@@ -133,6 +146,9 @@ async function archive() {
   } finally {
     archiving.value = false;
   }
+}
+function discardDraft() {
+  if (window.confirm(L.value.registration.discardConfirm)) registration.clear();
 }
 </script>
 
@@ -148,11 +164,16 @@ async function archive() {
       </div>
 
       <div class="modal-body ni-body">
+        <p v-if="locked" class="registration-note">{{ L.registration.retryNote }} · {{ registration.pending.payload.registration_id }}</p>
+        <p v-if="locked">{{ registration.pending.payload.dispatch_id || L.workflow.unlinked }} · {{ registration.pending.payload.order_id || '—' }}</p>
+        <p v-if="!registration.storageAvailable" class="modal-error">{{ L.registration.storageWarning }}</p>
+        <fieldset class="registration-fields" :disabled="archiving || locked">
         <div class="controls">
           <div class="ctl">
             <label>{{ L.workflow.orderLink }}</label>
             <select :value="ev.order_id || ''" @change="selectOrder">
               <option value="">{{ L.workflow.unlinked }}</option>
+              <option v-if="locked && ev.order_id && !orderChoices.some((o) => o.order_id === ev.order_id)" :value="ev.order_id">{{ ev.order_id }} · {{ ev.destination_facility_id }}</option>
               <option v-for="order in orderChoices" :key="order.order_id" :value="order.order_id">
                 {{ order.order_id }} · {{ order.quantity }} · {{ order.destination_facility_id }}
               </option>
@@ -242,6 +263,7 @@ async function archive() {
           <button class="btn" type="button" @click="resetSpec">{{ L.newInbound.resetSpec }}</button>
         </div>
 
+        </fieldset>
         <div class="ni-preview">
           <div class="section-label">{{ L.newInbound.preview }}</div>
           <div class="dispo-banner" :style="{ background: DISPO_COLOR[d.disposition] }">
@@ -264,22 +286,28 @@ async function archive() {
         </div>
 
         <p v-if="error" class="modal-error">{{ L.newInbound.error }}: {{ error }}</p>
+        <button v-if="(locked || error) && !archiving" type="button" class="btn inline" @click="discardDraft">{{ L.registration.discard }}</button>
       </div>
 
       <div class="modal-foot">
         <div class="ni-batch">
           <label>{{ L.newInbound.batch }}</label>
-          <input v-model="remark" type="text" :placeholder="L.newInbound.batchPh">
+          <input v-model="remark" type="text" :placeholder="L.newInbound.batchPh" :disabled="archiving || locked">
         </div>
         <div class="ni-actions">
           <button class="btn inline" type="button" :disabled="archiving" @click="cancel">
             {{ L.newInbound.cancel }}
           </button>
-          <button class="btn inline modal-primary" type="button" :disabled="!up || archiving || (d.reshipment && !ev.destination_facility_id)" @click="archive">
-            {{ archiving ? "…" : L.newInbound.archive }}
+          <button class="btn inline modal-primary" type="button" :disabled="!up || archiving || (!locked && d.reshipment && !ev.destination_facility_id)" @click="archive">
+            {{ archiving ? "…" : locked ? L.registration.retry : L.newInbound.archive }}
           </button>
         </div>
       </div>
     </div>
   </div>
 </template>
+
+<style scoped>
+.registration-fields { margin: 0; padding: 0; border: 0; min-width: 0; }
+.registration-note { padding: 10px; border: 1px solid #fbbf24; background: #fffbeb; border-radius: 8px; overflow-wrap: anywhere; }
+</style>

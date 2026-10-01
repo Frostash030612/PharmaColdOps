@@ -18,6 +18,7 @@ import TransportView from "./TransportView.vue";
 import SimulationGenerator from "./SimulationGenerator.vue";
 import UrgentOrderPanel from "./UrgentOrderPanel.vue";
 import { warehouseOptions } from "../lib/urgent.js";
+import { useRegistrationStore } from "../stores/registration.js";
 import { locale, bundle } from "../i18n/index.js";
 import { DISPO_COLOR } from "../data/products.js";
 import { STATUS_COLORS, summarizeZones, previewMap } from "../lib/incidentWorkflow.js";
@@ -31,6 +32,7 @@ const sandbox = useSandboxStore();
 const dispatch = useDispatchStore();
 const history = useHistoryStore();
 const overlay = useOverlayStore();
+const registration = useRegistrationStore();
 const busy = ref(false);
 const text = computed(() => bundle(locale.value).singapore);
 const mode = ref("ortools");
@@ -100,19 +102,19 @@ const alreadyCommitted = computed(() =>
    - an unarchived sandbox decision closes the case first, then dispatches;
    - an already-archived case (restored from history) just dispatches. */
 const canDispatchArchived = computed(() =>
-  online.value && needsReshipment.value && !!sandbox.currentRunId && !alreadyCommitted.value);
+  online.value && !sandbox.offlinePreview && needsReshipment.value && !!sandbox.currentRunId && !alreadyCommitted.value);
 const canCloseAndDispatch = computed(() =>
-  online.value && needsReshipment.value && !sandbox.currentRunId);
+  online.value && !sandbox.offlinePreview && needsReshipment.value && !sandbox.currentRunId);
 
 async function closeAndDispatch() {
-  if (busy.value) return;
+  if (busy.value || sandbox.offlinePreview) return;
   busy.value = true;
   try {
-    const record = await postJson(decisions.apiBase + "/api/case_close", {
+    if (registration.restore()) { overlay.openNewInbound(); return; }
+    const record = await registration.submit({
       ...eventPayload(sandbox.current),
       spec_override: overridePayload(sandbox.spec),
-      started_at: new Date().toISOString(),
-    });
+    }, "sandbox");
     sandbox.restoreCase(record);     // the page now shows an archived case
     history.refresh();
     // Show HOW it could be handled instead of silently picking for the operator:
@@ -146,7 +148,7 @@ const canDepart = computed(() =>
   dispatch.vehicles.some((v) => v.status === "reserved"));
 
 /* Keep the trucks moving while an operation is under way. */
-watch(moving, (on) => { on ? dispatch.watchClock() : dispatch.stopClock(); },
+watch([moving, () => sandbox.offlinePreview], ([on, local]) => { on && !local ? dispatch.watchClock() : dispatch.stopClock(); },
       { immediate: true });
 onBeforeUnmount(() => dispatch.stopClock());
 

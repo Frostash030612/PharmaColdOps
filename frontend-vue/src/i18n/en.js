@@ -284,6 +284,16 @@ export default {
     sectionEvidence: "Why this decision",
   },
 
+  registration: {
+    retry: "Retry this registration", retryNote: "A registration has an unconfirmed outcome. Inputs are locked; retry uses the same ID and cannot create a second case.",
+    storageWarning: "Browser storage is unavailable. Do not reload; retry on this page to keep the registration ID.",
+    discard: "Discard local retry draft", discardConfirm: "The registration may already have succeeded. Check history first. Continuing clears only the local retry draft, not the backend case. Continue?",
+  },
+  localSandbox: {
+    open: "Offline rule sandbox", title: "Offline rule sandbox", badge: "Local preview · no registration or dispatch",
+    note: "Presets, inputs, rules and decisions are computed locally. Nothing is written to case history or dispatch. Closing restores the previous online case and inputs; the operation clock is not rewritten. Risk is a rule heuristic, not deployed ML inference.",
+  },
+
   urgent: {
     nominal: "Demo task (no cargo quantity)",
     title: "Independent urgent delivery", demo: "Enter product, pickup warehouse, receiving hospital and timing only. No real cargo quantities or warehouse balances are managed; one weightless demo task token is used internally. End at an allowed warehouse only.",

@@ -47,6 +47,8 @@ export const useDecisionsStore = defineStore("decisions", () => {
 
   /* ---- getters ---- */
   const freshServer = computed(() => {
+    if (sandbox.offlinePreview) return null;
+    if (sandbox.currentRunId && sandbox.archivedRecord?.run_id === sandbox.currentRunId) return sandbox.archivedRecord;
     if (!useApi.value || apiUp.value === false) return null;
     if (serverDecision.value && serverDecisionKey.value === liveDecisionKey.value)
       return serverDecision.value;
@@ -74,12 +76,12 @@ export const useDecisionsStore = defineStore("decisions", () => {
   /* Server grid cells while the grid matches the live spec key, else null
      (the vanilla renderZonePlot srvGrid guard). */
   const currentGrid = computed(() =>
-    (useApi.value && grid.value && gridKey.value === liveSpecKey.value) ? grid.value : null
+    (!sandbox.offlinePreview && !sandbox.currentRunId && useApi.value && grid.value && gridKey.value === liveSpecKey.value) ? grid.value : null
   );
 
   /* ---- API orchestration (mirrors the vanilla functions) ---- */
   function syncDecision() {
-    if (!useApi.value || apiUp.value === false) return;
+    if (sandbox.offlinePreview || sandbox.currentRunId || !useApi.value || apiUp.value === false) return;
     const k = liveDecisionKey.value;
     if (serverDecisionKey.value === k) return;   // already fresh for these inputs
     postJson(apiBase.value + "/api/decide", { ...eventPayload(sandbox.current), spec_override: overridePayload(sandbox.spec) })
@@ -92,7 +94,7 @@ export const useDecisionsStore = defineStore("decisions", () => {
   }
 
   function syncGrid() {
-    if (!useApi.value || apiUp.value === false) return;
+    if (sandbox.offlinePreview || sandbox.currentRunId || !useApi.value || apiUp.value === false) return;
     const gk = liveSpecKey.value;
     if (gridPending.value === gk) return;
     gridPending.value = gk;
@@ -116,7 +118,7 @@ export const useDecisionsStore = defineStore("decisions", () => {
   }
 
   function syncPresets() {
-    if (!useApi.value) return;
+    if (sandbox.offlinePreview || !useApi.value) return;
     postJson(apiBase.value + "/api/decide_batch", {
       events: SCENARIOS.map((sc) => ({
         product_id: sc.product_id, excursion_temp_c: sc.excursion_temp_c,
@@ -136,7 +138,7 @@ export const useDecisionsStore = defineStore("decisions", () => {
   function fetchRoute(runId, algorithm) {
     const key = `${runId}|${algorithm}`;
     if (routeResults.value[key] || routePending.value.has(key)) return;
-    if (!useApi.value || apiUp.value !== true) return;
+    if (sandbox.offlinePreview || !useApi.value || apiUp.value !== true) return;
     routePending.value.add(key);
     postJson(apiBase.value + "/api/route", { run_id: runId, algorithm })
       .then((res) => {
@@ -155,6 +157,7 @@ export const useDecisionsStore = defineStore("decisions", () => {
 
   function scheduleRecheck() {
     setTimeout(() => {
+      if (sandbox.offlinePreview) return;
       if (apiUp.value === true) return;
       checkHealth(apiBase.value)
         .then(() => { apiUp.value = true; syncDecision(); syncGrid(); syncPresets(); })
@@ -165,16 +168,24 @@ export const useDecisionsStore = defineStore("decisions", () => {
   /* ---- watchers: sandbox changes → sync (debounced decision, gated grid) ---- */
   let decisionTimer = null;
   watch(liveDecisionKey, (k) => {
-    if (!useApi.value || apiUp.value === false) return;
+    if (sandbox.offlinePreview || !useApi.value || apiUp.value === false) return;
     if (serverDecisionKey.value === k) return;
     clearTimeout(decisionTimer);
     decisionTimer = setTimeout(syncDecision, 80);
   });
 
   watch(liveSpecKey, (k) => {
-    if (!useApi.value || apiUp.value === false) return;
+    if (sandbox.offlinePreview || !useApi.value || apiUp.value === false) return;
     if (gridKey.value === k || gridPending.value === k) return;
     syncGrid();
+  });
+
+  watch(() => sandbox.offlinePreview, (local) => {
+    clearTimeout(decisionTimer);
+    if (!local && useApi.value) {
+      if (apiUp.value === false) scheduleRecheck();
+      else { syncDecision(); syncGrid(); }
+    }
   });
 
   /* ---- boot: read ?api= once (vanilla API_BASE) ---- */
