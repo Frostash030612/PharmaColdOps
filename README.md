@@ -15,6 +15,11 @@ failure/confusion analysis and hash-matched offline SHAP. Run
 Fresh outputs only; serving models and historical cases are not replaced.
 See [formal results and reproducibility](docs/M4正式实验.md).
 
+The cause-data learnability audit now adds learning curves, source-conditional priors,
+fixed-budget capacity probes and shuffled-training-label controls. It recommends event-level
+simulation data before large-scale tuning, without claiming random labels or a performance ceiling.
+See [audit evidence and research-effort decision](docs/原因数据可学性审计.md).
+
 Formal M3 evaluation now reports all four classes: 54/57 historical-gold agreement,
 macro-F1 0.7174, and explicitly zero quarantine recall. M5 has 49 fresh static
 solver comparisons with complete-feasibility guards, fleet-matched BKS gaps and charts.
