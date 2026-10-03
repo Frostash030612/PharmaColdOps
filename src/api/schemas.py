@@ -60,12 +60,46 @@ class MLContextIn(BaseModel):
         return self
 
 
+class EventContextIn(BaseModel):
+    """Public event observations only. No client scores/labels/model path."""
+    model_config = {"extra": "forbid"}
+    observation: dict
+
+    @model_validator(mode="after")
+    def public_observation(self):
+        import math
+        from ml.event_simulation import validate_observation
+        from rule_engine.engine import RuleEngine
+        observation = self.observation
+        try:
+            if not isinstance(observation.get("event_id"), str) or not 1 <= len(observation["event_id"]) <= 80:
+                raise ValueError("bounded event identity required")
+            rows = observation["records"]
+            if not isinstance(rows, list) or not 1 <= len(rows) <= 1440:
+                raise ValueError("bounded observed prefix required")
+            numbers = [observation[k] for k in ["planned_duration_min", "observation_end_min", "sample_cadence_min"]]
+            numbers += [row[k] for row in rows for k in ["start_min", "end_min"]]
+            if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in numbers):
+                raise ValueError("finite numeric plan/intervals required")
+            if not 0 < observation["sample_cadence_min"] <= 60:
+                raise ValueError("positive bounded sampling cadence required")
+            cadence, horizon = observation["sample_cadence_min"], observation["observation_end_min"]
+            if any(row["start_min"] != index * cadence or row["end_min"] != min((index + 1) * cadence, horizon)
+                   for index, row in enumerate(rows)):
+                raise ValueError("observed intervals must match declared sample cadence")
+            validate_observation(observation, RuleEngine().specs)
+        except (KeyError, TypeError, AttributeError) as exc:
+            raise ValueError("invalid public event observation") from exc
+        return self
+
+
 class DecideIn(EventIn):
     """One event + optional threshold overrides → full decision view."""
 
     spec_override: Optional[SpecOverride] = None
     ml_contexts: List[MLContextIn] = Field(default_factory=list, max_length=2)
     temperature_context: Optional[TemperatureContext] = None
+    event_context: Optional[EventContextIn] = None
 
     @field_validator("ml_contexts")
     @classmethod

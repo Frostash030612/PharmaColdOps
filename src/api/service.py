@@ -43,6 +43,7 @@ if str(SRC) not in sys.path:
 from rule_engine.engine import RuleEngine  # noqa: E402
 from rule_engine.models import ExcursionEvent, ProductSpec  # noqa: E402
 from ml import runtime as ml_runtime  # noqa: E402
+from ml import event_runtime  # noqa: E402
 from . import case_review
 from optimisation.case_action_guard import case_action_guard
 
@@ -453,6 +454,15 @@ def _temperature_event(event, spec):
     """Recompute the source, verify submitted scalars, and freeze the snapshot."""
     from temperature_monitoring import analyse
     context = getattr(event, "temperature_context", None)
+    event_context = getattr(event, "event_context", None)
+    if event_context is not None:
+        from ml.event_simulation import temperature_series
+        observation = event_context.observation
+        if observation["product_id"] != event.product_id:
+            raise ValueError("event observation product does not match case")
+        expected = temperature_series(observation, {spec.product_id: spec})
+        if context is None or context.series.model_dump() != expected.model_dump():
+            raise ValueError("event observation must match the case's complete temperature evidence")
     if context is None:
         return event, None
     assessment = analyse(context.series, spec)
@@ -511,6 +521,15 @@ def _assessment_view(event, spec, temperature_assessment):
             reasons.append("retest_result_required")
         _audit("assess", event, spec, decision)
         view = _decision_view(event, spec, decision, temperature_assessment)
+    event_context = getattr(event, "event_context", None)
+    if event_context is not None:
+        snapshot = {**event_runtime.evaluate(event_context.observation, ENGINE.specs),
+                    "review_required": True, "automatic_actions_allowed": False, "shadow_only": True}
+        view["event_context"] = event_context.model_dump()
+        view["event_assessment"] = snapshot
+        # Even a screened candidate is not causal or disposition authority.
+        reasons.append("event_model_human_confirmation_required")
+        reasons.extend("event_model_" + reason for reason in snapshot["reasons"])
     if reasons:
         view.update(review_required=True, review_reasons=reasons,
                     review_request_reason=getattr(event, "review_reason", "").strip())
@@ -553,6 +572,9 @@ def _close_case(event: EventIn, override: SpecOverride | None,
     # Preserve the legacy fingerprint when no context was supplied.
     if contexts:
         canonical["ml_contexts"] = [context.model_dump() for context in contexts]
+    event_context = getattr(event, "event_context", None)
+    if event_context is not None:
+        canonical["event_context"] = event_context.model_dump()
     temperature_context = getattr(event, "temperature_context", None)
     if temperature_context is not None:
         canonical["temperature_context"] = temperature_context.model_dump()

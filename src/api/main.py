@@ -17,6 +17,8 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from typing import Literal
@@ -36,8 +38,10 @@ from .schemas import (
     RouteIn, RouteOut,
     VehicleFailureAcceptIn, VehicleFailurePreviewIn,
     MLContextIn,
+    EventContextIn,
 )
 from ml import runtime as ml_runtime
+from ml import event_runtime
 from temperature_monitoring import AnalyseIn, SimulateIn, analyse, simulate
 from .deployment import cors_origins, mount_frontend, ready_state
 
@@ -73,6 +77,15 @@ app = FastAPI(
         "classification. Wording stays client-localised."
     ),
 )
+
+@app.exception_handler(RequestValidationError)
+async def safe_event_validation_error(request, exc):
+    # Never echo an invalid whole prefix (NaN/Inf) into the JSON error response.
+    if request.url.path == "/api/ml/event/assess" or (isinstance(exc.body, dict) and "event_context" in exc.body):
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=422, content={"detail": [{k: error[k] for k in ["type", "loc", "msg"] if k in error} for error in exc.errors()]})
+    return await request_validation_exception_handler(request, exc)
+
 
 # Wide-open CORS for local development: the demo may be opened via file://
 # (origin "null") or any static server during development.
@@ -140,6 +153,15 @@ def ml_predict(req: MLContextIn):
         return ml_runtime.predict(req)
     except ml_runtime.ModelUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.post("/api/ml/event/assess")
+def event_assess(req: EventContextIn):
+    """Read-only shadow preview. Missing bundle still requires human review."""
+    try:
+        return event_runtime.evaluate(req.observation, service.ENGINE.specs)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
