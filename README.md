@@ -8,6 +8,13 @@ local risk/candidate-cause artifacts. The online registration panel accepts expl
 transport/monthly contexts, preserves model snapshots, and never maps a failure score to scrap.
 See [M4 integration, limitations and input contracts](docs/M4模型集成.md).
 
+Formal M4 experiments now include outer five-fold validation, provided-facility-ID
+and time-forward cause stress tests, independent calibration, context-only ablations,
+failure/confusion analysis and hash-matched offline SHAP. Run
+`.venv/bin/python scripts/evaluate_m4.py --output data/processed/m4-formal-new`.
+Fresh outputs only; serving models and historical cases are not replaced.
+See [formal results and reproducibility](docs/M4正式实验.md).
+
 M2 now calculates duration-weighted MKT from explicit simulated temperature intervals,
 detects contiguous hot/cold windows, and archives the original series with a selected event.
 The new-case panel supports seeded generation and JSON editing; gaps and unsupported cold
