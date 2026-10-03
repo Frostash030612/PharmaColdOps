@@ -66,14 +66,14 @@ def _environment() -> list[str]:
 def _row(instance: str, algorithm: str, result, seconds: float, budget: int | None) -> dict:
     metrics = result.metrics
     reference = REFERENCE.get(instance.lower())
-    if reference is None:
+    if reference is None or metrics.violation_count != 0:
         delta_vehicles = delta_distance = None
     else:
         ref_vehicles, ref_distance = reference
         delta_vehicles = metrics.vehicles_used - ref_vehicles
         delta_distance = (
             (metrics.total_distance - ref_distance) / ref_distance * 100.0
-        )
+        ) if delta_vehicles == 0 else None
     return {
         "instance": instance,
         "algorithm": algorithm,
@@ -90,19 +90,11 @@ def _row(instance: str, algorithm: str, result, seconds: float, budget: int | No
 
 
 def _runtime_cell(row: dict) -> str:
-    """Render the runtime, flagging a wall-clock measure that cannot be real.
-
-    Both budgeted solvers are anytime algorithms: their runtime *is* the budget
-    (plus scheduling overhead).  A measure far above the budget means the
-    process was suspended — machine sleep, a long deschedule — not that the
-    algorithm took that long.  Measured once: a run reported 4545s and 18062s
-    for two 60s budgets after the host suspended.  Rather than publish a
-    meaningless number, the cell falls back to the budget and is marked.
-    """
+    """Preserve measured time; flag excess without inventing its cause."""
     budget = row["budget"]
     seconds = row["seconds"]
     if budget is not None and seconds > budget * 2 + 30:
-        return f"≈{budget} ⚠"
+        return f"{seconds:.1f} ⚠"
     return f"{seconds:.1f}"
 
 
@@ -121,8 +113,8 @@ def _table(rows: list[dict]) -> list[str]:
             # makes a distance gap incomparable under a hierarchical objective.
             delta_distance = (
                 f"{row['delta_distance']:+.1f}%"
-                if row["delta_vehicles"] == 0
-                else f"({row['delta_distance']:+.1f}%)"
+                if row["delta_distance"] is not None
+                else "—（车数不同）"
             )
         budget = "—" if row["budget"] is None else f"{row['budget']}s"
         lines.append(
@@ -143,7 +135,11 @@ def _best_summary(rows: list[dict]) -> list[str]:
         "|---|---|---:|---:|---|",
     ]
     for instance, candidates in by_instance.items():
-        winner = min(candidates, key=lambda r: (r["vehicles"], r["distance"]))
+        eligible = [r for r in candidates if r['unserved']==0 and r['violations']==0]
+        if not eligible:
+            lines.append(f"| {instance} | 无完整可行解 | — | — | 不报告最优 gap |")
+            continue
+        winner = min(eligible, key=lambda r: (r["vehicles"], r["distance"]))
         reference = REFERENCE.get(instance.lower())
         if reference is None:
             verdict = "—（无参照值）"
@@ -252,7 +248,7 @@ def main() -> int:
         "## 口径（读表前必看）",
         "",
         "- **目标函数**：层级式 —— ① 最少车辆 ② 最短距离，与 Solomon 官方榜单一致。",
-        "  greedy 与 GA 天然按此排序；OR-Tools 的原始实现只最小化距离，本表为它开启",
+        "  报告按此排序；GA 搜索使用固定惩罚标量，并非严格层级最优证明。OR-Tools 的原始实现只最小化距离，本表为它开启",
         "  `minimize_vehicles=True`（每车固定成本）以对齐口径。",
         f"- **OR-Tools 首解策略**：`{ORTOOLS_FIRST_SOLUTION}`。默认的 `PATH_CHEAPEST_ARC`",
         "  在 r101/rc101 上**构造不出可行首解**，10s/30s/60s 均返回空解 —— `§5 A2` 原先记的",
@@ -289,15 +285,15 @@ def main() -> int:
         "",
         "## 局限",
         "",
-        "- `Δ距离` 只在**车辆数相同**时可比；括号内数值表示车辆数已经不同，仅供参考。",
+        "- `Δ距离` 只在**完整可行且车辆数相同**时报告；不完整、违规或车数不同不给 gap。",
         "- Solomon 实例是欧氏距离、单一仓库的静态问题；新加坡算例用真实有向路网矩阵，",
         "  两者不可互相换算，故新加坡行没有参照值与 gap。",
         "- GA 的初始种群来自构造解，且不施加局部搜索（保持纯元启发式），因此它在",
         "  时间窗极紧的 C 类算例上容易停在构造解的邻域；R/RC 类上可见小幅改进。",
         "- greedy 的用时不是零：容量较大的 C201/R201/RC201 上它本身要 3.0–3.5s。",
         "- `用时(s)` 是墙钟时间。两个有预算的求解器本就是 anytime 算法，正常情况下用时≈预算；",
-        "  标 `⚠` 的格子表示实测远超预算，那是**进程被挂起/机器休眠**造成的墙钟跳变",
-        "  （实测出现过 60s 预算报 4545s 与 18062s），不是算法真的跑了那么久，故回退显示预算值。",
+        "  标 `⚠` 的格子表示实测远超预算，原因未经本脚本证实，",
+        "  保留原始秒数；预算超出不自行归因为休眠，也不把实际耗时替换成预算值。",
         "- GA 在 R/RC 类上确实改进了构造解（如 R201 1884.36 → 1848.08、RC101 2085.38 → 2049.29），",
         "  但改不过 OR-Tools；C 类（时间窗紧）上零改进。",
         "",
