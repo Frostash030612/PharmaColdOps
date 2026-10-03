@@ -618,6 +618,28 @@ export default {
       freeze_sensitive:'冻敏（0／1）', heat_sensitive:'热敏（0／1）', equipment_age_years:'设备年限', power_outage_hours_last_month:'上月断电小时', year:'基准年份', month:'基准月份' },
   },
 
+  eventV2: {
+    title: '事件模型 v2 · 只读 shadow', disclosure: '111项公开前缀观测。未校准仿真模型，仅提示候选；可能漏掉其他故障，不判断药品安全、不授权处置或配送。',
+    offline: '离线模式不调用或模拟 v2 模型。', load: '检查开关并加载 v2 演示样本', sample: '选择公开观测样本',
+    disabled: 'v2 shadow 默认关闭，需管理员显式启用；不回退旧模型。', unavailable: 'v2 产物不可用或校验失败，无假分数。',
+    sampleNote: '这是已评估仿真批次的展示样本，不是此订单的实车读数或新的未见评测。采用它表示人为指定模拟证据。',
+    input: 'v2 公开观测 JSON', preview: '只读预览 v2 候选', clear: '清除 v2 草稿', loading: '读取／推理中…',
+    productMismatch: '观测产品必须与当前案例一致', mandatoryReview: '必须人工审核；模型不能直接放行、报废、补发或执行配送。',
+    features: '项输入', candidates: '待审核候选（不保证完整）', scores: '未校准分数，非正确概率', provenance: '模型／策略／观测 SHA',
+    adopt: '采用完整观测并转人工登记', attached: '已附加 v2 完整模拟观测；编辑后需重新预览／采用。',
+    frozen: '显示首次登记快照，不用当前模型重算历史。', noSnapshot: '本记录没有 v2 快照，不自动补写。',
+    status: { candidate_only: '筛选通过的待审核候选', abstained: '拒判：不支持唯一原因', disabled: 'shadow 未启用', unavailable: '模型不可用' },
+    roles: { test_nominal: '常规新设备', test_device: '另一组新设备', test_scenario: '未见激励', test_stress: '已覆盖压力', test_extreme: '更极端压力' },
+    causes: { power_outage:'主电源中断', generator_fuel_stockout:'备用燃料不足', equipment_breakdown:'设备失效', thermostat_failure:'温控目标异常',
+      door_left_open:'门未关闭', staff_error:'操作机理（非人员责任认定）', transport_delay:'运输延误', ice_pack_not_conditioned:'热缓冲未预处理',
+      overloading:'气流受阻', no_monitoring_device:'温度监测缺失', unmodeled_disturbance:'未映射扰动' },
+    reasons: { human_confirmation_required: '事件模型必须人工确认', missing_predictors: '观测特征缺失', outside_training_envelope: '超出训练支持范围',
+      insufficient_observation_coverage: '观测覆盖不足', short_observation_prefix: '观测前缀过短', shared_mechanism_semantic_ambiguity: '机理可能共用观测，不能认定人员意图',
+      possible_unmodeled_disturbance: '可能存在未映射扰动', no_supported_cause_not_proof_of_safety: '没有支持候选不表示安全', multiple_plausible_causes: '存在多个候选机理',
+      low_model_score: '模型分数不足', small_score_margin: '候选分数差距不足', validation_screen_not_qualified: '验证筛选条件未达标',
+      event_v2_shadow_disabled: 'v2 shadow 未启用', event_v2_shadow_artifact_unavailable: 'v2 模型产物不可用', event_shadow_artifact_unavailable: 'v1 模型产物不可用' },
+  },
+
   qa: {
     answers: [
       { kw: ["mkt", "平均动力学"], reply: "平均动力学温度（MKT）把一段温度-时间曲线压缩成单个与稳定性相关的值，使一次短暂升温可对照产品的稳定性阈值来评估。" },

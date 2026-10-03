@@ -44,6 +44,7 @@ from rule_engine.engine import RuleEngine  # noqa: E402
 from rule_engine.models import ExcursionEvent, ProductSpec  # noqa: E402
 from ml import runtime as ml_runtime  # noqa: E402
 from ml import event_runtime  # noqa: E402
+from ml import event_v2_runtime  # noqa: E402
 from . import case_review
 from optimisation.case_action_guard import case_action_guard
 
@@ -454,7 +455,7 @@ def _temperature_event(event, spec):
     """Recompute the source, verify submitted scalars, and freeze the snapshot."""
     from temperature_monitoring import analyse
     context = getattr(event, "temperature_context", None)
-    event_context = getattr(event, "event_context", None)
+    event_context = getattr(event, "event_context", None) or getattr(event, "event_v2_context", None)
     if event_context is not None:
         from ml.event_simulation import temperature_series
         observation = event_context.observation
@@ -530,6 +531,14 @@ def _assessment_view(event, spec, temperature_assessment):
         # Even a screened candidate is not causal or disposition authority.
         reasons.append("event_model_human_confirmation_required")
         reasons.extend("event_model_" + reason for reason in snapshot["reasons"])
+    v2_context = getattr(event, "event_v2_context", None)
+    if v2_context is not None:
+        snapshot = event_v2_runtime.evaluate(v2_context.observation, ENGINE.specs)
+        snapshot = {k:v for k,v in snapshot.items() if k not in {"temperature_series", "temperature_assessment"}}
+        view["event_v2_context"] = v2_context.model_dump()
+        view["event_v2_assessment"] = {**snapshot, "review_required": True, "automatic_actions_allowed": False, "shadow_only": True}
+        reasons.append("event_model_human_confirmation_required")
+        reasons.extend("event_v2_" + reason for reason in snapshot["reasons"])
     if reasons:
         view.update(review_required=True, review_reasons=reasons,
                     review_request_reason=getattr(event, "review_reason", "").strip())
@@ -575,6 +584,9 @@ def _close_case(event: EventIn, override: SpecOverride | None,
     event_context = getattr(event, "event_context", None)
     if event_context is not None:
         canonical["event_context"] = event_context.model_dump()
+    v2_context = getattr(event, "event_v2_context", None)
+    if v2_context is not None:
+        canonical["event_v2_context"] = v2_context.model_dump()
     temperature_context = getattr(event, "temperature_context", None)
     if temperature_context is not None:
         canonical["temperature_context"] = temperature_context.model_dump()

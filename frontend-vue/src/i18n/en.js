@@ -630,6 +630,28 @@ export default {
       heat_sensitive:'Heat sensitive (0/1)', equipment_age_years:'Equipment age (years)', power_outage_hours_last_month:'Power outages last month (hours)', year:'Benchmark year', month:'Benchmark month' },
   },
 
+  eventV2: {
+    title: 'Event model v2 · read-only shadow', disclosure: '111 public prefix features. Uncalibrated synthetic candidates may omit other faults; no safety verdict or disposition/delivery authority.',
+    offline: 'Offline mode neither calls nor approximates the v2 model.', load: 'Check switch and load v2 demo samples', sample: 'Choose public observation',
+    disabled: 'V2 shadow is disabled by default. Explicit administrator enablement required; no old-model fallback.', unavailable: 'V2 artifact unavailable or invalid; no fake score.',
+    sampleNote: 'Previously evaluated synthetic display sample, not this order’s live sensor reading or a new unseen test. Adoption explicitly assigns simulated evidence.',
+    input: 'V2 public observation JSON', preview: 'Preview v2 candidates read-only', clear: 'Clear v2 draft', loading: 'Loading / inferring…',
+    productMismatch: 'Observation product must match this case', mandatoryReview: 'Human review required. No model-authorized release, scrap, reshipment or delivery.',
+    features: 'inputs', candidates: 'Review candidates (possibly incomplete)', scores: 'Uncalibrated scores, not correctness probabilities', provenance: 'Model / policy / observation SHA',
+    adopt: 'Adopt full observation for human-review registration', attached: 'Full v2 simulated observation attached; edits require preview / adoption again.',
+    frozen: 'Original registration snapshot; never recomputed with a current model.', noSnapshot: 'No v2 snapshot in this record; not backfilled.',
+    status: { candidate_only: 'Screened review candidate', abstained: 'Abstained: no supported unique cause', disabled: 'Shadow disabled', unavailable: 'Model unavailable' },
+    roles: { test_nominal: 'Nominal new assets', test_device: 'Other new assets', test_scenario: 'Unseen excitation', test_stress: 'Covered stress', test_extreme: 'More extreme stress' },
+    causes: { power_outage:'Mains interruption', generator_fuel_stockout:'Backup fuel shortage', equipment_breakdown:'Equipment failure', thermostat_failure:'Setpoint disturbance',
+      door_left_open:'Door left open', staff_error:'Operation mechanism (not human liability)', transport_delay:'Transport delay', ice_pack_not_conditioned:'Unconditioned thermal buffer',
+      overloading:'Airflow obstruction', no_monitoring_device:'Missing temperature monitoring', unmodeled_disturbance:'Unmodeled disturbance' },
+    reasons: { human_confirmation_required: 'Event model requires human confirmation', missing_predictors: 'Missing observed features', outside_training_envelope: 'Outside training support',
+      insufficient_observation_coverage: 'Insufficient observation coverage', short_observation_prefix: 'Observation prefix too short', shared_mechanism_semantic_ambiguity: 'Shared mechanism; human intent cannot be inferred',
+      possible_unmodeled_disturbance: 'Possible unmodeled disturbance', no_supported_cause_not_proof_of_safety: 'No candidate does not prove safety', multiple_plausible_causes: 'Multiple plausible causes',
+      low_model_score: 'Insufficient model score', small_score_margin: 'Insufficient score margin', validation_screen_not_qualified: 'Validation screen not qualified',
+      event_v2_shadow_disabled: 'V2 shadow disabled', event_v2_shadow_artifact_unavailable: 'V2 artifact unavailable', event_shadow_artifact_unavailable: 'V1 artifact unavailable' },
+  },
+
   qa: {
     answers: [
       { kw: ["mkt", "mean kinetic"], reply: "Mean Kinetic Temperature (MKT) compresses a temperature–time profile into a single stability-relevant value, so a short hot spike can be compared against the product's stability threshold." },

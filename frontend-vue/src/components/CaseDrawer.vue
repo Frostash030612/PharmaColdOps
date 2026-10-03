@@ -18,6 +18,7 @@ import CaseActions from "./CaseActions.vue";
 import M4Panel from './M4Panel.vue';
 import M2Panel from './M2Panel.vue';
 import ReviewPanel from './ReviewPanel.vue';
+import EventV2Panel from './EventV2Panel.vue';
 import { useDecisionsStore } from '../stores/decisions.js';
 import { locale, bundle } from "../i18n/index.js";
 
@@ -43,6 +44,9 @@ onBeforeUnmount(sandbox.exitOfflinePreview);
         <p v-if="sandbox.offlinePreview" class="local-sandbox-note">{{ L.localSandbox.note }}</p>
         <CaseActions v-else />
         <ReviewPanel v-if="!sandbox.offlinePreview && sandbox.currentRunId" />
+        <EventV2Panel v-if="sandbox.currentRunId" :product-id="sandbox.archivedRecord?.event.product_id"
+          :model-value="sandbox.archivedRecord?.event_v2_context" :saved="sandbox.archivedRecord?.event_v2_assessment" readonly />
+        <EventV2Panel v-else-if="sandbox.offlinePreview" :product-id="sandbox.current.product_id" offline />
         <details v-if="sandbox.offlinePreview" open class="case-advanced">
           <summary>{{ L.workspace.presetsAndRules }}</summary><ScenarioList /><RuleConfig />
         </details>

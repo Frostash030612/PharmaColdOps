@@ -5,6 +5,7 @@ import { useDecisionsStore } from '../stores/decisions.js';
 import { locale, bundle } from '../i18n/index.js';
 import { postJson } from '../lib/api.js';
 import routes from '../data/singaporeRoutes.json';
+import { eventReasonLabel } from '../lib/eventV2.js';
 const history = useHistoryStore(), decisions = useDecisionsStore();
 const L = computed(() => bundle(locale.value));
 const record = computed(() => history.currentRun);
@@ -12,7 +13,7 @@ const reviewer = ref(''), reason = ref(''), disposition = ref('quarantine'), des
 const request = ref(null), busy = ref(false), error = ref(''), storageWarning = ref(false);
 const locked = computed(() => record.value?.execution_locked || ['handled', 'closed'].includes(record.value?.processing_status));
 const label = value => value ? L.value.dispo[value]?.label || value : L.value.review.awaiting;
-const reasons = computed(() => (record.value?.review_reasons || []).map(key => L.value.review.reasons[key] || key));
+const reasons = computed(() => (record.value?.review_reasons || []).map(key => L.value.review.reasons[key] || eventReasonLabel(key, L.value.eventV2.reasons)));
 const key = () => `pharmacoldops:review:v1:${decisions.apiBase}:${record.value?.run_id}`;
 function persist(value) {
   try { if (value) sessionStorage.setItem(key(), JSON.stringify(value)); else sessionStorage.removeItem(key()); }

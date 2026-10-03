@@ -100,6 +100,13 @@ class DecideIn(EventIn):
     ml_contexts: List[MLContextIn] = Field(default_factory=list, max_length=2)
     temperature_context: Optional[TemperatureContext] = None
     event_context: Optional[EventContextIn] = None
+    event_v2_context: Optional[EventContextIn] = None
+
+    @model_validator(mode="after")
+    def one_event_model_version(self):
+        if self.event_context is not None and self.event_v2_context is not None:
+            raise ValueError("choose one event model version, never combine v1 and v2 contexts")
+        return self
 
     @field_validator("ml_contexts")
     @classmethod

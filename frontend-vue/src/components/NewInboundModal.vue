@@ -14,6 +14,8 @@ import { useDispatchStore } from "../stores/dispatch.js";
 import { useRegistrationStore } from "../stores/registration.js";
 import M4Panel from './M4Panel.vue';
 import M2Panel from './M2Panel.vue';
+import EventV2Panel from './EventV2Panel.vue';
+import { matchesV2Temperature } from '../lib/eventV2.js';
 import routes from "../data/singaporeRoutes.json";
 import {
   PRODUCT_NUM, PRODUCT_IDS, STAGE_IDS, PACKAGING_IDS, DEFAULT_EVENT,
@@ -43,6 +45,7 @@ const orderChoices = computed(() => dispatch.run?.input?.orders || []);
 const linkedOrder = computed(() => ev.value.dispatch_id === dispatch.run?.dispatch_id
   ? orderChoices.value.find((o) => o.order_id === ev.value.order_id) : null);
 function selectOrder(e) {
+  if (eventV2Context.value) setV2Context(null);
   const order = orderChoices.value.find((o) => o.order_id === e.target.value);
   if (!order) { ev.value.order_id = null; ev.value.dispatch_id = null; return; }
   const d = defaultsOf(order.product_id);
@@ -77,13 +80,24 @@ const remark = ref(recovered?.payload?.remark || "");
 const mlContexts = ref(recovered?.payload?.ml_contexts || []);
 const temperatureContext = ref(recovered?.payload?.temperature_context || null);
 const temperaturePending = ref(false);
+const eventV2Context = ref(recovered?.payload?.event_v2_context || null);
+const v2Pending = ref(false);
+function setV2Context(value) {
+  if (!value && eventV2Context.value) { temperatureContext.value = null; temperatureReview.value = false; }
+  eventV2Context.value = value;
+}
+function applyV2(value) {
+  eventV2Context.value = value.eventContext; temperatureContext.value = value.temperatureContext;
+  applyTemperature(value.event); temperaturePending.value = false; temperatureReview.value = true;
+}
 const temperatureReview = ref(!!recovered?.payload.temperature_context && recovered.payload.temperature_context.window_id === null);
 const reviewRequested = ref(recovered?.payload.review_requested || false);
 const reviewReason = ref(recovered?.payload.review_reason || '');
 function applyTemperature(event) { Object.assign(ev.value, event); if (event.excursion_temp_c === null) mlContexts.value = []; }
-const needsReview = computed(() => temperatureReview.value || reviewRequested.value ||
+const needsReview = computed(() => !!eventV2Context.value || temperatureReview.value || reviewRequested.value ||
   (ev.value.excursion_temp_c !== null && ev.value.excursion_temp_c < spec.value.min && !(spec.value.freezeSensitive && ev.value.excursion_temp_c <= 0)) || d.value.disposition === 'retest');
 watch(temperatureContext, value => {
+  if (eventV2Context.value && !matchesV2Temperature(value?.series, eventV2Context.value.observation)) eventV2Context.value = null;
   if (!value && ev.value.excursion_temp_c === null && !locked.value) {
     const d = DEFAULT_EVENT[ev.value.product_id];
     Object.assign(ev.value, { excursion_temp_c: d.excursion_temp_c, duration_min: d.duration_min, mkt_c: d.mkt_c });
@@ -144,12 +158,12 @@ function cancel() {
 }
 
 async function archive() {
-  if (archiving.value || decisions.apiUp !== true || (!locked.value && temperaturePending.value)) return;
+  if (archiving.value || decisions.apiUp !== true || (!locked.value && (temperaturePending.value || v2Pending.value))) return;
   archiving.value = true;
   error.value = false;
   try {
     const res = await registration.submit(locked.value ? null : {
-      ...eventPayload({ ...ev.value, ml_contexts: mlContexts.value, temperature_context: temperatureContext.value }),
+      ...eventPayload({ ...ev.value, ml_contexts: mlContexts.value, temperature_context: temperatureContext.value, event_v2_context: eventV2Context.value }),
       spec_override: overridePayload(spec.value),
       remark: remark.value.trim() || null,
       ...(reviewRequested.value ? { review_requested: true, review_reason: reviewReason.value.trim() } : {}),
@@ -284,6 +298,8 @@ function discardDraft() {
         </fieldset>
         <M2Panel v-model="temperatureContext" :product-id="ev.product_id" :readonly="locked || archiving" :offline="!up"
           @event="applyTemperature" @pending="temperaturePending = $event" @review-needed="temperatureReview = $event" />
+        <EventV2Panel :model-value="eventV2Context" @update:model-value="setV2Context" :product-id="ev.product_id"
+          :readonly="locked || archiving" :offline="!up" @adopt="applyV2" @pending="v2Pending = $event" />
         <fieldset class="registration-fields" :disabled="locked || archiving">
           <label><input v-model="reviewRequested" type="checkbox"> {{ L.review.request }}</label>
           <label v-if="reviewRequested">{{ L.review.requestReason }}<textarea v-model="reviewReason" rows="2" maxlength="2000" /></label>
@@ -324,7 +340,7 @@ function discardDraft() {
           <button class="btn inline" type="button" :disabled="archiving" @click="cancel">
             {{ L.newInbound.cancel }}
           </button>
-          <button class="btn inline modal-primary" type="button" :disabled="!up || archiving || (!locked && (temperaturePending || (reviewRequested && !reviewReason.trim()) || (!needsReview && d.reshipment && !ev.destination_facility_id)))" @click="archive">
+          <button class="btn inline modal-primary" type="button" :disabled="!up || archiving || (!locked && (temperaturePending || v2Pending || (reviewRequested && !reviewReason.trim()) || (!needsReview && d.reshipment && !ev.destination_facility_id)))" @click="archive">
             {{ archiving ? "…" : locked ? L.registration.retry : L.newInbound.archive }}
           </button>
         </div>

@@ -9,7 +9,8 @@ export function decisionKey(current, spec) {
           current.mkt_c, current.packaging, current.stage,
           spec.allowable, spec.mktThreshold, spec.retestable].join("|");
   const mlKey = current.ml_contexts?.length ? `${key}|ml:${JSON.stringify(current.ml_contexts)}` : key;
-  return current.temperature_context ? `${mlKey}|m2:${JSON.stringify(current.temperature_context)}` : mlKey;
+  const temperatureKey = current.temperature_context ? `${mlKey}|m2:${JSON.stringify(current.temperature_context)}` : mlKey;
+  return current.event_v2_context ? `${temperatureKey}|event-v2:${JSON.stringify(current.event_v2_context)}` : temperatureKey;
 }
 
 export function specKey(current, spec) {
@@ -30,6 +31,7 @@ export function eventPayload(current) {
     dispatch_id: current.dispatch_id || null,
     ...(current.ml_contexts?.length ? { ml_contexts: JSON.parse(JSON.stringify(current.ml_contexts)) } : {}),
     ...(current.temperature_context ? { temperature_context: JSON.parse(JSON.stringify(current.temperature_context)) } : {}),
+    ...(current.event_v2_context ? { event_v2_context: JSON.parse(JSON.stringify(current.event_v2_context)) } : {}),
   };
 }
 

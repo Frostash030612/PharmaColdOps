@@ -42,6 +42,7 @@ from .schemas import (
 )
 from ml import runtime as ml_runtime
 from ml import event_runtime
+from ml import event_v2_runtime
 from temperature_monitoring import AnalyseIn, SimulateIn, analyse, simulate
 from .deployment import cors_origins, mount_frontend, ready_state
 
@@ -81,7 +82,7 @@ app = FastAPI(
 @app.exception_handler(RequestValidationError)
 async def safe_event_validation_error(request, exc):
     # Never echo an invalid whole prefix (NaN/Inf) into the JSON error response.
-    if request.url.path == "/api/ml/event/assess" or (isinstance(exc.body, dict) and "event_context" in exc.body):
+    if request.url.path.startswith("/api/ml/event/") or (isinstance(exc.body, dict) and ({"event_context", "event_v2_context"} & set(exc.body))):
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=422, content={"detail": [{k: error[k] for k in ["type", "loc", "msg"] if k in error} for error in exc.errors()]})
     return await request_validation_exception_handler(request, exc)
@@ -162,6 +163,27 @@ def event_assess(req: EventContextIn):
     """Read-only shadow preview. Missing bundle still requires human review."""
     try:
         return event_runtime.evaluate(req.observation, service.ENGINE.specs)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.get("/api/ml/event/v2/info")
+def event_v2_info():
+    return event_v2_runtime.info()
+
+
+@app.get("/api/ml/event/v2/samples")
+def event_v2_samples():
+    try:
+        return event_v2_runtime.samples(service.ENGINE.specs)
+    except Exception:
+        raise HTTPException(status_code=503, detail="v2 shadow disabled or artifact unavailable; no fallback samples")
+
+
+@app.post("/api/ml/event/v2/assess")
+def event_v2_assess(req: EventContextIn):
+    try:
+        return event_v2_runtime.evaluate(req.observation, service.ENGINE.specs)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 

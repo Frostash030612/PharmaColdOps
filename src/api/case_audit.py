@@ -78,7 +78,7 @@ def render(report, lang="zh"):
         text = json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False)
         return f"<section><h2>{escape(title)}</h2><pre>{escape(text)}</pre></section>"
     original = report["original_registration"]
-    readable = {k: v for k, v in original.items() if k not in {"temperature_context", "temperature_assessment", "ml_contexts", "ml_assessments", "event_context"}}
+    readable = {k: v for k, v in original.items() if k not in {"temperature_context", "temperature_assessment", "ml_contexts", "ml_assessments", "event_context", "event_v2_context"}}
     temperature = original.get("temperature_assessment")
     if temperature:
         readable["temperature_summary"] = {k: v for k, v in temperature.items() if k != "windows"}
