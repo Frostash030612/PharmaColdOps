@@ -39,6 +39,7 @@ from .schemas import (
 )
 from ml import runtime as ml_runtime
 from temperature_monitoring import AnalyseIn, SimulateIn, analyse, simulate
+from .deployment import cors_origins, mount_frontend, ready_state
 
 @asynccontextmanager
 async def lifespan(app):
@@ -77,7 +78,7 @@ app = FastAPI(
 # (origin "null") or any static server during development.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins(),
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=False,
@@ -91,6 +92,15 @@ def health() -> dict:
         "module": "rule_engine",
         "products": service.valid_product_ids(),
     }
+
+
+@app.get("/api/ready")
+def ready():
+    result = ready_state()
+    if result["status"] != "ready":
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=503, content=result)
+    return result
 
 
 @app.get("/api/runs")
@@ -597,3 +607,6 @@ def start_next_dispatch_day(dispatch_id: str, req: NextDayIn):
         raise HTTPException(status_code=404, detail=f"unknown dispatch_id {dispatch_id!r}")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+
+
+mount_frontend(app)

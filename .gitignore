@@ -61,3 +61,5 @@ proposal/figures/raw/
 cache/
 output/playwright/
 .playwright-cli/
+deploy/*.env
+.venv-*/

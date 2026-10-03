@@ -6,11 +6,12 @@
 #   neo4j://localhost:7687               # Bolt — KG loader / writer / QA / schema
 #   docker compose exec neo4j cypher-shell -u neo4j -p pharmacoldops
 #   docker compose down                  # stop, keep the graph
-#   docker compose down -v               # stop and delete the graph volume
+# Full app deployment: deploy/compose.demo.yml (separate project and volumes).
+# This legacy file starts only a development graph, not the complete app.
 #
-# Load / reload the graph (idempotent — it clears and rebuilds, so closed-case
-# chains written by case_close are wiped as well):
-#   python -m src.knowledge_graph.build_graph
+# Never run build_graph against an existing project graph: load_static clears
+# all nodes, including archived case chains. Use the safe fresh deployment
+# bootstrap or the documented backup/audit/repair workflow instead.
 #
 # Deliberately NO `container_name`:
 #   a container name is global to the Docker daemon, so a leftover container

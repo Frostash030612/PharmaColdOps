@@ -24,6 +24,7 @@ import {
 import { evaluate } from "../lib/engine.js";
 import { riskInfo, causeLabel } from "../lib/risk.js";
 import { cellAxes } from "../lib/zone.js";
+import { resolveApiEndpoint } from "../lib/apiEndpoint.js";
 
 export const useDecisionsStore = defineStore("decisions", () => {
   const sandbox = useSandboxStore();
@@ -198,9 +199,9 @@ export const useDecisionsStore = defineStore("decisions", () => {
 
   /* ---- boot: read ?api= once (vanilla API_BASE) ---- */
   function init() {
-    const fromUrl = new URLSearchParams(window.location.search).get("api") || "";
-    useApi.value = fromUrl !== "";
-    apiBase.value = fromUrl;
+    const endpoint = resolveApiEndpoint(window.location.search, import.meta.env.VITE_API_BASE || "");
+    useApi.value = endpoint.useApi;
+    apiBase.value = endpoint.apiBase;
     if (!useApi.value) return;
     checkHealth(apiBase.value)
       .then(() => {

@@ -3,6 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@12.4.1",
+  "engines": { "node": ">=24.15.0 <25" },
   "description": "PharmaColdOps cold-chain excursion-disposition console — Vue 3 + Vite front-end (offline JS engine + ?api= FastAPI dual mode)",
   "scripts": {
     "dev": "vite",
