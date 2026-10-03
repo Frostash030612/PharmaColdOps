@@ -15,6 +15,14 @@ failure/confusion analysis and hash-matched offline SHAP. Run
 Fresh outputs only; serving models and historical cases are not replaced.
 See [formal results and reproducibility](docs/M4正式实验.md).
 
+Formal M3 evaluation now reports all four classes: 54/57 historical-gold agreement,
+macro-F1 0.7174, and explicitly zero quarantine recall. M5 has 49 fresh static
+solver comparisons with complete-feasibility guards, fleet-matched BKS gaps and charts.
+M6 has actual-response snapshots and a two-rater blind review/scoring workflow;
+independent accuracy remains unavailable until real human annotations are supplied.
+See [M3 formal report](docs/M3正式评估.md), [M5 formal report](docs/M5正式评估.md)
+and [M6 independent evaluation protocol](docs/M6独立评估.md).
+
 M2 now calculates duration-weighted MKT from explicit simulated temperature intervals,
 detects contiguous hot/cold windows, and archives the original series with a selected event.
 The new-case panel supports seeded generation and JSON editing; gaps and unsupported cold

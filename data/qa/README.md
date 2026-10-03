@@ -1,59 +1,48 @@
-# `data/qa/` — 问答评估（M6 / W4-D）
+# `data/qa/` — M6 问答评估
 
-本目录是 **问答质量评估集**：ARCHITECTURE 给 M6 定的验收指标是「问答准确率 + 证据可追溯覆盖率」，
-proposal §12 把「问答评估集」列为交付物，排期 W4 写明「D：QA 评估」。这里放**输入语料与标注**；
-评测脚本在 `scripts/evaluate_qa.py`，生成的报告写到 `data/processed/qa_eval_report.json`（生成物，按仓库约定不入库）。
+2026-10-03：分开**派生契约检查**与**独立人工准确率／证据相关性**。前者完成，后者等待真实人工标注。
+`intent_labels.csv` 的37条原FAQ关键词及空 expected_intent 保留，不用关键词路由自身给它填“gold”。
+它不是独立采样的自然问句集，不能直接称作完整用户问答基准。
 
-## 1. 答案层评测（已实现，可立即跑）
+## 1. 安全的契约评测
 
 ```bash
-# 需要 Neo4j：docker compose up -d
-/opt/anaconda3/envs/cold-chain/bin/python -m src.knowledge_graph.build_graph   # 首次/重建
-/opt/anaconda3/envs/cold-chain/bin/python scripts/evaluate_qa.py               # 跑 57 条场景
-python scripts/evaluate_qa.py --limit 5      # 冒烟
-python scripts/evaluate_qa.py --keep         # 把案例留在图里当演示数据
+.venv/bin/python scripts/evaluate_qa.py
+.venv/bin/python scripts/evaluate_qa.py --limit 5
+.venv/bin/python scripts/evaluate_qa.py --keep
 ```
 
-退出码：`0` 全通过 · `1` 有检查失败 · `2` 连不上图谱（**绝不把"连不上"算成通过**）。
+默认自建临时Neo4j和独立SQLite／JSONL，只初始化自己创建的空图谱；报告位于新的临时评测目录。
+默认清理本批案例、队列和归档，按自建不可变ID移除容器。`--keep` 只保留本批独立存储／容器供检查，
+不是把测试案例写进原演示图谱。需要Docker及已安装Neo4j镜像；不要求启动或重建项目原图谱。
+仅在明确配置了**已初始化专用测试图谱**时用 `--configured-test-graph`，不得指向生产／共享项目库。
 
-**输入语料**：`../scenarios/scenarios.csv`（57 条人工双标场景，已入库）。每条经**真实**
-`service.close_case` 结案，所以处置/规则号/主因都来自真实引擎——没有任何手写或预置答案。
+退出0：全部检查与清理通过；1：检查失败；2：环境／运行／清理失败。数据库不可达不算通过。
 
-**测什么（期望值全部来自 `qa.py` 之外的产物）**：
+57场景通过真实 `service.close_case`，466项检查覆盖：
 
-| 指标 | 期望值来源 | 说明 |
+| 检查 | 期望来源 | 结论边界 |
 |---|---|---|
-| 证据覆盖率 | `RULE_TO_REGULATIONS` / `RULE_TO_SOPS`（`build_graph` 静态映射） | 返回证据必须**恰好等于**引擎实际命中规则所映射的法规/SOP，多一条少一条都算失败 |
-| 答案 ↔ 记录一致 | `close_case` 返回的真实记录 | 处置、原因、超限数值必须与该案例自己的记录一致 |
-| 产品阈值一致 | `src/rule_engine/rules_config.json`（A 的配置） | 防止 KG 节点与配置悄悄漂移 |
-| 四态正确 | 契约本身 | `no_case` / `unsupported` 必须如实报告 |
-| **跨案例隔离** | 同处置、不同规则的案例分组 | 同处置案例**不得互相串证据**（2026-09-13 修掉的 `CITES` 作用域缺陷的护栏） |
+| 案例记录一致 | 本次真实结案记录 | 不是人工答案正确性 |
+| 规则对应法规／SOP集合 | build_graph 静态映射 | 不是独立证据相关性 |
+| 产品阈值同源 | rules_config.json | 不是验证阈值临床有效 |
+| 无案例／不支持状态 | API契约 | 不是人工拒答适当率 |
+| 跨案例证据隔离 | 同处置不同规则分组 | 防止共享Disposition串证据 |
 
-**为什么不是循环验证**：期望值来自静态映射与 A 的配置，**不是** `qa.py` 的输出。这和规则引擎
-gold 标注那次破除循环是同一个纪律（proposal §8.3）。
+设施关联由专项图谱单测及业务端到端验收覆盖，本脚本场景无设施列，不伪造地点。
 
-**不测什么（诚实边界）**：
-- **意图分类准确率**：需要人工标注的问句集，见下节。
-- **设施级证据**：`scenarios.csv` 没有设施列，所以设施/补发目的地证据由单元测试覆盖
-  （`tests/test_kg_qa.py::test_audit_chain_surfaces_the_reshipment_destination`、
-  `test_facility_edges_are_written_for_a_case_carrying_facility_ids`），不在这里假造设施。
+## 2. 双人盲评与独立评分
 
-## 2. 意图标注 `intent_labels.csv`（**待人工填写**）
+```bash
+LOKY_MAX_CPU_COUNT=1 .venv/bin/python scripts/evaluate_m6_independent.py prepare --output data/processed/m6-blind-new
+```
 
-`expected_intent` 列**故意留空**：意图分类的正确答案只能由人判断。用分类器自己的关键词表
-（`frontend-vue/src/lib/qa.js` 的 `TYPE_KEYWORDS`）去打分是拿表评表，属于循环验证，不做。
+53条测试输入=37条原关键词＋16条显式作者编写的中英文问句，含 cause_context／超范围／无案例。
+脚本使用前端实际路由及FAQ回退、真实服务快照；无人工参考标签自动产生。
+输出空的双人意图CSV、封存后使用的回答评分CSV、全部参考来源、第三人仲裁模板及私有预测指纹。
+先盲标意图并封存，再评答案与证据，不能先展示模型预测。全部行须由不同的真实人员填写，分歧须第三人仲裁。
+六类为 why_disposition／audit_chain／product_requirements／cause_context／disposition_stats／unsupported；
+有歧义用 ambiguous＋acceptable_intents，不把裸关键词强塞进单标签。
 
-- `question` 列是**既有语料**（从 `frontend-vue/src/i18n/{zh,en}.js` 的 `qa.answers[].kw` 逐条复制，
-  未新编），`source` 列标明出处。
-- 请在 `expected_intent` 填以下之一（与 `/api/qa` 契约一致）：
-
-  ```
-  why_disposition | audit_chain | product_requirements | cause_context | disposition_stats | unsupported
-  ```
-
-  例：`复验,zh,...,why_disposition,`、`gdp,en,...,product_requirements,`
-- ⚠️ `cause_context`（「该原因最常见场景」）在既有 i18n 关键词表里**没有对应语料**，所以本模板不含该意图的问句——
-  那需要**新写**问句（属作者性内容，不由脚本代写）。要覆盖它请自行增行，例如「这个原因最常见在哪」。
-- 可自由增删行；标完告诉 D，即可跑出「意图分类准确率」这一个数，并把结果补进本 README 与报告。
-
-> 目前**没有任何**准确率数字被写进提案或报告——因为标注尚未完成。这是有意为之。
+完整协议、实测计时、文件路径、评分命令与尚缺的人工输入见 [M6独立评估](../../docs/M6独立评估.md)。
+本轮盲评包在 `data/processed/m6-blind-20261003-v3/`，生成物不入库；在真实标注完成前，准确率保持不可用。
