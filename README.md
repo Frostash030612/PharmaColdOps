@@ -96,12 +96,11 @@ default offline mode uses the built-in JS rule-engine equivalent. The older zero
 tree was retired on 2026-09-12.
 
 **Vue app (`frontend-vue/`, recommended)** — needs Node.js LTS (see below). Uses **pnpm**;
-with Node ≥ 16.9 run `corepack enable pnpm` once (no global install needed) and install from the
-committed `pnpm-lock.yaml`:
+use the verified Node 24.15.0 / pnpm 12.4.1 baseline and install from the committed lockfile:
 
 ```bash
 cd frontend-vue
-corepack enable pnpm    # one-off
+npm install --global pnpm@12.4.1    # one-off; packageManager is pinned
 pnpm install --frozen-lockfile
 pnpm dev                       # http://localhost:5173          (offline)
 # http://localhost:5173/?api=http://127.0.0.1:8000               (backend mode)
@@ -169,20 +168,28 @@ with `python scripts/audit_datasets.py` → `data/processed/ml_audit_report.md`.
 
 ## Quickstart
 
-Python 3.12 is the supported runtime. From a clean checkout:
+The full local demo now has its own Docker deployment (frontend + API + regenerated
+M4 models + persistent audit storage + Neo4j). It does not reuse the old project graph.
+See [reproduction, deployment, backup and recovery](docs/复现与本机部署.md).
 
 ```bash
 python3.12 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-docker compose up -d
-.venv/bin/python -m pytest -q
+.venv/bin/python -m pip install -r requirements-eval.lock.txt
+.venv/bin/python -m pip check
+.venv/bin/python scripts/configure_demo.py
+docker compose --env-file deploy/demo.env -f deploy/compose.demo.yml up -d --build --wait --wait-timeout 180
+# Open http://127.0.0.1:8080/ (same-origin API mode); ?api= explicitly selects offline mode.
 ```
 
 Windows users can replace `.venv/bin/...` with `.venv\Scripts\...`.
-The current 2026-10-01 baseline is **351 passed / 20 skipped**; the skipped tests
-require a reachable Neo4j. The earlier 2026-09-30 revision was verified with
-**341 passed** with Neo4j connected; see [PROGRESS.md](PROGRESS.md) for versioned checks.
-Run `docker compose down` when the local graph is no longer needed; it preserves the graph volume.
+Use Python 3.12.12 for the exact baseline. `requirements.txt` remains the broader research
+environment, not the locked demo installer. Native ML/geocoding extras are not required.
+Use a dedicated test graph for full pytest; missing graph tests are skipped, not counted as passed.
+The clean pinned reproduction baseline is **656 passed / 0 skipped**. The deployment's HTTP/restart/outage
+checks passed, but complete container backup/restore and browser acceptance are pending recovery of a
+local Docker `Created` startup stall; the current 8080 instance is not ready. See [PROGRESS.md](PROGRESS.md).
+Stop the demo with the same compose/env file and `down` without `-v` to preserve its volumes.
+The system has no public-user authentication; loopback deployment is not production/public hosting.
 
 Then verify the Vue production build:
 
@@ -192,8 +199,7 @@ pnpm install --frozen-lockfile
 pnpm build
 ```
 
-Vue front-end (`frontend-vue/`) additionally needs **Node.js LTS** (`node -v`; Windows:
-`winget install --id OpenJS.NodeJS.LTS -e`). Regenerate both demo data files together
+Vue front-end (`frontend-vue/`) additionally needs the pinned **Node.js 24.15.0** (`node -v`). Regenerate both demo data files together
 (one run, two outputs — they cannot drift):
 
 ```bash
