@@ -20,6 +20,13 @@ fixed-budget capacity probes and shuffled-training-label controls. It recommends
 simulation data before large-scale tuning, without claiming random labels or a performance ceiling.
 See [audit evidence and research-effort decision](docs/原因数据可学性审计.md).
 
+An independent event-level simulation dataset is now available: matched temperature,
+door/power/equipment/progress observations and hidden injected-mechanism labels, with
+normal/unknown/multi-fault and observationally ambiguous cases. Six roles separate IID,
+unseen assets, temporal excitation and parameter shifts; identity/label files are not predictors.
+This is data construction, not a newly trained serving model or clinical validation.
+See [event-data contract and generation](docs/事件级仿真数据.md).
+
 Formal M3 evaluation now reports all four classes: 54/57 historical-gold agreement,
 macro-F1 0.7174, and explicitly zero quarantine recall. M5 has 49 fresh static
 solver comparisons with complete-feasibility guards, fleet-matched BKS gaps and charts.
