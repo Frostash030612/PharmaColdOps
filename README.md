@@ -185,9 +185,10 @@ Windows users can replace `.venv/bin/...` with `.venv\Scripts\...`.
 Use Python 3.12.12 for the exact baseline. `requirements.txt` remains the broader research
 environment, not the locked demo installer. Native ML/geocoding extras are not required.
 Use a dedicated test graph for full pytest; missing graph tests are skipped, not counted as passed.
-The clean pinned reproduction baseline is **656 passed / 0 skipped**. The deployment's HTTP/restart/outage
-checks passed, but complete container backup/restore and browser acceptance are pending recovery of a
-local Docker `Created` startup stall; the current 8080 instance is not ready. See [PROGRESS.md](PROGRESS.md).
+The clean pinned reproduction baseline is **656 passed / 0 skipped**. All **24 real deployment checks**
+passed, including a quiesced backup, fresh-instance restore and graph replay. Playwright verified default
+same-origin and explicit offline modes. The local demo at `http://127.0.0.1:8080/` is ready after the
+user-authorized Docker Desktop restart. See [PROGRESS.md](PROGRESS.md) for evidence and limitations.
 Stop the demo with the same compose/env file and `down` without `-v` to preserve its volumes.
 The system has no public-user authentication; loopback deployment is not production/public hosting.
 
