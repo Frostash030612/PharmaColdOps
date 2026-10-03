@@ -13,6 +13,13 @@ detects contiguous hot/cold windows, and archives the original series with a sel
 The new-case panel supports seeded generation and JSON editing; gaps and unsupported cold
 rules block automatic registration. See [M2 contracts and demo guide](docs/M2温度序列与MKT.md).
 
+Boundary cases now register for human review without overwriting the original rule result.
+The effective human outcome governs reshipment; pending review protects linked deliveries,
+and executed outcomes are locked. See [human-review workflow](docs/人工审核与有效处置.md).
+Case details export printable standalone HTML and complete JSON snapshots including original
+assessments, reviews, recorded delivery state and actual graph coverage.
+See [audit export scope and integrity](docs/案例审计报告导出.md).
+
 Proposal & related documents live in [`proposal/`](proposal/):
 
 The current working baseline is the **2026-09-28 revised EN/ZH Markdown, presentation materials,
