@@ -15,19 +15,16 @@ import joblib
 import numpy as np
 import pandas as pd
 import sklearn
-from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import HistGradientBoostingClassifier
-from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from ml.contracts import FEATURES, RISK_FIELDS, CAUSE_CATEGORICAL, CAUSE_NUMERIC, INTEGER_FIELDS, normalize_features
 from ml.evaluate import balanced_weights, best_f1_threshold, binary_metrics, multi_metrics
+from ml.training import make_pipeline
 
 
 def digest(path):
@@ -52,7 +49,7 @@ def candidates(task):
     return models, skipped
 
 
-def data_for(task):
+def data_frame(task):
     if task == "risk":
         files = [ROOT / "data/ml/cold-chain-silent-failure/shipment-sensor-dataset.csv"]
         df = pd.read_csv(files[0]); target = "silent_failure"
@@ -66,6 +63,11 @@ def data_for(task):
         target = "excursion_cause"
         df = df[df[target].notna() & (df[target] != "not_applicable")].reset_index(drop=True)
         ids = df["sample_id"].tolist()
+    return df, ids, target, files
+
+
+def data_for(task):
+    df, ids, target, files = data_frame(task)
     x = df[FEATURES[task]].copy()
     if task == "cause":
         for key in CAUSE_CATEGORICAL: x[key] = x[key].astype(str)
@@ -76,14 +78,10 @@ def fit_task(task, directory):
     x, y, ids, target, sources = data_for(task)
     train, test = train_test_split(np.arange(len(x)), stratify=y, test_size=.15, random_state=42)
     train, validation = train_test_split(train, stratify=y[train], test_size=.1765, random_state=42)
-    numeric = FEATURES[task] if task == "risk" else list(CAUSE_NUMERIC)
-    preprocess = ColumnTransformer([
-        ("numeric", Pipeline([("fill", SimpleImputer(strategy="median")), ("scale", StandardScaler())]), numeric),
-        *([("category", OneHotEncoder(handle_unknown="ignore", sparse_output=False), CAUSE_CATEGORICAL)] if task == "cause" else [])])
     models, skipped = candidates(task)
     results, winner = [], None
     for name, estimator in models:
-        pipeline = Pipeline([("prepare", sklearn.base.clone(preprocess)), ("classifier", estimator)])
+        pipeline = make_pipeline(task, estimator)
         pipeline.fit(x.iloc[train], y[train], classifier__sample_weight=balanced_weights(y[train]))
         probabilities = pipeline.predict_proba(x.iloc[validation])
         if task == "risk":
