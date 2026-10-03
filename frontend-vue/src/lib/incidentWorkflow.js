@@ -4,8 +4,9 @@ export const STATUS_COLORS = {
 };
 
 export function incidentStatus(record, run = null) {
+  if (record.review_status === 'pending') return 'pending';
   const saved = record.processing_status || (record.reshipment_required ? "pending" : "handled");
-  if (saved === "closed" || !record.reshipment_required) return saved;
+  if (saved === "closed" || !(record.effective_reshipment_required ?? record.reshipment_required)) return saved;
   const dispatchId = record.event?.dispatch_id || record.handling_dispatch_id;
   if (!run || (dispatchId && dispatchId !== run.dispatch_id)) return saved;
   let order = run.orders?.[`RO-${record.run_id}`];
@@ -23,7 +24,7 @@ export function incidentStatus(record, run = null) {
 
 export function filterIncidents(records, { date = "", hospital = "", status = "", sort = "newest" } = {}, run = null) {
   return records.filter((record) => (!date || String(record.created_at || "").slice(0, 10) === date)
-    && (!hospital || record.event?.destination_facility_id === hospital)
+    && (!hospital || (record.effective_destination_facility_id || record.event?.destination_facility_id) === hospital)
     && (!status || incidentStatus(record, run) === status))
     .toSorted((a, b) => sort === "oldest"
       ? String(a.created_at).localeCompare(String(b.created_at))

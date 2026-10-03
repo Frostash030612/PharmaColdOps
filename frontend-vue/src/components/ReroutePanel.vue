@@ -89,7 +89,10 @@ const mapBranchNodes = computed(() => dispatch.urgentOverlays.length ? [
 const mapCompareVehicle = computed(() => dispatch.urgentOverlays.length ? dispatch.urgentCandidate?.vehicle_id : dispatch.branchCandidate?.vehicle_id);
 
 /* The current decision needs a resupply and the backend can act on it. */
-const needsReshipment = computed(() => decisions.decisionFor.reshipment);
+const L = computed(() => bundle(locale.value));
+const needsReshipment = computed(() => sandbox.currentRunId && history.currentRun
+  ? history.currentRun.review_status !== 'pending' && (history.currentRun.effective_reshipment_required ?? history.currentRun.reshipment_required)
+  : decisions.decisionFor.reshipment);
 const online = computed(() => decisions.useApi && decisions.apiUp === true);
 
 const thisCaseOrderId = computed(() =>
@@ -585,6 +588,7 @@ const dailyOutcome = computed(() => {
         {{ text.depart }}
       </button>
       <template v-if="dispatch.run?.clock">
+        <p v-if="dispatch.run.review_hold" class="sg-error">{{ L.review.clockHold }} · {{ dispatch.run.review_hold.order_ids.join(', ') }}</p>
         <span class="sim">{{ dispatch.run.operating_date }} · {{ text.simClock }} {{ simClock() }}</span>
         <span class="speeds">
           <button v-for="s in SPEEDS" :key="s.value" :class="{ on: speed === s.value }"

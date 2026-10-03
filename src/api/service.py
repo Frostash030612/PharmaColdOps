@@ -43,6 +43,8 @@ if str(SRC) not in sys.path:
 from rule_engine.engine import RuleEngine  # noqa: E402
 from rule_engine.models import ExcursionEvent, ProductSpec  # noqa: E402
 from ml import runtime as ml_runtime  # noqa: E402
+from . import case_review
+from optimisation.case_action_guard import case_action_guard
 
 from knowledge_graph.writer import write_case, evidence_snapshot  # noqa: E402
 from knowledge_graph import qa as kg_qa  # noqa: E402
@@ -336,11 +338,21 @@ def list_runs(limit: int = 200) -> dict:
 
 def _case_progress(record, workflow, cache):
     """Processing follows actual replacement delivery, never the scrap/release label."""
+    effective = case_review.projection(record, workflow)
     status = workflow.get("status") or record.get("processing_status") or (
         "pending" if record.get("reshipment_required") else "handled")
     dispatch_id = record.get("event", {}).get("dispatch_id") or workflow.get("dispatch_id")
     replacement = None
-    if record.get("reshipment_required") and status != "closed":
+    if effective["review_history"] and dispatch_id and record["event"].get("order_id"):
+        try:
+            if dispatch_id not in cache:
+                cache[dispatch_id] = load_run(DISPATCH_DATABASE_URL, dispatch_id)
+            source = cache[dispatch_id].orders.get(record["event"]["order_id"])
+            if source and source.status == "delivered" and record.get("linked_order", {}).get("status_at_registration") != "delivered":
+                effective["execution_locked"] = True
+        except KeyError:
+            pass
+    if effective["effective_reshipment_required"] and status != "closed":
         if not dispatch_id:  # old unbound cases: find their actual replacement, not the latest day
             if "_legacy_case_dispatches" not in cache:
                 legacy = {}
@@ -371,9 +383,14 @@ def _case_progress(record, workflow, cache):
             except KeyError:
                 replacement = None
         if replacement:
+            effective["execution_locked"] = True
             status = ("handled" if replacement.status == "delivered" else
                       "pending" if replacement.status in {"failed", "scrapped"} else "processing")
-    return {**record, "processing_status": status,
+    if effective["review_status"] == "pending":
+        status = "pending"
+    if status in {"handled", "closed"}:
+        effective["execution_locked"] = True
+    return {**record, **effective, "processing_status": status,
             "workflow_version": workflow.get("version", 0),
             "workflow_history": workflow.get("history", []),
             "handling_dispatch_id": dispatch_id,
@@ -381,23 +398,31 @@ def _case_progress(record, workflow, cache):
 
 
 def update_case_progress(run_id, req):
+    with case_action_guard(DISPATCH_DATABASE_URL):
+        return _update_case_progress(run_id, req)
+
+
+def _update_case_progress(run_id, req):
     record = find_run(run_id)
     if record is None:
         raise KeyError(run_id)
     current = record["processing_status"]
     if record["workflow_version"] != req.expected_version:
         raise ValueError("incident workflow changed; reload before retrying")
+    if record["review_status"] == "pending":
+        raise ValueError("complete human review before handling or closure")
     allowed = {"pending": {"processing", "handled"}, "processing": {"handled"},
                "handled": {"closed"}, "closed": set()}
     if req.status not in allowed[current]:
         raise ValueError(f"cannot change incident status from {current} to {req.status}")
-    if req.status == "handled" and record.get("reshipment_required"):
+    if req.status == "handled" and record["effective_reshipment_required"]:
         raise ValueError("reshipment must actually be delivered before the incident is handled")
     if req.status in {"handled", "closed"} and not req.remark.strip():
         raise ValueError("a handling/closure note is required")
     action = {"status": req.status, "remark": req.remark.strip(),
               "at": datetime.datetime.now(datetime.timezone.utc).isoformat()}
-    save_case_workflow(DISPATCH_DATABASE_URL, run_id, {
+    workflow = case_workflows(DISPATCH_DATABASE_URL).get(run_id, {})
+    save_case_workflow(DISPATCH_DATABASE_URL, run_id, {**workflow,
         "status": req.status, "dispatch_id": record.get("handling_dispatch_id"),
         "history": [*record["workflow_history"], action]}, expected_version=req.expected_version)
     return find_run(run_id)
@@ -431,11 +456,12 @@ def _temperature_event(event, spec):
     if context is None:
         return event, None
     assessment = analyse(context.series, spec)
+    if context.window_id is None:
+        assessment["selected_window_id"] = None
+        return event.model_copy(update={"excursion_temp_c": None, "duration_min": None, "mkt_c": None}), assessment
     window = next((w for w in assessment["windows"] if w["window_id"] == context.window_id), None)
     if window is None:
         raise ValueError("selected temperature window does not exist")
-    if not window["registration_allowed"]:
-        raise ValueError("temperature window cannot enter M3: " + window["blocked_reason"])
     for field, value in window["event"].items():
         if not math.isclose(getattr(event, field), value, rel_tol=0, abs_tol=1e-8):
             raise ValueError("temperature-derived event mismatch: " + field)
@@ -469,6 +495,28 @@ def _decision_view(event: EventIn, spec: ProductSpec, decision, temperature_asse
     return view
 
 
+def _assessment_view(event, spec, temperature_assessment):
+    reasons = case_review.boundary_reasons(event, spec, temperature_assessment)
+    if event.excursion_temp_c is None:
+        # Operational hold, not a computed four-class rule/quality verdict.
+        view = {"disposition": "quarantine", "rule_no": 0, "reason": "Observation held for human review; no automatic rule assessment",
+                "regulation": "", "reshipment_required": False, "rule_path": "unassessed observation",
+                "event": _event_dump(event), "spec": _spec_dict(spec), "evidence": [],
+                "risk": {"score": None, "cause_code": "unassessed"}, "automatic_assessment_available": False,
+                "temperature_context": event.temperature_context.model_dump(), "temperature_assessment": temperature_assessment}
+    else:
+        decision = _engine_for(spec).evaluate(_as_event(event.product_id, event.excursion_temp_c, event.duration_min,
+            event.mkt_c, event.packaging, event.stage, scenario_id="api"))
+        if decision.disposition.value == "retest":
+            reasons.append("retest_result_required")
+        _audit("assess", event, spec, decision)
+        view = _decision_view(event, spec, decision, temperature_assessment)
+    if reasons:
+        view.update(review_required=True, review_reasons=reasons,
+                    review_request_reason=getattr(event, "review_reason", "").strip())
+    return view
+
+
 def decide_view(event: EventIn, override: SpecOverride | None) -> dict:
     """One event → the full semantic decision the demo panels render.
 
@@ -477,14 +525,17 @@ def decide_view(event: EventIn, override: SpecOverride | None) -> dict:
     """
     spec = resolve_spec(event.product_id, override)
     event, temperature_assessment = _temperature_event(event, spec)
-    decision = _engine_for(spec).evaluate(_as_event(
-        event.product_id, event.excursion_temp_c, event.duration_min,
-        event.mkt_c, event.packaging, event.stage, scenario_id="api"))
-    _audit("decide", event, spec, decision)
-    return _decision_view(event, spec, decision, temperature_assessment)
+    return _assessment_view(event, spec, temperature_assessment)
 
 
 def close_case(event: EventIn, override: SpecOverride | None,
+               started_at: str | None = None, remark: str | None = None,
+               registration_id: str | None = None) -> dict:
+    with case_action_guard(DISPATCH_DATABASE_URL):
+        return _close_case(event, override, started_at, remark, registration_id)
+
+
+def _close_case(event: EventIn, override: SpecOverride | None,
                started_at: str | None = None, remark: str | None = None,
                registration_id: str | None = None) -> dict:
     """Close one inbound case: decide its current inputs and append ONE record.
@@ -505,6 +556,8 @@ def close_case(event: EventIn, override: SpecOverride | None,
     temperature_context = getattr(event, "temperature_context", None)
     if temperature_context is not None:
         canonical["temperature_context"] = temperature_context.model_dump()
+    if getattr(event, "review_requested", False):
+        canonical["review_request"] = {"requested": True, "reason": event.review_reason.strip()}
     digest = hashlib.sha256(json.dumps(canonical, sort_keys=True, allow_nan=False).encode()).hexdigest()
     try:
         existing = lookup_registration(DISPATCH_DATABASE_URL, key, digest)
@@ -517,11 +570,7 @@ def close_case(event: EventIn, override: SpecOverride | None,
     event, linked_snapshot = _bind_case_order(event)
     spec = resolve_spec(event.product_id, override)
     event, temperature_assessment = _temperature_event(event, spec)
-    decision = _engine_for(spec).evaluate(_as_event(
-        event.product_id, event.excursion_temp_c, event.duration_min,
-        event.mkt_c, event.packaging, event.stage, scenario_id="case_close"))
-    _audit("close", event, spec, decision)
-    view = _decision_view(event, spec, decision, temperature_assessment)
+    view = _assessment_view(event, spec, temperature_assessment)
     view["processing_status"] = "pending"
     view["registration_id"] = key
     view["graph_evidence"] = evidence_snapshot(view["rule_no"])
@@ -606,6 +655,7 @@ def _bind_case_order(event: EventIn):
     return event.model_copy(update={"dispatch_id": dispatch_id,
         "destination_facility_id": order["destination_facility_id"]}), {
         **order, "dispatch_id": dispatch_id, "operating_date": context.get("operating_date"),
+        "status_at_registration": state.orders[event.order_id].status,
         "quantity_is_nominal": event.order_id in context.get("nominal_order_ids", ())}
 
 
@@ -657,7 +707,7 @@ def route_view(req: RouteIn) -> dict:
     record = find_run(req.run_id)
     if record is None:
         raise KeyError(req.run_id)
-    order = build_reshipment_order(record)
+    order = build_reshipment_order(case_review.executable(record))
     if order is None:
         raise ValueError(f"case {req.run_id} does not require reshipment")
     result = plan_reshipment_route(order, algorithm=req.algorithm)
@@ -905,8 +955,36 @@ def depart_dispatch(dispatch_id: str, command_id: str, speed: float | None = Non
 
 
 def deliver_dispatch(dispatch_id: str, vehicle_id: str, command_id: str) -> dict:
+    with case_action_guard(DISPATCH_DATABASE_URL):
+        return _deliver_dispatch(dispatch_id, vehicle_id, command_id)
+
+
+def _review_delivery_holds(dispatch_id):
+    originals, _ = read_case_originals(DISPATCH_DATABASE_URL, legacy_file=RUNS_FILE)
+    workflows = case_workflows(DISPATCH_DATABASE_URL)
+    held, cases = set(), []
+    for record in originals:
+        ev = record.get("event", {})
+        if ev.get("dispatch_id") != dispatch_id or not ev.get("order_id"):
+            continue
+        workflow = workflows.get(record["run_id"], {})
+        effective = case_review.projection(record, workflow)
+        unresolved = effective["review_status"] == "pending"
+        hold_outcome = bool(effective["review_history"]) and (
+            effective["effective_disposition"] == "scrap" or
+            effective["effective_disposition"] == "retest" and workflow.get("status") not in {"handled", "closed"})
+        if unresolved or hold_outcome:
+            held.add(ev["order_id"]); cases.append(record["run_id"])
+    return {"order_ids": sorted(held), "case_ids": sorted(cases)}
+
+
+def _deliver_dispatch(dispatch_id: str, vehicle_id: str, command_id: str) -> dict:
     old = load_run(DISPATCH_DATABASE_URL, dispatch_id)
     context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    vehicle = old.vehicles[vehicle_id]
+    if command_id not in old.applied_commands and vehicle.remaining_order_ids:
+        if vehicle.remaining_order_ids[0] in _review_delivery_holds(dispatch_id)["order_ids"]:
+            raise ValueError("order is held by human review; delivery is blocked")
     new = deliver_next(old, vehicle_id, command_id=command_id)
     if new is not old:
         if context.get("clock"):
@@ -1354,6 +1432,7 @@ def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dic
     """
     # Case-level refusal first: "this needs no reshipment" is a fact about the
     # case, and must not be masked by "no plan is open".
+    record = case_review.executable(record)
     if not record.get("reshipment_required"):
         raise ValueError(f"case {record['run_id']} does not require reshipment")
     dispatch_id, state = _case_operation(record)
@@ -1403,6 +1482,22 @@ def reshipment_branch_plan(record: dict, *, policy: str = DEFAULT_POLICY) -> dic
 def route_reshipment(record: dict, *, candidate_kind: str | None = None,
                      vehicle_id: str | None = None,
                      policy: str = DEFAULT_POLICY) -> dict:
+    with case_action_guard(DISPATCH_DATABASE_URL):
+        current = find_run(record["run_id"]) or record  # compatibility for pure bridge tests
+        result = _route_reshipment(case_review.executable(current), candidate_kind=candidate_kind,
+                                   vehicle_id=vehicle_id, policy=policy)
+        if current.get("workflow_version") is not None:
+            workflow = case_workflows(DISPATCH_DATABASE_URL).get(record["run_id"], {})
+            if not workflow.get("execution_locked"):
+                save_case_workflow(DISPATCH_DATABASE_URL, record["run_id"], {
+                    **workflow, "execution_locked": True, "dispatch_id": result["dispatch_id"],
+                    "execution_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                }, expected_version=workflow.get("version", 0))
+        return result
+
+
+def _route_reshipment(record: dict, *, candidate_kind: str | None = None,
+                     vehicle_id: str | None = None, policy: str = DEFAULT_POLICY) -> dict:
     """Attach ONE closed reshipment case to the day's plan as a branch event.
 
     The case becomes a real ``DeliveryOrder`` and is inserted into the operation
@@ -2045,6 +2140,11 @@ def replay_dispatch(dispatch_id: str, *, speed: float | None = None,
 
 
 def set_dispatch_speed(dispatch_id: str, speed: float) -> dict:
+    with case_action_guard(DISPATCH_DATABASE_URL):
+        return _set_dispatch_speed(dispatch_id, speed)
+
+
+def _set_dispatch_speed(dispatch_id: str, speed: float) -> dict:
     """Change how fast simulated time runs, without moving the vehicles.
 
     The clock is re-based on the current simulated minute, so switching from
@@ -2055,6 +2155,9 @@ def set_dispatch_speed(dispatch_id: str, speed: float) -> dict:
         raise ValueError(f"speed must be one of {ALLOWED_CLOCK_SPEEDS}")
     state = load_run(DISPATCH_DATABASE_URL, dispatch_id)
     context = load_context(DISPATCH_DATABASE_URL, dispatch_id)
+    if speed > 0 and any(oid in state.orders and state.orders[oid].status not in {"delivered", "failed", "scrapped"}
+                         for oid in _review_delivery_holds(dispatch_id)["order_ids"]):
+        raise ValueError("resolve human-review delivery hold before resuming the demo clock")
     clock = context.get("clock")
     if clock is None:
         raise ValueError("the operation has not departed yet")
@@ -2068,6 +2171,11 @@ def set_dispatch_speed(dispatch_id: str, speed: float) -> dict:
 
 
 def tick_dispatch(dispatch_id: str) -> dict:
+    with case_action_guard(DISPATCH_DATABASE_URL):
+        return _tick_dispatch(dispatch_id)
+
+
+def _tick_dispatch(dispatch_id: str) -> dict:
     """Apply the deliveries the simulated clock says have already happened.
 
     The clock decides *when*; the audited state machine still decides *what* —
@@ -2081,6 +2189,18 @@ def tick_dispatch(dispatch_id: str) -> dict:
         return {"dispatch_id": dispatch_id,
                 "route_view": dispatch_route_view(state, context),
                 **state_to_dict(state), **context}
+    holds = _review_delivery_holds(dispatch_id)
+    outstanding = [oid for oid in holds["order_ids"] if oid in state.orders and state.orders[oid].status not in {"delivered", "failed", "scrapped"}]
+    if outstanding:
+        # Conservative single-clock demo hold. No arrival is settled while an
+        # associated shipment awaits review; resuming is an explicit operator action.
+        minute = float(clock["sim_start_min"])
+        context["clock"] = make_clock(minute, 0, depart_min=schedule_origin(clock))
+        context["review_hold"] = {**holds, "order_ids": outstanding, "reason": "human_review_delivery_hold"}
+        update_run(DISPATCH_DATABASE_URL, dispatch_id, state, expected_version=state.version, context=context)
+        return {"dispatch_id": dispatch_id, "route_view": dispatch_route_view(state, context),
+                **state_to_dict(state), **context}
+    context.pop("review_hold", None)
     # A finished operation is still ticked: all orders may be delivered while the
     # trucks are still driving home, and the map should keep moving them until
     # they are back. There is nothing left to deliver, so the loop below simply
@@ -2190,4 +2310,7 @@ def qa_view(req: QAIn) -> dict:
             raise RuntimeError("case registration storage unavailable") from exc
         if sync or any(r["run_id"] == req.run_id for r in originals):
             raise RuntimeError("registered case graph chain missing; run coverage audit and repair")
+    record = find_run(req.run_id) if req.run_id else None
+    if record and (record.get("review_required") or record.get("review_history")):
+        answer = {**answer, "answer": "Original registration evidence only; human review is recorded separately. " + answer.get("answer", "")}
     return answer

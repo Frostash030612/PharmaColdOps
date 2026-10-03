@@ -31,11 +31,12 @@ function shape(run) {
   return {
     run,
     id: run.run_id,
-    facility: names[ev.destination_facility_id] || ev.destination_facility_id || L.value.workspace.unknownFacility,
+    facility: names[run.effective_destination_facility_id || ev.destination_facility_id] || run.effective_destination_facility_id || ev.destination_facility_id || L.value.workspace.unknownFacility,
     product: L.value.products[ev.product_id] || ev.product_id,
-    temp: ev.excursion_temp_c,
-    duration: ev.duration_min,
-    disposition: L.value.dispo[run.disposition]?.label || run.disposition,
+    temp: ev.excursion_temp_c ?? '—',
+    duration: ev.duration_min ?? '—',
+    disposition: run.review_status === 'pending' ? L.value.review.awaiting : L.value.dispo[run.effective_disposition || run.disposition]?.label || run.disposition,
+    dispositionColor: DISPO_COLOR[run.effective_disposition || run.disposition],
     color: STATUS_COLORS[history.statusOf(run)],
     status: L.value.workflow[history.statusOf(run)],
     location: names[ev.facility_id] || ev.facility_id || L.value.workflow.unknownLocation,
@@ -115,7 +116,7 @@ function openEvent(item) {
         <span class="incident-row"><b>{{ item.facility }}</b><em>{{ item.status }}</em></span>
         <small>{{ L.workflow.location }}: {{ item.location }}</small>
         <span>{{ item.product }} · {{ item.temp }} °C / {{ item.duration }} {{ L.workspace.minutes }}</span>
-        <span class="incident-row"><small>{{ item.when }}</small><strong :style="{ color: DISPO_COLOR[item.run.disposition] }">{{ item.disposition }}</strong></span>
+        <span class="incident-row"><small>{{ item.when }}</small><strong :style="{ color: item.dispositionColor }">{{ item.disposition }}</strong></span>
       </span>
     </button>
   </div>

@@ -86,6 +86,53 @@ class CaseCloseIn(DecideIn):
     started_at: Optional[str] = None
     remark: Optional[str] = None
     registration_id: Optional[str] = Field(default=None, min_length=1, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
+    excursion_temp_c: Optional[float] = Field(default=None, allow_inf_nan=False)
+    duration_min: Optional[int] = Field(default=None, ge=0)
+    mkt_c: Optional[float] = Field(default=None, allow_inf_nan=False)
+    review_requested: bool = False
+    review_reason: str = Field(default="", max_length=2000)
+
+    @model_validator(mode="after")
+    def assessment_inputs(self):
+        observation = self.temperature_context and self.temperature_context.window_id is None
+        values = [self.excursion_temp_c, self.duration_min, self.mkt_c]
+        if observation:
+            if any(v is not None for v in values):
+                raise ValueError("whole-observation review must not invent event temperature, duration or MKT")
+            if self.ml_contexts:
+                raise ValueError("unassessed observations cannot attach M4 event assessments")
+        elif any(v is None for v in values):
+            raise ValueError("event temperature, duration and MKT are required")
+        if self.review_requested and not self.review_reason.strip():
+            raise ValueError("operator-requested review requires a reason")
+        if not self.review_requested and self.review_reason.strip():
+            raise ValueError("review_reason requires review_requested=true")
+        return self
+
+
+class CaseReviewIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    command_id: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
+    expected_version: int = Field(ge=0)
+    disposition: Literal["release", "retest", "scrap", "quarantine"]
+    reviewer: str = Field(min_length=1, max_length=80)
+    reason: str = Field(min_length=3, max_length=2000)
+    destination_facility_id: Optional[str] = None
+
+    @field_validator("reviewer", "reason")
+    @classmethod
+    def substantive_text(cls, value):
+        value = value.strip()
+        if not value:
+            raise ValueError("reviewer and reason cannot be blank")
+        return value
+
+    @field_validator("reason")
+    @classmethod
+    def sufficient_reason(cls, value):
+        if len(value) < 3:
+            raise ValueError("review reason must contain at least three characters")
+        return value
 
 
 class CaseWorkflowIn(BaseModel):

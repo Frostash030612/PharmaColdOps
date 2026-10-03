@@ -18,12 +18,15 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+from typing import Literal
 
 from . import service
 from .schemas import (
     BatchIn, BranchPolicyIn, CaseCloseIn, DecideIn, DispatchCommandIn, DispatchCreateIn,
     DelayAcceptIn, DelayPreviewIn,
     CaseWorkflowIn,
+    CaseReviewIn,
     SimulationBatchIn,
     UrgentPreviewIn, UrgentAcceptIn,
     EmergencyAcceptIn, EmergencyPreviewIn,
@@ -205,6 +208,32 @@ def update_case_workflow(run_id: str, req: CaseWorkflowIn):
         raise HTTPException(status_code=404, detail="unknown incident run_id")
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.post("/api/runs/{run_id}/review")
+def review_case(run_id: str, req: CaseReviewIn):
+    try:
+        return service.case_review.review_case(service, run_id, req)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="unknown incident run_id")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.get("/api/runs/{run_id}/audit")
+def export_case_audit(run_id: str, format: Literal["json", "html"] = "html", lang: Literal["zh", "en"] = "zh"):
+    from . import case_audit
+    import json
+    try:
+        report = case_audit.snapshot(service, run_id)
+        content = case_audit.render(report, lang) if format == "html" else json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False)
+        return Response(content, media_type="text/html" if format == "html" else "application/json",
+                        headers={"Content-Disposition": f'attachment; filename="{case_audit.filename(run_id, format)}"',
+                                 "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"})
+    except case_audit.AuditCaseNotFound:
+        raise HTTPException(status_code=404, detail="unknown incident run_id")
+    except (RuntimeError, ValueError, OSError, LookupError) as exc:
+        raise HTTPException(status_code=503, detail="audit snapshot unavailable; no report was produced") from exc
 
 
 @app.post("/api/grid")

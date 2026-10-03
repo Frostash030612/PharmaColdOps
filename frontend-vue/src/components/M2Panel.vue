@@ -6,7 +6,7 @@ import { locale, bundle } from '../i18n/index.js';
 import { postJson } from '../lib/api.js';
 
 const props = defineProps({ productId: String, modelValue: Object, saved: Object, readonly: Boolean, offline: Boolean });
-const emit = defineEmits(['update:modelValue', 'event', 'pending']);
+const emit = defineEmits(['update:modelValue', 'event', 'pending', 'reviewNeeded']);
 const decisions = useDecisionsStore();
 const L = computed(() => bundle(locale.value));
 const mode = ref(props.modelValue ? 'series' : 'manual');
@@ -29,7 +29,7 @@ const scenarioLabel = key => L.value.temperature.scenarios[key];
 
 function invalidate() {
   sequence++; busy.value = false; result.value = null; analysedSeries.value = null; error.value = '';
-  if (!props.readonly) { emit('update:modelValue', null); emit('pending', mode.value === 'series'); }
+  if (!props.readonly) { emit('update:modelValue', null); emit('pending', mode.value === 'series'); emit('reviewNeeded', false); }
 }
 function changeMode(value) { mode.value = value; invalidate(); }
 function inputSeries() {
@@ -52,9 +52,15 @@ async function run(simulation) {
   finally { if (id === sequence) busy.value = false; }
 }
 function choose(window) {
-  if (props.readonly || props.offline || busy.value || !window.registration_allowed) return;
+  if (props.readonly || props.offline || busy.value) return;
   emit('update:modelValue', { series: JSON.parse(JSON.stringify(analysedSeries.value)), window_id: window.window_id, method: result.value.method });
   emit('event', window.event); emit('pending', false);
+  emit('reviewNeeded', !window.registration_allowed || result.value.windows.length > 1);
+}
+function chooseObservation() {
+  if (props.readonly || props.offline || busy.value || !result.value) return;
+  emit('update:modelValue', { series: JSON.parse(JSON.stringify(analysedSeries.value)), window_id: null, method: result.value.method });
+  emit('event', { excursion_temp_c: null, duration_min: null, mkt_c: null }); emit('pending', false); emit('reviewNeeded', true);
 }
 watch(() => [props.productId, props.offline, props.readonly, decisions.apiBase], () => invalidate());
 </script>
@@ -104,11 +110,12 @@ watch(() => [props.productId, props.offline, props.readonly, decisions.apiBase],
       <p class="m2-warning">{{ L.temperature.scope }}</p>
       <p v-if="!assessment.coverage_complete" class="m2-warning">{{ L.temperature.gap }} · {{ assessment.missing_intervals.map(g => `${g.start_min}–${g.end_min} min`).join(', ') }}</p>
       <p v-if="!assessment.windows.length">{{ L.temperature.noWindows }}</p>
+      <button v-if="!readonly && (!assessment.coverage_complete || assessment.windows.length > 1)" type="button" :disabled="offline || busy" @click="chooseObservation">{{ L.review.observation }}</button>
       <div v-for="window in assessment.windows" :key="window.window_id" class="m2-window" :class="{selected: modelValue?.window_id === window.window_id}">
         <strong>{{ window.window_id }} · {{ scenarioLabel(window.kind) }} · {{ window.start_min }}–{{ window.end_min }} min</strong>
         <p>{{ L.temperature.extreme }}: {{ window.event.excursion_temp_c }}°C · {{ L.center.dur }}: {{ window.duration_exact_min }} → {{ window.event.duration_min }} min · MKT: {{ number(window.event.mkt_c) }}°C</p>
         <p v-if="window.blocked_reason === 'cold_rule_not_supported'" class="m2-warning">{{ L.temperature.coldBlocked }}</p>
-        <button v-if="!readonly" type="button" :disabled="offline || busy || !window.registration_allowed" @click="choose(window)">{{ modelValue?.window_id === window.window_id ? L.temperature.selected : L.temperature.select }}</button>
+        <button v-if="!readonly" type="button" :disabled="offline || busy" @click="choose(window)">{{ modelValue?.window_id === window.window_id ? L.temperature.selected : window.registration_allowed ? L.temperature.select : L.review.selectHeld }}</button>
       </div>
       <small>{{ assessment.method }} · {{ assessment.source_hash }}</small>
     </template>

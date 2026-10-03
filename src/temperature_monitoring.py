@@ -54,7 +54,7 @@ class TemperatureSeries(BaseModel):
 class TemperatureContext(BaseModel):
     model_config = {"extra": "forbid"}
     series: TemperatureSeries
-    window_id: str = Field(pattern=r"^window-[0-9]{3,5}$")
+    window_id: str | None = Field(default=None, pattern=r"^window-[0-9]{3,5}$")
     method: Literal["m2-interval-arrhenius-v1"] = METHOD
 
 
@@ -132,6 +132,7 @@ def analyse(series: TemperatureSeries, spec) -> dict:
             "event": {"excursion_temp_c": extreme, "duration_min": math.ceil(duration),
                       "mkt_c": mkt(intervals, series.activation_energy_kj_mol)},
             "registration_allowed": complete and supported,
+            "review_registration_allowed": True,
             "blocked_reason": "incomplete_coverage" if not complete else "cold_rule_not_supported" if not supported else None,
         })
     source_hash = hashlib.sha256(json.dumps(series.model_dump(), sort_keys=True, allow_nan=False).encode()).hexdigest()

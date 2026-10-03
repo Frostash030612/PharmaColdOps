@@ -24,6 +24,7 @@ const COMPONENTS = [
   "frontend-vue/src/components/UrgentOrderPanel.vue",
   "frontend-vue/src/components/M4Panel.vue",
   "frontend-vue/src/components/M2Panel.vue",
+  "frontend-vue/src/components/ReviewPanel.vue",
   "frontend-vue/src/components/Timeline.vue",
 ].filter((f) => existsSync(f));
 

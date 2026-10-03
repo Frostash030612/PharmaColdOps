@@ -3,6 +3,22 @@
    translated stage/evidence values, minutes unit, narrower timeline badge …). */
 
 export default {
+  review: {
+    title: "人工审核与案例审计", disclosure: "演示审核：保留原始自动建议，人工结论单独保存并决定后续补发。审核人姓名为自报，不是认证身份或真实药品处置授权。",
+    original: "原始自动规则建议", effective: "当前有效处置", awaiting: "待人工审核（禁止执行）", unassessed: "未进行自动规则评估；仅登记观察数据，不生成假温度或假 MKT。",
+    manualSource: "人工审核", ruleSource: "原始规则／待审核", locked: "已执行补发或已完成处理，处置已锁定；不能改写已执行动作的依据。",
+    request: "主动申请人工审核", requestReason: "申请审核原因", registrationHold: "此登记需要人工审核；自动建议不作为当前执行依据。审核前不能补发、标为已处理或结案。",
+    observation: "登记整段观察，转人工审核", selectHeld: "选用此窗口，登记为待审核",
+    reviewer: "审核人（演示自报姓名）", outcome: "审核结论", destination: "补发医院（报废时必选）", reason: "审核理由／参考资料／实际核查说明",
+    submit: "保存人工审核结论", saving: "正在保存审核…", retry: "重试同一审核", retryNote: "审核请求结果尚未确认，输入已冻结；重试沿用同一请求身份。",
+    discard: "放弃本地审核重试", discardConfirm: "审核可能已在后台保存。请先检查审核记录；继续只清除本地重试请求，不删除后台审核。确定继续？",
+    storageWarning: "浏览器不能保存审核重试草稿，请保留当前页面并核对后台记录。",
+    exportHtml: "下载审计报告 HTML", exportJson: "下载完整审计 JSON", printHelp: "HTML 可在浏览器打开并打印／另存为 PDF；JSON 包含完整原始数据和审核快照。",
+    graphScope: "图谱法规解释对应原始登记，不为人工结论自动添加法规依据；报告会单独检查实际图谱覆盖。",
+    clockHold: "关联订单待审核／复检或已判报废但尚未改派，演示时钟已暂停；处理后请手动恢复。其他车辆也暂停，不模拟独立车辆时钟。",
+    retestHold: "复检是中间步骤，不等于放行。需在结果可用后追加明确的放行、报废或继续扣留审核；不能仅填写“处理完成”就交付或结案。",
+    reasons: { incomplete_temperature_coverage: "温度数据缺测", multiple_excursion_windows: "多窗口累计暴露需审核", whole_observation_not_rule_assessed: "整段观察未作规则判定", cold_policy_gap: "低温处置规则未覆盖", operator_requested: "操作员主动申请", retest_result_required: "需明确记录复检结果与后续处置" },
+  },
   temperature: {
     title: "M2 · 温度序列与偏移识别", disclosure: "全部为模拟数据，不声称接入真实传感器。MKT 按区间时长与开尔文温度计算；活化能是演示假设，不是药品稳定性验证。MKT 不能排除冻结损伤。",
     offline: "温度分析需要后端；离线模式不生成或归档 M2 计算结果。",
@@ -12,7 +28,7 @@ export default {
     energy: "活化能", json: "温度区间 JSON", analyse: "分析编辑后的序列", loading: "正在分析…", chart: "原始模拟温度区间图（缺测处留白）",
     coverage: "数据覆盖率", fullMkt: "已知区间 MKT", hotTotal: "累计高温偏移", coldTotal: "累计低温偏移",
     scope: "登记只针对选中的连续偏移窗口。窗口 MKT 不混入正常段；分钟时长向上取整。多个窗口与累计暴露需分别审核，不代表整批放行。",
-    gap: "存在缺测：MKT 仅覆盖已知区间，禁止进入自动处置登记", noWindows: "已知区间没有偏移；这不构成药品质量保证，也不生成异常案例。",
+    gap: "存在缺测：MKT 仅覆盖已知区间，禁止自动处置；可登记为待人工审核", noWindows: "已知区间没有偏移，不生成温度异常事件。若存在缺测，可登记整段观察待审核；这不是药品质量保证。",
     extreme: "极值", coldBlocked: "当前 M3 仅支持冻结敏感药品的 ≤0°C 冻结规则；此低温窗口不能自动判为放行，请人工审核。",
     select: "选用此窗口登记", selected: "已选用此窗口", frozenDraft: "重试草稿已冻结，按原始序列与选中窗口提交", mustSelect: "请选择可登记的偏移窗口，或明确切回手填演示模式。",
     syntheticTimeline: "此曲线由手填事件反向生成，仅作示意，不是原始监测序列或 MKT 计算依据。",

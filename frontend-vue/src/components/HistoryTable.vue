@@ -32,7 +32,7 @@ function riskColor(v) {
 /* Map one raw record into display cells (semantic codes → local words). */
 function cells(run) {
   const ev = run.event || {};
-  const dispo = run.disposition;
+  const dispo = run.effective_disposition || run.disposition;
   const stageWord = L.value.stages[ev.stage] || ev.stage;
   const rt = L.value.ruleText[run.rule_no] || {};
   const causeCode = run.risk && run.risk.cause_code;
@@ -42,16 +42,17 @@ function cells(run) {
     product: L.value.products[ev.product_id] || ev.product_id || "",
     summary: interp(L.value.history.scenTmpl, {
       stage: stageWord,
-      temp: fmt(ev.excursion_temp_c),
-      dur: fmt(ev.duration_min),
-      mkt: fmt(ev.mkt_c),
+      temp: ev.excursion_temp_c == null ? '—' : fmt(ev.excursion_temp_c),
+      dur: ev.duration_min == null ? '—' : fmt(ev.duration_min),
+      mkt: ev.mkt_c == null ? '—' : fmt(ev.mkt_c),
     }),
-    dispoLabel: L.value.dispo[dispo].label,
+    dispoLabel: run.review_status === 'pending' ? L.value.review.awaiting : L.value.dispo[dispo].label,
     color: DISPO_COLOR[dispo],
-    reship: !!run.reshipment_required,
+    reship: !!(run.effective_reshipment_required ?? run.reshipment_required),
     risk: run.risk ? run.risk.score : null,
     riskCause: causeCode ? (L.value.causeText[causeCode] || causeCode) : "",
-    why: rt.reason || run.reason || "",
+    why: run.review_status === 'pending' ? L.value.review.awaiting
+      : run.review_history?.length ? `${L.value.review.manualSource}: ${run.review_history.at(-1).reason}` : rt.reason || run.reason || "",
   };
 }
 

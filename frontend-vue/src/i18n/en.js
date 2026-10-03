@@ -4,6 +4,22 @@
    audit.scenTmpl, timeline.badge, packagingVal, durUnit …), never code branches. */
 
 export default {
+  review: {
+    title: "Human review and case audit", disclosure: "Demo review: preserve the original rule recommendation; save the human outcome separately to govern reshipment. Reviewer names are self-declared, not authenticated identities or authorization for real drug disposition.",
+    original: "Original rule recommendation", effective: "Current effective disposition", awaiting: "Awaiting human review (execution blocked)", unassessed: "No automatic rule assessment; observation only, without invented temperature or MKT.",
+    manualSource: "Human review", ruleSource: "Original rule / awaiting review", locked: "Reshipment executed or handling completed: disposition locked to protect the basis of recorded actions.",
+    request: "Request human review", requestReason: "Reason for review request", registrationHold: "Human review required. The automatic recommendation is not an executable outcome; reshipment, handling and closure are blocked until reviewed.",
+    observation: "Register whole observation for human review", selectHeld: "Use window for review registration",
+    reviewer: "Reviewer (self-declared demo name)", outcome: "Review outcome", destination: "Reshipment hospital (required for scrap)", reason: "Review rationale / references / checks performed",
+    submit: "Save human review outcome", saving: "Saving review…", retry: "Retry the same review", retryNote: "Review response unconfirmed: inputs frozen; retry uses the same request identity.",
+    discard: "Discard local review retry", discardConfirm: "The review may already be saved. Check review history first; this clears only the local retry, not the recorded review. Continue?",
+    storageWarning: "Review retry cannot be saved in this browser; keep this page open and check backend history.",
+    exportHtml: "Download HTML audit report", exportJson: "Download full audit JSON", printHelp: "Open HTML in a browser to print / save as PDF; JSON includes the complete original data and review snapshot.",
+    graphScope: "Graph citations explain the original registration, not the human verdict. The report checks actual graph coverage separately.",
+    clockHold: "Linked order awaits review/retest or scrap reshipment. Demo clock paused; resume explicitly after handling. All vehicles pause: independent vehicle clocks are not simulated.",
+    retestHold: "Retest is an intermediate step, not release. Append an explicit release, scrap or continued-hold review after results are available; a handling note alone cannot permit delivery or closure.",
+    reasons: { incomplete_temperature_coverage: "Missing temperature coverage", multiple_excursion_windows: "Cumulative multi-window exposure", whole_observation_not_rule_assessed: "Whole observation not rule-assessed", cold_policy_gap: "Cold policy not covered", operator_requested: "Operator-requested review", retest_result_required: "Explicit retest result and follow-up disposition required" },
+  },
   temperature: {
     title: "M2 · Temperature series and excursions", disclosure: "Simulated data, not live sensors. MKT uses interval durations and Kelvin temperatures; activation energy is a demo assumption, not validated product stability. MKT cannot rule out freezing damage.",
     offline: "Temperature analysis requires the backend; offline mode cannot create or archive M2 results.",
@@ -13,7 +29,7 @@ export default {
     energy: "Activation energy", json: "Temperature intervals JSON", analyse: "Analyse edited series", loading: "Analysing…", chart: "Original simulated temperature intervals (gaps left blank)",
     coverage: "Coverage", fullMkt: "Known-interval MKT", hotTotal: "Total hot exposure", coldTotal: "Total cold exposure",
     scope: "Registration covers the selected contiguous window only. Window MKT excludes normal periods; minutes round up. Other windows and cumulative exposure require separate review, not batch release.",
-    gap: "Missing data: MKT covers known intervals only; automatic registration is blocked", noWindows: "No excursion in known intervals; this is not a quality guarantee and creates no incident case.",
+    gap: "Missing data: MKT covers known intervals only; automatic disposition blocked, review registration available", noWindows: "No excursion in known intervals, so no temperature incident is generated. Missing observations can be registered for review; this is not a quality guarantee.",
     extreme: "Extreme", coldBlocked: "M3 currently supports only ≤0°C freezing for freeze-sensitive products. This cold window cannot be automatically released; manual review is required.",
     select: "Use window for registration", selected: "Selected window", frozenDraft: "Retry draft frozen; submit the original series and selected window", mustSelect: "Select an eligible excursion window or explicitly switch to manual demo mode.",
     syntheticTimeline: "This curve is reconstructed from manual event values for illustration, not original monitoring data or an MKT calculation source.",

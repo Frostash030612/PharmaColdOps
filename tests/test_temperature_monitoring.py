@@ -177,14 +177,17 @@ def test_client_cannot_tamper_with_derived_event(field):
         assert client.get("/api/runs").json()["count"] == 0
 
 
-def test_missing_coverage_unsupported_cold_and_nonexistent_window_cannot_register():
+def test_missing_coverage_and_unsupported_cold_register_only_for_review_invalid_window_refused():
     with TestClient(app) as client:
         bodies = [request(series([(0, 5, 12), (5, 10, None)])), request(series([(0, 10, 1)])), request()]
         bodies[-1]["temperature_context"]["window_id"] = "window-999"
-        for body in bodies:
+        for body in bodies[:2]:
             for path in ["/api/decide", "/api/case_close"]:
-                assert client.post(path, json=body).status_code == 422
-        assert client.get("/api/runs").json()["count"] == 0
+                result = client.post(path, json=body)
+                assert result.status_code == 200 and result.json()["review_required"]
+                if path.endswith("case_close"):
+                    assert result.json()["review_status"] == "pending" and not result.json()["effective_reshipment_required"]
+        assert client.post("/api/case_close", json=bodies[-1]).status_code == 422
 
 
 def test_freezing_window_enters_existing_m3_scrap_rule():

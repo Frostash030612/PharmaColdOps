@@ -18,7 +18,7 @@ async (page) => {
   assert(normal.analysis.windows.length === 0 && await archive.isDisabled(), 'normal created phantom excursion');
   const missing = await generate('gap');
   assert(!missing.analysis.coverage_complete && await archive.isDisabled(), 'missing data allowed registration');
-  for (const button of await panel.getByRole('button', { name: '选用此窗口登记', exact: true }).all()) assert(await button.isDisabled(), 'missing window selectable');
+  assert(await panel.getByRole('button', { name: '选用此窗口，登记为待审核', exact: true }).count() > 0, 'missing data has no human-review entry');
   const mixed = await generate('mixed');
   assert(mixed.analysis.windows.length === 2 && mixed.analysis.windows[1].kind === 'cold', 'cold excursion lost');
   await page.locator('.ni-body .controls select').nth(2).selectOption('H-SGH');

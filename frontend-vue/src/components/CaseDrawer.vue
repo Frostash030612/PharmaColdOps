@@ -17,6 +17,7 @@ import EvidencePanel from "./EvidencePanel.vue";
 import CaseActions from "./CaseActions.vue";
 import M4Panel from './M4Panel.vue';
 import M2Panel from './M2Panel.vue';
+import ReviewPanel from './ReviewPanel.vue';
 import { useDecisionsStore } from '../stores/decisions.js';
 import { locale, bundle } from "../i18n/index.js";
 
@@ -41,15 +42,19 @@ onBeforeUnmount(sandbox.exitOfflinePreview);
       <div class="case-drawer-body">
         <p v-if="sandbox.offlinePreview" class="local-sandbox-note">{{ L.localSandbox.note }}</p>
         <CaseActions v-else />
+        <ReviewPanel v-if="!sandbox.offlinePreview && sandbox.currentRunId" />
         <details v-if="sandbox.offlinePreview" open class="case-advanced">
           <summary>{{ L.workspace.presetsAndRules }}</summary><ScenarioList /><RuleConfig />
         </details>
-        <DecisionBanner />
+        <p v-if="sandbox.currentRunId" class="section-label">{{ L.review.original }}</p>
+        <DecisionBanner v-if="sandbox.archivedRecord?.automatic_assessment_available !== false || !sandbox.currentRunId" />
+        <p v-else>{{ L.review.unassessed }}</p>
         <div class="section-label">{{ L.center.sectionTimeline }}</div>
         <M2Panel v-if="sandbox.currentRunId && sandbox.archivedRecord?.temperature_context"
           :product-id="sandbox.archivedRecord.event.product_id" :model-value="sandbox.archivedRecord.temperature_context"
           :saved="sandbox.archivedRecord.temperature_assessment" readonly />
         <Timeline v-else />
+        <template v-if="sandbox.archivedRecord?.automatic_assessment_available !== false || !sandbox.currentRunId">
         <div class="section-label">{{ L.center.sectionInputs }}</div>
         <ExcursionInputs />
         <div class="section-label">{{ L.center.sectionZone }}</div>
@@ -65,6 +70,7 @@ onBeforeUnmount(sandbox.exitOfflinePreview);
           :readonly="!!sandbox.currentRunId" :offline="sandbox.offlinePreview || !decisions.useApi || decisions.apiUp !== true" />
         <div class="section-label">{{ L.center.sectionEvidence }}</div>
         <EvidencePanel />
+        </template>
         <details v-if="!sandbox.offlinePreview" class="case-advanced">
           <summary>{{ L.workspace.presetsAndRules }}</summary>
           <ScenarioList />

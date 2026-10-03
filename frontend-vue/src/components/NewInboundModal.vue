@@ -5,7 +5,7 @@
    restored into the sandbox. The preview is computed live from the draft with
    the same pure engine/risk libs the page uses, so it reads exactly how the
    case will be judged. */
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useDecisionsStore } from "../stores/decisions.js";
 import { useHistoryStore } from "../stores/history.js";
 import { useSandboxStore } from "../stores/sandbox.js";
@@ -77,7 +77,18 @@ const remark = ref(recovered?.payload?.remark || "");
 const mlContexts = ref(recovered?.payload?.ml_contexts || []);
 const temperatureContext = ref(recovered?.payload?.temperature_context || null);
 const temperaturePending = ref(false);
-function applyTemperature(event) { Object.assign(ev.value, event); }
+const temperatureReview = ref(!!recovered?.payload.temperature_context && recovered.payload.temperature_context.window_id === null);
+const reviewRequested = ref(recovered?.payload.review_requested || false);
+const reviewReason = ref(recovered?.payload.review_reason || '');
+function applyTemperature(event) { Object.assign(ev.value, event); if (event.excursion_temp_c === null) mlContexts.value = []; }
+const needsReview = computed(() => temperatureReview.value || reviewRequested.value ||
+  (ev.value.excursion_temp_c !== null && ev.value.excursion_temp_c < spec.value.min && !(spec.value.freezeSensitive && ev.value.excursion_temp_c <= 0)) || d.value.disposition === 'retest');
+watch(temperatureContext, value => {
+  if (!value && ev.value.excursion_temp_c === null && !locked.value) {
+    const d = DEFAULT_EVENT[ev.value.product_id];
+    Object.assign(ev.value, { excursion_temp_c: d.excursion_temp_c, duration_min: d.duration_min, mkt_c: d.mkt_c });
+  }
+});
 
 const up = computed(() => decisions.apiUp === true);
 
@@ -141,6 +152,7 @@ async function archive() {
       ...eventPayload({ ...ev.value, ml_contexts: mlContexts.value, temperature_context: temperatureContext.value }),
       spec_override: overridePayload(spec.value),
       remark: remark.value.trim() || null,
+      ...(reviewRequested.value ? { review_requested: true, review_reason: reviewReason.value.trim() } : {}),
     });
     overlay.closeNewInbound();
     sandbox.restoreCase(res);        // now the whole flow appears on the page
@@ -219,7 +231,7 @@ function discardDraft() {
             </select>
           </div>
 
-          <div class="ctl">
+          <div v-if="ev.excursion_temp_c !== null" class="ctl">
             <label>{{ L.center.temp }}</label>
             <div class="range-line"><fieldset :disabled="!!temperatureContext || temperaturePending">
               <input type="range" step="0.5" :min="tempLo" :max="tempHi" :value="cTemp"
@@ -228,7 +240,7 @@ function discardDraft() {
                      @input="onNum('excursion_temp_c', $event)">
             </fieldset></div>
           </div>
-          <div class="ctl">
+          <div v-if="ev.duration_min !== null" class="ctl">
             <label>{{ L.center.dur }}</label>
             <div class="range-line"><fieldset :disabled="!!temperatureContext || temperaturePending">
               <input type="range" step="1" min="0" :max="durMax" :value="cDur"
@@ -237,7 +249,7 @@ function discardDraft() {
                      @input="onNum('duration_min', $event, true)">
             </fieldset></div>
           </div>
-          <div class="ctl">
+          <div v-if="ev.mkt_c !== null" class="ctl">
             <label>{{ L.center.mkt }}</label>
             <div class="range-line"><fieldset :disabled="!!temperatureContext || temperaturePending">
               <input type="range" step="0.1" :min="mktLo" :max="mktHi" :value="cMkt"
@@ -271,9 +283,14 @@ function discardDraft() {
 
         </fieldset>
         <M2Panel v-model="temperatureContext" :product-id="ev.product_id" :readonly="locked || archiving" :offline="!up"
-          @event="applyTemperature" @pending="temperaturePending = $event" />
-        <M4Panel v-model="mlContexts" :readonly="locked || archiving" :offline="!up" />
-        <div v-if="!temperaturePending || locked" class="ni-preview">
+          @event="applyTemperature" @pending="temperaturePending = $event" @review-needed="temperatureReview = $event" />
+        <fieldset class="registration-fields" :disabled="locked || archiving">
+          <label><input v-model="reviewRequested" type="checkbox"> {{ L.review.request }}</label>
+          <label v-if="reviewRequested">{{ L.review.requestReason }}<textarea v-model="reviewReason" rows="2" maxlength="2000" /></label>
+        </fieldset>
+        <p v-if="needsReview" class="registration-note">{{ L.review.registrationHold }}</p>
+        <M4Panel v-if="ev.excursion_temp_c !== null" v-model="mlContexts" :readonly="locked || archiving" :offline="!up" />
+        <div v-if="(!temperaturePending || locked) && !needsReview" class="ni-preview">
           <div class="section-label">{{ L.newInbound.preview }}</div>
           <div class="dispo-banner" :style="{ background: DISPO_COLOR[d.disposition] }">
             <div class="dispo-badge">{{ badge }}</div>
@@ -307,7 +324,7 @@ function discardDraft() {
           <button class="btn inline" type="button" :disabled="archiving" @click="cancel">
             {{ L.newInbound.cancel }}
           </button>
-          <button class="btn inline modal-primary" type="button" :disabled="!up || archiving || (!locked && (temperaturePending || (d.reshipment && !ev.destination_facility_id)))" @click="archive">
+          <button class="btn inline modal-primary" type="button" :disabled="!up || archiving || (!locked && (temperaturePending || (reviewRequested && !reviewReason.trim()) || (!needsReview && d.reshipment && !ev.destination_facility_id)))" @click="archive">
             {{ archiving ? "…" : locked ? L.registration.retry : L.newInbound.archive }}
           </button>
         </div>

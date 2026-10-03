@@ -12,6 +12,8 @@ const dispatch = useDispatchStore();
 const L = computed(() => bundle(locale.value));
 const record = computed(() => history.currentRun);
 const status = computed(() => record.value ? history.statusOf(record.value) : "pending");
+const reship = computed(() => record.value?.effective_reshipment_required ?? record.value?.reshipment_required);
+const awaitingReview = computed(() => record.value?.review_status === 'pending');
 const preview = computed(() => dispatch.branch?.run_id === record.value?.run_id ? dispatch.branch : null);
 const note = ref("");
 const policy = ref("minimize_disruption");
@@ -41,21 +43,21 @@ async function choose(candidate) {
     <dl class="workflow-details">
       <dt>{{ L.workflow.orderLink }}</dt><dd>{{ record.event.dispatch_id || record.handling_dispatch_id || L.workflow.unlinked }} · {{ record.event.order_id || '—' }}</dd>
       <dt>{{ L.workflow.location }}</dt><dd>{{ name(record.event.facility_id) }}</dd>
-      <dt>{{ L.center.destination }}</dt><dd>{{ name(record.event.destination_facility_id) }}</dd>
+      <dt>{{ L.center.destination }}</dt><dd>{{ name(record.effective_destination_facility_id || record.event.destination_facility_id) }}</dd>
       <template v-if="record.linked_order">
         <dt>{{ L.workflow.quantityWindow }}</dt><dd>{{ record.linked_order.quantity_is_nominal ? L.urgent.nominal : record.linked_order.quantity }} · {{ clock(record.linked_order.earliest_min) }}–{{ clock(record.linked_order.latest_min) }}</dd>
       </template>
     </dl>
     <div class="workflow-controls">
-      <button v-if="status === 'pending'" :disabled="history.workflowPending" @click="history.changeStatus(record, 'processing', note)">{{ L.workflow.begin }}</button>
-      <label v-if="record.reshipment_required && !['handled', 'closed'].includes(status)">
+      <button v-if="status === 'pending'" :disabled="history.workflowPending || awaitingReview" @click="history.changeStatus(record, 'processing', note)">{{ L.workflow.begin }}</button>
+      <label v-if="reship && !['handled', 'closed'].includes(status)">
         {{ L.singapore.branchPolicy }}
         <select v-model="policy" :disabled="dispatch.pending">
           <option value="minimize_disruption">{{ L.singapore.policyDisruption }}</option>
           <option value="minimize_vehicles">{{ L.singapore.policyVehicles }}</option>
         </select>
       </label>
-      <button v-if="record.reshipment_required && !['handled', 'closed'].includes(status)" :disabled="dispatch.pending" @click="compare">{{ L.workflow.compare }}</button>
+      <button v-if="reship && !['handled', 'closed'].includes(status)" :disabled="dispatch.pending || awaitingReview" @click="compare">{{ L.workflow.compare }}</button>
     </div>
     <p v-if="dispatch.branchError || dispatch.error" class="sg-error" role="status">{{ dispatch.branchError || dispatch.error }}</p>
     <template v-if="preview">
@@ -76,9 +78,9 @@ async function choose(candidate) {
         </table>
       </div>
     </template>
-    <p v-if="record.reshipment_required && status === 'processing'">{{ L.workflow.awaitDelivery }}</p>
+    <p v-if="reship && status === 'processing'">{{ L.workflow.awaitDelivery }}</p>
     <label v-if="status !== 'closed'" class="workflow-note">{{ L.workflow.note }}<textarea v-model="note" rows="2" /></label>
-    <button v-if="!record.reshipment_required && ['pending', 'processing'].includes(status)" :disabled="history.workflowPending || !note.trim()" @click="history.changeStatus(record, 'handled', note)">{{ L.workflow.markHandled }}</button>
+    <button v-if="!reship && ['pending', 'processing'].includes(status)" :disabled="history.workflowPending || awaitingReview || !note.trim()" @click="history.changeStatus(record, 'handled', note)">{{ L.workflow.markHandled }}</button>
     <button v-if="status === 'handled'" :disabled="history.workflowPending || !note.trim()" @click="history.changeStatus(record, 'closed', note)">{{ L.workflow.close }}</button>
     <p v-if="history.workflowError" class="sg-error" role="status">{{ history.workflowError }}</p>
     <ul v-if="record.workflow_history?.length"><li v-for="(action, index) in record.workflow_history" :key="index">{{ L.workflow[action.status] }} · {{ action.at }} · {{ action.remark }}</li></ul>
