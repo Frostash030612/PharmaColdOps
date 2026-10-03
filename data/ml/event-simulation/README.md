@@ -15,4 +15,12 @@ LOKY_MAX_CPU_COUNT=1 .venv/bin/python scripts/generate_event_dataset.py --events
 
 完整机理定义、数据语义、字段隔离、留出政策与局限见 [事件级仿真数据规范](../../../docs/事件级仿真数据.md)。
 这是模拟注入故障识别数据，不是药品报废／真实效价／厂家稳定性或人工独立gold。
-尚未训练／推广新模型，不改旧ML契约、原数据或运行案例，也不新增具体货量／仓库余额要求。
+后续离线基线已完成，见 [事件级模型基线评估](../../../docs/事件级模型基线评估.md)。
+实验模型尚未推广到服务，不改旧ML契约、原数据或运行案例，也不新增具体货量／仓库余额要求。
+
+```bash
+LOKY_MAX_CPU_COUNT=1 .venv/bin/python scripts/evaluate_event_baselines.py --dataset data/processed/event-simulation-20261003 --output data/processed/event-baselines-new --bootstrap 300
+```
+
+训练拟合、验证选择、冻结后四角色分开评分；保留正常／未知／多故障／歧义分母。
+误报与分布偏移问题尚未解决，不能把仿真候选分数作为放行／报废依据。
