@@ -56,6 +56,9 @@ def ready_state():
     if require_models:
         for task in ["risk", "cause"]:
             checks["model_" + task] = runtime.model_info(task)["status"]
+    if os.environ.get("EVENT_V2_SHADOW_ENABLED") == "1":
+        from ml import event_v2_runtime
+        checks["event_v2_shadow"] = "ready" if event_v2_runtime.info()["status"] == "shadow_ready" else "unavailable"
     require_graph = os.environ.get("DEPLOYMENT_REQUIRE_GRAPH", "0") == "1"
     if require_graph:
         try:

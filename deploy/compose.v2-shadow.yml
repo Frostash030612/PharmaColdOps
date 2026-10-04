@@ -1,0 +1,21 @@
+# Explicit opt-in only: use together with compose.demo.yml and private env files.
+# Existing audit/graph volumes are reused. Trusted models are mounted READ ONLY.
+services:
+  api:
+    image: ${V2_SHADOW_IMAGE:?Set the verified updated application image}
+    environment:
+      EVENT_V2_SHADOW_ENABLED: "1"
+      EVENT_V2_SHADOW_DIR: /app/event-v2-shadow
+    volumes:
+      - type: bind
+        source: ${EVENT_V2_SHADOW_BUNDLE:?Set trusted prepared shadow bundle directory}
+        target: /app/event-v2-shadow
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${PRESERVED_M4_MODELS:?Set hash-checked original serving models directory}
+        target: /app/models
+        read_only: true
+        bind:
+          create_host_path: false

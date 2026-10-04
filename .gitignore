@@ -62,4 +62,6 @@ cache/
 output/playwright/
 .playwright-cli/
 deploy/*.env
+# Active administrator-owned, read-only deployment models/config. Never commit.
+deploy/runtime/
 .venv-*/

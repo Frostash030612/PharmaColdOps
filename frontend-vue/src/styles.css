@@ -317,7 +317,8 @@ html[lang="zh"] .ev-row .k { width: 100px; }
 
 /* ---------- centered modals (blurred backdrop highlights one panel) ---------- */
 .modal-overlay {
-  position: fixed; inset: 0; z-index: 60;
+  /* Above map controls (500) and case drawers (2100), including v2 JSON input. */
+  position: fixed; inset: 0; z-index: 2200;
   background: rgba(8, 20, 32, .45); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center; padding: 24px;
 }

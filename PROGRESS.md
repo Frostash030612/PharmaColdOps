@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-10-04 — 当前8080演示受控更新、v2 shadow实际启用（只读模型／强制审核）
+
+用户授权后实际更新 `pharmacoldops-demo-api-1`，现有同源前端“+”已显示v2入口，info=shadow_ready／111项，
+只读模型预览可用，所有结果review_required、禁止自动动作；不是模型性能／真实业务／临床认证升级。
+新增显式 `compose.v2-shadow.yml`：v2可信包及原M4模型两个RO bind、拒绝自动创建缺失源目录；基础Compose仍默认关闭。
+启用时ready检查新增event_v2_shadow依赖，不可用返回not_ready，不以旧模型静默兜底。
+
+先记录0案例／0作业基线、旧模型／容器／卷，保留旧镜像 `pre-v2-shadow-20261004`；
+从旧容器复制并SHA校验原risk／cause模型及元数据，固定于 `deploy/runtime/v2-shadow-20261004/serving-models`，
+v2包固定于shadow子目录，shadow.env权限0600且不含密码，目录是活跃部署依赖、不入Git也不能随手清理。
+Linux arm64新容器UID10001、只读rootfs、无案例／图谱卷预检20条推理与宿主同分数／决策SHA e213a99…一致，原模型保持。
+仅停止API确认停写，用旧可信镜像备份原audit；继而API-only切换并实际重启验证，Neo4j不重建／重启，三个原数据卷不删除。
+bootstrap existing_matching_seed／replayed0，Neo4j原ID3fe72ad…不变；离线SQLite备份和运行库全部模式／表逻辑SHA均e716ad7…，
+文件布局SHA不强称相同。宿主原SQL／JSONL及模型／元数据六SHA不变，旧risk33a022…／causea5d1c…与当前服务身份一致。
+
+当前最终image `sha256:89392db53464edd1a724c854ecfb5f915eb3e48c0ced4ba37d65b6e0579e137c`，非root、RO rootfs／双模型挂载，
+storage／risk／cause／shadow／graph都ready，双服务healthy，仅127.0.0.1:8080，无新测试归档或作业。
+只读live验收六检查、全部20旧展示样本推理passed（1候选／19拒判不是新准确率），API重启后开关／挂载／旧响应保留。
+Playwright技能真实8080页面拒判／候选两个预览passed、case响应未变／新增测试案例0／pageerror0；
+视觉检查发现底图控件压住弹窗输入，修正modal层级2200并重建／API-only再更新，DOM命中与最终截图验证修复。
+控制台瓦片与无作业404、chunk提示保留；首版验收工具Vite相对资源／Playwright相对URL边界修正后重跑passed，不冒充模型故障。
+
+新增21专项通过；完整独占测试图谱回归 **888 passed／0 skipped／6 warnings**；运行包／备份／报告不入Git。
+配置／启停／回退见 [v2演示受控更新](docs/v2演示受控更新.md)，读写预览工具明确不登记／审核／调度；
+后续操作当前实例须同时带两个env及两个Compose文件，保留挂载源目录；原demo.env／密码没有修改。
+**收尾**：专属测试图谱／临时卷与验收浏览器已清理，备份／旧回退镜像保留，临时辅助容器已退出／删除；
+当前8080双服务healthy、所有依赖ready，旧独立图谱仍停止。模型多故障／热缓冲／极端限制仍在，五仓库停车及无货量余额要求不变。
+代码／模板／测试／实测说明本地自动commit，不push。
+
 ## 2026-10-04 — 独立v2只读shadow接口、公开样本与前端登记入口（默认关闭）
 
 完成授权下一步：`event-v2-shadow-bundle-v1`／111项独立契约，管理员必须同时设置
