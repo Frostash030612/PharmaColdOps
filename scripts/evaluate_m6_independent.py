@@ -111,7 +111,7 @@ def prepare(output):
     packet_sha=sha(manifest);manifest['packet_sha256']=packet_sha
     dump(output/'predictions.private.json',manifest)
     dump(output/'derived-contract-report.json',contract_report)
-    dump(output/'reference-sources.json',{'regulations':REGULATIONS,'sops':SOPS,'rules_config':json.loads(contract.CONFIG.read_text()),
+    dump(output/'reference-sources.json',{'regulations':REGULATIONS,'sops':SOPS,'rules_config':json.loads(contract.CONFIG.read_text(encoding='utf-8')),
         'scope':'all current references, not model expected citations; engineering defaults are not validated manufacturer stability limits'})
     blind=output/'blind-intent';blind.mkdir()
     blinded=[{'question_id':q['question_id'],'question':q['question'],'lang':q['lang'],'packet_sha256':packet_sha}for q in inputs]
@@ -193,7 +193,7 @@ def read_annotations(path,manifest,kind):
 def score(packet,intent_a,intent_b,ratings_a,ratings_b,adjudication=None):
     import numpy as np
     from sklearn.metrics import accuracy_score,classification_report,cohen_kappa_score,confusion_matrix
-    manifest=json.loads(Path(packet).read_text());saved=manifest.pop('packet_sha256')
+    manifest=json.loads(Path(packet).read_text(encoding='utf-8'));saved=manifest.pop('packet_sha256')
     if sha(manifest)!=saved:raise ValueError('packet contents changed')
     if manifest.get('schema')!='m6-blind-packet-v1':raise ValueError('unsupported packet schema')
     question_ids=[q['question_id']for q in manifest['questions']]
