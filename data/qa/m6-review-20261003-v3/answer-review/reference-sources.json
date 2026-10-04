@@ -1,0 +1,188 @@
+{
+  "regulations": [
+    {
+      "clause_id": "R-WHO-TRS961-FREEZE",
+      "title": "WHO TRS 961 Annex 9",
+      "issuer": "World Health Organization",
+      "clause": "§6.9 Shipping container packing — freeze protection",
+      "summary": "Pack containers so freeze-sensitive products are protected against temperatures below 0 °C when frozen packs are used.",
+      "source_url": "https://cdn.who.int/media/docs/default-source/medicines/norms-and-standards/guidelines/inspections/trs961-annex9-modelguidanceforstoragetransport.pdf",
+      "verified": "2026-09-10 official PDF, verbatim match (§6.9)"
+    },
+    {
+      "clause_id": "R-WHO-TRS961-EXCURSION",
+      "title": "WHO TRS 961 Annex 9",
+      "issuer": "World Health Organization",
+      "clause": "§6.2 Product stability profiles",
+      "summary": "Excursions above/below the manufacturer's labelled storage range must not adversely affect product quality; product stability data must demonstrate the acceptable excursion time during transport.",
+      "source_url": "https://cdn.who.int/media/docs/default-source/medicines/norms-and-standards/guidelines/inspections/trs961-annex9-modelguidanceforstoragetransport.pdf",
+      "verified": "2026-09-10 official PDF, verbatim match (§6.2)"
+    },
+    {
+      "clause_id": "R-EU-GDP-1.2",
+      "title": "EU GDP 2013/C 343/01",
+      "issuer": "European Commission",
+      "clause": "Chapter 1.2 — Quality system (deviations & CAPA)",
+      "summary": "Deviations from established procedures must be documented and investigated; corrective and preventive actions (CAPA) are taken in line with quality risk management.",
+      "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
+      "verified": "2026-09-10 official OJ PDF, verbatim match (1.2)"
+    },
+    {
+      "clause_id": "R-EU-GDP-3.2.1",
+      "title": "EU GDP 2013/C 343/01",
+      "issuer": "European Commission",
+      "clause": "Chapter 3.2.1 — Temperature and environment control",
+      "summary": "Storage environment (temperature, light, humidity) must be controlled; temperature mapping before use, monitors placed at the points of greatest fluctuation, re-mapping after significant changes.",
+      "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
+      "verified": "2026-09-14 official OJ PDF, clause number VERIFIED; summary is a paraphrase (not verbatim)"
+    },
+    {
+      "clause_id": "R-EU-GDP-9.2",
+      "title": "EU GDP 2013/C 343/01",
+      "issuer": "European Commission",
+      "clause": "Chapter 9.2 — Transportation (excursion reporting)",
+      "summary": "Storage conditions must be maintained in transit; a temperature excursion or product damage during transportation must be reported to distributor and recipient, with a procedure for investigating and handling it.",
+      "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
+      "verified": "2026-09-14 official OJ PDF, clause number VERIFIED and content confirmed; summary is condensed wording (原文 'should be reported')"
+    },
+    {
+      "clause_id": "R-EU-GDP-9.4",
+      "title": "EU GDP 2013/C 343/01",
+      "issuer": "European Commission",
+      "clause": "Chapter 9.4 — Products requiring special conditions",
+      "summary": "Temperature-sensitive products must be transported using qualified equipment (thermal packaging, temperature-controlled containers or vehicles) so correct transport conditions are maintained.",
+      "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
+      "verified": "2026-09-14 official OJ PDF, clause number VERIFIED; summary is a paraphrase (原文 'should be used', 节点写 'must be transported')"
+    },
+    {
+      "clause_id": "R-HSA-GDP",
+      "title": "HSA Guidance Notes on Good Distribution Practice (rev. 15 Dec 2023)",
+      "issuer": "Singapore HSA",
+      "clause": "GUIDE-MQA-013 — §2.7 continuous monitoring, §2.8 monitoring points at the extremes of fluctuation, §3.10(d) transport protection, Annex 1 'Cold chain products'",
+      "summary": "Singapore's mandatory GDP standard for local importers and wholesalers (the landing page also lists Chinese proprietary medicines, cell/tissue/gene therapy products and active ingredients), covering storage, transport and temperature control — including continuous monitoring, monitoring devices placed where fluctuations are greatest, protection in transit from unacceptable heat/cold/light/moisture, and a dedicated cold-chain annex.",
+      "source_url": "https://isomer-user-content.by.gov.sg/409/c19890a5-6658-492d-b8ff-1ec6e9dc9f9c/guide-mqa-013.pdf",
+      "verified": "2026-09-14 (A), document + section level: the HSA landing page confirms the title, states that compliance is MANDATORY for local importers/wholesalers, and gives the revision date '15 December 2023'; the guidance PDF itself (GUIDE-MQA-013-012, 21 pp.) states only 'DECEMBER 2023' on its cover and carries no revision-history table — so the precise 15 Dec 2023 wording rests on the landing page, not the PDF. Sections 2.7 / 2.8 / 3.10(d) and Annex 1 'Cold chain products' were read in the PDF. This node is now verified at document + section level; no part of it remains unverified."
+    },
+    {
+      "clause_id": "R-ICH-Q1A",
+      "title": "ICH Q1A(R2) Stability Testing of New Drug Substances and Products",
+      "issuer": "ICH",
+      "clause": "§2.1.7.2 / §2.2.7.4 storage in a refrigerator (long term 5 °C ± 3 °C); §2.1.7.3 / §2.2.7.5 storage in a freezer (long term −20 °C ± 5 °C); §2.1.7.4 / §2.2.7.6 storage below −20 °C — case-by-case; §3 Glossary — 'Mean kinetic temperature'",
+      "summary": "Defines the stability data package for a new drug substance/product, including the long-term storage conditions that underpin a label storage range: refrigerator 5 °C ± 3 °C (= 2–8 °C) and freezer −20 °C ± 5 °C (= −25 to −15 °C); below −20 °C is explicitly case-by-case. Short-term shipping excursions are to be assessed using accelerated/intermediate data. It DEFINES mean kinetic temperature (§3 Glossary) but sets NO MKT ceiling, and specifies NO per-product allowable excursion duration — those remain project engineering values.",
+      "source_url": "https://database.ich.org/sites/default/files/Q1A%28R2%29%20Guideline.pdf",
+      "verified": "2026-09-14, A: full text read (Current Step 4 version dated 6 February 2003, 24 pp.). Clause titles and the storage-condition values above are verbatim. ⚠️ Correction: the pre-2026-09-14 `clause` value of this node was the DOCUMENT TITLE, not a clause — replaced with the real clause anchors. MKT ceiling / allowable excursion duration are NOT ICH values (see summary)."
+    }
+  ],
+  "sops": [
+    {
+      "sop_id": "SOP-GDP-001",
+      "title": "Temperature excursion response",
+      "summary": "On out-of-range temperature: check power/unit causes (utility, breakers, door seal, monitor placement) and record all temperatures; label exposed vaccines 'Do NOT Use' and set them apart under appropriate conditions; move vaccines to an alternate storage unit (refrigerated first) after checking its temperature; document the action taken and results; contact the immunization program and the manufacturer; return vaccines determined usable only when the storage unit is stable; dispose of compromised stock per distributor/manufacturer and state medical-waste rules.",
+      "source_url": "https://stacks.cdc.gov/view/cdc/142711/cdc_142711_DS1.pdf",
+      "verified": "2026-09-11 CDC Temperature Excursion Checklist (May 2014), steps quoted from the official PDF; EU GDP 2013/C 343/01 §9.2 requires a procedure for investigating and handling excursions (verified 2026-09-10)"
+    },
+    {
+      "sop_id": "SOP-GDP-002",
+      "title": "Freeze-exposure handling (WHO shake test)",
+      "summary": "Protect freeze-sensitive products from temperatures below 0 °C (WHO TRS 961 Annex 9 §6.9). On suspected freezing of an aluminum-adjuvanted vaccine: hold a suspect test vial and a deliberately frozen control vial of the same batch together in one hand and shake them, then place the two vials side by side on a flat surface and compare sedimentation — similar or faster sedimentation in the suspect vial indicates freeze damage (WHO shake test; the validation study reports 100% sensitivity, specificity and positive predictive value). ⚠️ Discarding the batch is THIS PROJECT's disposition rule, not a conclusion of the cited study.",
+      "source_url": "https://europepmc.org/article/MED/20680128",
+      "verified": "2026-09-14 (A): identity and numbers verified via the Europe PMC mirror of PMC2908964 — Kartoglu et al., 'Validation of the shake test for detecting freeze damage to adsorbed vaccines', Bull World Health Organ 2010;88:624–631, doi:10.2471/BLT.08.056879. The figure '475 vials across 8 freeze-sensitive vaccine types' is CONFIRMED (480 enrolled, 5 broken during unpacking → 475; Table 3 'Total 475'). ⚠️ CORRECTED: the previously stated 'shake … for 10–15 seconds' does NOT appear anywhere in the source (the paper describes the shake qualitatively; that duration would come from WHO's external 'Shake test learning guide', which could not be obtained) — removed. Also removed the implication that the source prescribes discarding. NOTE: the pmc.ncbi.nlm.nih.gov URL is reCAPTCHA-blocked in our environment (not 404) — hence the mirror."
+    },
+    {
+      "sop_id": "SOP-GDP-003",
+      "title": "Deviation documentation & CAPA",
+      "summary": "Document every deviation (temperatures, duration, storage unit, affected inventory) and the actions taken; investigate the deviation and take corrective and preventive actions (CAPA) in line with quality risk management; complete final documentation including prevention measures and the final disposition of affected stock.",
+      "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:52013XC1123(01)",
+      "verified": "2026-09-10 EU GDP 2013/C 343/01 Chapter 1.2 official OJ PDF (deviations documented & investigated, CAPA per quality risk management); documentation items per CDC excursion checklist (May 2014)"
+    }
+  ],
+  "rules_config": {
+    "products": [
+      {
+        "product_id": "vaccine_2_8",
+        "storage_min_c": 2.0,
+        "storage_max_c": 8.0,
+        "allowable_duration_min": 30,
+        "mkt_threshold_c": 10.0,
+        "retestable": true,
+        "freeze_sensitive": true
+      },
+      {
+        "product_id": "frozen_m20",
+        "storage_min_c": -25.0,
+        "storage_max_c": -15.0,
+        "allowable_duration_min": 15,
+        "mkt_threshold_c": -12.0,
+        "retestable": false,
+        "freeze_sensitive": false
+      },
+      {
+        "product_id": "insulin_2_8",
+        "storage_min_c": 2.0,
+        "storage_max_c": 8.0,
+        "allowable_duration_min": 30,
+        "mkt_threshold_c": 10.0,
+        "retestable": true,
+        "freeze_sensitive": true
+      },
+      {
+        "product_id": "mrna_ultracold",
+        "storage_min_c": -80.0,
+        "storage_max_c": -60.0,
+        "allowable_duration_min": 60,
+        "mkt_threshold_c": -55.0,
+        "retestable": false,
+        "freeze_sensitive": false
+      }
+    ],
+    "_note": "MVP 阈值（4 个产品类别原型，非真实品牌）。字段级出处**逐产品不同，勿一概而论**（逐条判定与原文片段见 docs/阈值证据表_v1.md）：(1) storage_min_c / storage_max_c / freeze_sensitive —— insulin_2_8 有 FDA 标签条款级出处（Levemir §16.2 / Merilog IFU）；mrna_ultracold 有 FDA 2021-02-25 一手出处（-80~-60 C，属 **2021 原始剂型**，现售 Comirnaty 已是 2-8 C 体系）；vaccine_2_8 与 frozen_m20 虽**无逐产品一手标签出处**，但**均有类别级条款出处**（2026-09-14 替代核实：前者原引 WHO TRS 961 Annex 9 承载「+2~+8 铝佐剂」的主张经通读全文 49 页**不成立、已撤**，改用 **ICH Q1A(R2) §2.1.7.2/§2.2.7.4** 冷藏长期条件 5 °C ± 3 °C = 2–8 °C；后者原引 USP freezer 档**不成立、已撤**，改用 **ICH Q1A(R2) §2.1.7.3/§2.2.7.5** 冷冻长期条件 −20 °C ± 5 °C = −25 ~ −15 °C，逐格一致）。(2) allowable_duration_min / mkt_threshold_c 无公开逐产品精确数字，本文件为其设定「原则锚定默认值」——阈值实现的是可引用的国际原则，量级为保守工程取值（非任何文件刊载的精确数字，亦不声称有逐产品来源）。原则依据：mkt_threshold_c = 标签上限 + 容差，MKT 定义见 USP〈1079.2〉§3（**不是〈1079〉**；该文本为 PF 49(2) 预发布版）与 **ICH Q1A(R2) §3 Glossary「Mean kinetic temperature」**（二者都只**定义**概念，**不设** ceiling），且「上限 + 容差」这一构造**是项目自定、并非 USP 或 ICH 方法**；allowable_duration_min = 保守短时值，依据 WHO TRS 961 Annex 9 §6.2（Product stability profiles：可接受的偏移时长须由稳定性数据证明）、EU GDP 2013/C 343/01 §9.2（偏移须上报，且须有调查与处置程序）与 WHO TRS 961 Annex 9 §8.2.2（不可接受的偏移须评估其对产品的影响）。冻结规则（freeze_sensitive && temp <= 0 C -> scrap）**是本项目工程规则，不是 WHO 条款**：其原则依据是 WHO TRS 961 Annex 9 §6.9（Shipping container packing：装箱须保护冻敏品免于 0 C 以下），而「冻结即报废」的处置由本项目按冻结损伤不可逆自行选定。mrna_ultracold 的多级稳定性窗口**一手仅到「稀释后室温 6 小时内可用」**（FDA 2021-02-25）；「2-8 C 1 个月」仅**二手**可证（Iowa 州卫生署 2021-05-20 通讯，**非 FDA**）；「-20 C 2 周」在 FDA 口径下应写 **-25~-15 C**。该多级窗口未在当前单阈值模型内表达，后续应升级为 stability_tiers。投产前应以上述原则为准、用供应商稳定性数据替换量级。",
+    "_sources": {
+      "scope": "4 个产品类别原型。字段级出处**逐产品不同**：storage_min_c / storage_max_c / freeze_sensitive 在 insulin_2_8 与 mrna_ultracold 上有公开**逐产品/一手**出处，在 vaccine_2_8 与 frozen_m20 上**无逐产品出处、但有 ICH Q1A(R2) 的类别级条款出处**；allowable_duration_min / mkt_threshold_c 为原则锚定的保守默认值（原则有来源、量级为工程取值）；retestable 为设计假设。逐条判定与原文片段见 docs/阈值证据表_v1.md。",
+      "vaccine_2_8": {
+        "category": "2-8 C 冷藏、含铝佐剂疫苗（如 DTaP、乙肝、HPV）",
+        "storage_range": "2-8 C 冷藏、含铝佐剂疫苗**类别原型**。⚠️ 原引「WHO TRS 961 Annex 9 / WHO 免疫实践」承载本主张，经 2026-09-14 通读 Annex 9 全文 49 页核实**不成立、已撤**（全文无 `+2 to +8` / `2 °C to 8 °C` / `aluminium adjuvant` / `shake test` 字样）。**替代来源已核实（条款级）**：**ICH Q1A(R2) §2.1.7.2 / §2.2.7.4**「drug substance/product intended for storage in a refrigerator — long term **5 °C ± 3 °C**」，即 **2–8 °C**，与本取值逐格一致（A 2026-09-14 读全文；ICH Current Step 4 version dated 6 February 2003）。注意其为**类别级**依据（面向注册的稳定性试验条件），本类别仍**无逐产品标签**出处。",
+        "freeze_sensitive": "true —— 冻敏产品冻结后效力不可逆丧失属**领域共识**；可引的条款级原则是 WHO TRS 961 Annex 9 §6.9（Shipping container packing）：「protect freeze-sensitive products against temperatures below 0 °C」。⚠️ 但「冻结即报废」这一**处置**是本项目工程规则，**不是** WHO 条款——Annex 9 的处置条款（§8.6.1 mark for disposal / §8.6.3）均以评估为前提。",
+        "allowable_duration_min": "原则锚定默认值 30 min：WHO TRS 961 Annex 9 §6.2（Product stability profiles）「Product stability data must demonstrate the acceptable temperature excursion time during transport.」+ EU GDP 2013/C 343/01 §9.2（偏移须上报，且须有调查与处置程序）+ WHO TRS 961 Annex 9 §8.2.2（不可接受的偏移须评估其对产品的影响）；量级为保守工程取值，无公开逐产品数字。⚠️ 原表述含「偏移须**短促**」，经核实 §6.2 **无此语**，已删。另见 **ICH Q1A(R2)**（2026-09-14 条款级核实）：短期运输偏移可用加速/中间条件数据评估，且其 Glossary「Storage condition tolerances」要求**超过定义容差 24 h 以上的偏移须在研究报告描述并评估影响**——这是「偏移时长需评估」的条款级锚点，但**不提供任何逐产品允许值**。",
+        "mkt_threshold_c": "原则锚定默认值 10.0 C（=标签上限 8 + 2 容差）：MKT 定义见 USP〈1079.2〉§3（**章节号更正：不是〈1079〉**；〈1079.2〉为 PF 49(2) 预发布文本，带 Change to read 标记）——「MKT is the single calculated temperature at which the total amount of degradation…It is not a simple arithmetic mean.」。**MKT 概念另有条款级出处：ICH Q1A(R2) §3 Glossary「Mean kinetic temperature」**（2026-09-14 核实）——但 Q1A(R2) 只**定义**概念、**不设**任何 ceiling。⚠️ 「标签上限 + 容差」这一**构造是项目自定，并非 USP 或 ICH 方法**。",
+        "refs_note": "⚠️ 第 1 条 ScienceDirect 链接（S0264410X18313896）实测 **HTTP 403 + captcha + 订阅墙，未亲见原文**：**只能作二手文献、内容未核实，不得作规范性依据**。第 2 条为 WHO 官方 PDF（可解析）。",
+        "refs": [
+          "https://cdn.who.int/media/docs/default-source/medicines/norms-and-standards/guidelines/inspections/trs961-annex9-modelguidanceforstoragetransport.pdf",
+          "https://www.sciencedirect.com/science/article/abs/pii/S0264410X18313896"
+        ]
+      },
+      "insulin_2_8": {
+        "category": "2-8 C 冷藏胰岛素（未开封）",
+        "storage_range": "FDA 说明书（**条款级已核实**）：未开封 2-8 C 冷藏 —— Levemir（NDA 021536）§16.2 Storage：「Store unused (unopened) LEVEMIR in the refrigerator between…(2° and 8°C). Do not freeze.」；Merilog（761325）Instructions for Use：「Store unused MERILOG vials in the refrigerator between…(2°C to 8°C). Do not freeze MERILOG.」。⚠️ 原列产品名中的 **glargine 与 lispro 无任何来源**（所引两个 URL 只覆盖 Levemir(detemir) 与 Merilog(aspart)），已移除；如需覆盖应另行补引其标签。",
+        "freeze_sensitive": "true —— FDA 说明书**条款级已核实**：Levemir「Do not use LEVEMIR if it has been frozen.」；Merilog「If a vial has been frozen or overheated, throw it away.」",
+        "allowable_duration_min": "原则锚定默认值 30 min：同 vaccine_2_8；现实胰岛素热稳定性更耐（FDA：开封后室温可用至 28 天），30 min 为运输偏移下的保守取值",
+        "mkt_threshold_c": "原则锚定默认值 10.0 C（=标签上限 8 + 2 容差）：MKT 定义见 USP〈1079.2〉§3（**章节号更正：不是〈1079〉**）；**概念另有条款级出处：ICH Q1A(R2) §3 Glossary「Mean kinetic temperature」**（Q1A(R2) 只定义、不设 ceiling）；「上限 + 容差」构造为项目自定、非 USP 或 ICH 方法",
+        "retestable": "设计假设：现实中胰岛素不做实验室「复检」，此字段存疑（保留 true 以维持与 rubric/场景一致）",
+        "refs": [
+          "https://www.accessdata.fda.gov/drugsatfda_docs/label/2022/021536s060lbl.pdf",
+          "https://www.accessdata.fda.gov/drugsatfda_docs/label/2025/761325Orig1s000lbl.pdf"
+        ]
+      },
+      "frozen_m20": {
+        "category": "-25~-15 C 冷冻储存类别原型（无单一对应药品名）",
+        "storage_range": "**条款级已核实（2026-09-14 替代原引）**：**ICH Q1A(R2) §2.1.7.3 / §2.2.7.5**「drug substance/product intended for storage in a freezer — long term **−20 °C ± 5 °C**」，即 **−25 ~ −15 °C**，与本取值逐格一致（A 2026-09-14 读全文）。⚠️ 原引「USP〈1079〉freezer 档为 -25~-10 C」**不成立、已撤**——〈1079.2〉Table 1 只有 CCT 2°-8° / CRT 20°-25° / zone IVb 15°-30°，**无 freezer 档、无 -25/-10**；该节反指向付费墙后的 USP〈659〉（仅 INTRODUCTION 预览）。本类别仍**无单一对应药品名**，故为「类别原型 + ICH 类别级依据」。",
+        "freeze_sensitive": "false —— 定义性：已冷冻产品不属「冻敏」，属类别定义而非文献结论",
+        "allowable_duration_min": "原则锚定默认值 15 min：同「可接受的偏移时长须由稳定性数据证明、偏移须评估」原则（WHO TRS 961 Annex 9 §6.2 + §8.2.2）；无公开逐产品数字",
+        "mkt_threshold_c": "原则锚定默认值 -12.0 C（=标签上限 -15 + 3 容差）：MKT 定义见 USP〈1079.2〉§3（**更正：不是〈1079〉**）；**概念另有条款级出处：ICH Q1A(R2) §3 Glossary「Mean kinetic temperature」**；「上限 + 容差」构造为项目自定、非 USP 或 ICH 方法",
+        "refs": []
+      },
+      "mrna_ultracold": {
+        "category": "mRNA 疫苗（对应 Pfizer-BioNTech 超低温档）",
+        "storage_range": "Pfizer-BioNTech 超低温 -80~-60 C（**一手已核实**，句子级：FDA 2021-02-25 新闻稿「the preferred storage of the undiluted vials in an ultra-low temperature freezer between -80ºC to -60ºC」）。⚠️ **属 2021 年原始剂型**：现售 Comirnaty（DailyMed 更新 2026-09-02，2026-2027 配方）已是 2-8 C 体系——**不注年代会误导报告**。另：**ICH Q1A(R2) §2.1.7.4 / §2.2.7.6** 对「storage below -20 °C」明确写 **case-by-case**（**不给任何数值**），故该类别的数值依据**只能**来自厂商文件，**不得引 ICH 为一个具体区间**。",
+        "freeze_sensitive": "false —— 定义性：超低温/冷冻储存，非「冻敏」",
+        "allowable_duration_min": "原则锚定默认值 60 min：单阈值近似；真实为多级稳定性窗口，**一手仅到「稀释后室温 6 小时内可用」**（FDA 2021-02-25）；「2-8 C 1 个月」仅**二手**可证（Iowa 州卫生署 2021-05-20 通讯，**非 FDA**）；「-20 C 2 周」在 FDA 口径下应写 **-25~-15 C**。后续应升级为 stability_tiers。",
+        "mkt_threshold_c": "原则锚定默认值 -55.0 C（=标签上限 -60 + 5 容差）：MKT 对超低温档意义有限，取保守容差（**工程假设，无 ceiling 出处**）。MKT **概念**的条款级出处见 ICH Q1A(R2) §3 Glossary「Mean kinetic temperature」与 USP〈1079.2〉§3——两者都只定义概念。",
+        "refs": [
+          "https://webarchiveweb.wayback.bac-lac.canada.ca/web/20210310223840/https://www.fda.gov/news-events/press-announcements/coronavirus-covid-19-update-fda-allows-more-flexible-storage-transportation-conditions-pfizer",
+          "http://content.govdelivery.com/accounts/IACIO/bulletins/2da52d5"
+        ],
+        "refs_note": "⚠️ 原第 1 条 `https://www.fda.gov/media/144413/download` 实测 **HTTP 404**（属**引用失效、非捏造**；2021-02-25 FDA 新闻稿的 Related Information 正指向它）。上列第 1 条为**同一 FDA 新闻稿的存档版**（Library and Archives Canada Wayback，2021-03-10 抓取）。第 2 条**不是 FDA**：是 Iowa 州卫生署 2021-05-20 通讯（写 Ultra-Cold (-70) 与 -20 ºC），**属二手/三手，仅可作旁证**。"
+      }
+    }
+  },
+  "scope": "all current references, not model expected citations; engineering defaults are not validated manufacturer stability limits"
+}

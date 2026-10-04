@@ -1,0 +1,2931 @@
+{
+  "schema": "m6-blind-packet-v1",
+  "created_at": "2026-10-03T07:57:35.827098+00:00",
+  "questions": [
+    {
+      "question_id": "Q001",
+      "question": "检测",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q002",
+      "question": "discard",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q003",
+      "question": "quarantine",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q004",
+      "question": "销毁",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q005",
+      "question": "mean kinetic",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q006",
+      "question": "Why was this case assigned this disposition?",
+      "lang": "en",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q007",
+      "question": "路线",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q008",
+      "question": "请展示这次异常的全过程链路。",
+      "lang": "zh",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q009",
+      "question": "who",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q010",
+      "question": "放行",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q011",
+      "question": "能否确认这支具体品牌疫苗的真实效价？",
+      "lang": "zh",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q012",
+      "question": "destroy",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q013",
+      "question": "reship",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q014",
+      "question": "release",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q015",
+      "question": "route",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q016",
+      "question": "In which stages is this cause most common?",
+      "lang": "en",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q017",
+      "question": "丢弃",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q018",
+      "question": "test",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q019",
+      "question": "测试",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q020",
+      "question": "hold",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q021",
+      "question": "who",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q022",
+      "question": "mkt",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q023",
+      "question": "请统计已登记案例的处置分布。",
+      "lang": "zh",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q024",
+      "question": "ich",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q025",
+      "question": "What are the product storage requirements?",
+      "lang": "en",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q026",
+      "question": "为什么这个不存在的案例被判报废？",
+      "lang": "zh",
+      "scenario_id": "missing",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q027",
+      "question": "ich",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q028",
+      "question": "What will the weather be tomorrow?",
+      "lang": "en",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q029",
+      "question": "reroute",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q030",
+      "question": "mkt",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q031",
+      "question": "scrap",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q032",
+      "question": "释放",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q033",
+      "question": "Why was this nonexistent case scrapped?",
+      "lang": "en",
+      "scenario_id": "missing",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q034",
+      "question": "deliver",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q035",
+      "question": "Show disposition stats for recorded cases.",
+      "lang": "en",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q036",
+      "question": "配送",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q037",
+      "question": "该产品的储存要求和允许时长是什么？",
+      "lang": "zh",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q038",
+      "question": "Certify actual potency of this specific vaccine brand.",
+      "lang": "en",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q039",
+      "question": "报废",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q040",
+      "question": "retest",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q041",
+      "question": "为什么这个案例需要这样的处置？",
+      "lang": "zh",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q042",
+      "question": "隔离",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q043",
+      "question": "gdp",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q044",
+      "question": "这个根因最常见于哪些运输阶段？",
+      "lang": "zh",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q045",
+      "question": "扣留",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q046",
+      "question": "复验",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q047",
+      "question": "路由",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q048",
+      "question": "补发",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q049",
+      "question": "gdp",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q050",
+      "question": "今天的天气好吗？",
+      "lang": "zh",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    },
+    {
+      "question_id": "Q051",
+      "question": "平均动力学",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q052",
+      "question": "hold",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8"
+    },
+    {
+      "question_id": "Q053",
+      "question": "Show the audit chain for this case.",
+      "lang": "en",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned"
+    }
+  ],
+  "responses": [
+    {
+      "question_id": "Q001",
+      "question": "检测",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "当超限处于可复验边界内时，复验确认效价与稳定性；结果作为最终处置的依据。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 5.420297384262085e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "9955a5e2a29c3d7777a2d559bbbb1646dcf1187ed938de055dc99efb951282de"
+    },
+    {
+      "question_id": "Q002",
+      "question": "discard",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Per EU GDP 2013/C 343/01 and WHO TRS 961 Annex 9, product exceeding its stability margin must be scrapped with a documented destruction record and deviation report.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.9579969123005867e-06,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "a0995c13ee2f7f2a3493c4a5db0e3021b12a565cd7285cc406bbd059e2fd6d24"
+    },
+    {
+      "question_id": "Q003",
+      "question": "quarantine",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Quarantine segregates the batch in labelled storage pending Quality review; release requires a documented risk assessment against the excursion data.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.0803418010473251e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "08dd94892652a886304d7bba4c9ed255ae7028400b347b8197f6ccda0d3dadc1"
+    },
+    {
+      "question_id": "Q004",
+      "question": "销毁",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "依据 EU GDP 2013/C 343/01 与 WHO TRS 961 附录 9，超出稳定性边界的药品必须报废，并附销毁记录与偏差报告。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.500019036233425e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "7ee0540ffb37092aaf4f53924b284f7fd4cf20c458e8352e68f20049d68ea91a"
+    },
+    {
+      "question_id": "Q005",
+      "question": "mean kinetic",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Mean Kinetic Temperature (MKT) compresses a temperature–time profile into a single stability-relevant value, so a short hot spike can be compared against the product's stability threshold.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.9103830456733704e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "5037d2633fe516944f59ffaae80fba8cd6add527547aa3b7dc601b57a536d168"
+    },
+    {
+      "question_id": "Q006",
+      "question": "Why was this case assigned this disposition?",
+      "lang": "en",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "why_disposition",
+      "source": "actual_service_query",
+      "response": {
+        "status": "ok",
+        "answer": "Case RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f: SCRAP — exceeded allowable excursion; any overrun is unacceptable (no hold band). Excursion: 12.0 °C for 35 min (MKT 11.2 °C, packaging intact, stage airport_dwell).",
+        "evidence": [
+          {
+            "node_type": "Regulation",
+            "node_id": "R-EU-GDP-1.2",
+            "summary": "EU GDP 2013/C 343/01 — Chapter 1.2 — Quality system (deviations & CAPA)"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-WHO-TRS961-EXCURSION",
+            "summary": "WHO TRS 961 Annex 9 — §6.2 Product stability profiles"
+          },
+          {
+            "node_type": "SOP",
+            "node_id": "SOP-GDP-001",
+            "summary": "Temperature excursion response: On out-of-range temperature: check power/unit causes (utility, breakers, door seal, monitor placement) and record all temperatures; label exposed vaccines 'Do NOT Use' and set them apart under appropriate conditions; move vaccines to an alternate storage unit (refrigerated first) after checking its temperature; document the action taken and results; contact the immunization program and the manufacturer; return vaccines determined usable only when the storage unit is stable; dispose of compromised stock per distributor/manufacturer and state medical-waste rules."
+          },
+          {
+            "node_type": "SOP",
+            "node_id": "SOP-GDP-003",
+            "summary": "Deviation documentation & CAPA: Document every deviation (temperatures, duration, storage unit, affected inventory) and the actions taken; investigate the deviation and take corrective and preventive actions (CAPA) in line with quality risk management; complete final documentation including prevention measures and the final disposition of affected stock."
+          }
+        ]
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 0.006256750028114766,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "aba43182b3e12b4926726af7a35fe02d02055745bac3fe04228e7c18623faad5"
+    },
+    {
+      "question_id": "Q007",
+      "question": "路线",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "优化器通过 VRPTW 重新规划补发库存，考虑时间窗、多温区、容量约束与断货优先级。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 5.00003807246685e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "5bafbc37f2c483f7980990ccc97448ab6694bd2c63e7c834179318b83e089dfb"
+    },
+    {
+      "question_id": "Q008",
+      "question": "请展示这次异常的全过程链路。",
+      "lang": "zh",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "audit_chain",
+      "source": "actual_service_query",
+      "response": {
+        "status": "ok",
+        "answer": "Case RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d: excursion 5.0 °C for 5 min (MKT 4.5 °C, packaging intact, stage transit); RELEASE (rule 6: excursion within acceptable safety range).",
+        "evidence": [
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+            "summary": "5.0 °C for 5 min (MKT 4.5 °C)"
+          },
+          {
+            "node_type": "Disposition",
+            "node_id": "release",
+            "summary": "rule 6 · reshipment False"
+          },
+          {
+            "node_type": "Cause",
+            "node_id": "inband",
+            "summary": "deterministic API risk code (score 5)"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-WHO-TRS961-EXCURSION",
+            "summary": "WHO TRS 961 Annex 9 — §6.2 Product stability profiles"
+          },
+          {
+            "node_type": "SOP",
+            "node_id": "SOP-GDP-001",
+            "summary": "Temperature excursion response: On out-of-range temperature: check power/unit causes (utility, breakers, door seal, monitor placement) and record all temperatures; label exposed vaccines 'Do NOT Use' and set them apart under appropriate conditions; move vaccines to an alternate storage unit (refrigerated first) after checking its temperature; document the action taken and results; contact the immunization program and the manufacturer; return vaccines determined usable only when the storage unit is stable; dispose of compromised stock per distributor/manufacturer and state medical-waste rules."
+          },
+          {
+            "node_type": "SOP",
+            "node_id": "SOP-GDP-003",
+            "summary": "Deviation documentation & CAPA: Document every deviation (temperatures, duration, storage unit, affected inventory) and the actions taken; investigate the deviation and take corrective and preventive actions (CAPA) in line with quality risk management; complete final documentation including prevention measures and the final disposition of affected stock."
+          }
+        ]
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 5.0,
+          "duration_min": 5,
+          "mkt_c": 4.5,
+          "packaging": "intact",
+          "stage": "transit"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "release",
+        "rule_no": 6,
+        "reason": "excursion within acceptable safety range",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 0.01036695798393339,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "7e47dd7d734e3849232debd66a4465d4a300d8d07544d6f272faee5dd32c8b33"
+    },
+    {
+      "question_id": "Q009",
+      "question": "who",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "法规依据：WHO TRS 961 附录 9（存储与运输示范指南）、EU GDP 2013/C 343/01，以及 ICH 稳定性指南。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 5.00003807246685e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "60fb674fb35114f1fe2f53dfff977eeafeee33d68a7e277d0e1020a0e3887926"
+    },
+    {
+      "question_id": "Q010",
+      "question": "放行",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "放行要求超限处于可接受安全范围内——MKT 与时长均低于阈值——且留痕记录规则路径。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.92027834802866e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "bc2dd7b3aad209fbf72b687b2b09506f9152ebb6bc3d63bdb3e84892fba76034"
+    },
+    {
+      "question_id": "Q011",
+      "question": "能否确认这支具体品牌疫苗的真实效价？",
+      "lang": "zh",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "知识图谱将产品、路线、事件、规则与 SOP 等实体关联，使每个回答都基于适用的法规，而非凭空生成。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 5.0,
+          "duration_min": 5,
+          "mkt_c": 4.5,
+          "packaging": "intact",
+          "stage": "transit"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "release",
+        "rule_no": 6,
+        "reason": "excursion within acceptable safety range",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.500019036233425e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "b210f06e53d45183693620be4645f9c533fcd3f4f88324bdef5d09701cb436f5"
+    },
+    {
+      "question_id": "Q012",
+      "question": "destroy",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Per EU GDP 2013/C 343/01 and WHO TRS 961 Annex 9, product exceeding its stability margin must be scrapped with a documented destruction record and deviation report.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 3.3300602808594704e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "0185d8cb97582c70bbdf7d1bd0807dffae8d382a585078fbfc2a0f41f1fe39da"
+    },
+    {
+      "question_id": "Q013",
+      "question": "reship",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "The optimiser re-routes replacement stock via VRPTW with time windows, multi-temperature zones, capacity limits and stockout priority.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.500019036233425e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "fa60d8c9a6992e094f559bda4bd5f82e61586de08072cf258793cfcaa3c9a17b"
+    },
+    {
+      "question_id": "Q014",
+      "question": "release",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Release requires the excursion to be within the acceptable safety range — MKT and duration below their thresholds — with a traceable rule path on record.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 4.169996827840805e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "c39d0768a1214b51e8ae1f10711bfc1c76a1ad54bbd38fa022c1824ad0631f09"
+    },
+    {
+      "question_id": "Q015",
+      "question": "route",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "The optimiser re-routes replacement stock via VRPTW with time windows, multi-temperature zones, capacity limits and stockout priority.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.500019036233425e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "93dd3121f1e694bc35433b1886c28eecf40411bf84dfbecc5378dedd3c1bb5ce"
+    },
+    {
+      "question_id": "Q016",
+      "question": "In which stages is this cause most common?",
+      "lang": "en",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "cause_context",
+      "source": "actual_service_query",
+      "response": {
+        "status": "ok",
+        "answer": "cause overtemp: 23 closed case(s); most often transit / vaccine_2_8 (6). Split: transit/vaccine_2_8=6; transit/frozen_m20=5; airport_dwell/vaccine_2_8=3; warehouse/vaccine_2_8=3; warehouse/frozen_m20=2; airport_dwell/frozen_m20=1; transit/insulin_2_8=1; transit/mrna_ultracold=1; warehouse/mrna_ultracold=1.",
+        "evidence": [
+          {
+            "node_type": "Cause",
+            "node_id": "overtemp",
+            "summary": "23 closed case(s) carry this API cause code"
+          },
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-2f1738211da341d893aa205a70cfa98d",
+            "summary": "warehouse / mrna_ultracold"
+          },
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-1adae951531d4d50a8117d6b49f1a760",
+            "summary": "transit / insulin_2_8"
+          },
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-cac4314a472e435aba62a5a50392f215",
+            "summary": "transit / frozen_m20"
+          },
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-55d2858c76ed4f879129818182fea24e",
+            "summary": "transit / mrna_ultracold"
+          },
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-f6d0874e08f043e3951cb8a279f8f44c",
+            "summary": "airport_dwell / frozen_m20"
+          }
+        ]
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 0.009397707995958626,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "3227a634f21c838a1170bb04928aebcfcd9909f4e2a213af689a08bf31295958"
+    },
+    {
+      "question_id": "Q017",
+      "question": "丢弃",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "依据 EU GDP 2013/C 343/01 与 WHO TRS 961 附录 9，超出稳定性边界的药品必须报废，并附销毁记录与偏差报告。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 4.169996827840805e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "62098c67eb9d9d89e44e82f78f132bd2e25f36f045ac05c7edb5f9a78b51641b"
+    },
+    {
+      "question_id": "Q018",
+      "question": "test",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Retesting confirms potency and stability when an excursion is within the retestable margin; the result feeds the final disposition.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 3.3300602808594704e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "f51795f64a1946b03230631a1a42a4e46f27180cf2522fd3d8858c11ea72cc0a"
+    },
+    {
+      "question_id": "Q019",
+      "question": "测试",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "当超限处于可复验边界内时，复验确认效价与稳定性；结果作为最终处置的依据。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 3.3294782042503357e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "1752b85fc9b13eb6b90eb6738f5ec7c5f1a5a622cbee122c1fd155b1eb73f64f"
+    },
+    {
+      "question_id": "Q020",
+      "question": "hold",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Quarantine segregates the batch in labelled storage pending Quality review; release requires a documented risk assessment against the excursion data.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.500019036233425e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "eb6e05fe9dd40b67784bd25acdca6464e40fbff0e049f3b9ef0b10b4016c4e2c"
+    },
+    {
+      "question_id": "Q021",
+      "question": "who",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Regulatory basis: WHO TRS 961 Annex 9 (model guidance for storage and transport), EU GDP 2013/C 343/01, and ICH stability guidelines.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.0803418010473251e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "9e86aa53b52d8cc8270832f94f88a000a184e7b903d445c2a55a09d9b375835e"
+    },
+    {
+      "question_id": "Q022",
+      "question": "mkt",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "平均动力学温度（MKT）把一段温度-时间曲线压缩成单个与稳定性相关的值，使一次短暂升温可对照产品的稳定性阈值来评估。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.0797597244381905e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "c6eccf49f38844be828f96baf168fbcae834ca0428ee14b4856bb5f4fe6ff170"
+    },
+    {
+      "question_id": "Q023",
+      "question": "请统计已登记案例的处置分布。",
+      "lang": "zh",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "disposition_stats",
+      "source": "actual_service_query",
+      "response": {
+        "status": "ok",
+        "answer": "release: 15; retest: 9; scrap: 33",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 5.0,
+          "duration_min": 5,
+          "mkt_c": 4.5,
+          "packaging": "intact",
+          "stage": "transit"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "release",
+        "rule_no": 6,
+        "reason": "excursion within acceptable safety range",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 0.024708124983590096,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "b1d6dd41ef5840af204570917ebb0cc252b4de4179585f746e5f66d0fdd6d0e7"
+    },
+    {
+      "question_id": "Q024",
+      "question": "ich",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "法规依据：WHO TRS 961 附录 9（存储与运输示范指南）、EU GDP 2013/C 343/01，以及 ICH 稳定性指南。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 5.420297384262085e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "54f39fc79f126891ab293b62916c28aacefb20c3625094e75902945b2166225b"
+    },
+    {
+      "question_id": "Q025",
+      "question": "What are the product storage requirements?",
+      "lang": "en",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "product_requirements",
+      "source": "actual_service_query",
+      "response": {
+        "status": "ok",
+        "answer": "vaccine_2_8: storage 2.0–8.0 °C, allowable excursion 30 min, MKT ceiling 10.0 °C, freeze-sensitive: True, retestable: True.",
+        "evidence": [
+          {
+            "node_type": "Regulation",
+            "node_id": "R-EU-GDP-3.2.1",
+            "summary": "EU GDP 2013/C 343/01 — Chapter 3.2.1 — Temperature and environment control"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-EU-GDP-9.2",
+            "summary": "EU GDP 2013/C 343/01 — Chapter 9.2 — Transportation (excursion reporting)"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-EU-GDP-9.4",
+            "summary": "EU GDP 2013/C 343/01 — Chapter 9.4 — Products requiring special conditions"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-ICH-Q1A",
+            "summary": "ICH Q1A(R2) Stability Testing of New Drug Substances and Products — §2.1.7.2 / §2.2.7.4 storage in a refrigerator (long term 5 °C ± 3 °C); §2.1.7.3 / §2.2.7.5 storage in a freezer (long term −20 °C ± 5 °C); §2.1.7.4 / §2.2.7.6 storage below −20 °C — case-by-case; §3 Glossary — 'Mean kinetic temperature'"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-WHO-TRS961-EXCURSION",
+            "summary": "WHO TRS 961 Annex 9 — §6.2 Product stability profiles"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-WHO-TRS961-FREEZE",
+            "summary": "WHO TRS 961 Annex 9 — §6.9 Shipping container packing — freeze protection"
+          }
+        ]
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 5.0,
+          "duration_min": 5,
+          "mkt_c": 4.5,
+          "packaging": "intact",
+          "stage": "transit"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "release",
+        "rule_no": 6,
+        "reason": "excursion within acceptable safety range",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 0.004579917003866285,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "0b74f77732a440c825a8811e586d72fa3f4dac4976b52077c4fe453dbcbd972e"
+    },
+    {
+      "question_id": "Q026",
+      "question": "为什么这个不存在的案例被判报废？",
+      "lang": "zh",
+      "scenario_id": "missing",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "why_disposition",
+      "source": "actual_service_query",
+      "response": {
+        "status": "no_case",
+        "answer": "no decision recorded for run UNKNOWN-BLIND-EVAL",
+        "evidence": []
+      },
+      "case_facts": {
+        "case_exists": false
+      },
+      "latency_seconds": 0.006392834009602666,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "4fb219006bc99dacafbd2f0207e8bfd429de07b7041bcebb5586b5bf8e1545c7"
+    },
+    {
+      "question_id": "Q027",
+      "question": "ich",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Regulatory basis: WHO TRS 961 Annex 9 (model guidance for storage and transport), EU GDP 2013/C 343/01, and ICH stability guidelines.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 4.5797787606716156e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "17a80c33f2f9b3c459ad36fbd1190bbce5a6caf97e5e497b7f3c46fc1ea484f6"
+    },
+    {
+      "question_id": "Q028",
+      "question": "What will the weather be tomorrow?",
+      "lang": "en",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "The knowledge graph links product, route, event, rule and SOP entities, so every answer is grounded in the governing regulation rather than generated from thin air.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 5.0,
+          "duration_min": 5,
+          "mkt_c": 4.5,
+          "packaging": "intact",
+          "stage": "transit"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "release",
+        "rule_no": 6,
+        "reason": "excursion within acceptable safety range",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.500019036233425e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "5a71b6e17358eb0418ed1255b948cafa549f1e2a9f976db149ae567d90739925"
+    },
+    {
+      "question_id": "Q029",
+      "question": "reroute",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "The optimiser re-routes replacement stock via VRPTW with time windows, multi-temperature zones, capacity limits and stockout priority.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.08965502679348e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "d4d1e29b8bdc8969ef8a3978d9620530ef97464b986b01e97ed1c817aad395c2"
+    },
+    {
+      "question_id": "Q030",
+      "question": "mkt",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Mean Kinetic Temperature (MKT) compresses a temperature–time profile into a single stability-relevant value, so a short hot spike can be compared against the product's stability threshold.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.500019036233425e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "704b6b292d93ae674b351f7660a0aaa523687d2d2385ab4b4c021c1eb1528a03"
+    },
+    {
+      "question_id": "Q031",
+      "question": "scrap",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Per EU GDP 2013/C 343/01 and WHO TRS 961 Annex 9, product exceeding its stability margin must be scrapped with a documented destruction record and deviation report.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 1.6600824892520905e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "24d57fef312a7454241fb28541fc7fe0286282b3995810ce4e67671dd0d48564"
+    },
+    {
+      "question_id": "Q032",
+      "question": "释放",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "放行要求超限处于可接受安全范围内——MKT 与时长均低于阈值——且留痕记录规则路径。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.0902371034026146e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "df63595d8c57ef2e9cfc44f538bd547594024308309c4f0b0f78723fc4a40676"
+    },
+    {
+      "question_id": "Q033",
+      "question": "Why was this nonexistent case scrapped?",
+      "lang": "en",
+      "scenario_id": "missing",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "why_disposition",
+      "source": "actual_service_query",
+      "response": {
+        "status": "no_case",
+        "answer": "no decision recorded for run UNKNOWN-BLIND-EVAL",
+        "evidence": []
+      },
+      "case_facts": {
+        "case_exists": false
+      },
+      "latency_seconds": 0.006571499980054796,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "57b12eeb345af06b70c504fef724dd8a5ea20c360fa50a1b7af8cc10fd3334e8"
+    },
+    {
+      "question_id": "Q034",
+      "question": "deliver",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "The optimiser re-routes replacement stock via VRPTW with time windows, multi-temperature zones, capacity limits and stockout priority.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 3.750319592654705e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "54d58156ebddd6ef86e0aa833a4cddd03e1395d5555fb9f3d779410bec20d428"
+    },
+    {
+      "question_id": "Q035",
+      "question": "Show disposition stats for recorded cases.",
+      "lang": "en",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "disposition_stats",
+      "source": "actual_service_query",
+      "response": {
+        "status": "ok",
+        "answer": "release: 15; retest: 9; scrap: 33",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 5.0,
+          "duration_min": 5,
+          "mkt_c": 4.5,
+          "packaging": "intact",
+          "stage": "transit"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "release",
+        "rule_no": 6,
+        "reason": "excursion within acceptable safety range",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 0.0034237499930895865,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "e97b05bf81d2a6a315232db69d8c958a95f94391719af88013c327a530e21b8a"
+    },
+    {
+      "question_id": "Q036",
+      "question": "配送",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "优化器通过 VRPTW 重新规划补发库存，考虑时间窗、多温区、容量约束与断货优先级。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 3.750319592654705e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "f7767820047abeae6543984326a5b58b8b5f2c440cf50faf66c8fed64a2d5f5a"
+    },
+    {
+      "question_id": "Q037",
+      "question": "该产品的储存要求和允许时长是什么？",
+      "lang": "zh",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "product_requirements",
+      "source": "actual_service_query",
+      "response": {
+        "status": "ok",
+        "answer": "vaccine_2_8: storage 2.0–8.0 °C, allowable excursion 30 min, MKT ceiling 10.0 °C, freeze-sensitive: True, retestable: True.",
+        "evidence": [
+          {
+            "node_type": "Regulation",
+            "node_id": "R-EU-GDP-3.2.1",
+            "summary": "EU GDP 2013/C 343/01 — Chapter 3.2.1 — Temperature and environment control"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-EU-GDP-9.2",
+            "summary": "EU GDP 2013/C 343/01 — Chapter 9.2 — Transportation (excursion reporting)"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-EU-GDP-9.4",
+            "summary": "EU GDP 2013/C 343/01 — Chapter 9.4 — Products requiring special conditions"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-ICH-Q1A",
+            "summary": "ICH Q1A(R2) Stability Testing of New Drug Substances and Products — §2.1.7.2 / §2.2.7.4 storage in a refrigerator (long term 5 °C ± 3 °C); §2.1.7.3 / §2.2.7.5 storage in a freezer (long term −20 °C ± 5 °C); §2.1.7.4 / §2.2.7.6 storage below −20 °C — case-by-case; §3 Glossary — 'Mean kinetic temperature'"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-WHO-TRS961-EXCURSION",
+            "summary": "WHO TRS 961 Annex 9 — §6.2 Product stability profiles"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-WHO-TRS961-FREEZE",
+            "summary": "WHO TRS 961 Annex 9 — §6.9 Shipping container packing — freeze protection"
+          }
+        ]
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 5.0,
+          "duration_min": 5,
+          "mkt_c": 4.5,
+          "packaging": "intact",
+          "stage": "transit"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "release",
+        "rule_no": 6,
+        "reason": "excursion within acceptable safety range",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 0.004064333043061197,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "2a5593f261d0484da8e37500bdac7f5aa28dc096470e89751f8b827760159749"
+    },
+    {
+      "question_id": "Q038",
+      "question": "Certify actual potency of this specific vaccine brand.",
+      "lang": "en",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "The knowledge graph links product, route, event, rule and SOP entities, so every answer is grounded in the governing regulation rather than generated from thin air.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 5.0,
+          "duration_min": 5,
+          "mkt_c": 4.5,
+          "packaging": "intact",
+          "stage": "transit"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "release",
+        "rule_no": 6,
+        "reason": "excursion within acceptable safety range",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 5.41971530765295e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "beec5c5d9c43141d3c78df5908e4f555b18852a939477e29ba977d7b10ddfdd0"
+    },
+    {
+      "question_id": "Q039",
+      "question": "报废",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "依据 EU GDP 2013/C 343/01 与 WHO TRS 961 附录 9，超出稳定性边界的药品必须报废，并附销毁记录与偏差报告。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.9103830456733704e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "ee4960de0ad8c2ada74738615d8198150a942577db2cb4197f963792a7c60943"
+    },
+    {
+      "question_id": "Q040",
+      "question": "retest",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Retesting confirms potency and stability when an excursion is within the retestable margin; the result feeds the final disposition.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.500019036233425e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "0407eac0ac4b3dd66b29d4f2d60938dfaa7a1e30136f35fc7fc2c775c8caf764"
+    },
+    {
+      "question_id": "Q041",
+      "question": "为什么这个案例需要这样的处置？",
+      "lang": "zh",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "why_disposition",
+      "source": "actual_service_query",
+      "response": {
+        "status": "ok",
+        "answer": "Case RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f: SCRAP — exceeded allowable excursion; any overrun is unacceptable (no hold band). Excursion: 12.0 °C for 35 min (MKT 11.2 °C, packaging intact, stage airport_dwell).",
+        "evidence": [
+          {
+            "node_type": "Regulation",
+            "node_id": "R-EU-GDP-1.2",
+            "summary": "EU GDP 2013/C 343/01 — Chapter 1.2 — Quality system (deviations & CAPA)"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-WHO-TRS961-EXCURSION",
+            "summary": "WHO TRS 961 Annex 9 — §6.2 Product stability profiles"
+          },
+          {
+            "node_type": "SOP",
+            "node_id": "SOP-GDP-001",
+            "summary": "Temperature excursion response: On out-of-range temperature: check power/unit causes (utility, breakers, door seal, monitor placement) and record all temperatures; label exposed vaccines 'Do NOT Use' and set them apart under appropriate conditions; move vaccines to an alternate storage unit (refrigerated first) after checking its temperature; document the action taken and results; contact the immunization program and the manufacturer; return vaccines determined usable only when the storage unit is stable; dispose of compromised stock per distributor/manufacturer and state medical-waste rules."
+          },
+          {
+            "node_type": "SOP",
+            "node_id": "SOP-GDP-003",
+            "summary": "Deviation documentation & CAPA: Document every deviation (temperatures, duration, storage unit, affected inventory) and the actions taken; investigate the deviation and take corrective and preventive actions (CAPA) in line with quality risk management; complete final documentation including prevention measures and the final disposition of affected stock."
+          }
+        ]
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 0.00515354098752141,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "f07c405299b407e4ba22009b4742052fd48d121f7d4c1c614eee9e1666b004ec"
+    },
+    {
+      "question_id": "Q042",
+      "question": "隔离",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "隔离将批次置于隔离且贴标存储，等待质量审评；放行需基于超限数据完成书面风险评估。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 3.7497375160455704e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "3998e37a64534424f2f85977aabaa7dbdc71074708022df7ddd718d787cfe763"
+    },
+    {
+      "question_id": "Q043",
+      "question": "gdp",
+      "lang": "en",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "Regulatory basis: WHO TRS 961 Annex 9 (model guidance for storage and transport), EU GDP 2013/C 343/01, and ICH stability guidelines.",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.08965502679348e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "e9458600290690f3938d461dd37f018e94ac7fd8c08b2a4877d4d89ccd567e17"
+    },
+    {
+      "question_id": "Q044",
+      "question": "这个根因最常见于哪些运输阶段？",
+      "lang": "zh",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "cause_context",
+      "source": "actual_service_query",
+      "response": {
+        "status": "ok",
+        "answer": "cause overtemp: 23 closed case(s); most often transit / vaccine_2_8 (6). Split: transit/vaccine_2_8=6; transit/frozen_m20=5; airport_dwell/vaccine_2_8=3; warehouse/vaccine_2_8=3; warehouse/frozen_m20=2; airport_dwell/frozen_m20=1; transit/insulin_2_8=1; transit/mrna_ultracold=1; warehouse/mrna_ultracold=1.",
+        "evidence": [
+          {
+            "node_type": "Cause",
+            "node_id": "overtemp",
+            "summary": "23 closed case(s) carry this API cause code"
+          },
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-2f1738211da341d893aa205a70cfa98d",
+            "summary": "warehouse / mrna_ultracold"
+          },
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-1adae951531d4d50a8117d6b49f1a760",
+            "summary": "transit / insulin_2_8"
+          },
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-cac4314a472e435aba62a5a50392f215",
+            "summary": "transit / frozen_m20"
+          },
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-55d2858c76ed4f879129818182fea24e",
+            "summary": "transit / mrna_ultracold"
+          },
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-f6d0874e08f043e3951cb8a279f8f44c",
+            "summary": "airport_dwell / frozen_m20"
+          }
+        ]
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 0.008889582997653633,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "fbeb31a4914ac492cccb339a429a3b20bd082331eeaf1439771c36ecee321d4f"
+    },
+    {
+      "question_id": "Q045",
+      "question": "扣留",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "隔离将批次置于隔离且贴标存储，等待质量审评；放行需基于超限数据完成书面风险评估。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 4.1601015254855156e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "92e517c6984465ceed086afb5bf0a2125bd08bc2ee751cd54d1315e09c8f1186"
+    },
+    {
+      "question_id": "Q046",
+      "question": "复验",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "当超限处于可复验边界内时，复验确认效价与稳定性；结果作为最终处置的依据。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.0797597244381905e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "d1366cd29f4f690bea9ce305f8cbe152d21914eff82753a6b3addccb3f70e5cc"
+    },
+    {
+      "question_id": "Q047",
+      "question": "路由",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "优化器通过 VRPTW 重新规划补发库存，考虑时间窗、多温区、容量约束与断货优先级。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.0803418010473251e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "fdb61b30ed2f47892a333f17361ce0d7a75e1db9e725be95ea790bb23567cb0e"
+    },
+    {
+      "question_id": "Q048",
+      "question": "补发",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "优化器通过 VRPTW 重新规划补发库存，考虑时间窗、多温区、容量约束与断货优先级。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.0797597244381905e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "4578c6499a36a39ca4c0e20d15bf7de22bba0428e3335fe8fbaa57f0c2cc387b"
+    },
+    {
+      "question_id": "Q049",
+      "question": "gdp",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "法规依据：WHO TRS 961 附录 9（存储与运输示范指南）、EU GDP 2013/C 343/01，以及 ICH 稳定性指南。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.500019036233425e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "a691ef0575cc3c211e53b4a16f22cdb792202feea7f4935eefb5488628c2e2cf"
+    },
+    {
+      "question_id": "Q050",
+      "question": "今天的天气好吗？",
+      "lang": "zh",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "知识图谱将产品、路线、事件、规则与 SOP 等实体关联，使每个回答都基于适用的法规，而非凭空生成。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 5.0,
+          "duration_min": 5,
+          "mkt_c": 4.5,
+          "packaging": "intact",
+          "stage": "transit"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "release",
+        "rule_no": 6,
+        "reason": "excursion within acceptable safety range",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.08965502679348e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "9960773cdf017c50afa4501bc9b8eb7bb84ba48f80df5b6f6b5dca20a8c1ac8b"
+    },
+    {
+      "question_id": "Q051",
+      "question": "平均动力学",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "平均动力学温度（MKT）把一段温度-时间曲线压缩成单个与稳定性相关的值，使一次短暂升温可对照产品的稳定性阈值来评估。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.0803418010473251e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "0723c22b97ed9422f0c04e22329634a47ddc7888003f1b15f26b021dd49e141d"
+    },
+    {
+      "question_id": "Q052",
+      "question": "hold",
+      "lang": "zh",
+      "origin": "legacy FAQ keyword, not independently sampled user utterance",
+      "scenario_id": "S017",
+      "product_id": "vaccine_2_8",
+      "predicted_intent": "unsupported",
+      "source": "actual_client_fallback",
+      "response": {
+        "status": "concept_fallback",
+        "answer": "隔离将批次置于隔离且贴标存储，等待质量审评；放行需基于超限数据完成书面风险评估。",
+        "evidence": []
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-4420dace757f41cbb0fa0a305877212f",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 12.0,
+          "duration_min": 35,
+          "mkt_c": 11.2,
+          "packaging": "intact",
+          "stage": "airport_dwell"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "scrap",
+        "rule_no": 4,
+        "reason": "exceeded allowable excursion; any overrun is unacceptable (no hold band)",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 2.500019036233425e-07,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "d7a35c0b140800bf3b2e094517154b1f17be8e73993b951a33de5a016113e5f5"
+    },
+    {
+      "question_id": "Q053",
+      "question": "Show the audit chain for this case.",
+      "lang": "en",
+      "scenario_id": "S001",
+      "product_id": "vaccine_2_8",
+      "origin": "authored evaluation stimulus, no gold assigned",
+      "predicted_intent": "audit_chain",
+      "source": "actual_service_query",
+      "response": {
+        "status": "ok",
+        "answer": "Case RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d: excursion 5.0 °C for 5 min (MKT 4.5 °C, packaging intact, stage transit); RELEASE (rule 6: excursion within acceptable safety range).",
+        "evidence": [
+          {
+            "node_type": "ExcursionEvent",
+            "node_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+            "summary": "5.0 °C for 5 min (MKT 4.5 °C)"
+          },
+          {
+            "node_type": "Disposition",
+            "node_id": "release",
+            "summary": "rule 6 · reshipment False"
+          },
+          {
+            "node_type": "Cause",
+            "node_id": "inband",
+            "summary": "deterministic API risk code (score 5)"
+          },
+          {
+            "node_type": "Regulation",
+            "node_id": "R-WHO-TRS961-EXCURSION",
+            "summary": "WHO TRS 961 Annex 9 — §6.2 Product stability profiles"
+          },
+          {
+            "node_type": "SOP",
+            "node_id": "SOP-GDP-001",
+            "summary": "Temperature excursion response: On out-of-range temperature: check power/unit causes (utility, breakers, door seal, monitor placement) and record all temperatures; label exposed vaccines 'Do NOT Use' and set them apart under appropriate conditions; move vaccines to an alternate storage unit (refrigerated first) after checking its temperature; document the action taken and results; contact the immunization program and the manufacturer; return vaccines determined usable only when the storage unit is stable; dispose of compromised stock per distributor/manufacturer and state medical-waste rules."
+          },
+          {
+            "node_type": "SOP",
+            "node_id": "SOP-GDP-003",
+            "summary": "Deviation documentation & CAPA: Document every deviation (temperatures, duration, storage unit, affected inventory) and the actions taken; investigate the deviation and take corrective and preventive actions (CAPA) in line with quality risk management; complete final documentation including prevention measures and the final disposition of affected stock."
+          }
+        ]
+      },
+      "case_facts": {
+        "run_id": "RQABLINDEVAL-dd2e605dcba048d6b4fb77ad78e4275d-04ffac355fc4462cb1594ac682c1bf2d",
+        "event": {
+          "product_id": "vaccine_2_8",
+          "excursion_temp_c": 5.0,
+          "duration_min": 5,
+          "mkt_c": 4.5,
+          "packaging": "intact",
+          "stage": "transit"
+        },
+        "spec": {
+          "product_id": "vaccine_2_8",
+          "storage_min_c": 2.0,
+          "storage_max_c": 8.0,
+          "allowable_duration_min": 30,
+          "mkt_threshold_c": 10.0,
+          "retestable": true,
+          "freeze_sensitive": true
+        },
+        "disposition": "release",
+        "rule_no": 6,
+        "reason": "excursion within acceptable safety range",
+        "review_required": false,
+        "review_reasons": null
+      },
+      "latency_seconds": 0.009347125014755875,
+      "measurement_scope": "service/local-fallback call; not HTTP/browser/network latency",
+      "response_sha256": "d88aec7974e27aeca018976c2901859910c9f0d6c289eef0532fc56b6c5cacb6"
+    }
+  ],
+  "source_hashes": {
+    "frontend-vue/src/lib/qa.js": "f96ac52a4e6b3634c498642b0d918b525aad743391fe98a860b8d709aab58807",
+    "frontend-vue/src/i18n/zh.js": "4222e177a047848467b883ff9bf690c31ae6b8438122385039e6adae78446b36",
+    "frontend-vue/src/i18n/en.js": "406a81a8d4aae772b38f903e8d066b4e607f0d7e58f86f02452ef99ce07af546",
+    "scripts/predict_qa_intents.mjs": "0ba04f8a7a7ae414f54b66907de5eb6f162be7346368935dd30fa94af04a6b04",
+    "scripts/evaluate_qa.py": "23154295f6a9635502de3b293641dbbe2a92349b22d2bf457e86e434cdee9516",
+    "src/knowledge_graph/qa.py": "b97489351dc4d4dc076df74868f54723c903932ecec2d3c7392c4a1ae800673f",
+    "src/knowledge_graph/build_graph.py": "23b0d867ab27fcd792e86cdc73cebe30954d3f88020e141e3acae3d092472cf0",
+    "src/api/service.py": "4ee07c4ad18a6fb4c0181e613176daf63a464186540ef8ebd1a8dafb4617bc97",
+    "src/api/schemas.py": "7ea7a808589c5cf4bec50da1211c4ad669551ef2c1caa38d9e0dc92e98bc41f3",
+    "data/qa/intent_labels.csv": "96c74bb88bd7735737d91b9c62248cfb2e9834ecd2ac9fc6eb07d0c54e0bbed0",
+    "src/rule_engine/rules_config.json": "ff1bcd528b63d2f8fe9dcf52a6e10c9b21ef4edd38c98817785e05233285cbdf",
+    "scripts/evaluate_m6_independent.py": "2bde3f531a7b5747e15cbe7cee6c273f98b99b543c6fee6755dfae448a6e6aa6"
+  },
+  "graph": {
+    "mode": "own_isolated_container",
+    "container_id": "bdfd63d58ef98fbe5e56228cd6893a6959049d6e2843777ae653fc4a311dcdc7",
+    "uri": "bolt://127.0.0.1:50249",
+    "retained": false,
+    "container_removed": true
+  },
+  "cleanup": {
+    "status": "complete",
+    "cases_removed": 57,
+    "sql_outbox_archive_cleared": true
+  },
+  "human_gold_available": false,
+  "routing_is_keywords_not_NLP": true,
+  "annotation_stage_order": "seal intent labels first without responses; then answer/evidence assessment",
+  "limitations": [
+    "legacy words derived from FAQ",
+    "additional prompts authored by evaluation developer",
+    "not natural user-population accuracy",
+    "rater identities self-declared not authenticated"
+  ],
+  "packet_sha256": "78728725328b5b09f59164fc408a31c7d1607c90e656f6673a0924b988eff134"
+}
