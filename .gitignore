@@ -57,6 +57,7 @@ proposal/figures/raw/
 .pytest_cache/
 .pytest_tmp/
 .pytmp/
+.dsh_pytest_tmp/
 # OSMnx/Nominatim geocoder response cache written by the road-network build
 cache/
 output/playwright/
@@ -65,3 +66,8 @@ deploy/*.env
 # Active administrator-owned, read-only deployment models/config. Never commit.
 deploy/runtime/
 .venv-*/
+
+# Local-only handoff/working notes. Kept on the author's machine on purpose
+# (team decision 2026-10-12): it is a personal continuity document, not a
+# deliverable. Tracked file was removed from the index in commit 9283f88.
+HANDOFF.md

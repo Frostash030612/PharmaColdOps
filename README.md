@@ -1,6 +1,65 @@
 # PharmaColdOps
 
+**🌏 Language / 语言:** **English** · [中文](README-ZH.md)
+
 An explainable decision-support prototype for cold-chain pharmaceutical temperature excursions. When an excursion occurs, PharmaColdOps issues a traceable disposition recommendation (release / quarantine / retest / scrap) and flags whether a separate reshipment workflow should be considered, grounded in WHO / EU GDP / ICH principles and product-specific stability assumptions.
+
+---
+
+## 🚀 Just want to see it run?
+
+**Prerequisites:** Docker Desktop in **Linux container mode**, port 8080 free, and a Python 3.12 environment.
+If you have not created one yet, run this first (then the two commands below):
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements-eval.lock.txt
+```
+
+```bash
+.venv/bin/python scripts/configure_demo.py
+docker compose --env-file deploy/demo.env -f deploy/compose.demo.yml up -d --build --wait --wait-timeout 180
+```
+
+**Then open → http://127.0.0.1:8080/?lang=zh**  (first start takes 1–2 min while it seeds the graph)
+
+> Windows: use `.venv\Scripts\python.exe`. Stop it with the same `compose … down` command — **never add `-v`**, that deletes your data.
+
+### The 60-second tour
+
+1. **🎲 生成今日批次（按日期）** → **确认发车** — this creates today's main delivery run.
+2. Pick a case in the left list (e.g. `R01`, same product as the batch) → **结案并查看处置方案** — you get the disposition *with its rule path and regulatory grounding*, plus a side-by-side comparison of re-routing options.
+3. **⛶ 展开地图** — the big map draws **dashed grey = before re-route** vs **solid red = after**, with per-stop delivery progress.
+4. **采用此方案** — commits the option you picked. Until you click it, nothing is reserved and no vehicle is reassigned.
+5. Ask the knowledge graph *"why was this case scrapped?"* — answers carry WHO / EU GDP / ICH citations, and say so plainly when there is no evidence.
+
+**📖 Full instructions — startup, every panel, troubleshooting and limitations: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) (English) · [`docs/用户手册.md`](docs/用户手册.md) (中文).**
+
+**Requirements, submission and presentation material live in [`proposal/`](proposal/).**
+
+---
+
+## 📄 Deliverables
+
+| Deliverable | Where |
+|---|---|
+| **User manual** (使用手册) | English: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) · 中文: [`docs/用户手册.md`](docs/用户手册.md) |
+| Report | *in preparation* — see [`PROGRESS.md`](PROGRESS.md) for current evidence & limitations |
+| Demo videos (2 × 5 min) | *in preparation* |
+| Proposal (submitted 2026-09-13) | [PharmaColdOps-Proposal-Group 41.pdf](proposal/PharmaColdOps-Proposal-Group%2041.pdf) |
+| Proposal source (EN / 中文) | [`EN`](proposal/PharmaColdOps-Proposal-EN.md) · [`ZH`](proposal/PharmaColdOps-Proposal-ZH.md) |
+| Presentation deck | [`proposal/PharmaColdOps .pptx`](proposal/PharmaColdOps%20.pptx) |
+| Architecture | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| Progress log & measured results | [`PROGRESS.md`](PROGRESS.md) |
+
+> **Scope disclosure:** simulated data, loopback-only, no authentication, not a production or compliance system,
+> and the rule thresholds are engineering assumptions. See [What this system does *not* do](docs/user-manual-EN.md#7-what-this-system-does-not-do-important).
+
+---
+
+## Developer documentation
+
+> Everything below is for people working on the code. If you only want to use the system, stop at the user manual above.
 
 M4 advisory inference is now available alongside (not instead of) the rule decision.
 Run `.venv/bin/python scripts/train_m4_models.py` before starting the API to generate trusted
@@ -32,6 +91,9 @@ macro-F1 0.7174, and explicitly zero quarantine recall. M5 has 49 fresh static
 solver comparisons with complete-feasibility guards, fleet-matched BKS gaps and charts.
 M6 has actual-response snapshots and a two-rater blind review/scoring workflow;
 independent accuracy remains unavailable until real human annotations are supplied.
+Frozen inputs are committed under `data/qa/m6-review-20261003-v3/`, and reviewers can fill them in
+offline with `scripts/m6_review_form.html` (self-checked by `scripts/m6_review_form_selftest.mjs`);
+as of 2026-10-12 **no human annotations have been recorded yet**.
 See [M3 formal report](docs/M3正式评估.md), [M5 formal report](docs/M5正式评估.md)
 and [M6 independent evaluation protocol](docs/M6独立评估.md).
 
@@ -55,7 +117,7 @@ see [proposal version status](proposal/README.md) for the documented differences
 
 - Proposal (EN): [proposal/PharmaColdOps-Proposal-EN.md](proposal/PharmaColdOps-Proposal-EN.md)
 - Proposal (中文): [proposal/PharmaColdOps-Proposal-ZH.md](proposal/PharmaColdOps-Proposal-ZH.md)
-- Presentation deck: [proposal/PharmaColdOps-Proposal-Presentation.pptx](proposal/PharmaColdOps-Proposal-Presentation.pptx)
+- Presentation deck: [proposal/PharmaColdOps .pptx](proposal/PharmaColdOps%20.pptx) (**this is the deck we present with**; the older `PharmaColdOps-Proposal-Presentation.pptx` is superseded)
 - Figures: [`proposal/figures/`](proposal/figures/)
 - Ground-truth evaluation design: [proposal/处置决策-ground-truth评估方案.md](proposal/处置决策-ground-truth评估方案.md)
 
@@ -197,7 +259,11 @@ Windows users can replace `.venv/bin/...` with `.venv\Scripts\...`.
 Use Python 3.12.12 for the exact baseline. `requirements.txt` remains the broader research
 environment, not the locked demo installer. Native ML/geocoding extras are not required.
 Use a dedicated test graph for full pytest; missing graph tests are skipped, not counted as passed.
-The clean pinned reproduction baseline is **656 passed / 0 skipped**. All **24 real deployment checks**
+The latest full-suite baseline is recorded in [PROGRESS.md](PROGRESS.md) (2026-10-04: **888 passed / 0 skipped**);
+the earlier clean pinned reproduction run was **656 passed / 0 skipped**. Note both figures were measured in a
+**Linux container** — on a native Chinese-Windows host many tests fail by design, because
+`src/optimisation/case_action_guard.py` uses Unix-only `fcntl` locking and fails closed elsewhere.
+All **24 real deployment checks**
 passed, including a quiesced backup, fresh-instance restore and graph replay. Playwright verified default
 same-origin and explicit offline modes. The local demo at `http://127.0.0.1:8080/` is ready after the
 user-authorized Docker Desktop restart. See [PROGRESS.md](PROGRESS.md) for evidence and limitations.
