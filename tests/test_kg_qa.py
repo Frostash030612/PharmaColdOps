@@ -131,8 +131,22 @@ def test_why_disposition_answers_the_case_and_cites_the_fired_rule(closed_case):
 
     # The /api/qa contract the front-end renders: three non-empty strings.
     for item in why["evidence"]:
-        assert set(item) == {"node_type", "node_id", "summary"}
+        assert {"node_type", "node_id", "summary"} <= set(item)
         assert all(isinstance(item[k], str) and item[k] for k in item)
+
+
+@pytest.mark.needs_db
+def test_existing_product_with_no_regulation_edges_is_insufficient():
+    product_id = 'QA-NO-REFERENCE-' + uuid.uuid4().hex
+    _query("""CREATE (:Product {product_id:$pid, storage_min_c:2.0, storage_max_c:8.0,
+             allowable_duration_min:30.0, mkt_threshold_c:12.0, freeze_sensitive:true, retestable:false})""", pid=product_id)
+    try:
+        result = qa.product_requirements(product_id)
+        assert result['status'] == 'insufficient_evidence'
+        assert result['evidence'] == []
+        assert 'engineering assumptions' in result['answer']
+    finally:
+        _query('MATCH (p:Product {product_id:$pid}) DETACH DELETE p', pid=product_id)
 
 
 @pytest.mark.needs_db

@@ -177,12 +177,15 @@ The option is written into the running operation. If you adopt "surplus stock on
 
 ### Step 6 — ask "on what grounds?"
 
-Ask the knowledge graph, for example:
+Check the displayed archived-case/product scope, then choose a query type or use bounded automatic routing, for example:
 
 - "Why was this case judged scrap?"
 - "What storage conditions does this product require?"
 
-Answers carry **regulation and SOP citations**. When the system has no evidence it says so **explicitly** rather than inventing an answer.
+The five explicit queries cover original decision basis, audit chain, current product configuration, recorded cause context and aggregate graph disposition statistics.
+Case queries describe the original automatic record, not the later effective human outcome. View review history for that outcome; graph statistics are not complete SQL-archive or operational statistics.
+Recorded regulation/SOP links and historical verification notes remain inspectable, but general principles do not validate product-specific engineering limits.
+Concept help is labelled as no graph query. Unsupported and unclear questions receive refusal and clarification respectively; missing evidence and unavailable service remain distinct, with no automatic FAQ substitution. Context or question changes clear old replies. See [repair scope and checks](M6问答修复与新版本验收.md).
 
 ### Step 7 — export the audit report
 
@@ -262,7 +265,7 @@ curl http://127.0.0.1:8080/api/ready
 
 A full `pytest` run on **native Chinese Windows** shows many failures, and **that is not broken code**:
 `src/optimisation/case_action_guard.py` uses Unix-only `fcntl` file locking and **deliberately fails closed on
-non-Unix platforms**. The 909-test run on 2026-10-17 used macOS Python 3.12 with an isolated Linux-container Neo4j
+non-Unix platforms**. The latest 926-test run on 2026-10-17 used macOS Python 3.12 with an isolated Linux-container Neo4j
 (see `PROGRESS.md`). Use Linux containers for service deployment on Windows; the M6 format checker runs natively.
 
 ---

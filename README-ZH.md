@@ -50,7 +50,8 @@ docker compose --env-file deploy/demo.env -f deploy/compose.demo.yml up -d --bui
 | 最终交付 | [清单与打包流程](docs/最终交付与验收.md) · [成员信息](member-github.txt) |
 | 提案（2026-09-13 已提交） | [PharmaColdOps-Proposal-Group 41.pdf](proposal/PharmaColdOps-Proposal-Group%2041.pdf) |
 | 提案源稿 | [英文](proposal/PharmaColdOps-Proposal-EN.md) · [中文](proposal/PharmaColdOps-Proposal-ZH.md) |
-| 演示文稿 | [`proposal/PharmaColdOps .pptx`](proposal/PharmaColdOps%20.pptx) |
+| 最终演示文稿 | [新10页PPT](proposal/PharmaColdOps-Final-Presentation.pptx) · [四人录制交接](docs/最终答辩分工与录制交接.md) · [答辩问答](docs/最终答辩问答.md)；旧提案文件保留 |
+| M6收尾 | [协调人一键流程](docs/M6协调人一键收尾.md) · [问答修复与验收](docs/M6问答修复与新版本验收.md)；正式状态见[M6报告](docs/M6独立评估.md) |
 | 架构说明 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 进度与实测数字 | [`PROGRESS.md`](PROGRESS.md) |
 
@@ -94,7 +95,7 @@ pnpm dev
 
 本机**中文 Windows** 上跑全量 `pytest` 会看到大量失败，**那不是代码坏了**：
 `src/optimisation/case_action_guard.py` 使用 Unix 专有的 `fcntl` 文件锁，并**有意在非 Unix 平台 fail closed**。
-2026-10-17全量回归为 **909通过／0跳过／6项既有警告**：宿主macOS Python3.12，图谱在独立Linux容器中。
+2026-10-17最新全量回归为 **926通过／0跳过／6项既有警告**：宿主macOS Python3.12，图谱在独立Linux容器中。
 后续打包专项17项通过，记录见 [`PROGRESS.md`](PROGRESS.md)。Windows请使用Linux容器运行服务；独立M6格式自检脚本可原生运行。
 
 ---

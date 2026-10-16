@@ -52,7 +52,8 @@ These commands are for a fresh base deployment. To resume the existing v2-enable
 | Final delivery | [Checklist and packaging](docs/最终交付与验收.md) · [Member information](member-github.txt) |
 | Proposal (submitted 2026-09-13) | [PharmaColdOps-Proposal-Group 41.pdf](proposal/PharmaColdOps-Proposal-Group%2041.pdf) |
 | Proposal source (EN / 中文) | [`EN`](proposal/PharmaColdOps-Proposal-EN.md) · [`ZH`](proposal/PharmaColdOps-Proposal-ZH.md) |
-| Presentation deck | [`proposal/PharmaColdOps .pptx`](proposal/PharmaColdOps%20.pptx) |
+| Final presentation | [Current 10-slide deck](proposal/PharmaColdOps-Final-Presentation.pptx) · [Roles and recording handoff](docs/最终答辩分工与录制交接.md) · [Defense Q&A](docs/最终答辩问答.md); original proposal decks preserved |
+| M6 coordination | [Review completion workflow](docs/M6协调人一键收尾.md) · [QA repairs](docs/M6问答修复与新版本验收.md); formal status in [M6 report](docs/M6独立评估.md) |
 | Architecture | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | Progress log & measured results | [`PROGRESS.md`](PROGRESS.md) |
 
@@ -263,7 +264,7 @@ Windows users can replace `.venv/bin/...` with `.venv\Scripts\...`.
 Use Python 3.12.12 for the exact baseline. `requirements.txt` remains the broader research
 environment, not the locked demo installer. Native ML/geocoding extras are not required.
 Use a dedicated test graph for full pytest; missing graph tests are skipped, not counted as passed.
-The 2026-10-17 full-suite run recorded in [PROGRESS.md](PROGRESS.md) passed **909 tests / 0 skipped / 6 warnings**
+The latest 2026-10-17 full-suite run recorded in [PROGRESS.md](PROGRESS.md) passed **926 tests / 0 skipped / 6 warnings**
 on macOS Python 3.12 with its own Linux-container Neo4j. The later packaging-specific suite passed 17 tests.
 Native Windows workflow mutations are unsupported because `src/optimisation/case_action_guard.py` requires Unix `fcntl`.
 Use the Linux-container deployment on Windows; the standalone M6 annotation checker remains portable.

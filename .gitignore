@@ -59,6 +59,8 @@ proposal/figures/raw/
 .pytest_tmp/
 .pytmp/
 .dsh_pytest_tmp/
+# Presentation validator's regenerable embedded-chart staging, not a deliverable
+/.chart-data-*/
 # OSMnx/Nominatim geocoder response cache written by the road-network build
 cache/
 output/playwright/

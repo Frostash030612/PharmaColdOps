@@ -86,6 +86,11 @@ def build(output):
         if not line:
             i += 1
             continue
+        if line.startswith("<!--"):
+            while i < len(lines) and "-->" not in lines[i]:
+                i += 1
+            i += 1
+            continue
         if line.startswith("!["):
             match = re.fullmatch(r"!\[([^\]]*)\]\(([^)]+)\)", line)
             if not match:
@@ -177,7 +182,7 @@ def build(output):
             continue
         parts = [line]
         i += 1
-        while i < len(lines) and lines[i].strip() and not lines[i].startswith(("#", "|", "```", "![")) and not re.match(r"^\d+\. ", lines[i]):
+        while i < len(lines) and lines[i].strip() and not lines[i].startswith(("#", "|", "```", "![", "<!--")) and not re.match(r"^\d+\. ", lines[i]):
             parts.append(lines[i].strip())
             i += 1
         add_text(doc.add_paragraph(), " ".join(parts))

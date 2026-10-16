@@ -615,7 +615,7 @@ def accept_dispatch_delay(dispatch_id: str, req: DelayAcceptIn):
         raise HTTPException(status_code=409, detail=str(exc))
 
 
-@app.post("/api/qa", response_model=QAOut)
+@app.post("/api/qa", response_model=QAOut, response_model_exclude_none=True)
 def qa(req: QAIn):
     try:
         return service.qa_view(req)

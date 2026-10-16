@@ -4,7 +4,13 @@
 
 PharmaColdOps is an explainable decision-support prototype for pharmaceutical cold-chain temperature excursions. We connect simulated temperature observations, rule-based disposition recommendations, human review, replacement delivery planning, and case-specific evidence queries in one runnable system. The prototype covers the IRS technique groups of decision automation, knowledge discovery and data mining, resource optimisation, and cognitive systems.
 
-The principal result is an implemented, auditable workflow rather than a validated medicine-quality predictor. M3 agreed with historical adjudicated labels in 54 of 57 synthetic scenarios, but missed all three historical quarantine cases. The shipment-risk experiment achieved five-fold PR-AUC 0.7087 and F1 0.6635; monthly candidate-cause classification remained weak. A subsequent event-level simulation study improved held-out macro-F1, while retaining substantial multi-fault and extreme-condition failures. Static routing experiments produced complete feasible solutions in 49 comparisons. Independent M6 evaluation remains incomplete: reviewer A supplied both annotation files, while reviewer B's files and any necessary adjudication have not been collected. We report that gap explicitly.
+The principal result is an implemented, auditable workflow rather than a validated medicine-quality predictor. M3 agreed with historical adjudicated labels in 54 of 57 synthetic scenarios, but missed all three historical quarantine cases. The shipment-risk experiment achieved five-fold PR-AUC 0.7087 and F1 0.6635; monthly candidate-cause classification remained weak. A subsequent event-level simulation study improved held-out macro-F1, while retaining substantial multi-fault and extreme-condition failures. Static routing experiments produced complete feasible solutions in 49 comparisons.
+
+<!-- M6_ABSTRACT_STATUS_START -->
+
+Independent M6 evaluation remains incomplete: reviewer A supplied both annotation files, while reviewer B's files, the process record and any necessary adjudication have not been collected.
+
+<!-- M6_ABSTRACT_STATUS_END -->
 
 Operational orders and event observations are simulated. Engineering temperature limits are not manufacturer stability limits, model candidates cannot authorise disposition, and human review governs the effective result used by downstream delivery. The deployment is a local demonstration with persistent storage and recovery checks, not a public or clinically validated service.
 
@@ -70,7 +76,7 @@ Delay inspection identifies late remaining work and can preview reordering under
 
 Risk and monthly candidate-cause models require explicit input contexts and save their first assessment with model identity. The independent event-v2 interface uses 111 allowed observation-derived features and a trusted read-only model bundle. Candidates and abstentions both require review; automatic actions remain disabled. Invalid or unavailable bundles produce an explicit unavailable state rather than a substituted model [5].
 
-M6 supports disposition reasons, audit chains, product requirements, cause context and disposition statistics. Missing cases, insufficient evidence and graph unavailability are distinct states. The frontend's keyword router may fall back to a conceptual FAQ, which is not counted as a successful live graph query merely because it displays an answer [7].
+M6 supports disposition reasons, audit chains, product requirements, cause context and disposition statistics. Missing cases, insufficient evidence and graph unavailability are distinct states. The current frontend labels conceptual help separately, offers explicit structured query selection and refuses unsupported questions. Failed graph queries do not silently become conceptual answers [7].
 
 ## 5 Data and evaluation design
 
@@ -136,15 +142,21 @@ These are static single-origin algorithm comparisons. Urgent insertion, grouped 
 
 The frozen M6 preparation performed 12 actual service queries and 41 client conceptual fallbacks on 53 questions. The same 57 case scenarios passed 466 derived contract checks for record agreement, mapped references, thresholds, states and case isolation. Derived checks do not establish independent answer correctness or citation relevance [7].
 
+<!-- M6_HUMAN_RESULTS_START -->
+
 Reviewer A has supplied 53 intent labels and 53 answer/evidence ratings in separate completed files. The project owner confirmed human authorship on 2026-10-17. Structural checks verify IDs, allowed values and frozen hashes. Reviewer A assigned correctness 2 to 28 answers, 1 to 21 and 0 to four; evidence relevance was 0 for 41, 2 for eight and not applicable for four. Unsupported claims were flagged in ten answers. These are one reviewer's observations, not dual-rater adequacy or independent system accuracy.
 
 Reviewer B's two files are unavailable in the repository. Human-human kappa, adjudicated intent accuracy and the proportion rated adequate by both reviewers are therefore unavailable. The A-rating upload also records corrections to reviewer ID and source URLs; actual consultation of replacement sources must be documented by the reviewer. Source strings and valid hashes cannot establish provenance, independence or professional competence [7].
 
+<!-- M6_HUMAN_RESULTS_END -->
+
+The current interface now separates structured graph queries, concept help, clarification and refusal. It offers five explicit query types, clears stale replies on context changes and exposes recorded reference links. General FAQ text no longer asserts mandatory destruction or that every response has regulatory grounding. These are repairs informed by observed failures and developer regression checks; they do not change or re-score the frozen v1 answers.
+
 ## 7 Reliability and reproduction
 
-The 2026-10-17 isolated regression passed 909 tests with zero skips and six existing warnings; a separate API walkthrough passed 36 checks against its own test graph. Frontend production build and eight frontend check scripts passed. Twenty live advisory sample replays and two browser preview branches preserved the original case records. These are software checks, not new model-accuracy observations [9].
+The latest 2026-10-17 isolated regression passed 926 tests with zero skips and six existing warnings; a separate API walkthrough passed 36 checks against its own test graph. Frontend production build and nine frontend check scripts passed. Real browser checks covered refusal, concepts, source links, missing and conflicting scope, late replies after case changes, and injected transport failure without changing case records. Twenty live advisory sample replays retained their prior result fingerprint after the QA-only deployment update. These are software checks, not new model-accuracy observations [9].
 
-An initial run passed 892 tests and failed one because the temporary QA fixture had not loaded road relationships. We preserved that result, loaded the complete standard static seed in a new test graph and reran successfully. The historical 2026-10-04 baseline of 888 tests remains a separate record. Local map-tile and no-active-operation 404 responses, plus a large-JavaScript-chunk warning, remain disclosed presentation limitations [9].
+Earlier checks passed 909 tests after correcting an incomplete temporary graph seed. A later 925-test run exposed optional reference metadata being filtered from HTTP responses; the response schema and serialization contract were repaired before the successful 926-test run. These earlier results and the historical 888-test baseline remain separate records. Local map-tile and no-active-operation 404 responses, plus a large-JavaScript-chunk warning, remain disclosed presentation limitations [9].
 
 The deployment pins Python, frontend and Docker dependencies, runs the API as a non-root user with read-only root filesystem, and persists authoritative case data independently of Neo4j. Previous acceptance exercised actual API restart, graph outage, outbox recovery and backup restoration into new volumes. These checks demonstrate recovery for the tested configuration, not high availability or a production service-level agreement [8, 9].
 
@@ -154,7 +166,7 @@ For reproduction, clone the repository, create the documented Python 3.12 enviro
 
 The implemented rule, review, logistics and graph boundaries make failures inspectable. In particular, a reviewer can trace original evidence without conflating it with a later human outcome, and a failed graph write does not silently erase the authoritative case. The experimental results also limit the product claim: historical policy disagreement, weak monthly causes, multi-fault omissions and incomplete M6 human evidence prevent a claim of autonomous pharmaceutical judgement.
 
-Before submission, the team must complete or explicitly disclose the missing M6 independent review, document source verification and seal times, record two five-minute videos with human speech, and submit individual reflections and peer evaluation privately. A frozen source package and a report are not evidence that these human deliverables exist. The [delivery checklist](最终交付与验收.md) records the remaining inputs.
+Before submission, the team must ensure the M6 review status is disclosed with source verification and seal records, record two five-minute videos with human speech, and submit individual reflections and peer evaluation privately. A frozen source package and a report are not evidence that these human deliverables exist. The [delivery checklist](最终交付与验收.md) records the remaining inputs.
 
 ## References and project evidence
 
