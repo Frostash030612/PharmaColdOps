@@ -55,6 +55,10 @@ It covers the four IRS technique groups: **decision automation** (rule engine), 
 
 From the repository root:
 
+The commands below create a fresh deployment with event-v2 disabled. For the existing v2-enabled demonstration,
+use both env files and both Compose files in the [controlled deployment guide](v2演示受控更新.md).
+Recreating it with the base configuration alone removes its shadow switch and read-only model mounts.
+
 ```bash
 # ① generate random passwords and private config (never overwrites, never prints secrets)
 .venv/bin/python scripts/configure_demo.py
@@ -258,8 +262,8 @@ curl http://127.0.0.1:8080/api/ready
 
 A full `pytest` run on **native Chinese Windows** shows many failures, and **that is not broken code**:
 `src/optimisation/case_action_guard.py` uses Unix-only `fcntl` file locking and **deliberately fails closed on
-non-Unix platforms**. The team's full baseline (see `PROGRESS.md`) was measured inside a **Linux container**.
-Judge code health with Docker's Linux environment, not with red tests on Windows.
+non-Unix platforms**. The 909-test run on 2026-10-17 used macOS Python 3.12 with an isolated Linux-container Neo4j
+(see `PROGRESS.md`). Use Linux containers for service deployment on Windows; the M6 format checker runs natively.
 
 ---
 
@@ -274,7 +278,7 @@ Evaluators and users should know these boundaries. **They are disclosed scope, n
 | **Does not replace a pharmacist** | thresholds are **engineering assumptions** (principle-anchored defaults), not product-level stability conclusions; regulatory citations stop at document level (clause level for ICH) |
 | **Human review is mandatory** | boundary and low-confidence cases require human confirmation; the human conclusion is stored separately and the original automatic advice is never overwritten |
 | **Annotator agreement missed target** | dual annotation reached Cohen's κ = **0.6434**, below the 0.80 target — **reported as-is, not massaged by re-testing** |
-| **M6 human evaluation is not finished** | frozen CSV templates and a command-line format checker are ready; human annotations have not yet been collected, so independent accuracy is unavailable |
+| **M6 human evaluation is not finished** | reviewer A's intent labels and answer ratings are collected; reviewer B and any required adjudication remain pending. Formal dual-review metrics are unavailable; see [current status](M6独立评估.md) |
 | **ML does not drive online decisions** | M4 model scores are **advisory**, reported but never triggering scrap/release; the front-end risk index is still a rule heuristic |
 | **Optimiser limits** | the solver is OR-Tools Routing Solver + GLS (**not CP-SAT**); time-limited results are not guaranteed globally optimal and may differ between runs |
 

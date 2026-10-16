@@ -1,6 +1,7 @@
 # Course materials (copyrighted) — kept out by default, except the shared reference PDFs
 *.pdf
 !proposal/*.pdf
+!docs/PharmaColdOps-Group-Report.pdf
 
 # Python
 __pycache__/
