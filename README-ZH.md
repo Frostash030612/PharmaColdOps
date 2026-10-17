@@ -46,7 +46,7 @@ docker compose --env-file deploy/demo.env -f deploy/compose.demo.yml up -d --bui
 |---|---|
 | **用户手册** | 中文：[`docs/用户手册.md`](docs/用户手册.md) · English: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) |
 | 小组报告 | [正文](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [含原proposal的PDF](docs/PharmaColdOps-Group-Report.pdf)；M6双人指标待补 |
-| 演示视频（2 × 5 分钟） | [录制脚本与验收](docs/视频录制脚本与验收.md)已备；真人成片仍待录制 |
+| 演示视频（2 × 5 分钟） | [英文画面版与配音交接](docs/英文画面视频与真人配音交接.md)已备；真人旁白与合成终审仍待补 |
 | 最终交付 | [清单与打包流程](docs/最终交付与验收.md) · [成员信息](member-github.txt) |
 | 提案（2026-09-13 已提交） | [PharmaColdOps-Proposal-Group 41.pdf](proposal/PharmaColdOps-Proposal-Group%2041.pdf) |
 | 提案源稿 | [英文](proposal/PharmaColdOps-Proposal-EN.md) · [中文](proposal/PharmaColdOps-Proposal-ZH.md) |

@@ -48,7 +48,7 @@ These commands are for a fresh base deployment. To resume the existing v2-enable
 |---|---|
 | **User manual** (使用手册) | English: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) · 中文: [`docs/用户手册.md`](docs/用户手册.md) |
 | Group report | [Source](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [PDF with submitted proposal](docs/PharmaColdOps-Group-Report.pdf); M6 dual-review results remain pending |
-| Demo videos (2 × 5 min) | [Recording scripts and checks](docs/视频录制脚本与验收.md); human recordings still required |
+| Demo videos (2 × 5 min) | [English visual cuts and voice handoff](docs/英文画面视频与真人配音交接.md) are prepared locally; genuine human speech and final review are still required |
 | Final delivery | [Checklist and packaging](docs/最终交付与验收.md) · [Member information](member-github.txt) |
 | Proposal (submitted 2026-09-13) | [PharmaColdOps-Proposal-Group 41.pdf](proposal/PharmaColdOps-Proposal-Group%2041.pdf) |
 | Proposal source (EN / 中文) | [`EN`](proposal/PharmaColdOps-Proposal-EN.md) · [`ZH`](proposal/PharmaColdOps-Proposal-ZH.md) |
