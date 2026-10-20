@@ -415,8 +415,7 @@ def tone(freq, seconds, partials=(1, 0.35, 0.12)):
     return sum(a * np.sin(2 * np.pi * freq * k * t + k) for k, a in enumerate(partials, 1))
 
 
-def music(part):
-    total = duration(part)
+def layers(total):
     n = int(total * SR)
     pad, bass, arp = np.zeros(n), np.zeros(n), np.zeros(n)
     bar = 6.0
@@ -436,6 +435,28 @@ def music(part):
             e = min(n, s + len(pluck))
             if s < n:
                 arp[s:e] += pluck[:e - s]
+    return pad, bass, arp
+
+
+def finish(mix, total, peak_db):
+    """Add a short noise-reverb tail, fade the edges and normalise to a peak level."""
+    n = len(mix)
+    t = np.arange(n) / SR
+    rng = np.random.default_rng(41)
+    tail = rng.standard_normal(int(2.4 * SR)) * np.exp(-np.arange(int(2.4 * SR)) / (0.7 * SR))
+    size = 1 << (n + len(tail)).bit_length()
+    wet = np.fft.irfft(np.fft.rfft(mix, size) * np.fft.rfft(tail, size), size)[:n]
+    mix = 0.75 * mix + 0.25 * wet / (np.abs(wet).max() + 1e-9) * np.abs(mix).max()
+    mix *= np.minimum(1, np.minimum(t / 0.5, (total - t) / 1.0))
+    mix = mix / (np.abs(mix).max() + 1e-9) * 10 ** (peak_db / 20)
+    stereo = np.stack([mix, np.roll(mix, int(0.012 * SR))], 1)
+    return (stereo * 32767).astype(np.int16)
+
+
+def music(part):
+    total = duration(part)
+    pad, bass, arp = layers(total)
+    n = len(pad)
     t = np.arange(n) / SR
     marks = np.cumsum([0] + [s for s, _ in PARTS[part]])
     if part == "a":
@@ -454,15 +475,13 @@ def music(part):
     boom = np.sin(2 * np.pi * 48 * boom_t) * np.exp(-boom_t / 0.9) * 0.9
     s = int(hit * SR)
     mix[s:s + len(boom)] += boom[:max(0, n - s)]
-    rng = np.random.default_rng(41)
-    tail = rng.standard_normal(int(2.4 * SR)) * np.exp(-np.arange(int(2.4 * SR)) / (0.7 * SR))
-    size = 1 << (n + len(tail)).bit_length()
-    wet = np.fft.irfft(np.fft.rfft(mix, size) * np.fft.rfft(tail, size), size)[:n]
-    mix = 0.75 * mix + 0.25 * wet / (np.abs(wet).max() + 1e-9) * np.abs(mix).max()
-    mix *= np.minimum(1, np.minimum(t / 0.5, (total - t) / 1.0))
-    mix = mix / (np.abs(mix).max() + 1e-9) * 10 ** (-6 / 20)
-    stereo = np.stack([mix, np.roll(mix, int(0.012 * SR))], 1)
-    return (stereo * 32767).astype(np.int16)
+    return finish(mix, total, -6)
+
+
+def bed(total):
+    """Quiet pad-only bed under the live demo, leaving room for human narration."""
+    pad, bass, arp = layers(total)
+    return finish(pad + 0.35 * bass + 0.05 * arp, total, -18)
 
 
 def write_wav(path, samples):
@@ -512,7 +531,8 @@ def probe(ffmpeg, path):
 def splice(ffmpeg, part_a, demo, part_b, target):
     """Concatenate A + demo + B, letterboxing the demo to 1920x1080 at 30 fps."""
     seconds, demo_has_audio = probe(ffmpeg, demo)
-    video = f"fps={FPS},scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,"             "setsar=1,format=yuv420p"
+    video = f"fps={FPS},scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2," \
+            "setsar=1,format=yuv420p"
     audio = "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo"
     inputs = ["-i", str(part_a), "-i", str(demo), "-i", str(part_b)]
     demo_audio = "1:a"
@@ -527,11 +547,104 @@ def splice(ffmpeg, part_a, demo, part_b, target):
     return target
 
 
+# ------------------------------------------------------- live demo cut
+# Source: the team's 5:00 English promotion VISUAL DRAFT (25 fps, no audio), see
+# docs/英文画面视频与真人配音交接.md. Cut points are tied to this exact file.
+DRAFT_SHA256 = "1ba495f414b38b45038cecfce76b160d31fc8088ae8b72919384cdc1ce6685d5"
+# The draft burns a "VISUAL DRAFT" banner into y 0-59 and note captions into y 980-1079;
+# the UI recording sits in between with white page margins left and right.
+DRAFT_CROP = (144, 60, 1632, 920)  # x, y, w, h
+STAGE_Y = 48
+# (source in, source out, [(seconds into the cut, caption)]); chapters per docs/video-storyboard-en.json
+DRAFT_CUTS = [
+    (20.6, 28.5, [(0, "A local prototype on Singapore\u2019s road network. Orders and readings are simulated.")]),
+    (44.5, 58.5, [(0, "Generate today\u2019s simulated delivery batch and check every order.")]),
+    (76.5, 88.5, [(0, "Confirm the plan. The fleet departs on a simulated clock.")]),
+    (116.5, 140.0, [(0, "An excursion is linked to its delivery order and where it happened."),
+                    (17.0, "The rule engine recommends. Handling waits for human review.")]),
+    (147.5, 176.0, [(0, "A scripted demo review is saved apart from the original rule snapshot."),
+                    (12.0, "Compare replacement options. Nothing changes until one is adopted.")]),
+    (189.0, 208.0, [(0, "The replacement is tracked to delivery on a 300\u00d7 simulated clock.")]),
+    (221.0, 237.0, [(0, "Ask about this case. Answers come with the recorded evidence."),
+                    (8.0, "Off-topic questions are refused, not guessed.")]),
+    (243.0, 259.0, [(0, "Close the case and export the complete audit trail.")]),
+]
+DEMO_FADE = 0.35
+
+
+def demo_seconds():
+    return sum(b - a for a, b, _ in DRAFT_CUTS)
+
+
+@lru_cache(maxsize=None)
+def stage():
+    x, y, w, h = DRAFT_CROP
+    back = Image.new("RGBA", (W, H), (0, 0, 0, 255))
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    left = (W - w) // 2
+    ImageDraw.Draw(glow).rounded_rectangle((left, STAGE_Y + 20, left + w, STAGE_Y + h), 24, fill=(56, 189, 248, 55))
+    back = Image.alpha_composite(back, glow.filter(ImageFilter.GaussianBlur(40)))
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, w - 1, h - 1), 18, fill=255)
+    return back, mask, left
+
+
+def demo_frame(shot, cut, t):
+    back, mask, left = stage()
+    seconds = cut[1] - cut[0]
+    canvas = back.copy()
+    canvas.paste(shot, (left, STAGE_Y), mask)
+    captions = cut[2]
+    for i, (start, line) in enumerate(captions):
+        end = captions[i + 1][0] if i + 1 < len(captions) else seconds
+        alpha = ease_out((t - start - 0.2) / 0.6) * (1 - ease_in_out((t - end + 0.5) / 0.4))
+        put(canvas, text(line, "semilight", 38, WHITE), W / 2, STAGE_Y + DRAFT_CROP[3] + 58, alpha)
+    fade = min(1, ease_in_out(t / DEMO_FADE), ease_in_out((seconds - t) / DEMO_FADE))
+    rgb = canvas.convert("RGB")
+    return rgb if fade >= 0.999 else Image.eval(rgb, lambda v: int(v * fade))
+
+
+def render_demo(draft, out, ffmpeg):
+    import hashlib
+    digest = hashlib.sha256(Path(draft).read_bytes()).hexdigest()
+    if digest != DRAFT_SHA256:
+        raise SystemExit("draft video differs from the one the cut points were chosen for: " + digest)
+    total = demo_seconds()
+    wav = out / "promo-demo-cut-bed.wav"
+    write_wav(wav, bed(total))
+    mp4 = out / "promo-demo-cut.mp4"
+    enc = subprocess.Popen([ffmpeg, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
+                            "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-", "-i", str(wav), "-c:v", "libx264",
+                            "-preset", "medium", "-crf", "17", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
+                            "-shortest", "-movflags", "+faststart", str(mp4)], stdin=subprocess.PIPE)
+    x, y, w, h = DRAFT_CROP
+    for cut in DRAFT_CUTS:
+        start, end, _ = cut
+        frames = round((end - start) * FPS)
+        dec = subprocess.run([ffmpeg, "-loglevel", "error", "-ss", f"{start:.3f}", "-i", str(draft),
+                              "-t", f"{end - start:.3f}", "-vf", f"crop={w}:{h}:{x}:{y},fps={FPS}",
+                              "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
+        size = w * h * 3
+        got = len(dec) // size
+        if got < frames - 1:
+            raise SystemExit(f"cut {start}-{end}: decoded {got} frames, expected {frames}")
+        for i in range(frames):
+            k = min(i, got - 1)
+            shot = Image.frombuffer("RGB", (w, h), dec[k * size:(k + 1) * size])
+            enc.stdin.write(demo_frame(shot, cut, i / FPS).tobytes())
+        print(f"demo cut {start:6.1f}-{end:6.1f}s done", flush=True)
+    enc.stdin.close()
+    if enc.wait():
+        raise SystemExit("ffmpeg failed while encoding " + str(mp4))
+    return mp4
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, required=True, help="new output directory (git-ignored data/processed/...)")
     parser.add_argument("--parts", default="ab", help="which segments to render: a, b or ab")
     parser.add_argument("--demo", type=Path, help="live demo recording to splice between part A and part B")
+    parser.add_argument("--draft", type=Path, help="5:00 promotion visual draft: cut it down and use it as --demo")
     parser.add_argument("--stills", help="comma-separated times; writes PNGs like a-12.0.png instead of video")
     parser.add_argument("--ffmpeg", help="ffmpeg executable (default: imageio-ffmpeg bundle)")
     args = parser.parse_args()
@@ -543,6 +656,8 @@ def main():
                 frame(part, float(stamp)).save(args.out / f"{part}-{float(stamp):05.1f}.png")
         return
     rendered = {part: render(part, args.out, ffmpeg) for part in args.parts}
+    if args.draft:
+        args.demo = render_demo(args.draft, args.out, ffmpeg)
     if args.demo:
         if set(rendered) != {"a", "b"}:
             raise SystemExit("--demo needs both parts rendered in the same run (--parts ab)")
