@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PharmaColdOps - Beyond the temperature alarm</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#06131f;color:#f2f7fb;font:15px Arial,sans-serif}main{max-width:1500px;margin:auto;padding:20px}canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#06131f}.controls{display:flex;gap:16px;align-items:center;padding:16px 0}button{background:#163e50;border:1px solid #3b697c;border-radius:7px;color:#f2f7fb;padding:9px 17px;cursor:pointer}input{flex:1;accent-color:#61d6ed}output{width:88px;font-variant-numeric:tabular-nums}p{color:#9bb0c2}button:focus-visible,input:focus-visible{outline:2px solid #ffd27a;outline-offset:3px}
+</style></head>
+<body><main><canvas id="film" width="1920" height="1080" aria-label="Animated educational illustration of the PharmaColdOps prototype"></canvas>
+<div class="controls"><button id="play" type="button">Play</button><label for="time">Timeline</label><input id="time" aria-label="Timeline in seconds" type="range" min="0" max="89.999" step="0.001" value="0"><output id="clock">0.0 / 90 s</output></div>
+<p id="description" aria-live="polite">Code-drawn English explainer. Simulated workflow, not a live system recording. No spoken narration.</p></main>
+<script type="module">
+import {drawFrame} from './scene.mjs';
+import {STORY} from './story.mjs';
+const canvas=document.getElementById('film'),ctx=canvas.getContext('2d'),slider=document.getElementById('time'),clock=document.getElementById('clock'),button=document.getElementById('play');
+let time=0,playing=false,last=0;
+window.seek=function(value){time=Math.max(0,Math.min(STORY.duration-.001,Number(value)));const frame=drawFrame(ctx,time,{diagnostics:true});slider.value=time;clock.textContent=`${time.toFixed(1)} / 90 s`;document.getElementById('description').textContent=frame.note;window.lastFrame=frame;return frame;};
+button.addEventListener('click',()=>{playing=!playing;button.textContent=playing?'Pause':'Play';last=0;if(playing)requestAnimationFrame(step);});
+slider.addEventListener('input',()=>{playing=false;button.textContent='Play';window.seek(slider.value);});
+function step(now){if(!playing)return;if(last)time+=(now-last)/1000;last=now;if(time>=STORY.duration){time=0;playing=false;button.textContent='Play';}window.seek(time);if(playing)requestAnimationFrame(step);}
+await document.fonts.ready;window.seek(0);window.explainerReady=true;
+</script></body></html>
