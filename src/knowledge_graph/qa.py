@@ -23,10 +23,10 @@ without parsing the answer text (proposal §6.5):
 - ``db_error``              — graph unreachable; raised to the API layer, which
                               turns it into HTTP 503
 
-Answer text and evidence summaries quote the source material verbatim
-(regulation clauses, SOP steps, facility names) and are therefore in the
-language of those documents; only the status/notice wording is localised, in
-the front-end.
+Answer text combines recorded case facts and stored source summaries. Some
+summaries are paraphrases, not verbatim quotations or product-level evidence.
+Recorded reference URLs and verification notes remain inspectable. The front-end
+localises status/notice text; stored English summaries retain their language.
 
 Queries follow docs/KG_SCHEMA_v1.md: cases are keyed by ``run_id``
 (ExcursionEvent PK), disposition facts live on the
@@ -38,6 +38,7 @@ Connections come from ``knowledge_graph.connect`` (``NEO4J_*`` env vars /
 from __future__ import annotations
 
 from typing import Dict, List
+from urllib.parse import urlparse
 
 from .connect import get_driver
 
@@ -93,21 +94,39 @@ def unsupported_response(question_type: str) -> Dict:
 
 
 def _reg_evidence(cited: list) -> list:
-    cited = sorted(cited, key=lambda r: r.get("clause_id") or "")
+    cited = sorted((r for r in cited if r), key=lambda r: r.get("clause_id") or "")
     return [
         {"node_type": "Regulation", "node_id": r["clause_id"],
-         "summary": f"{r.get('title', '')} — {r.get('clause', '')}"}
+         "summary": f"{r.get('title', '')} — {r.get('clause', '')}. {r.get('summary', '')}",
+         **_reference_info(r)}
         for r in cited
     ]
 
 
 def _sop_evidence(sops: list) -> list:
-    sops = sorted(sops, key=lambda s: s.get("sop_id") or "")
+    sops = sorted((s for s in sops if s), key=lambda s: s.get("sop_id") or "")
     return [
         {"node_type": "SOP", "node_id": s["sop_id"],
-         "summary": f"{s.get('title', '')}: {s.get('summary', '')}"}
+         "summary": f"{s.get('title', '')}: {s.get('summary', '')}", **_reference_info(s)}
         for s in sops
     ]
+
+
+def _reference_info(node) -> dict:
+    """Expose recorded provenance, not a new claim of product-level validation."""
+    result = {"reference_scope": "principle_or_procedure_reference_not_product_stability_validation"}
+    url = node.get("source_url")
+    if isinstance(url, str):
+        try:
+            parsed = urlparse(url)
+            if parsed.scheme in {"http", "https"} and parsed.hostname and not parsed.username and not parsed.password:
+                result["source_url"] = url
+        except ValueError:
+            pass
+    verified = node.get("verified")
+    if isinstance(verified, str) and verified:
+        result["verified"] = verified
+    return result
 
 
 def _reshipment(driver, run_id: str) -> List[Dict]:
@@ -153,7 +172,7 @@ def why_disposition(run_id: str) -> Dict:
     row = rows[0]
     e, d, dis = row["e"], row["d"], row["dis"]
     answer = (
-        f"Case {run_id}: {dis['disposition'].upper()} — {d['reason']}. "
+        f"Original prototype rule recommendation for case {run_id}: {dis['disposition'].upper()} — {d['reason']}. "
         f"Excursion: {e['excursion_temp_c']} °C for {e['duration_min']} min "
         f"(MKT {e['mkt_c']} °C, packaging {e['packaging']}, stage {e['stage']})."
     )
@@ -207,7 +226,7 @@ def audit_chain(run_id: str) -> Dict:
     ]
     if row["c"] is not None:
         evidence.append({"node_type": "Cause", "node_id": row["c"]["cause_code"],
-                         "summary": f"deterministic API risk code (score {d.get('risk_score')})"})
+                         "summary": f"recorded heuristic API risk code, not a confirmed cause (score {d.get('risk_score')})"})
     if row["loc"] is not None:
         evidence.append({"node_type": "Facility", "node_id": row["loc"]["facility_id"],
                          "summary": f"event location ({row['loc']['name']})"})
@@ -235,8 +254,9 @@ def product_requirements(product_id: str) -> Dict:
         rows = _run(
             driver,
             """
-            MATCH (p:Product {product_id: $pid})-[:REGULATED_BY]->(r:Regulation)
-            RETURN p, collect(r) AS rules
+            MATCH (p:Product {product_id: $pid})
+            OPTIONAL MATCH (p)-[:REGULATED_BY]->(r:Regulation)
+            RETURN p, collect(DISTINCT r) AS rules
             """,
             pid=product_id,
         )
@@ -244,7 +264,8 @@ def product_requirements(product_id: str) -> Dict:
         return _response(f"unknown product {product_id}", found=False)
     p = rows[0]["p"]
     answer = (
-        f"{product_id}: storage {p['storage_min_c']}–{p['storage_max_c']} °C, "
+        f"Configured demo engineering assumptions for {product_id}, not manufacturer-approved stability limits: "
+        f"storage {p['storage_min_c']}–{p['storage_max_c']} °C, "
         f"allowable excursion {p['allowable_duration_min']} min, MKT ceiling {p['mkt_threshold_c']} °C, "
         f"freeze-sensitive: {p['freeze_sensitive']}, retestable: {p['retestable']}."
     )
@@ -301,7 +322,7 @@ def cause_context(run_id: str | None = None, cause_code: str | None = None) -> D
     total = sum(r["n"] for r in split)
     top = split[0]
     answer = (
-        f"cause {code}: {total} closed case(s); most often {top['stage']} / "
+        f"recorded heuristic cause code {code} (not independently confirmed): {total} closed case(s); most often {top['stage']} / "
         f"{top['product']} ({top['n']}). Split: "
         + "; ".join(f"{r['stage']}/{r['product']}={r['n']}" for r in split)
         + "."

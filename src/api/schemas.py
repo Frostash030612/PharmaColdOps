@@ -488,6 +488,9 @@ class EvidenceOut(BaseModel):
     node_type: str
     node_id: str
     summary: str
+    source_url: Optional[str] = None
+    verified: Optional[str] = None
+    reference_scope: Optional[str] = None
 
 
 class QAIn(BaseModel):
@@ -520,8 +523,8 @@ class QAOut(BaseModel):
     ``status`` distinguishes the outcome classes the front-end must not conflate
     (proposal §6.5): ``ok``, ``no_case``, ``insufficient_evidence``,
     ``unsupported``. A database failure is reported as HTTP 503 instead (the
-    ``db_error`` class); ``answer`` and ``evidence`` text quotes the source
-    documents verbatim.
+    ``db_error`` class). Answers combine recorded facts and stored source summaries;
+    references expose optional provenance without asserting product-level validation.
     """
 
     status: Literal["ok", "no_case", "insufficient_evidence", "unsupported"]

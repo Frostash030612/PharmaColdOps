@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="450" viewBox="0 0 960 450">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#45566c"/></marker></defs>
+  <rect width="960" height="450" fill="white"/>
+  <g fill="#f1f5f9" stroke="#a5b4c5" stroke-width="1.5">
+    <rect x="20" y="30" width="230" height="100" rx="7"/>
+    <rect x="365" y="30" width="230" height="100" rx="7"/>
+    <rect x="710" y="30" width="230" height="100" rx="7"/>
+    <rect x="20" y="250" width="230" height="100" rx="7"/>
+    <rect x="365" y="250" width="230" height="100" rx="7"/>
+    <rect x="710" y="250" width="230" height="100" rx="7"/>
+    <rect x="20" y="390" width="920" height="45" rx="7"/>
+  </g>
+  <g fill="none" stroke="#45566c" stroke-width="2.5" marker-end="url(#a)">
+    <path d="M250 80 H360"/><path d="M595 80 H705"/>
+    <path d="M135 130 V245"/>
+    <path d="M895 130 V245"/>
+    <path d="M770 130 V205 H480 V245"/>
+    <path d="M710 300 H600"/>
+    <path d="M250 300 H300 V175 H725 V135" stroke-dasharray="8 6"/>
+  </g>
+  <g font-family="Arial, sans-serif" text-anchor="middle" fill="#142b45">
+    <g font-size="23" font-weight="700">
+      <text x="135" y="68">M1 Inputs</text><text x="480" y="68">M2 Exposure</text><text x="825" y="68">M3 Rules</text>
+      <text x="135" y="288">M4 Models</text><text x="480" y="288">M6 Evidence</text><text x="825" y="288">M5 Dispatch</text>
+    </g>
+    <g font-size="19">
+      <text x="135" y="101">Simulated data</text><text x="480" y="101">Intervals and MKT</text><text x="825" y="101">Human approval</text>
+      <text x="135" y="321">Advisory only</text><text x="480" y="321">Case graph and QA</text><text x="825" y="321">Plan and execution</text>
+      <text x="480" y="419">M7  FastAPI and Vue interface  |  Durable case storage and audit</text>
+    </g>
+    <g font-size="16" fill="#45566c">
+      <text x="505" y="163">Model candidates do not authorise actions</text>
+      <text x="630" y="291">Delivery state</text>
+      <text x="500" y="230">Recorded case and evidence</text>
+    </g>
+  </g>
+</svg>

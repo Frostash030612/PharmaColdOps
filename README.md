@@ -23,6 +23,9 @@ docker compose --env-file deploy/demo.env -f deploy/compose.demo.yml up -d --bui
 
 **Then open → http://127.0.0.1:8080/?lang=zh**  (first start takes 1–2 min while it seeds the graph)
 
+These commands are for a fresh base deployment. To resume the existing v2-enabled instance, use the
+[controlled deployment configuration](docs/v2演示受控更新.md), which requires both env files and both Compose files.
+
 > Windows: use `.venv\Scripts\python.exe`. Stop it with the same `compose … down` command — **never add `-v`**, that deletes your data.
 
 ### The 60-second tour
@@ -44,11 +47,13 @@ docker compose --env-file deploy/demo.env -f deploy/compose.demo.yml up -d --bui
 | Deliverable | Where |
 |---|---|
 | **User manual** (使用手册) | English: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) · 中文: [`docs/用户手册.md`](docs/用户手册.md) |
-| Report | *in preparation* — see [`PROGRESS.md`](PROGRESS.md) for current evidence & limitations |
-| Demo videos (2 × 5 min) | *in preparation* |
+| Group report | [Source](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [PDF with submitted proposal](docs/PharmaColdOps-Group-Report.pdf); M6 dual-review results remain pending |
+| Demo videos (2 × 5 min) | [English visual cuts and voice handoff](docs/英文画面视频与真人配音交接.md) are prepared locally; genuine human speech and final review are still required |
+| Final delivery | [Checklist and packaging](docs/最终交付与验收.md) · [Member information](member-github.txt) |
 | Proposal (submitted 2026-09-13) | [PharmaColdOps-Proposal-Group 41.pdf](proposal/PharmaColdOps-Proposal-Group%2041.pdf) |
 | Proposal source (EN / 中文) | [`EN`](proposal/PharmaColdOps-Proposal-EN.md) · [`ZH`](proposal/PharmaColdOps-Proposal-ZH.md) |
-| Presentation deck | [`proposal/PharmaColdOps .pptx`](proposal/PharmaColdOps%20.pptx) |
+| Final presentation | [Current 10-slide deck](proposal/PharmaColdOps-Final-Presentation.pptx) · [Roles and recording handoff](docs/最终答辩分工与录制交接.md) · [Defense Q&A](docs/最终答辩问答.md); original proposal decks preserved |
+| M6 coordination | [Review completion workflow](docs/M6协调人一键收尾.md) · [QA repairs](docs/M6问答修复与新版本验收.md); formal status in [M6 report](docs/M6独立评估.md) |
 | Architecture | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | Progress log & measured results | [`PROGRESS.md`](PROGRESS.md) |
 
@@ -89,8 +94,9 @@ See [event-data contract and generation](docs/事件级仿真数据.md).
 Formal M3 evaluation now reports all four classes: 54/57 historical-gold agreement,
 macro-F1 0.7174, and explicitly zero quarantine recall. M5 has 49 fresh static
 solver comparisons with complete-feasibility guards, fleet-matched BKS gaps and charts.
-M6 has actual-response snapshots and a two-rater blind review/scoring workflow;
-independent accuracy remains unavailable until real human annotations are supplied.
+M6 has actual-response snapshots and a two-rater blind review/scoring workflow.
+Reviewer A's completed intent and answer ratings are collected; reviewer B and any required adjudication remain pending.
+Formal dual-review accuracy and agreement are unavailable until those inputs and review provenance are complete.
 Frozen inputs are committed under `data/qa/m6-review-20261003-v3/`, and reviewers can fill them in
 offline with `scripts/m6_review_form.html` (self-checked by `scripts/m6_review_form_selftest.mjs`);
 as of 2026-10-12 **no human annotations have been recorded yet**.
@@ -183,11 +189,10 @@ pnpm dev                       # http://localhost:5173          (offline)
 **Retired (2026-09-12): zero-build `frontend/`** — deleted; it is replaced entirely by
 `frontend-vue/` above. There is nothing to serve from that directory any more.
 
-**Map basemap** — the Leaflet map prefers tiles cached under
-[`frontend-vue/public/tiles/`](frontend-vue/public/tiles/), fetched once with
-`node scripts/fetch_map_tiles.mjs`, so the demo needs no external request and survives a missing
-wifi (it falls back to the online OpenStreetMap layer, then to a route-only view; force the online
-layer with `?tiles=osm`). See [docs/前端地图底图说明.md](docs/前端地图底图说明.md).
+**Map basemap** — optional tiles are generated under `frontend-vue/public/tiles/` with
+`node scripts/fetch_map_tiles.mjs`. This cache is Git-ignored and absent from a fresh clone or the current Docker image.
+Missing cached tiles can return 404 while route geometry remains visible; `?tiles=osm` explicitly requests an online basemap.
+See [docs/前端地图底图说明.md](docs/前端地图底图说明.md) for coverage and offline limits.
 
 Backend (terminal 1):
 
@@ -259,10 +264,10 @@ Windows users can replace `.venv/bin/...` with `.venv\Scripts\...`.
 Use Python 3.12.12 for the exact baseline. `requirements.txt` remains the broader research
 environment, not the locked demo installer. Native ML/geocoding extras are not required.
 Use a dedicated test graph for full pytest; missing graph tests are skipped, not counted as passed.
-The latest full-suite baseline is recorded in [PROGRESS.md](PROGRESS.md) (2026-10-04: **888 passed / 0 skipped**);
-the earlier clean pinned reproduction run was **656 passed / 0 skipped**. Note both figures were measured in a
-**Linux container** — on a native Chinese-Windows host many tests fail by design, because
-`src/optimisation/case_action_guard.py` uses Unix-only `fcntl` locking and fails closed elsewhere.
+The latest 2026-10-17 full-suite run recorded in [PROGRESS.md](PROGRESS.md) passed **926 tests / 0 skipped / 6 warnings**
+on macOS Python 3.12 with its own Linux-container Neo4j. The later packaging-specific suite passed 17 tests.
+Native Windows workflow mutations are unsupported because `src/optimisation/case_action_guard.py` requires Unix `fcntl`.
+Use the Linux-container deployment on Windows; the standalone M6 annotation checker remains portable.
 All **24 real deployment checks**
 passed, including a quiesced backup, fresh-instance restore and graph replay. Playwright verified default
 same-origin and explicit offline modes. The local demo at `http://127.0.0.1:8080/` is ready after the

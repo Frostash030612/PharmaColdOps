@@ -1,0 +1,10 @@
+Group name: Project Group 41
+Project: PharmaColdOps
+Course: IRS Practice Module
+
+Xu Wenzhe - A0328771W
+Zhu Jianyu - A0353769L
+Wang Lepeng - A0357864L
+Shen Ziyi - A0350940J
+
+Repository: https://github.com/Frostash030612/PharmaColdOps
