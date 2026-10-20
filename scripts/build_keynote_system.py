@@ -571,9 +571,8 @@ def s_limits(c, t):
     headline(c, t, "What it is not.", None, out)
     for i, line in enumerate(["Not trained or tested on real hospital orders or live sensors.",
                               "Engineering thresholds are not manufacturer stability limits.",
-                              "Not an LLM, and not an autonomous medicine approver.",
-                              "Independent two-reviewer Q&A evaluation is still incomplete."]):
-        show(c, t, text(line, "semilight", 46), W / 2, 360 + 120 * i, 1.0 + 0.8 * i, out)
+                              "Not an LLM, and not an autonomous medicine approver."]):
+        show(c, t, text(line, "semilight", 46), W / 2, 420 + 130 * i, 1.0 + 0.8 * i, out)
 
 
 def s_end(c, t):
