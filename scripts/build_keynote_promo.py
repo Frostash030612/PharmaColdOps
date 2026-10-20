@@ -165,12 +165,44 @@ def screenshot(name, crop, height):
 
 @lru_cache(maxsize=None)
 def backdrop_map():
-    src = Image.open(FIG / "frontend_demo.png").convert("RGB").crop((134, 578, 1788, 1435))
+    src = Image.open(FIG / "promo/main-page.png").convert("RGB").crop((450, 359, 1651, 981))
     img = src.resize((W, round(W * src.height / src.width)), Image.LANCZOS).convert("L")
     img = Image.merge("RGB", (img.point(lambda v: v // 3), img.point(lambda v: v // 2), img.point(lambda v: v // 2)))
     out = img.filter(ImageFilter.GaussianBlur(3)).convert("RGBA")
     fall = np.linspace(1, 0, out.height) ** 0.8
     out.putalpha(Image.fromarray((np.outer(fall, np.ones(out.width)) * 255).astype(np.uint8), "L"))
+    return out
+
+
+@lru_cache(maxsize=None)
+def scaled(name, width):
+    src = Image.open(FIG / name).convert("RGB")
+    return src.resize((width, round(src.height * width / src.width)), Image.LANCZOS)
+
+
+@lru_cache(maxsize=None)
+def panel_chrome(width, height):
+    pad = 70
+    back = Image.new("RGBA", (width + 2 * pad, height + 2 * pad), (0, 0, 0, 0))
+    ImageDraw.Draw(back).rounded_rectangle((pad, pad + 16, pad + width, pad + height), 26, fill=(56, 189, 248, 65))
+    back = back.filter(ImageFilter.GaussianBlur(36))
+    mask = Image.new("L", (width, height), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, width - 1, height - 1), 22, fill=255)
+    edge = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    ImageDraw.Draw(edge).rounded_rectangle((0, 0, width - 1, height - 1), 22, outline=(255, 255, 255, 60), width=2)
+    return back, mask, edge, pad
+
+
+def scroll_panel(name, width, height, offset):
+    """A tall screenshot shown through a rounded window, scrolled down by `offset` pixels."""
+    page = scaled(name, width)
+    offset = round(clamp(offset, 0, page.height - height))
+    back, mask, edge, pad = panel_chrome(width, height)
+    view = page.crop((0, offset, width, offset + height)).convert("RGBA")
+    view.putalpha(mask)
+    view.alpha_composite(edge)
+    out = back.copy()
+    out.alpha_composite(view, (pad, pad))
     return out
 
 
@@ -272,14 +304,18 @@ def a_outcomes(c, t):
 
 
 def a_product(c, t):
-    wide = screenshot("demo-rule-engine-en.png", (0, 0, 2521, 1515), 860)
-    rules = screenshot("demo-rule-engine-en.png", (646, 2444, 1818, 3313), 820)
+    wide = screenshot("promo/main-page.png", (0, 0, 2529, 1406), 860)
     swap = ease_in_out((t - 6.2) / 0.9)
     out = envelope(t, 0.2, 12.2, 1.2, 0.8)[0]
     put(c, wide, W / 2, 620, out * (1 - swap), 0.94 + 0.05 * ease_out(t / 6.5))
-    put(c, rules, W / 2, 620, out * swap, 0.96 + 0.04 * ease_out((t - 6.2) / 6))
-    show(c, t, text("See exactly why.", "semibold", 72), W / 2, 105, 0.4, 6.0, d_out=0.5)
-    show(c, t, text("Six rules in priority order. Every threshold cited.", "semibold", 60),
+    if swap > 0:
+        scroll = ease_in_out((t - 7.0) / 5.0)
+        rise = 50 * (1 - ease_out((t - 6.2) / 1.2))
+        put(c, scroll_panel("promo/accident-rules.png", 560, 800, 1000 * scroll), W / 2 - 330, 600 + rise, out * swap)
+        put(c, scroll_panel("promo/accident-review.png", 560, 800, 330 * scroll), W / 2 + 330, 600 + rise,
+            out * ease_in_out((t - 6.6) / 0.9))
+    show(c, t, text("See every excursion in context.", "semibold", 72), W / 2, 105, 0.4, 6.0, d_out=0.5)
+    show(c, t, text("The rule engine explains. A human decides.", "semibold", 66),
          W / 2, 105, 6.6, 12.2, rise=20)
 
 
@@ -346,10 +382,11 @@ def b_bento(c, t):
 
 
 def b_human(c, t):
-    show(c, t, text("Nothing moves", "semibold", 110), W / 2, 420, 0.4, 7.2)
-    show(c, t, text("until a human says yes.", "semibold", 110, grad=ICE), W / 2, 560, 1.2, 7.2)
+    show(c, t, text("Nothing moves", "semibold", 96), W / 2, 180, 0.4, 7.2)
+    show(c, t, text("until a human says yes.", "semibold", 96, grad=ICE), W / 2, 300, 1.2, 7.2)
+    show(c, t, screenshot("promo/button-page.png", (0, 445, 1243, 1005), 470), W / 2, 680, 2.2, 7.2, rise=60)
     show(c, t, text("The system recommends. Reviewers decide. Every decision is logged.",
-                    "semilight", 44, GREY), W / 2, 760, 2.8, 7.2)
+                    "semilight", 36, GREY), W / 2, 1000, 3.0, 7.2)
 
 
 def b_one_more(c, t):
