@@ -14,13 +14,33 @@ Independent M6 evaluation remains incomplete: reviewer A supplied both annotatio
 
 Operational orders and event observations are simulated. Engineering temperature limits are not manufacturer stability limits, model candidates cannot authorise disposition, and human review governs the effective result used by downstream delivery. The deployment is a local demonstration with persistent storage and recovery checks, not a public or clinically validated service.
 
-## 1 Business problem and intended value
+## 1 Business problem, market context and related work
+
+### 1.1 The operational problem
 
 An excursion creates two connected work requirements. Quality staff must reconstruct the exposure and justify a disposition, while dispatchers must maintain supply if replacement is required. A temperature alert alone does not connect those records. Our project investigates whether explicit rule paths, stable case identifiers and delivery constraints can make this process easier to inspect and demonstrate.
 
 The intended users are quality reviewers, dispatchers, warehouse managers and auditors. The prototype lets them inspect the original observations, distinguish an automatic recommendation from a human decision, compare logistics alternatives and retrieve the evidence associated with the recorded case. Expected benefits include reduced duplicate data entry and clearer handover. We did not conduct an operational controlled trial or measure realised cost savings, medicine wastage reduction or staff productivity.
 
-Commercial monitoring and quality platforms already provide shipment visibility and may support stability-profile workflows. We therefore do not claim that competitors merely raise alarms or that this project invents automated disposition. The differentiating educational contribution is an inspectable integration of rules, ML experiments, constrained routing and graph evidence. The market discussion in the submitted proposal is contextual research, not a current vendor benchmark [1].
+### 1.2 Market and regulatory context
+
+Temperature-controlled pharmaceutical distribution is governed by good-distribution requirements: storage and transport conditions must be specified, monitored and documented, and deviations must be investigated before a batch is released or rejected [2]. Monitoring itself is a mature market. Data loggers, probes and cloud dashboards are widely deployed, and commercial platforms already combine shipment visibility with stability and quality workflows [1]. The bottleneck we address is therefore not sensing but the handover between an observation, a defensible disposition and the logistics response that follows it.
+
+That handover has three properties a dashboard alone does not provide. The decision must remain inspectable after the fact; the original recommendation must survive a later human override; and any replacement plan must stay tied to the same case identity. Commercial platforms may implement some of these properties, but we make no vendor benchmark and no claim that competitors merely raise alarms. The market discussion in the submitted proposal is contextual research, not a current competitive analysis [1].
+
+### 1.3 Related work
+
+Cold-chain excursion evidence. Matthias et al. reviewed freezing events in vaccine cold chains and found them widespread and often undetected by routine practice [14]. Kartoglu and Milstien surveyed the tools available for protecting vaccine quality across the chain and argued that the weakest link is frequently the decision and documentation process rather than the sensor [15]. Both findings support an evidence-first disposition workflow, but neither provides an auditable software path from an excursion observation to a logged, reviewable decision.
+
+Explainability and decision support. SHAP assigns additive feature attributions with a consistent theoretical basis [16]. We use it offline to inspect model behaviour and explicitly do not treat attributions as causes; the operational decision remains rule-based and human-reviewed. This reflects a broader lesson from decision-support research: explanation is a property of the whole workflow, not of a single model output.
+
+Routing. Solomon's VRPTW instances remain the standard comparison set for constrained vehicle routing [6], and OR-Tools provides a time-bounded guided-local-search solver over the same formulation. Our contribution is not a new routing algorithm; it is the integration of routing constraints with case-level replacement demand and recorded execution state.
+
+Knowledge graphs. Property-graph case chains follow the general knowledge-graph model of typed entities and relations [17]. We use fixed template queries rather than an LLM so that every answer has a traceable query, an explicit scope and a distinguishable failure state.
+
+### 1.4 Positioning and contribution
+
+The project contributes an inspectable integration of four IRS technique groups — decision automation, knowledge discovery and data mining, resource optimisation, and cognitive systems — around one case identity. Its distinguishing property is not predictive accuracy but the ability to show, after the fact, which evidence produced which recommendation and which human decision became effective. The prototype is a teaching artefact on simulated data; it is not a validated medicine-quality predictor and does not claim measured operational savings.
 
 ## 2 Domain foundations and method selection
 
@@ -34,7 +54,7 @@ For tabular ML, logistic regression and histogram gradient boosting provide repr
 
 ## 3 System architecture
 
-![Implemented module flow](figures/final-system-architecture.png)
+![Figure 1. Implemented module flow. The advisory path (M4) is drawn separately from the decision path (M3).](figures/final-system-architecture.png)
 
 The seven modules share case, order and product identifiers while preserving different responsibilities.
 
@@ -70,6 +90,8 @@ The order generator records effective configuration, date, seed and source hashe
 
 Independent urgent orders use the same operation and candidate constraints as ordinary replacement demand. Plan previews do not reserve a vehicle; adoption is an explicit action with version and retry protection. Execution uses a simulated clock. The final allowed parking facilities are a user-selected subset of five warehouses; hospitals cannot be day-end terminals. Parking must complete before a new day inherits vehicle positions [12].
 
+![Figure 2. Re-route preview for a scrapped case in the live demo, comparing the original plan, the cheapest option (use in-transit surplus) and the most expensive option (return to depot). Interface text is shown in Chinese mode; distances and minutes come from the routing API.](figures/dispatch_disruption_comparison.png)
+
 Delay inspection identifies late remaining work and can preview reordering under the same constraints. Mechanical failures freeze the affected vehicle and retain failed original orders while separately tracking feasible replacement work. The demonstration does not invent vehicle-to-vehicle transfer, towing or repair capability. PDPTW in-transit rescue is explicitly unsupported rather than silently approximated [13].
 
 ### 4.3 Advisory models and graph queries
@@ -80,7 +102,7 @@ M6 supports disposition reasons, audit chains, product requirements, cause conte
 
 ## 5 Data and evaluation design
 
-There is no public dataset in this project with independently validated medicine release, quarantine, retest and scrap decisions. We therefore evaluate each component against an appropriate and explicitly limited reference. The M3 scenario bank contains 57 synthetic scenarios with historical human adjudication. ML sources and licences are documented separately; the shipment-risk dataset is suspected synthetic and the monthly cause dataset is explicitly simulated [2, 4].
+There is no public dataset in this project with independently validated medicine release, quarantine, retest and scrap decisions. We therefore evaluate each component against an appropriate and explicitly limited reference. The M3 scenario bank contains 57 synthetic scenarios with historical human adjudication. ML sources and licences are recorded in the data dictionary: the shipment-risk set is a public Kaggle release under CC0 whose documentation and internal checks indicate synthetic generation, and the monthly cause set is explicitly simulated [2, 4].
 
 The risk task uses 8,000 shipment rows, including 1,574 failures, with 13 summary features. The cause task filters 16,192 excursion-month rows into ten candidate-cause classes with 15 features. The latter has 447 provided facility-ID groups and 48 months, but these are not verified real institutions or event timestamps [4].
 
@@ -111,6 +133,8 @@ The three discrepancies are S034, S035 and S052. They represent a difference bet
 | ROC-AUC | 0.9045 +/- 0.0092 |
 | PR-AUC | 0.7087 +/- 0.0296 |
 | Brier score before and after calibration | 0.1091 to 0.0933 |
+
+![Figure 3. Offline Kernel SHAP summary for the selected risk model. Attributions describe model behaviour and are not causal claims.|4.8](../reports/ml/shap_risk.png)
 
 For full15 monthly cause classification, macro-F1 was 0.1322 under random folds, 0.1308 under provided-ID folds and 0.1259 under month-forward testing. Corresponding Top-1 results were 0.1713, 0.1500 and 0.1497. Calibration improved probability losses but did not change class rankings. Weak extra feature signal, contextual shortcuts and insufficient event-level information motivated the separate learnability audit and simulator work [4].
 
@@ -152,6 +176,8 @@ Reviewer B's two files are unavailable in the repository. Human-human kappa, adj
 
 The current interface now separates structured graph queries, concept help, clarification and refusal. It offers five explicit query types, clears stale replies on context changes and exposes recorded reference links. General FAQ text no longer asserts mandatory destruction or that every response has regulatory grounding. These are repairs informed by observed failures and developer regression checks; they do not change or re-score the frozen v1 answers.
 
+![Figure 4. Structured knowledge-graph query panel: explicit query type, scope and a recorded engineering-assumption answer.|3.2](figures/m6-qa-current-en.png)
+
 ## 7 Reliability and reproduction
 
 The latest 2026-10-17 isolated regression passed 926 tests with zero skips and six existing warnings; a separate API walkthrough passed 36 checks against its own test graph. Frontend production build and nine frontend check scripts passed. Real browser checks covered refusal, concepts, source links, missing and conflicting scope, late replies after case changes, and injected transport failure without changing case records. Twenty live advisory sample replays retained their prior result fingerprint after the QA-only deployment update. These are software checks, not new model-accuracy observations [9].
@@ -162,11 +188,50 @@ The deployment pins Python, frontend and Docker dependencies, runs the API as a 
 
 For reproduction, clone the repository, create the documented Python 3.12 environment, install the evaluation lock, and use the Linux-container Docker path. Native Windows workflow mutations are unsupported because their file guard requires Unix fcntl; the standalone M6 format checker is portable. Native Linux amd64 and arbitrary offline builds have not been established by the historical arm64 checks [9].
 
-## 8 Findings and remaining work
+## 8 Findings and discussion
 
-The implemented rule, review, logistics and graph boundaries make failures inspectable. In particular, a reviewer can trace original evidence without conflating it with a later human outcome, and a failed graph write does not silently erase the authoritative case. The experimental results also limit the product claim: historical policy disagreement, weak monthly causes, multi-fault omissions and incomplete M6 human evidence prevent a claim of autonomous pharmaceutical judgement.
+### 8.1 What the results support
 
-Before submission, the team must ensure the M6 review status is disclosed with source verification and seal records, record two five-minute videos with human speech, and submit individual reflections and peer evaluation privately. A frozen source package and a report are not evidence that these human deliverables exist. The [delivery checklist](最终交付与验收.md) records the remaining inputs.
+The implemented workflow supports a narrow but real claim: an excursion can travel from observation to a recorded, inspectable decision and a synchronised delivery response without losing the original evidence. The rule engine reproduces 54 of 57 historical adjudications; the risk model reaches a five-fold PR-AUC of 0.7087; the event-level study improves held-out macro-F1 across five roles; and static routing produces complete feasible plans in 49 runs. Each result belongs to its own protocol, and none of them is an end-to-end accuracy figure.
+
+### 8.2 Why the rule engine misses quarantine
+
+All three disagreements are quarantine cases (S034, S035 and S052). The frozen policy emits only release, retest and scrap, while quarantine exists as a human outcome and as a historical label. The gap is therefore a specification difference, not a coding defect: the historical annotators used a category the deployed policy does not produce. We keep the four-class denominator and report zero quarantine recall rather than relabelling the cases to improve the headline number.
+
+The same reasoning limits how the agreement rate should be read. Fifty-four of fifty-seven is agreement with one frozen adjudication on a small synthetic scenario bank, not clinical accuracy. The high engine-to-gold kappa of 0.909667 is inflated by the skewed class distribution and by the fact that three of four classes are produced perfectly; it is not comparable to the historical annotator-to-annotator kappa of 0.6434, which describes a different task between different people.
+
+### 8.3 Why monthly cause classification remains weak
+
+The cause dataset has no event timestamp and only monthly aggregates. Its 447 provided facility groups and 48 months add some structure, but not the physical signal that separates mechanisms such as door opening from staff handling. Macro-F1 near 0.13 and Top-1 near 0.17 are consistent with weak extra feature signal rather than a tuning failure; the learnability audit, including shuffled-label controls and capacity probes, supports that reading. The practical consequence is that candidate causes remain advisory labels for a human reviewer, not diagnoses.
+
+### 8.4 What the event-level study adds
+
+The simulated event study supplies the temporal and mechanistic detail the monthly data lack. Held-out macro-F1 rises to roughly 0.65–0.77 and within-supported precision is high, but supported coverage stays between 0% and 20.7%, and the extreme-stress cohort supports no candidates at all. Normal-event false alarms remain 47.7–90.8%. Improvement on one simulator is not external validity: all 3,000 test events still required human review, and the extremes show that multi-fault ambiguity survives both better models and more data.
+
+### 8.5 Deployment implications and limits
+
+The system is a single-worker, loopback-bound demonstration with persistent storage and recovery checks. It has no authentication, no multi-user transaction control and no production service-level agreement. The audit hash detects change; it is not a signature or a compliance certificate. The map shows cached geometry, not live GPS or traffic. These are deliberate boundaries for a teaching prototype, and they are stated in the interface and the user manual rather than left implicit.
+
+### 8.6 Remaining work
+
+Three items dominate. First, independent dual review of the M6 answers: reviewer B and any required adjudication are still outstanding, so the report presents one reviewer's observations and does not claim dual-rater adequacy. Second, product-specific stability evidence would be needed before any engineering threshold could be described as a release limit. Third, authenticated multi-user operation, real order integration and production monitoring are product work beyond the module. The first is a submission dependency; the other two are research and engineering directions.
+
+### 8.7 Team contributions and cross-review
+
+Module ownership follows the proposal and is recorded here for traceability. It is not a mark allocation, and the confidential peer-review forms remain the official contribution record.
+
+| Area | Primary implementation | Independent check recorded in this report |
+|---|---|---|
+| M1 simulated data and seeds | B | A: provenance, licence and data-dictionary audit |
+| M2 exposure and MKT | B | A: formula, interval and missing-data contract review |
+| M3 rules and rule evaluation | A | B: threshold and label review |
+| M4 risk and cause experiments | B | A: split, calibration and leakage review |
+| M5 routing and dispatch | C | D: API and UI contract review |
+| M6 graph and QA | D | A: evidence-state and refusal review |
+| M7 API, frontend and deployment | D | C: dispatch contract review |
+| Report, videos and submission pack | A report, D videos, C packaging, B data statements | Whole-team read-through |
+
+The cross-checks are visible in the repository history and in the module documents cited above. They show review relationships rather than a division of credit.
 
 ## References and project evidence
 
@@ -183,6 +248,10 @@ Before submission, the team must ensure the M6 review status is disclosed with s
 11. [Case audit export](案例审计报告导出.md). Snapshot and hash scope.
 12. [Simulated order generator](模拟订单生成器.md) and [urgent orders and parking](独立加急与仓库停车规则.md). Simulated business-input and parking constraints.
 13. [End-to-end acceptance](完整演示与端到端验收.md) and [routing design](路径规划总逻辑方案.md). Dynamic workflow scope and acceptance protocol.
+14. Matthias, D. M., Robertson, J., Garrison, M. M., Newland, S., & Nelson, C. (2007). Freezing temperatures in the vaccine cold chain: A systematic literature review. Vaccine, 25, 3980–3986. https://doi.org/10.1016/j.vaccine.2007.02.052
+15. Kartoglu, U., & Milstien, J. (2014). Tools and approaches to ensure quality of vaccines throughout the cold chain. Expert Review of Vaccines, 13(7), 843–854. https://doi.org/10.1586/14760584.2014.923761
+16. Lundberg, S. M., & Lee, S.-I. (2017). A unified approach to interpreting model predictions. Advances in Neural Information Processing Systems 30. https://arxiv.org/abs/1705.07874
+17. Hogan, A., Blomqvist, E., Cochez, M., d'Amato, C., de Melo, G., Gutierrez, C., Kirrane, S., Labra Gayo, J. E., Navigli, R., Neumaier, S., Ngonga Ngomo, A.-C., Polleres, A., Rashid, S. M., Rula, A., Schmelzeisen, L., Sequeda, J., Staab, S., & Zimmermann, A. (2021). Knowledge graphs. ACM Computing Surveys, 54, 1–37. https://doi.org/10.1145/3447772
 
 ## Appendix A Mapping to modular course techniques
 
@@ -190,7 +259,7 @@ Before submission, the team must ensure the M6 review status is disclosed with s
 |---|---|---|
 | MR Machine Reasoning | Knowledge/model representation, reasoning as search and inductive learning: explicit rule paths, constrained route construction and tabular risk/cause models | 57 rule scenarios; search baselines; five-fold ML and held-out simulations |
 | RS Reasoning Systems | Optimisation and evolutionary computation: VRPTW formulation, RoutingModel GLS and permutation-based GA; graph-based system integration | Static 49-run routing comparison and separate dynamic execution acceptance |
-| CGS Cognitive Systems | Knowledge representation and reasoning with a case/rule/evidence graph and structured user questions; five template queries with explicit failure states | Derived contract checks; independent M6 review still pending; no audio or vision claim |
+| CGS Cognitive Systems | Knowledge representation and reasoning with a case/rule/evidence graph and structured user questions; five template queries with explicit failure states | Derived contract checks; single-reviewer M6 pilot, dual review still pending; no audio or vision claim |
 
 This mapping follows the course agendas in the IRS practice-module briefing, page 3. The separate four technique groups are decision automation (M3), business resource optimisation (M5), knowledge discovery/data mining (M2/M4), and cognitive systems (M6). It does not assert that every optional feature or course topic, such as audio/vision cognition, was implemented.
 

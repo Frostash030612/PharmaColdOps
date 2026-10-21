@@ -17,9 +17,10 @@ def plain(text):
     return text.replace("**", "").replace("`", "")
 
 
-def build(output):
+def build(output, toc=None):
     from docx import Document
     from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+    from docx.enum.text import WD_TAB_ALIGNMENT, WD_TAB_LEADER
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
     from docx.opc.constants import RELATIONSHIP_TYPE
@@ -95,19 +96,47 @@ def build(output):
             match = re.fullmatch(r"!\[([^\]]*)\]\(([^)]+)\)", line)
             if not match:
                 raise ValueError("unsupported figure syntax")
+            caption = match[1]
+            width = None
+            if "|" in caption:
+                caption, _, spec = caption.rpartition("|")
+                if re.fullmatch(r"\d+(?:\.\d+)?(?:in)?", spec.strip()):
+                    width = float(spec.strip().rstrip("in"))
             paragraph = doc.add_paragraph()
             paragraph.alignment = 1
-            paragraph.add_run().add_picture(str(SOURCE.parent / match[2]), width=Inches(6.8))
-            caption = doc.add_paragraph(match[1])
-            caption.alignment = 1
-            caption.runs[0].font.size = Pt(9)
+            run = paragraph.add_run()
+            if width:
+                picture = run.add_picture(str(SOURCE.parent / match[2]), width=Inches(width))
+            else:
+                picture = run.add_picture(str(SOURCE.parent / match[2]))
+                if picture.width > Inches(6.8):
+                    picture.width = Inches(6.8)
+            caption_paragraph = doc.add_paragraph(caption)
+            caption_paragraph.alignment = 1
+            caption_paragraph.runs[0].font.size = Pt(9)
             paragraph.paragraph_format.keep_with_next = True
             i += 1
             continue
         if line.startswith("# "):
             doc.add_paragraph(plain(line[2:]), "Title")
-            doc.add_paragraph("IRS Practice Module  |  Project Group 41  |  17 October 2026")
+            doc.add_paragraph("IRS Practice Module  |  Project Group 41  |  21 October 2026")
             doc.add_paragraph("Xu Wenzhe, Zhu Jianyu, Wang Lepeng and Shen Ziyi")
+            if toc:
+                doc.add_page_break()
+                contents = doc.add_paragraph()
+                contents.add_run("Contents").font.size = Pt(15)
+                contents.runs[0].font.bold = True
+                for entry in toc:
+                    item = doc.add_paragraph()
+                    item.paragraph_format.tab_stops.add_tab_stop(
+                        Inches(7.0), WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
+                    if entry.get("level", 1) >= 2:
+                        item.paragraph_format.left_indent = Inches(0.25)
+                        item.paragraph_format.space_after = Pt(2)
+                    item.add_run(entry["text"]).font.size = Pt(10.5)
+                    item.add_run("\t")
+                    item.add_run(str(entry["page"])).font.size = Pt(10.5)
+                doc.add_page_break()
             i += 1
             continue
         if line.startswith("##"):
@@ -210,6 +239,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--merge-pdf", type=Path)
+    parser.add_argument("--toc", type=Path, help="JSON list of {level, text, page}")
     args = parser.parse_args()
     if args.output.exists():
         parser.error("fresh output required; preserve previous report versions")
@@ -220,7 +250,11 @@ def main():
     else:
         if args.output.suffix.lower() != ".docx":
             parser.error("DOCX output required")
-        build(args.output)
+        toc = None
+        if args.toc:
+            import json
+            toc = json.loads(args.toc.read_text(encoding="utf-8"))
+        build(args.output, toc)
 
 
 if __name__ == "__main__":
