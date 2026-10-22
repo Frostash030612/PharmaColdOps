@@ -47,7 +47,7 @@ These commands are for a fresh base deployment. To resume the existing v2-enable
 | Deliverable | Where |
 |---|---|
 | **User manual** (使用手册) | English: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) · 中文: [`docs/用户手册.md`](docs/用户手册.md) |
-| Group report | [Source](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [PDF with submitted proposal](docs/PharmaColdOps-Group-Report.pdf); M6 dual-review results remain pending |
+| Group report | [Source](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [PDF with submitted proposal](docs/PharmaColdOps-Group-Report.pdf); report revised 2026-10-23; M6 dual-review results remain pending |
 | Demo videos (2 × 5 min) | [English visual cuts and voice handoff](docs/英文画面视频与真人配音交接.md) are prepared locally; genuine human speech and final review are still required |
 | Animated project explainer | [90-second English code-drawn film](docs/English-Code-Explainer.md), with original instrumental audio; separate from the course's two required videos |
 | Cinematic concept film | [New 2:30 English procedural 3D film](docs/Cinematic-Concept-Film.md), following the six requested shots, with original music; no Kling or spoken narration |
@@ -101,7 +101,7 @@ Reviewer A's completed intent and answer ratings are collected; reviewer B and a
 Formal dual-review accuracy and agreement are unavailable until those inputs and review provenance are complete.
 Frozen inputs are committed under `data/qa/m6-review-20261003-v3/`, and reviewers can fill them in
 offline with `scripts/m6_review_form.html` (self-checked by `scripts/m6_review_form_selftest.mjs`);
-as of 2026-10-12 **no human annotations have been recorded yet**.
+the earlier 2026-10-12 statement that no human annotations had been recorded is superseded by reviewer A's completed submission. The separately labelled AI-assisted non-blind draft is not reviewer B or human evaluation.
 See [M3 formal report](docs/M3正式评估.md), [M5 formal report](docs/M5正式评估.md)
 and [M6 independent evaluation protocol](docs/M6独立评估.md).
 

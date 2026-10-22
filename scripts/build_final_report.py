@@ -17,7 +17,29 @@ def plain(text):
     return text.replace("**", "").replace("`", "")
 
 
-def build(output, toc=None):
+def contents_entries():
+    return [{"text": plain(line.lstrip("# ")), "level": 1 if line.startswith("## ") else 2, "page": ""}
+            for line in SOURCE.read_text(encoding="utf-8").splitlines()
+            if line.startswith("## ") or re.match(r"^### (2\.[123]|4\.4|6\.[1-5]|8\.[89]) ", line)]
+
+
+def contents_from_pdf(path):
+    """Resolve the contents against a freshly rendered body, never stale guesses."""
+    from pypdf import PdfReader
+
+    norm = lambda value: re.sub(r"\s+", " ", value).strip()
+    pages = [norm(page.extract_text()) for page in PdfReader(path).pages]
+    entries = contents_entries()
+    for entry in entries:
+        # Cover and contents are the first two pages in this report template.
+        matches = [i + 1 for i, text in enumerate(pages) if i >= 2 and norm(entry["text"]) in text]
+        if len(matches) != 1:
+            raise ValueError(f"Cannot resolve unique heading {entry['text']!r}: {matches}")
+        entry["page"] = matches[0]
+    return entries
+
+
+def build(output, toc=None, report_date="23 October 2026"):
     from docx import Document
     from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
     from docx.enum.text import WD_TAB_ALIGNMENT, WD_TAB_LEADER
@@ -81,10 +103,17 @@ def build(output, toc=None):
         paragraph.add_run(plain(text[position:])).font.size = Pt(size)
 
     lines = SOURCE.read_text(encoding="utf-8").splitlines()
+    if toc is None:
+        # First-pass page placeholders are resolved against the rendered PDF.
+        toc = contents_entries()
     i = 0
     while i < len(lines):
         line = lines[i].strip()
         if not line:
+            i += 1
+            continue
+        if line == "<!-- PAGEBREAK -->":
+            doc.add_page_break()
             i += 1
             continue
         if line.startswith("<!--"):
@@ -105,12 +134,10 @@ def build(output, toc=None):
             paragraph = doc.add_paragraph()
             paragraph.alignment = 1
             run = paragraph.add_run()
-            if width:
-                picture = run.add_picture(str(SOURCE.parent / match[2]), width=Inches(width))
-            else:
-                picture = run.add_picture(str(SOURCE.parent / match[2]))
-                if picture.width > Inches(6.8):
-                    picture.width = Inches(6.8)
+            # Supplying only width makes python-docx preserve the aspect ratio.
+            # Mutating picture.width afterwards left height unchanged and stretched
+            # the architecture figure in the previous report.
+            picture = run.add_picture(str(SOURCE.parent / match[2]), width=Inches(min(width or 6.7, 6.8)))
             caption_paragraph = doc.add_paragraph(caption)
             caption_paragraph.alignment = 1
             caption_paragraph.runs[0].font.size = Pt(9)
@@ -119,8 +146,9 @@ def build(output, toc=None):
             continue
         if line.startswith("# "):
             doc.add_paragraph(plain(line[2:]), "Title")
-            doc.add_paragraph("IRS Practice Module  |  Project Group 41  |  21 October 2026")
+            doc.add_paragraph(f"IRS Practice Module  |  Project Group 41  |  {report_date}")
             doc.add_paragraph("Xu Wenzhe, Zhu Jianyu, Wang Lepeng and Shen Ziyi")
+            doc.add_paragraph("Implementation, evaluation and findings")
             if toc:
                 doc.add_page_break()
                 contents = doc.add_paragraph()
@@ -163,8 +191,27 @@ def build(output, toc=None):
                 i += 1
             table = doc.add_table(rows=0, cols=len(matrix[0]))
             table.autofit = False
-            width = 7 / len(matrix[0])
-            for col in table.columns:
+            count = len(matrix[0])
+            first = matrix[0][0]
+            if first == "Module":
+                widths = [0.65, 3.8, 2.55]
+            elif first == "Priority":
+                widths = [0.65, 5.1, 1.25]
+            elif first == "Method":
+                widths = [1.1, 3.65, 2.25]
+            elif first == "Frozen example":
+                widths = [1.5, 2.6, 2.9]
+            elif first in {"Area", "Course area"}:
+                widths = [1.55, 2.6, 2.85]
+            elif count == 5:
+                widths = [2.2, 1.2, 1.2, 1.2, 1.2]
+            elif count == 4:
+                widths = [2.2, 1.6, 1.6, 1.6]
+            elif count == 3:
+                widths = [2.1, 2.45, 2.45]
+            else:
+                widths = [7 / count] * count
+            for col, width in zip(table.columns, widths):
                 col.width = Inches(width)
             for ri, values in enumerate(matrix):
                 cells = table.add_row().cells
@@ -172,7 +219,8 @@ def build(output, toc=None):
                 table.rows[ri]._tr.get_or_add_trPr().append(no_split)
                 if len(values) != len(cells):
                     raise ValueError("inconsistent report table")
-                for cell, value in zip(cells, values):
+                for ci, (cell, value) in enumerate(zip(cells, values)):
+                    cell.width = Inches(widths[ci])
                     cell.text = value
                     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
                     tc_pr = cell._tc.get_or_add_tcPr()
@@ -195,6 +243,11 @@ def build(output, toc=None):
                     tc_pr.append(margins)
                     for p in cell.paragraphs:
                         p.paragraph_format.space_after = Pt(3)
+                        # All report tables are compact enough to keep together.
+                        # The final row breaks the chain so the next paragraph can flow.
+                        p.paragraph_format.keep_with_next = ri < len(matrix) - 1
+                        if ri > 0 and re.fullmatch(r"[0-9 .%/+−±()-]+", value):
+                            p.alignment = 1
                         for run in p.runs:
                             run.font.size = Pt(10)
                             run.font.bold = ri == 0
@@ -239,7 +292,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--merge-pdf", type=Path)
-    parser.add_argument("--toc", type=Path, help="JSON list of {level, text, page}")
+    contents = parser.add_mutually_exclusive_group()
+    contents.add_argument("--toc", type=Path, help="JSON list of {level, text, page}")
+    contents.add_argument("--toc-from-pdf", type=Path, help="Resolve headings from a freshly rendered first-pass body PDF")
+    parser.add_argument("--report-date", default="23 October 2026", help="Cover date; fixed for reproducible report builds")
     args = parser.parse_args()
     if args.output.exists():
         parser.error("fresh output required; preserve previous report versions")
@@ -254,7 +310,9 @@ def main():
         if args.toc:
             import json
             toc = json.loads(args.toc.read_text(encoding="utf-8"))
-        build(args.output, toc)
+        elif args.toc_from_pdf:
+            toc = contents_from_pdf(args.toc_from_pdf)
+        build(args.output, toc, report_date=args.report_date)
 
 
 if __name__ == "__main__":
