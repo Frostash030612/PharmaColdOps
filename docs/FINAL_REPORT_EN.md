@@ -8,7 +8,7 @@ The principal result is an implemented, auditable workflow rather than a validat
 
 <!-- M6_ABSTRACT_STATUS_START -->
 
-M6 review covers 53 frozen questions in completed A and B worksheets. Both identify weak evidence support and failures in scope handling. Because B was prepared with access to A, the results are reported as descriptive reviews rather than independent inter-rater validation.
+M6 review covers 53 frozen questions in completed A and current B worksheets. Both identify weak evidence support and failures in scope handling. Historical process gaps and unresolved intent disagreements limit the results to descriptive comparison rather than independent inter-rater validation.
 
 <!-- M6_ABSTRACT_STATUS_END -->
 
@@ -273,9 +273,9 @@ The frozen M6 preparation performed 12 actual service queries and 41 client conc
 
 <!-- M6_HUMAN_RESULTS_START -->
 
-The A and B review sets each contain 53 intent labels and 53 answer/evidence ratings. Both use the same frozen questions and response hashes. The rating dimensions distinguish answer correctness, evidence relevance, evidence sufficiency, appropriate refusal and unsupported claims. B was prepared after access to A's judgements, so the two sets support descriptive comparison but not an independent inter-rater reliability estimate. No adjudicated intent gold standard or jointly validated answer-adequacy score is reported [7, 20].
+The A and current B review sets each contain 53 intent labels and 53 answer/evidence ratings for the same frozen questions and response hashes. B reported no prior exposure to A, previous B worksheets, frozen responses or routing code before intent review. B's intent file was saved before the second-stage materials were prepared. B confirmed personal judgement and actual consultation of the listed sources. These are self-reported process statements. A's historical sealing times and source-consultation record remain unverified, so this closeout reports a descriptive comparison rather than independent reliability [7, 20].
 
-The table retains all 53 questions in each review, including not-applicable (NA) ratings. Correctness, relevance and sufficiency use scores 0, 1 and 2; refusal appropriateness uses 0 or 1. Source consultation for B was limited to the frozen source catalogue and project records; external regulatory documents were not independently rechecked [7, 20].
+Intent labels and acceptable-label sets match on 15/53 questions and differ on 38/53. B marked 37/53 questions ambiguous. Disagreements remain unadjudicated, so no adjudicated intent gold standard, independent accuracy, kappa or jointly validated answer-adequacy score is reported. The table retains all 53 questions per reviewer, including not-applicable (NA) ratings. Correctness, relevance and sufficiency use 0, 1 and 2; refusal appropriateness uses 0 or 1. B's source consultation includes external and project references as declared by the reviewer; the compiler did not independently re-audit those sources [7, 20].
 
 | Review dimension | Sheet | Score 0 | Score 1 | Score 2 | NA |
 |---|---|---:|---:|---:|---:|
@@ -398,7 +398,7 @@ PharmaColdOps integrates exposure assessment, recorded disposition, replacement 
 
 19. Isolated API case-study records, 23 October 2026. Supplementary files: report-case-study.json, demo-acceptance-report.json and run_report_case_study.py. Automated review transactions; graph coverage outside the test scope.
 
-20. B review worksheets, 23 October 2026. Supplementary files: intent-B.csv and ratings-B.csv. Completed review of the same 53 frozen questions.
+20. [M6 descriptive review closeout](M6评审收尾.md), 23 October 2026. Current B worksheets and process record are retained in the private handoff package with A inputs, file hashes and 38 unresolved intent disagreements. Earlier B worksheets remain a separate historical version.
 
 ## Appendix A Mapping to modular course techniques
 

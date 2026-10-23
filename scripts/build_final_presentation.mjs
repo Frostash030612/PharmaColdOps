@@ -9,7 +9,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const args={};
 for(let i=2;i<process.argv.length;i++){
   if(process.argv[i]==='--help'){
-    console.log('Required: --build-dir NEW_DIRECTORY --output NEW.pptx --runtime-modules PATH --runtime-python PATH --skill-dir PATH. Optional: --qa-screenshot PATH --verification PATH --m6-report PATH.');
+    console.log('Required: --build-dir NEW_DIRECTORY --output NEW.pptx --runtime-modules PATH --runtime-python PATH --skill-dir PATH. Optional: --qa-screenshot PATH --verification PATH --m6-report PATH or --m6-descriptive-report PATH.');
     process.exit(0);
   }
   const key=process.argv[i];if(!key.startsWith('--')||!process.argv[i+1])throw Error('invalid argument');
@@ -37,10 +37,22 @@ if(args.verification){
   if(v.demo?.check_count)evidence.workflow=`${v.demo.check_count} API workflow checks`;
 }
 let human=null;
+if(args['m6-report']&&args['m6-descriptive-report'])throw Error('choose one M6 review method');
 if(args['m6-report']){
   human=JSON.parse(await fs.readFile(args['m6-report'],'utf8'));
   if(human.schema!=='m6-independent-human-evaluation-v1'||human.status!=='scored_on_supplied_human_annotations'||!human.process_record_sha256||human.process_declarations_self_reported!==true)throw Error('use a process-validated finalize_m6_review report');
   for(const k of ['intent_accuracy','independent_answer_adequacy_rate_both_raters'])if(typeof human[k]!=='number'||human[k]<0||human[k]>1)throw Error('invalid human metric');
+}
+let descriptive=null;
+if(args['m6-descriptive-report']){
+  descriptive=JSON.parse(await fs.readFile(args['m6-descriptive-report'],'utf8'));
+  if(descriptive.schema!=='m6-descriptive-review-v1'||descriptive.status!=='complete_descriptive_review'||
+     !descriptive.process_record_sha256||descriptive.independent_metrics!==null||
+     descriptive.independent_protocol_complete!==false||!descriptive.limitations?.length)throw Error('use a descriptive closeout report with explicit limits');
+  const counts=descriptive.intent_comparison;
+  if(descriptive.rows_per_reviewer!==53||!Number.isInteger(counts?.unresolved_disagreements)||
+     counts.unresolved_disagreements<0||!Number.isInteger(counts.matching_label_and_set)||
+     counts.matching_label_and_set<0||counts.unresolved_disagreements+counts.matching_label_and_set!==53)throw Error('invalid descriptive review counts');
 }
 function text(slide,value,x,y,w,h,size=28,color=ink,bold=false){
   const shape=slide.shapes.add({geometry:'textbox',position:{left:x,top:y,width:w,height:h},fill:'none',line:{fill:'none',width:0}});
@@ -145,14 +157,15 @@ async function image(s,file,x,y,w,h,alt){
   text(s,'Frozen review results remain distinct from repaired-system quality',60,600,1160,50,25,muted);
 }
 {
-  const s=slide('Verification and human review','PROGRESS.md; process-validated M6 report when supplied','D, 25 seconds. State the software verification evidence. If B is missing, say so. Human process declarations are not identity authentication. Do not substitute developer-authored checks for an independent benchmark.');
+  const s=slide('Verification and human review','PROGRESS.md; docs/M6评审收尾.md; supplied M6 report','D, 25 seconds. State the software verification evidence with its historical date. Current A/B descriptive review covers 53 questions each, with 15 matching intent judgements and 38 unresolved disagreements. B confirmed personal judgement and source consultation; A historical process remains unverified. No independent metric or adjudicated gold is available from this closeout. Process declarations do not authenticate identity.');
   lines(s,[evidence.regression,evidence.workflow,'Persistence, graph recovery and read-only advisory checks',human?
     `Frozen M6 intent accuracy ${human.intent_accuracy.toFixed(4)}, both-rater adequacy ${human.independent_answer_adequacy_rate_both_raters.toFixed(4)}`:
-    'M6: reviewer B and process evidence remain pending'],{step:105,size:29});
+    descriptive?`M6: A/B descriptive review, ${descriptive.intent_comparison.unresolved_disagreements} unresolved intent disagreements`:
+    'M6: no validated review report supplied for this build'],{step:105,size:29});
   text(s,'Current-router independent accuracy is not established',60,610,1160,40,24,muted);
 }
 {
-  const s=slide('Limitations and delivery','docs/最终交付与验收.md','D, 20 seconds. Close with supported capabilities and honest limits. Remaining human items include B review/provenance, recordings, individual reflection and confidential peer evaluation. Original proposal slides are historical, and the current group is 41.');
+  const s=slide('Limitations and delivery','docs/最终交付与验收.md','D, 20 seconds. Close with supported capabilities and honest limits. The current descriptive M6 review is archived. Independent evaluation requires historical process verification and third-person adjudication or a new question set. Remaining delivery tasks include human recordings, individual reflection and confidential peer evaluation. Original proposal slides are historical, and the current group is 41.');
   lines(s,['Engineering thresholds require product-level evidence','Model candidates cannot authorise medicine disposition','The local prototype has no public-user authentication','Human recordings, review and individual reports remain team tasks'],{step:108,size:29});
   text(s,'Runnable prototype, inspectable evidence and reproducible experiments',60,614,1160,38,25,gold);
 }
@@ -172,5 +185,5 @@ await finalizePresentation({workspaceDir:root,candidatePath:candidate,finalPath:
   requiredNativeTableOwnerSlides:[3,4],requiredNativeChartOwnerSlides:[5,6],
   materializeLiteralChartWorkbooks:true,fontPolicy:{basis:'design',families:[font]},
   verifyArtifactToolImport:true,receiptPath:path.join(build,'validation.json')});
-await fs.writeFile(path.join(build,'facts.json'),JSON.stringify({slide_count:p.slides.items.length,verification:evidence,human_status:human?'supplied frozen-v1 review':'pending',scope:'no independent repaired-router accuracy claim'},null,2));
+await fs.writeFile(path.join(build,'facts.json'),JSON.stringify({slide_count:p.slides.items.length,verification:evidence,human_status:human?'supplied frozen-v1 independent review':descriptive?'complete_descriptive_review':'no review report supplied',scope:'no independent repaired-router accuracy claim'},null,2));
 console.log(JSON.stringify({status:'exported_for_visual_review',slides:p.slides.items.length,output}));

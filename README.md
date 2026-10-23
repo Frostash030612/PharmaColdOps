@@ -47,7 +47,7 @@ These commands are for a fresh base deployment. To resume the existing v2-enable
 | Deliverable | Where |
 |---|---|
 | **User manual** (使用手册) | English: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) · 中文: [`docs/用户手册.md`](docs/用户手册.md) |
-| Group report | [Source](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [PDF with submitted proposal](docs/PharmaColdOps-Group-Report.pdf); finalised 2026-10-23 with descriptive M6 A/B results |
+| Group report | [Source](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [PDF with submitted proposal](docs/PharmaColdOps-Group-Report.pdf); updated 2026-10-23 with the current B descriptive closeout; independent metrics remain unavailable |
 | Demo videos (2 × 5 min) | [English visual cuts and voice handoff](docs/英文画面视频与真人配音交接.md) are prepared locally; genuine human speech and final review are still required |
 | Animated project explainer | [90-second English code-drawn film](docs/English-Code-Explainer.md), with original instrumental audio; separate from the course's two required videos |
 | Cinematic concept film | [New 2:30 English procedural 3D film](docs/Cinematic-Concept-Film.md), following the six requested shots, with original music; no Kling or spoken narration |
@@ -55,7 +55,7 @@ These commands are for a fresh base deployment. To resume the existing v2-enable
 | Proposal (submitted 2026-09-13) | [PharmaColdOps-Proposal-Group 41.pdf](proposal/PharmaColdOps-Proposal-Group%2041.pdf) |
 | Proposal source (EN / 中文) | [`EN`](proposal/PharmaColdOps-Proposal-EN.md) · [`ZH`](proposal/PharmaColdOps-Proposal-ZH.md) |
 | Final presentation | [Current 10-slide deck](proposal/PharmaColdOps-Final-Presentation.pptx) · [Roles and recording handoff](docs/最终答辩分工与录制交接.md) · [Defense Q&A](docs/最终答辩问答.md); original proposal decks preserved |
-| M6 coordination | [Review completion workflow](docs/M6协调人一键收尾.md) · [QA repairs](docs/M6问答修复与新版本验收.md); formal status in [M6 report](docs/M6独立评估.md) |
+| M6 coordination | [Current review closeout](docs/M6评审收尾.md) · [Coordinator workflow](docs/M6协调人一键收尾.md); descriptive review archived, with 38 unadjudicated intent disagreements |
 | Architecture | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | Progress log & measured results | [`PROGRESS.md`](PROGRESS.md) |
 

@@ -281,7 +281,7 @@ Evaluators and users should know these boundaries. **They are disclosed scope, n
 | **Does not replace a pharmacist** | thresholds are **engineering assumptions** (principle-anchored defaults), not product-level stability conclusions; regulatory citations stop at document level (clause level for ICH) |
 | **Human review is mandatory** | boundary and low-confidence cases require human confirmation; the human conclusion is stored separately and the original automatic advice is never overwritten |
 | **Annotator agreement missed target** | dual annotation reached Cohen's κ = **0.6434**, below the 0.80 target — **reported as-is, not massaged by re-testing** |
-| **M6 human evaluation is not finished** | reviewer A's intent labels and answer ratings are collected; reviewer B and any required adjudication remain pending. Formal dual-review metrics are unavailable; see [current status](M6独立评估.md) |
+| **M6 descriptive review is archived** | A/B each supplied 53 intent labels and ratings. There are 38 unadjudicated intent disagreements and unverified historical A process details. Independent metrics remain unavailable; see [closeout](M6评审收尾.md) |
 | **ML does not drive online decisions** | M4 model scores are **advisory**, reported but never triggering scrap/release; the front-end risk index is still a rule heuristic |
 | **Optimiser limits** | the solver is OR-Tools Routing Solver + GLS (**not CP-SAT**); time-limited results are not guaranteed globally optimal and may differ between runs |
 

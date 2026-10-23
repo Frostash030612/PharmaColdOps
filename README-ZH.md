@@ -45,7 +45,7 @@ docker compose --env-file deploy/demo.env -f deploy/compose.demo.yml up -d --bui
 | 交付物 | 位置 |
 |---|---|
 | **用户手册** | 中文：[`docs/用户手册.md`](docs/用户手册.md) · English: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) |
-| 小组报告 | [正文](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [含原proposal的PDF](docs/PharmaColdOps-Group-Report.pdf)；M6双人指标待补 |
+| 小组报告 | [正文](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [含原proposal的PDF](docs/PharmaColdOps-Group-Report.pdf)；已同步本次M6描述性评审收尾，独立指标不可用 |
 | 演示视频（2 × 5 分钟） | [英文画面版与配音交接](docs/英文画面视频与真人配音交接.md)已备；真人旁白与合成终审仍待补 |
 | 项目科普动画 | [90秒全英文代码动画](docs/English-Code-Explainer.md)，含原创程序配乐；独立新片，不替代课程要求的两段视频 |
 | 电影感概念片 | [新版2分30秒英文程序化3D影片](docs/Cinematic-Concept-Film.md)，按六段分镜重制、含原创配乐；未用Kling、无旁白 |
@@ -53,7 +53,7 @@ docker compose --env-file deploy/demo.env -f deploy/compose.demo.yml up -d --bui
 | 提案（2026-09-13 已提交） | [PharmaColdOps-Proposal-Group 41.pdf](proposal/PharmaColdOps-Proposal-Group%2041.pdf) |
 | 提案源稿 | [英文](proposal/PharmaColdOps-Proposal-EN.md) · [中文](proposal/PharmaColdOps-Proposal-ZH.md) |
 | 最终演示文稿 | [新10页PPT](proposal/PharmaColdOps-Final-Presentation.pptx) · [四人录制交接](docs/最终答辩分工与录制交接.md) · [答辩问答](docs/最终答辩问答.md)；旧提案文件保留 |
-| M6收尾 | [协调人一键流程](docs/M6协调人一键收尾.md) · [问答修复与验收](docs/M6问答修复与新版本验收.md)；正式状态见[M6报告](docs/M6独立评估.md) |
+| M6收尾 | [本次评审收尾](docs/M6评审收尾.md) · [协调人流程](docs/M6协调人一键收尾.md)；本轮描述性评审已归档，保留38题未仲裁分歧 |
 | 架构说明 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | 进度与实测数字 | [`PROGRESS.md`](PROGRESS.md) |
 
