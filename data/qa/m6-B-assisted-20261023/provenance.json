@@ -1,0 +1,17 @@
+{
+  "reviewer_id": "reviewer_B_AI_assisted",
+  "review_type": "AI-assisted non-blind B worksheet",
+  "human": false,
+  "independent": false,
+  "eligible_for_formal_dual_human_metrics": false,
+  "questions": 53,
+  "date": "2026-10-23",
+  "external_regulatory_documents_independently_accessed": false,
+  "source_sha256": {
+    "responses.json": "c237225d390c8e8f97d8c8e1785ed1a7301021cde4e9df2f3fdf63e2ff85b0ea",
+    "reference-sources.json": "62b2e6612d75eb9deca5ba939b9ce16c3ff589b32a27b56bc8c2eea38b0fd321"
+  },
+  "teacher_allows_ai": "Reported by user; exact permitted metric protocol not independently verified",
+  "based_on": "ai-assisted-review-20261023",
+  "changes": "A-compatible columns; concise notes; original AI judgements and evidence references preserved"
+}
