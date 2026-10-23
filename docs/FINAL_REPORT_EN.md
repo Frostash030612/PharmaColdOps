@@ -8,7 +8,7 @@ The principal result is an implemented, auditable workflow rather than a validat
 
 <!-- M6_ABSTRACT_STATUS_START -->
 
-Independent M6 evaluation remains incomplete: reviewer A supplied both annotation files, while reviewer B's files, the process record and any necessary adjudication have not been collected.
+M6 review covers 53 frozen questions in completed A and B worksheets. Both identify weak evidence support and failures in scope handling. Because B was prepared with access to A, the results are reported as descriptive reviews rather than independent inter-rater validation.
 
 <!-- M6_ABSTRACT_STATUS_END -->
 
@@ -26,7 +26,7 @@ The intended users are quality reviewers, dispatchers, warehouse managers and au
 
 Temperature-controlled pharmaceutical distribution is governed by good-distribution requirements: storage and transport conditions must be specified, monitored and documented, and deviations must be investigated before a batch is released or rejected [2]. Monitoring itself is a mature market. Data loggers, probes and cloud dashboards are widely deployed, and commercial platforms already combine shipment visibility with stability and quality workflows [1]. The bottleneck we address is therefore not sensing but the handover between an observation, a defensible disposition and the logistics response that follows it.
 
-That handover has three properties a dashboard alone does not provide. The decision must remain inspectable after the fact; the original recommendation must survive a later human override; and any replacement plan must stay tied to the same case identity. Commercial platforms may implement some of these properties, but we make no vendor benchmark and no claim that competitors merely raise alarms. The market discussion in the submitted proposal is contextual research, not a current competitive analysis [1].
+The workflow is designed around three requirements: decisions remain inspectable after the event, original recommendations survive subsequent human overrides, and replacement plans retain the same case identity. These requirements define the scope of the prototype. The market research in the submitted proposal provides context, while the evaluation in this report focuses on implemented behaviour rather than comparison with commercial products [1].
 
 ### 1.3 Related work
 
@@ -139,7 +139,7 @@ M6 supports disposition reasons, audit chains, product requirements, cause conte
 
 A fresh isolated API run on 23 October 2026 used simulated operating date 1 October 2026, seed 41, four ordinary vaccine orders, one urgent insertion and three available vehicles. The case was R20261023-001308-994369-2b56602c, linked to order SIM-20261001-e813eb7885-O001 in operation PLAN-DEMO-DAY1. All quantities and observations are simulated. The event was entered as a scalar summary, so this example does not claim a new sensor-series/M2 evaluation [19].
 
-The vaccine_2_8 event occurred at W-WESTGATE for delivery to H-NTFGH: 20 C for 90 min, MKT 19 C and intact packaging. The configured duration allowance is 30 min and MKT ceiling 10 C. Rule 3 fires first because 90 >= 2 times 30 and 19 >= 10 + 3, yielding scrap. An explicit review request keeps the effective decision pending and replacement preview returns HTTP 422. The script then submits an explicitly labelled AUTOMATED-DEMO-NOT-A-HUMAN review transaction retaining scrap, exercising the review API without claiming that a real quality reviewer approved medicine [19].
+The vaccine_2_8 event occurred at W-WESTGATE for delivery to H-NTFGH: 20 C for 90 min, MKT 19 C and intact packaging. The configured duration allowance is 30 min and MKT ceiling 10 C. Rule 3 fires first because 90 >= 2 times 30 and 19 >= 10 + 3, yielding scrap. An explicit review request keeps the effective decision pending and replacement preview returns HTTP 422. An automated test transaction then exercises the review API and retains scrap. This verifies the software transition under a prescribed decision; it does not evaluate a quality reviewer's judgement [19].
 
 ![Figure 2. One isolated case from observation through review gating, replacement delivery and closure. The review transaction is automated test input, not a human assessment; graph verification is outside this run.|6.7](figures/final-case-flow.png)
 
@@ -204,7 +204,7 @@ The cause-feature ablation uses identical outer partitions for the 15-feature mo
 
 Random-fold and facility-fold tests cover all 16,192 rows. Month-forward tests cover 14,520 rows after excluding the first 1,672 warm-up rows, so these are not identical test populations. The full15 random-fold majority baseline achieves Top-1 approximately 0.1607 and macro-F1 approximately 0.0277. Additional dynamic monthly inputs do not consistently beat the context-only model; facility/time Top-1 is below the corresponding majority baselines. The risk out-of-fold predictions also include 360 false negatives and 871 false positives. These failures matter more than a single overall accuracy claim [4].
 
-The M4 experiment record describes model-identity-matched offline Kernel SHAP with 12 held-out examples, 12 training-background examples and a subset budget of 128 per model, including additive reconstruction checks. These small explanation sets do not establish population feature importance. The repository's historical shap_risk.png is not verified as the selected formal risk model and is deliberately not used as its explanation figure here. Online single-feature reference replacement remains a sensitivity display, not SHAP; neither procedure establishes the cause of an individual event [4].
+The M4 experiment used model-identity-matched offline Kernel SHAP with 12 held-out examples, 12 training-background examples and a subset budget of 128 per model, including additive reconstruction checks. The small explanation sets limit population-level interpretation. Online single-feature reference replacement provides a separate sensitivity display; neither procedure establishes the cause of an individual event [4].
 
 ### 6.3 Event-level temporal study
 
@@ -267,28 +267,32 @@ Observed solver runtimes were 10.001-10.113 s, 30.001-30.048 s and 60.001-60.073
 
 These are static single-origin algorithm comparisons. Urgent insertion, grouped operations, delay recovery, failure handling and overnight parking are implemented workflow features verified separately, not additional measured rows in that benchmark [6, 13].
 
-### 6.5 Knowledge graph and independent human evaluation
+### 6.5 Knowledge graph and answer review
 
 The frozen M6 preparation performed 12 actual service queries and 41 client conceptual fallbacks on 53 questions. The same 57 case scenarios passed 466 derived contract checks for record agreement, mapped references, thresholds, states and case isolation. Derived checks do not establish independent answer correctness or citation relevance [7].
 
 <!-- M6_HUMAN_RESULTS_START -->
 
-Reviewer A has supplied 53 intent labels and 53 answer/evidence ratings in separate completed files. The project owner confirmed human authorship on 2026-10-17. Structural checks verify IDs, allowed values and frozen hashes. Reviewer A assigned correctness 2 to 28 answers, 1 to 21 and 0 to four; evidence relevance was 0 for 41, 2 for eight and not applicable for four. Unsupported claims were flagged in ten answers. These are one reviewer's observations, not dual-rater adequacy or independent system accuracy.
+The A and B review sets each contain 53 intent labels and 53 answer/evidence ratings. Both use the same frozen questions and response hashes. The rating dimensions distinguish answer correctness, evidence relevance, evidence sufficiency, appropriate refusal and unsupported claims. B was prepared after access to A's judgements, so the two sets support descriptive comparison but not an independent inter-rater reliability estimate. No adjudicated intent gold standard or jointly validated answer-adequacy score is reported [7, 20].
 
-Reviewer B's two files are unavailable in the repository. Human-human kappa, adjudicated intent accuracy and the proportion rated adequate by both reviewers are therefore unavailable. The A-rating upload also records corrections to reviewer ID and source URLs; actual consultation of replacement sources must be documented by the reviewer. Source strings and valid hashes cannot establish provenance, independence or professional competence [7].
+The table retains all 53 questions in each review, including not-applicable (NA) ratings. Correctness, relevance and sufficiency use scores 0, 1 and 2; refusal appropriateness uses 0 or 1. Source consultation for B was limited to the frozen source catalogue and project records; external regulatory documents were not independently rechecked [7, 20].
+
+| Review dimension | Sheet | Score 0 | Score 1 | Score 2 | NA |
+|---|---|---:|---:|---:|---:|
+| Answer correctness | A | 4 | 21 | 28 | 0 |
+| Answer correctness | B | 10 | 37 | 6 | 0 |
+| Evidence relevance | A | 41 | 0 | 8 | 4 |
+| Evidence relevance | B | 39 | 6 | 2 | 6 |
+| Evidence sufficiency | A | 41 | 4 | 4 | 4 |
+| Evidence sufficiency | B | 41 | 4 | 2 | 6 |
+| Refusal appropriateness | A | 4 | 2 | Not used | 47 |
+| Refusal appropriateness | B | 4 | 2 | Not used | 47 |
+
+A assigns full correctness to 28/53 answers, compared with 6/53 in B; partial correctness accounts for 21/53 and 37/53 respectively. Unsupported claims are marked in 10/53 answers by A and 15/53 by B. These differences concern judgements of the same answers, not a change in system performance. B more often distinguishes a relevant conceptual response from a complete answer to the case-specific request. Both reviews rate evidence sufficiency as zero for 41/53 answers, making inadequate support a consistent weakness [7, 20].
+
+The ratings are retained as submitted rather than reconciled to force agreement. An answer can be plausible while its cited source does not support its product-specific conclusion. Review findings therefore guide failure analysis and interface repair; they do not establish pharmaceutical validity.
 
 <!-- M6_HUMAN_RESULTS_END -->
-
-The single-reviewer distributions use all 53 frozen questions, with not-applicable (NA) ratings retained explicitly [7].
-
-| Review dimension | Score 0 | Score 1 | Score 2 | NA |
-|---|---:|---:|---:|---:|
-| Answer correctness | 4 | 21 | 28 | 0 |
-| Evidence relevance | 41 | 0 | 8 | 4 |
-| Evidence sufficiency | 41 | 4 | 4 | 4 |
-| Refusal appropriateness | 4 | 2 | Not used | 47 |
-
-Unsupported claims were marked in 10/53 answers. Correctness and evidential support are separate dimensions: an answer may be broadly plausible while its stated source does not support the claim. We preserve the original ratings, including seemingly inconsistent combinations, rather than changing them to fit the implementation [7].
 
 | Frozen example | Observed failure | Current repair and verification boundary |
 |---|---|---|
@@ -297,7 +301,7 @@ Unsupported claims were marked in 10/53 answers. Correctness and evidential supp
 | Q028/Q050, weather | Irrelevant graph claim instead of a scope refusal | Refusal path does not query the graph |
 | Q009/Q021, who | Ambiguous word treated as a regulatory keyword | Token boundaries and explicit query choices reduce keyword collisions |
 
-These are examples from the frozen responses, not exhaustive counts of mutually exclusive error types. An AI-assisted, non-blind technical audit is supplied separately as review preparation. It has seen A's results, is not reviewer B, and is excluded from human-human agreement, adjudication and formal answer-adequacy calculations. Completing the planned evaluation still requires B's genuine inputs, process/source records and any third-person adjudication. New-interface effectiveness requires a separately frozen evaluation; the old answers and hashes remain unchanged [7, 18].
+These examples illustrate failures in the frozen responses; they are not mutually exclusive error counts. The interface changes address the observed problems, but their effect on answer quality requires evaluation on a new frozen question set. The current software checks do not replace that evaluation [7, 18, 20].
 
 The current interface now separates structured graph queries, concept help, clarification and refusal. It offers five explicit query types, clears stale replies on context changes and exposes recorded reference links. General FAQ text no longer asserts mandatory destruction or that every response has regulatory grounding. These are repairs informed by observed failures and developer regression checks; they do not change or re-score the frozen v1 answers.
 
@@ -307,7 +311,7 @@ The current interface now separates structured graph queries, concept help, clar
 
 The latest recorded full-suite regression on 2026-10-17 passed 926 tests with zero skips and six existing warnings; a separate API walkthrough passed 36 checks against its own test graph. Frontend production build and nine frontend check scripts passed. Real browser checks covered refusal, concepts, source links, missing and conflicting scope, late replies after case changes, and injected transport failure without changing case records. Twenty live advisory sample replays retained their prior result fingerprint after the QA-only deployment update. These are software checks, not new model-accuracy observations [9].
 
-On 23 October 2026, report preparation reran the existing isolated API acceptance (33 checks) and the explicit review-gate worked example (27 checks). These counts overlap in covered behaviours and must not be added as distinct coverage. Neo4j was not verified in either fresh run. The worked example used Python 3.12.14, FastAPI 0.159.1, httpx 0.28.1, OR-Tools 9.15.6755, NumPy 2.5.4 and scikit-learn 1.9.1 on macOS arm64. This task-local environment differs from the original locked demonstration baseline; the new runs do not replace the historical full-suite or deployment evidence [19].
+Additional isolated API acceptance on 23 October 2026 passed 33 checks; the explicit review-gate case study passed 27 checks. These counts overlap in covered behaviours and must not be added as distinct coverage. Neo4j was not verified in either fresh run. The worked example used Python 3.12.14, FastAPI 0.159.1, httpx 0.28.1, OR-Tools 9.15.6755, NumPy 2.5.4 and scikit-learn 1.9.1 on macOS arm64. This acceptance environment differs from the original locked demonstration baseline; the new runs do not replace the historical full-suite or deployment evidence [19].
 
 Earlier checks passed 909 tests after correcting an incomplete temporary graph seed. A later 925-test run exposed optional reference metadata being filtered from HTTP responses; the response schema and serialization contract were repaired before the successful 926-test run. These earlier results and the historical 888-test baseline remain separate records. Local map-tile and no-active-operation 404 responses, plus a large-JavaScript-chunk warning, remain disclosed presentation limitations [9].
 
@@ -339,13 +343,13 @@ The simulated event study supplies the temporal and mechanistic detail the month
 
 The system is a single-worker, loopback-bound demonstration with persistent storage and recovery checks. It has no authentication, no multi-user transaction control and no production service-level agreement. The audit hash detects change; it is not a signature or a compliance certificate. The map shows cached geometry, not live GPS or traffic. These are deliberate boundaries for a teaching prototype, and they are stated in the interface and the user manual rather than left implicit.
 
-### 8.6 Remaining work
+### 8.6 Future work
 
-Three items dominate. First, independent dual review of the M6 answers: reviewer B and any required adjudication are still outstanding, so the report presents one reviewer's observations and does not claim dual-rater adequacy. Second, product-specific stability evidence would be needed before any engineering threshold could be described as a release limit. Third, authenticated multi-user operation, real order integration and production monitoring are product work beyond the module. The first is a submission dependency; the other two are research and engineering directions.
+The next evaluation should test the revised M6 interface on a newly frozen question set, with judgements collected independently before comparison and disagreement resolution. The current A and B reviews describe the earlier frozen responses. Product-specific stability evidence is also required to replace engineering assumptions with defensible release limits. Authenticated multi-user operation, integration with real orders and production monitoring remain directions for deployment beyond the teaching prototype.
 
 ### 8.7 Team contributions and cross-review
 
-Role identifiers map to A: Xu Wenzhe, B: Zhu Jianyu, C: Wang Lepeng and D: Shen Ziyi, consistent with the proposal and final presentation handoff. Module ownership follows the proposal and is recorded here for traceability. It is not a mark allocation, and the confidential peer-review forms remain the official contribution record.
+Role identifiers map to A: Xu Wenzhe, B: Zhu Jianyu, C: Wang Lepeng and D: Shen Ziyi, consistent with the submitted proposal. Module ownership follows the proposal and is recorded here for traceability. It is not a mark allocation, and the confidential peer-review forms remain the official contribution record.
 
 | Area | Primary responsibility | Cross-review responsibility |
 |---|---|---|
@@ -358,7 +362,7 @@ Role identifiers map to A: Xu Wenzhe, B: Zhu Jianyu, C: Wang Lepeng and D: Shen 
 | M7 API, frontend and deployment | D | C: dispatch contract review |
 | Report, videos and submission pack | A report, D videos, C packaging, B data statements | Whole-team read-through |
 
-The table records module ownership and planned cross-review responsibilities. Repository implementation and validation records support the technical work described here, but do not independently verify every named person's review activity. Each member should confirm actual contributions in the confidential course form; a planned role is not evidence that a particular review was completed.
+The table summarises module ownership and the planned cross-review structure. Individual contribution assessment is documented separately through the course peer-review process. The module role codes A-D are distinct from the A/B labels used for the M6 review worksheets.
 
 ### 8.8 Changes from the proposal and next evaluation
 
@@ -366,9 +370,9 @@ The initial plan combined four dispositions, tabular risk/cause prediction, rout
 
 The expected business value is fewer disconnected handovers: one case identity links the original evidence, effective decision, replacement order and audit. No time-saving or waste-reduction percentage has been measured. A next operational study should compare the same scripted tasks against a documented manual workflow, measuring completion time, missing required records, incorrect case/order links and successful audit retrieval. Task success criteria and failure handling should be fixed before recruiting participants; technical acceptance counts are not user-productivity measurements.
 
-### 8.9 Use of AI and responsibility for evidence
+### 8.9 Conclusion
 
-Generative AI assisted drafting, translation, code development, document layout and consistency checks. Codex assisted this report revision and prepared a separately labelled, non-blind technical review of frozen QA responses. That review is not human annotation, reviewer B, independent expert validation or clinical evidence. Existing human-review records retain their stated provenance and unresolved process limitations. The team remains responsible for checking the final text, confirming individual contributions and completing the remaining human evaluation.
+PharmaColdOps integrates exposure assessment, recorded disposition, replacement delivery and evidence retrieval. Experiments support traceable rule execution, feasible constrained routing and persistent case-state management, while exposing weak monthly cause prediction and limited answer evidence. The resulting prototype provides a reproducible basis for further evaluation with independently reviewed questions and real operational tasks.
 
 ## References and project evidence
 
@@ -378,7 +382,7 @@ Generative AI assisted drafting, translation, code development, document layout 
 4. [M4 formal experiments](M4正式实验.md) and [cause-data learnability audit](原因数据可学性审计.md). Formal folds, calibration, ablations and model-matched explanations.
 5. [Temporal event-v2 evaluation](事件时序模型v2评估.md) and [shadow API and UI](v2只读shadow接口与演示入口.md). Independent event study and advisory contract.
 6. [M5 formal evaluation](M5正式评估.md). Solomon, M. M. (1987), Algorithms for the Vehicle Routing and Scheduling Problems with Time Window Constraints, [original paper](https://doi.org/10.1287/opre.35.2.254); frozen comparison documented against [SINTEF reference results](https://www.sintef.no/projectweb/top/vrptw/100-customers/).
-7. [M6 independent evaluation](M6独立评估.md), [reviewer A intent labels](../data/qa/m6-completed-20261016-intent-A.csv) and [reviewer A answer ratings](../data/qa/m6-completed-20261016-ratings-A.csv). Individual review inputs, not a complete two-rater report.
+7. [M6 evaluation protocol and frozen dataset](M6独立评估.md), [A intent labels](../data/qa/m6-completed-20261016-intent-A.csv) and [A answer ratings](../data/qa/m6-completed-20261016-ratings-A.csv). Original protocol and completed A review inputs.
 8. [Graph reliability and recovery](知识图谱可靠性与恢复.md) and [case audit export](案例审计报告导出.md). Authoritative storage, graph coverage and recovery scope.
 9. [Reproduction and deployment](复现与本机部署.md), [controlled v2 deployment](v2演示受控更新.md) and [progress log](../PROGRESS.md). Versioned deployment and historical verification records.
 10. [M2 temperature and MKT](M2温度序列与MKT.md). Interval semantics, MKT and missingness contracts.
@@ -392,7 +396,9 @@ Generative AI assisted drafting, translation, code development, document layout 
 
 18. [QA repair and new-version acceptance](M6问答修复与新版本验收.md). Frozen v1 failures, current scope/refusal repairs and the distinction between developer regression and independent evaluation.
 
-19. [Report worked-example evidence](report_case_study_20261023.md) and [isolated case runner](../scripts/run_report_case_study.py). New API workflow run on 23 October 2026, with explicit automated-review and graph-unverified boundaries.
+19. Isolated API case-study records, 23 October 2026. Supplementary files: report-case-study.json, demo-acceptance-report.json and run_report_case_study.py. Automated review transactions; graph coverage outside the test scope.
+
+20. B review worksheets, 23 October 2026. Supplementary files: intent-B.csv and ratings-B.csv. Completed review of the same 53 frozen questions.
 
 ## Appendix A Mapping to modular course techniques
 
@@ -400,7 +406,7 @@ Generative AI assisted drafting, translation, code development, document layout 
 |---|---|---|
 | MR Machine Reasoning | Knowledge/model representation, reasoning as search and inductive learning: explicit rule paths, constrained route construction and tabular risk/cause models | 57 rule scenarios; search baselines; five-fold ML and held-out simulations |
 | RS Reasoning Systems | Optimisation and evolutionary computation: VRPTW formulation, RoutingModel GLS and permutation-based GA; graph-based system integration | Static 49-run routing comparison and separate dynamic execution acceptance |
-| CGS Cognitive Systems | Knowledge representation and reasoning with a case/rule/evidence graph and structured user questions; five template queries with explicit failure states | Derived contract checks; single-reviewer M6 pilot, dual review still pending; no audio or vision claim |
+| CGS Cognitive Systems | Knowledge representation and reasoning with a case/rule/evidence graph and structured user questions; five template queries with explicit failure states | 466 derived contract checks and descriptive A/B reviews of 53 frozen questions; independent reliability not established |
 
 This mapping follows the course agendas in the IRS practice-module briefing, page 3. The separate four technique groups are decision automation (M3), business resource optimisation (M5), knowledge discovery/data mining (M2/M4), and cognitive systems (M6). It does not assert that every optional feature or course topic, such as audio/vision cognition, was implemented.
 
