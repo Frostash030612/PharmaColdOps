@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M6 人工评审填写表（离线）</title>
+<style>
+:root{--fg:#111827;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--accent-soft:#eff6ff;
+      --bg:#f8fafc;--warn:#b45309;--warn-soft:#fffbeb;--err:#b91c1c;--err-soft:#fef2f2;
+      --ok:#047857;--ok-soft:#ecfdf5;--card:#fff}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:15px/1.65 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+     color:var(--fg);background:var(--bg)}
+header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);
+       box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.hwrap{max-width:1080px;margin:0 auto;padding:10px 20px 12px}
+h1{margin:0;font-size:18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tag{font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--accent-soft);
+     color:var(--accent);border:1px solid #bfdbfe}
+.sub{color:var(--muted);font-size:13px;margin:2px 0 8px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bar.spaced{margin-top:8px}
+button,select,input[type=text],input[type=file]::file-selector-button{font:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;
+       color:var(--fg);transition:.12s}
+button:hover{border-color:#cbd5e1;background:#f8fafc}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover{background:#1d4ed8}
+button.ghost{background:transparent}
+button:disabled{opacity:.5;cursor:not-allowed}
+select,input[type=text]{border:1px solid var(--line);border-radius:8px;padding:5px 9px;background:#fff;color:var(--fg)}
+input[type=text]{min-width:150px}
+label.inline{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
+.progress{flex:1;min-width:160px;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.progress > i{display:block;height:100%;width:0;background:var(--accent);transition:.2s}
+main{max-width:1080px;margin:0 auto;padding:16px 20px 80px}
+.note{border-radius:10px;padding:10px 14px;font-size:13px;margin:0 0 14px}
+.note.warn{background:var(--warn-soft);border:1px solid #fde68a;color:#78350f}
+.note.info{background:var(--accent-soft);border:1px solid #bfdbfe;color:#1e3a8a}
+.note ul{margin:6px 0 0;padding-left:20px}
+.note code{background:rgba(0,0,0,.05);padding:1px 5px;border-radius:5px;font-size:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 12px}
+.card.cursor{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.card.done{border-left:4px solid var(--ok)}
+.card.todo{border-left:4px solid #fbbf24}
+.chead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.qid{font:600 13px/1 ui-monospace,Consolas,monospace;background:#f1f5f9;border:1px solid var(--line);
+     padding:3px 7px;border-radius:6px}
+.lang{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:1px 6px;border-radius:99px}
+.seq{font-size:12px;color:var(--muted);margin-left:auto}
+.qtext{font-size:16px;margin:4px 0 10px;white-space:pre-wrap;word-break:break-word}
+.opts{display:grid;gap:4px}
+.opt{display:flex;gap:8px;align-items:flex-start;padding:5px 8px;border-radius:8px;cursor:pointer}
+.opt:hover{background:#f8fafc}
+.opt input{margin-top:4px;flex:none}
+.opt .val{font:600 13px/1.5 ui-monospace,Consolas,monospace}
+.opt .mean{color:var(--muted);font-size:13px}
+.subopts{margin:6px 0 0 27px;padding:8px 10px;border:1px dashed #c7d2fe;border-radius:8px;background:#f5f7ff}
+.subopts .hint{font-size:12px;color:var(--muted);margin-bottom:4px}
+.subopts label{display:inline-flex;align-items:center;gap:5px;margin:2px 12px 2px 0;
+                font:600 13px/1.5 ui-monospace,Consolas,monospace}
+.notebox{margin-top:10px}
+.notebox textarea{width:100%;min-height:52px;resize:vertical;border:1px solid var(--line);
+                  border-radius:8px;padding:7px 9px;font:inherit;background:#fff;color:var(--fg)}
+.notebox .lbl{font-size:12px;color:var(--muted);margin-bottom:3px}
+.rate{display:grid;grid-template-columns:180px 1fr;gap:6px 10px;align-items:center;margin-top:8px}
+.rate .k{font-size:13px;color:#334155}
+.rate select{width:100%;max-width:420px}
+.rate input[type=text]{width:100%;max-width:420px}
+details.aux{margin-top:10px;font-size:13px}
+details.aux summary{cursor:pointer;color:var(--muted)}
+pre{background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;overflow:auto;
+    max-height:260px;font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+.answer{border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fcfcfd;white-space:pre-wrap;word-break:break-word}
+.status{font-size:11px;padding:1px 7px;border-radius:99px;background:#f1f5f9;border:1px solid var(--line);color:var(--muted)}
+#messages .box{border-radius:10px;padding:10px 14px;font-size:13px;margin:0 0 10px}
+#messages .box.err{background:var(--err-soft);border:1px solid #fecaca;color:#7f1d1d}
+#messages .box.warn{background:var(--warn-soft);border:1px solid #fde68a;color:#78350f}
+#messages .box.ok{background:var(--ok-soft);border:1px solid #a7f3d0;color:#065f46}
+#messages ul{margin:6px 0 0;padding-left:20px}
+#csvOut{width:100%;min-height:90px;font:12px/1.5 ui-monospace,Consolas,monospace;border:1px solid var(--line);border-radius:8px;padding:8px}
+.empty{color:var(--muted);text-align:center;padding:48px 20px;border:1px dashed var(--line);border-radius:12px;background:#fff}
+/* 53 题速查表（第二阶段） */
+.tablewrap{overflow:auto;max-height:60vh;border:1px solid var(--line);border-radius:10px;background:#fff}
+table.overview{border-collapse:collapse;width:100%;font-size:12.5px}
+table.overview th,table.overview td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left;
+  white-space:nowrap;vertical-align:top}
+table.overview thead th{position:sticky;top:0;background:#f8fafc;z-index:1;
+  font-weight:600;color:#334155;border-bottom:2px solid var(--line)}
+table.overview td:nth-child(3){white-space:normal;max-width:340px;word-break:break-word}
+table.overview tbody tr:hover{background:var(--accent-soft)}
+table.overview tbody tr.todo td:nth-child(11){color:var(--warn);font-weight:600}
+table.overview tbody tr td:nth-child(11){color:var(--ok)}
+table.overview td.bare{color:var(--warn);font-weight:600}
+table.overview a{color:var(--accent);text-decoration:none;font-weight:600}
+table.overview a:hover{text-decoration:underline}
+.kbd{font:600 11px/1 ui-monospace,Consolas,monospace;border:1px solid var(--line);border-bottom-width:2px;
+     border-radius:5px;padding:2px 5px;background:#fff}
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <h1>M6 人工评审填写表 <span class="tag" id="modeTag">第一阶段 · 意图盲标</span>
+      <span class="tag" id="slotTag">评审 A</span></h1>
+    <div class="sub">离线页面：不联网、不上传、不写你的磁盘（只在你点「导出 CSV」时下载文件）。页面本身不含任何回答、预测或关键词数据。</div>
+    <div class="bar">
+      <button id="modeIntent" class="primary">① 意图标签（53 条）</button>
+      <button id="modeRatings">② 答案／证据评分（53 条）</button>
+      <span style="flex:1"></span>
+      <label class="inline">我的档位
+        <select id="slot"><option value="A">A</option><option value="B">B</option></select>
+      </label>
+      <label class="inline">annotator_id
+        <input type="text" id="annotatorId" value="reviewer_A" spellcheck="false">
+      </label>
+    </div>
+    <div class="bar spaced" id="loadBar"></div>
+    <div class="bar spaced">
+      <span class="progress"><i id="progressFill"></i></span>
+      <span id="progressText" style="font-size:13px;color:var(--muted);min-width:150px">未加载</span>
+      <label class="inline">显示
+        <select id="filter">
+          <option value="all">全部</option>
+          <option value="todo">只看未填</option>
+          <option value="done">只看已填</option>
+        </select>
+      </label>
+      <button id="btnNextTodo" class="ghost">跳到下一个未填</button>
+      <button id="btnValidate" class="ghost">自检</button>
+      <button id="btnExport" class="primary">导出 CSV</button>
+      <button id="btnCopy" class="ghost">复制 CSV 文本</button>
+      <button id="btnReset" class="ghost">清空重来</button>
+    </div>
+  </div>
+</header>
+<main>
+  <div id="messages"></div>
+  <div id="aux"></div>
+  <div id="list"><div class="empty">先在上面选择文件加载——第一阶段请选 <code>intent-A.csv</code>；第二阶段请选 <code>ratings-A.csv</code> + <code>responses.json</code>。</div></div>
+  <div id="csvWrap" style="display:none;margin-top:16px">
+    <div class="note info" style="margin-bottom:6px">复制下面文本，粘到 <code>data\processed\m6-my-labels\intent-A.csv</code> 即可（用 VS Code 保存为 UTF-8，结尾保留换行）。</div>
+    <textarea id="csvOut" spellcheck="false"></textarea>
+  </div>
+</main>
+<script>
+"use strict";
+(function (global) {
+  /* =========================================================================
+     纯逻辑区：不依赖 DOM，可被 scripts/m6_review_form_selftest.mjs 单独取出测试
+     ========================================================================= */
+
+  const INTENTS = ["why_disposition", "audit_chain", "product_requirements",
+                   "cause_context", "disposition_stats", "unsupported"];
+
+  const INTENT_MEANING = {
+    why_disposition: "某个具体案例为什么被这样处置，以及相应依据",
+    audit_chain: "某个案例的异常、决策、补发等全过程审计链",
+    product_requirements: "产品储存温度、允许偏离时长等要求",
+    cause_context: "某个案例记录的原因通常关联哪些运输阶段／产品等背景模式",
+    disposition_stats: "已登记案例的处置数量／分布统计",
+    unsupported: "不属于上述任务，如天气查询或要求证明具体品牌药品真实临床效价",
+    ambiguous: "问句确实无法唯一确定任务（必须勾选可接受的任务标签；不存在的案例不算超范围）"
+  };
+
+  const RATINGS = ["answer_correctness", "evidence_relevance", "evidence_sufficiency",
+                   "refusal_appropriate", "unsupported_claims"];
+
+  // 与 scripts/evaluate_m6_independent.py 的 read_annotations 对齐
+  const RATING_OPTIONS = {
+    answer_correctness: [["", "（未填）"], ["2", "2 在原型范围内正确且充分回应"],
+                         ["1", "1 部分正确、有实质遗漏"], ["0", "0 错误／未回答任务"]],
+    evidence_relevance: [["", "（未填）"], ["2", "2 直接相关"], ["1", "1 部分相关"],
+                         ["0", "0 证据无关"], ["NA", "NA 不需要证据（需在 note 解释）"]],
+    evidence_sufficiency: [["", "（未填）"], ["2", "2 足以支持所作结论"], ["1", "1 仅支持一部分"],
+                           ["0", "0 证据不支持结论"], ["NA", "NA 不需要证据（需在 note 解释）"]],
+    refusal_appropriate: [["", "（未填）"], ["1", "1 拒答／无法作答处理合理"],
+                          ["0", "0 处理不当"], ["NA", "NA 不涉及此项"]],
+    unsupported_claims: [["", "（未填）"], ["0", "0 未发现无依据的实质性断言"],
+                         ["1", "1 发现了（注意方向：1 代表有问题，需在 note 说明）"]]
+  };
+
+  const INTENT_FIELDS = ["annotator_id", "expected_intent", "acceptable_intents", "note"];
+  const RATING_FIELDS = ["annotator_id", ...RATINGS,
+                         "relevant_evidence_ids", "checked_source_urls", "note"];
+
+  const INTENT_VALUES = INTENTS.concat(["ambiguous"]);
+
+  function allowedFor(key) {
+    if (key === "refusal_appropriate") return ["0", "1", "NA"];
+    if (key === "unsupported_claims") return ["0", "1"];
+    if (key === "evidence_relevance" || key === "evidence_sufficiency") return ["0", "1", "2", "NA"];
+    return ["0", "1", "2"];
+  }
+
+  function detectEol(text) { return text.indexOf("\r\n") >= 0 ? "\r\n" : "\n"; }
+
+  /** RFC4180 风格的 CSV 解析：支持引号、字段内逗号／换行、CRLF，并去掉 BOM。 */
+  function parseCSV(text) {
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    const rows = [];
+    let row = [], field = "", quoted = false, i = 0;
+    while (i < text.length) {
+      const ch = text[i];
+      if (quoted) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+          quoted = false; i += 1; continue;
+        }
+        field += ch; i += 1; continue;
+      }
+      if (ch === '"') { quoted = true; i += 1; continue; }
+      if (ch === ",") { row.push(field); field = ""; i += 1; continue; }
+      if (ch === "\r") { i += 1; continue; }
+      if (ch === "\n") { row.push(field); rows.push(row); row = []; field = ""; i += 1; continue; }
+      field += ch; i += 1;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(r => !(r.length === 1 && r[0] === ""));
+  }
+
+  function csvCell(value) {
+    const text = value === undefined || value === null ? "" : String(value);
+    return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  }
+
+  function toCSV(header, rows, eol, trailing) {
+    const lineEnd = eol || "\n";
+    const lines = [header.map(csvCell).join(",")];
+    for (const row of rows) lines.push(header.map(h => csvCell(row[h])).join(","));
+    return lines.join(lineEnd) + (trailing === false ? "" : lineEnd);
+  }
+
+  function withFields(header, fields) {
+    const cols = header.slice();
+    for (const field of fields) if (cols.indexOf(field) < 0) cols.push(field);
+    return cols;
+  }
+
+  function blankIntentAnswer() { return { expected_intent: "", acceptable_intents: [], note: "" }; }
+
+  function blankRatings() {
+    const out = {};
+    for (const key of RATINGS) out[key] = "";
+    out.relevant_evidence_ids = ""; out.checked_source_urls = ""; out.note = "";
+    return out;
+  }
+
+  /** 从解析后的 CSV 构造条目；mode 为 intent / ratings。保留 raw 以便导出时逐列原样写回。 */
+  function itemsFromCSV(rows, mode) {
+    const header = rows[0] || [];
+    return rows.slice(1).map(cols => {
+      const raw = {};
+      header.forEach((name, index) => { raw[name] = cols[index] === undefined ? "" : cols[index]; });
+      const item = { raw: raw, qid: (raw.question_id || "").trim(),
+                     question: raw.question || "", lang: raw.lang || "" };
+      if (mode === "intent") {
+        const answer = blankIntentAnswer();
+        answer.expected_intent = (raw.expected_intent || "").trim();
+        answer.acceptable_intents = (raw.acceptable_intents || "").split(";").filter(Boolean);
+        answer.note = raw.note || "";
+        item.answer = answer;
+      } else {
+        const ratings = blankRatings();
+        for (const key of RATINGS) ratings[key] = (raw[key] || "").trim();
+        ratings.relevant_evidence_ids = raw.relevant_evidence_ids || "";
+        ratings.checked_source_urls = raw.checked_source_urls || "";
+        ratings.note = raw.note || "";
+        item.ratings = ratings;
+      }
+      return item;
+    });
+  }
+
+  /** 由 responses.json 补上问句／回答／事实，供第二阶段页面展示（只读，不参与导出）。 */
+  function attachResponses(items, responses) {
+    const byId = {};
+    (responses || []).forEach(entry => { byId[entry.question_id] = entry; });
+    const missing = [];
+    for (const item of items) {
+      const entry = byId[item.qid];
+      if (!entry) { missing.push(item.qid); continue; }
+      item.detail = entry;
+      if (!item.question) item.question = entry.question || "";
+      if (!item.lang) item.lang = entry.lang || "";
+    }
+    return missing;
+  }
+
+  function buildExport(header, items, mode, annotatorId) {
+    const fields = mode === "intent" ? INTENT_FIELDS : RATING_FIELDS;
+    const columns = withFields(header, fields);
+    const rows = items.map(item => {
+      const row = Object.assign({}, item.raw);
+      row.annotator_id = annotatorId;
+      if (mode === "intent") {
+        row.expected_intent = item.answer.expected_intent || "";
+        row.acceptable_intents = (item.answer.acceptable_intents || []).join(";");
+        row.note = item.answer.note || "";
+      } else {
+        const ratings = item.ratings || {};
+        for (const key of RATINGS) row[key] = ratings[key] || "";
+        row.relevant_evidence_ids = ratings.relevant_evidence_ids || "";
+        row.checked_source_urls = ratings.checked_source_urls || "";
+        row.note = ratings.note || "";
+      }
+      return row;
+    });
+    return { header: columns, rows: rows };
+  }
+
+  function isFilled(item, mode) {
+    if (mode === "intent") return !!(item.answer && item.answer.expected_intent);
+    const ratings = item.ratings || {};
+    return RATINGS.every(key => (ratings[key] || "") !== "")
+      && (ratings.checked_source_urls || "").trim() !== "";
+  }
+
+  /** 与 scripts/check_m6_annotation.py 同一套判据：错误会让官方 score 拒绝。 */
+  function validate(header, items, mode, annotatorId) {
+    const errors = [], warnings = [];
+    const columns = header || [];
+    if (columns.indexOf("question_id") < 0) errors.push("表头缺少 question_id 列");
+    if (mode === "intent" && columns.indexOf("packet_sha256") < 0) errors.push("表头缺少 packet_sha256 列");
+    if (mode === "ratings" && columns.indexOf("response_sha256") < 0) errors.push("表头缺少 response_sha256 列");
+    if (!(annotatorId || "").trim()) errors.push("annotator_id 为空：两阶段必须使用同一个固定 ID（如 reviewer_A）");
+
+    const seen = {};
+    items.forEach((item, index) => {
+      const where = "第 " + (index + 2) + " 行（" + (item.qid || "无 question_id") + "）";
+      if (!item.qid) errors.push(where + " question_id 为空");
+      else if (seen[item.qid]) errors.push(where + " question_id 重复");
+      else seen[item.qid] = true;
+
+      const packetSha = (item.raw.packet_sha256 || "").trim();
+      if (!/^[0-9a-f]{64}$/.test(packetSha)) errors.push(where + " packet_sha256 缺失或格式可疑（可能被编辑器改坏）");
+
+      if (mode === "intent") {
+        const answer = item.answer || blankIntentAnswer();
+        const value = (answer.expected_intent || "").trim();
+        if (INTENT_VALUES.indexOf(value) < 0) {
+          errors.push(where + " expected_intent 未填或非法（score 会报 unlabelled or invalid intent）");
+        } else if (value === "ambiguous") {
+          const accepted = (answer.acceptable_intents || []).filter(Boolean);
+          const illegal = accepted.filter(v => INTENTS.indexOf(v) < 0);
+          if (!accepted.length || illegal.length) {
+            errors.push(where + " ambiguous 必须勾选可接受的任务标签，且只能是六个标签之一"
+                        + (illegal.length ? "（非法项：" + illegal.join("、") + "）" : ""));
+          }
+          if (!(answer.note || "").trim()) warnings.push(where + " ambiguous 建议在 note 写清为什么有多种合理解释");
+        } else if ((answer.acceptable_intents || []).filter(Boolean).length) {
+          warnings.push(where + " 非 ambiguous 却勾了可接受标签：只要另一位没填同样内容，这行就会被算作分歧、需要仲裁");
+        } else if (!(answer.note || "").trim()) {
+          warnings.push(where + " note 为空（建议写判断理由，便于仲裁与复盘）");
+        }
+      } else {
+        const ratings = item.ratings || blankRatings();
+        for (const key of RATINGS) {
+          const value = (ratings[key] || "").trim();
+          if (allowedFor(key).indexOf(value) < 0) {
+            errors.push(where + " " + key + ' = "' + value + '"，合法值为 ' + allowedFor(key).join("/")
+                        + "（score 会报 incomplete or invalid human quality rating）");
+          }
+        }
+        const responseSha = (item.raw.response_sha256 || "").trim();
+        if (!/^[0-9a-f]{64}$/.test(responseSha)) errors.push(where + " response_sha256 缺失或格式可疑");
+        const detail = item.detail;
+        if (detail && (detail.response_sha256 || "").trim() !== responseSha) {
+          errors.push(where + " response_sha256 与 responses.json 不一致（题目与回答不是同一批）");
+        }
+        if (!(ratings.checked_source_urls || "").trim()) {
+          errors.push(where + " checked_source_urls 为空（每行都要写你真的打开过的来源，含超范围题）");
+        } else if (!/https?:\/\//i.test(ratings.checked_source_urls)) {
+          warnings.push(where + " checked_source_urls 里没有 http(s) 链接，确认这确实是可核对的来源");
+        }
+        const note = (ratings.note || "").trim();
+        if (!note) {
+          const hints = [];
+          if ((ratings.unsupported_claims || "") === "1") hints.push("unsupported_claims=1 需说明发现了什么");
+          if (!(ratings.relevant_evidence_ids || "").trim()) hints.push("relevant_evidence_ids 留空需解释");
+          warnings.push(where + " note 为空（建议写扣分理由与来源章节／页码）"
+                        + (hints.length ? "；另外：" + hints.join("；") : ""));
+        }
+      }
+    });
+    return { errors: errors, warnings: warnings };
+  }
+
+  /** 安全下钻嵌套字段：任何一层缺失都返回 default。 */
+  function dig(node, keys, fallback) {
+    let cur = node;
+    for (const key of keys) {
+      if (!cur || typeof cur !== "object") return fallback;
+      cur = cur[key];
+      if (cur === undefined || cur === null) return fallback;
+    }
+    return cur;
+  }
+
+  /** 从已加载的 responses.json 汇总每题客观事实，供评分时的速查表使用。
+   *  只呈现冻结包里的原始数据，不做任何评分判断。 */
+  function summarizeRatings(items) {
+    return items.map(function (item, index) {
+      const detail = item.detail || {};
+      const response = detail.response || {};
+      const facts = detail.case_facts || {};
+      const spec = facts.spec || {};
+      const evidence = Array.isArray(response.evidence) ? response.evidence : [];
+      const question = (item.question || detail.question || "").trim();
+      const duration = dig(facts, ["event", "duration_min"], "");
+      const allowable = dig(spec, ["allowable_duration_min"], "");
+      const mkt = dig(facts, ["event", "mkt_c"], "");
+      const mktLimit = dig(spec, ["mkt_threshold_c"], "");
+      const flags = [];
+      if (duration !== "" && allowable !== "" && Number(duration) > Number(allowable)) flags.push("时长超限");
+      if (mkt !== "" && mktLimit !== "" && Number(mkt) > Number(mktLimit)) flags.push("MKT超限");
+      return {
+        index: index, qid: item.qid, question: question,
+        lang: (item.lang || detail.lang || "").trim(),
+        status: response.status || "",
+        excursion: dig(facts, ["event", "excursion_temp_c"], ""),
+        duration: duration, allowable: allowable, mkt: mkt, mktLimit: mktLimit,
+        evidenceCount: evidence.length, flags: flags,
+        bare: question.length > 0 && question.length <= 4
+      };
+    });
+  }
+
+  const api = {
+    INTENTS: INTENTS, INTENT_VALUES: INTENT_VALUES, RATINGS: RATINGS,
+    RATING_OPTIONS: RATING_OPTIONS, INTENT_MEANING: INTENT_MEANING,
+    INTENT_FIELDS: INTENT_FIELDS, RATING_FIELDS: RATING_FIELDS,
+    allowedFor: allowedFor, detectEol: detectEol, parseCSV: parseCSV, toCSV: toCSV,
+    withFields: withFields, itemsFromCSV: itemsFromCSV, attachResponses: attachResponses,
+    buildExport: buildExport, validate: validate, isFilled: isFilled,
+    blankIntentAnswer: blankIntentAnswer, blankRatings: blankRatings,
+    dig: dig, summarizeRatings: summarizeRatings
+  };
+  global.M6Form = api;
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  if (typeof document === "undefined") return;   // Node 环境：只导出纯逻辑
+
+  /* =========================================================================
+     界面接线
+     ========================================================================= */
+
+  const PACK_HINT = "data/qa/m6-review-20261003-v3/";
+  const state = {
+    mode: "intent", slot: "A", annotatorId: "reviewer_A",
+    header: [], items: [], eol: "\n", trailing: true, responses: null, sources: null,
+    filter: "all", query: "", cursor: -1
+  };
+
+  const $ = id => document.getElementById(id);
+
+  function messageBox(kind, title, lines) {
+    const box = document.createElement("div");
+    box.className = "box " + kind;
+    const strong = document.createElement("div");
+    strong.textContent = title;
+    box.appendChild(strong);
+    if (lines && lines.length) {
+      const ul = document.createElement("ul");
+      const shown = lines.slice(0, 12);
+      shown.forEach(text => { const li = document.createElement("li"); li.textContent = text; ul.appendChild(li); });
+      if (lines.length > shown.length) {
+        const li = document.createElement("li");
+        li.textContent = "……以及另外 " + (lines.length - shown.length) + " 项";
+        ul.appendChild(li);
+      }
+      box.appendChild(ul);
+    }
+    return box;
+  }
+
+  function setMessages(list) {
+    const host = $("messages");
+    host.textContent = "";
+    list.forEach(entry => host.appendChild(entry));
+  }
+
+  function renderLoadBar() {
+    const bar = $("loadBar");
+    bar.textContent = "";
+    const add = (labelText) => {
+      const label = document.createElement("label");
+      label.className = "inline";
+      label.textContent = labelText + " ";
+      return label;
+    };
+    const fileInput = (id, accept) => {
+      const input = document.createElement("input");
+      input.type = "file"; input.id = id; input.accept = accept || ".csv,.json";
+      return input;
+    };
+    if (state.mode === "intent") {
+      const label = add("加载意图模板 questions/intent CSV：");
+      const input = fileInput("fileIntent");
+      input.addEventListener("change", event => loadFile(event.target.files[0], "intent"));
+      label.appendChild(input);
+      bar.appendChild(label);
+      const tip = document.createElement("span");
+      tip.style.cssText = "font-size:12px;color:var(--muted)";
+      tip.textContent = "选 " + PACK_HINT + "blind-intent/intent-A.csv（已填过的同一个文件也可，用来继续编辑）";
+      bar.appendChild(tip);
+    } else {
+      const l1 = add("评分模板 ratings CSV：");
+      const i1 = fileInput("fileRatings");
+      i1.addEventListener("change", event => loadFile(event.target.files[0], "ratings"));
+      l1.appendChild(i1);
+      const l2 = add("responses.json：");
+      const i2 = fileInput("fileResponses", ".json");
+      i2.addEventListener("change", event => loadFile(event.target.files[0], "responses"));
+      l2.appendChild(i2);
+      const l3 = add("reference-sources.json（可选）：");
+      const i3 = fileInput("fileSources", ".json");
+      i3.addEventListener("change", event => loadFile(event.target.files[0], "sources"));
+      l3.appendChild(i3);
+      bar.appendChild(l1); bar.appendChild(l2); bar.appendChild(l3);
+    }
+  }
+
+  function readText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error || new Error("读取失败"));
+      reader.readAsText(file, "utf-8");
+    });
+  }
+
+  async function loadFile(file, kind) {
+    if (!file) return;
+    try {
+      const text = await readText(file);
+      if (kind === "responses" || kind === "sources") {
+        // 前置条件：先把评审 CSV 载入，页面才有 question_id 行可以把回答挂上去。
+        // 否则这里会静默成功但什么都看不到（用户实际踩过）。
+        if (!state.items || !state.items.length) {
+          throw new Error("请先加载评审 CSV（评分阶段选 answer-review/" + (state.slot === "B" ? "ratings-B" : "ratings-A")
+            + ".csv；意图阶段选 blind-intent/intent-A.csv），再加载 " + file.name
+            + "——题目清单来自 CSV，回答要按 question_id 挂到那 53 行上，先选 JSON 不会显示任何题目。");
+        }
+        const data = JSON.parse(text);
+        if (kind === "responses") {
+          state.responses = data;
+          const missing = attachResponses(state.items, state.responses);
+          renderAll();   // 回答挂上后要重绘：卡片正文与 53 题速查表都依赖这些字段
+          setMessages([messageBox("ok", "已加载 responses.json：" + data.length + " 条回答"
+            + (missing.length ? "（模板里缺 " + missing.length + " 条对应行）" : ""), [])]);
+        } else {
+          state.sources = data;
+          renderAux();
+          setMessages([messageBox("ok", "已加载 reference-sources.json（只读参考面板）", [])]);
+        }
+      } else {
+        const rows = parseCSV(text);
+        if (!rows.length) throw new Error("文件为空");
+        const header = rows[0];
+        if (header.indexOf("question_id") < 0 || header.indexOf("packet_sha256") < 0) {
+          throw new Error("表头不像评审模板（缺 question_id／packet_sha256）。请选 blind-intent/intent-A.csv 或 answer-review/ratings-A.csv");
+        }
+        if (kind === "ratings" && header.indexOf("response_sha256") < 0) {
+          throw new Error("这不是评分模板（缺 response_sha256 列）");
+        }
+        if (kind === "intent" && header.indexOf("expected_intent") < 0 && header.indexOf("question") < 0) {
+          throw new Error("这不是意图模板");
+        }
+        state.items = itemsFromCSV(rows, kind);
+        state.mode = kind;
+        state.header = header;
+        state.eol = detectEol(text);
+        state.trailing = text.endsWith(state.eol);
+        const foundIds = {};
+        state.items.forEach(item => {
+          const value = (item.raw.annotator_id || "").trim();
+          if (value) foundIds[value] = (foundIds[value] || 0) + 1;
+        });
+        const known = Object.keys(foundIds);
+        let identityNote = "";
+        if (known.length === 1 && known[0] !== state.annotatorId) {
+          state.annotatorId = known[0];
+          $("annotatorId").value = known[0];
+          if (known[0] === "reviewer_A") $("slot").value = "A";
+          if (known[0] === "reviewer_B") $("slot").value = "B";
+          state.slot = $("slot").value;
+          identityNote = " 已沿用文件里的 annotator_id=" + known[0] + "。";
+        } else if (known.length > 1) {
+          identityNote = " 注意：文件里有 " + known.length + " 个不同的 annotator_id，导出时会统一写成当前 ID。";
+        }
+        if (state.responses) attachResponses(state.items, state.responses);
+        const filled = state.items.filter(item => isFilled(item, state.mode)).length;
+        state.cursor = state.items.findIndex(item => !isFilled(item, state.mode));
+        renderAll();
+        setMessages([messageBox("ok", "已加载 " + file.name + "：" + state.items.length + " 行，其中已填 "
+          + filled + " 行。两阶段请使用同一个 annotator_id。" + identityNote, [])]);
+      }
+    } catch (error) {
+      setMessages([messageBox("err", "加载失败：" + error.message, [])]);
+    }
+  }
+
+  function renderAux() {
+    const host = $("aux");
+    host.textContent = "";
+    if (state.mode !== "ratings") return;
+
+    if (state.items.length) {
+      host.appendChild(ratingsOverviewBlock(summarizeRatings(state.items)));
+    }
+
+    if (!state.sources) return;
+    const details = document.createElement("details");
+    details.className = "aux";
+    const summary = document.createElement("summary");
+    summary.textContent = "参考来源（reference-sources.json）——核对证据时按需展开；它不是「正确答案」清单";
+    details.appendChild(summary);
+    const pre = document.createElement("pre");
+    pre.textContent = JSON.stringify(state.sources, null, 2);
+    details.appendChild(pre);
+    host.appendChild(details);
+  }
+
+  /** 53 题速查表 + 统计。纯只读，不参与导出。 */
+  function ratingsOverviewBlock(rows) {
+    const details = document.createElement("details");
+    details.className = "aux";
+    details.open = true;
+    const summary = document.createElement("summary");
+    const fallbackCount = rows.filter(r => r.status === "concept_fallback").length;
+    const noEvidence = rows.filter(r => r.evidenceCount === 0).length;
+    const bareCount = rows.filter(r => r.bare).length;
+    const overCount = rows.filter(r => r.flags.length).length;
+    summary.textContent = "53 题速查表（objective facts）——共 " + rows.length + " 题；"
+      + "概念回退 " + fallbackCount + "；无证据 " + noEvidence + "；"
+      + "裸关键词 " + bareCount + "；案例参数越限 " + overCount + "。点题号跳转。";
+    details.appendChild(summary);
+
+    const note = document.createElement("div");
+    note.className = "note info";
+    note.style.margin = "8px 0";
+    note.textContent = "本表只列冻结包里的客观字段，不含系统预测，也不替你判断对错。"
+      + "「时长/MKT 越限」是拿案例参数与工程阈值（rules_config）比较的结果——阈值是工程默认配置，不是制造商稳定性限值。"
+      + "status=concept_fallback 表示系统没有把该问句识别为可执行任务、退回通用说明。";
+    details.appendChild(note);
+
+    const wrap = document.createElement("div");
+    wrap.className = "tablewrap";
+    const table = document.createElement("table");
+    table.className = "overview";
+    const head = document.createElement("thead");
+    const hr = document.createElement("tr");
+    ["#", "QID", "问句", "语", "status", "偏移°C", "时长/允许", "MKT/阈值", "越限", "证据", "评分"].forEach(function (text) {
+      const th = document.createElement("th");
+      th.textContent = text;
+      hr.appendChild(th);
+    });
+    head.appendChild(hr);
+    table.appendChild(head);
+
+    const body = document.createElement("tbody");
+    rows.forEach(function (row) {
+      const tr = document.createElement("tr");
+      if (!isFilled(state.items[row.index], "ratings")) tr.className = "todo";
+      const cells = [
+        String(row.index + 1), row.qid, row.question, row.lang, row.status,
+        row.excursion, row.duration + "/" + row.allowable,
+        row.mkt + "/" + row.mktLimit, row.flags.join("·"),
+        String(row.evidenceCount),
+        isFilled(state.items[row.index], "ratings") ? "已填" : "未填"
+      ];
+      cells.forEach(function (text, column) {
+        const td = document.createElement("td");
+        if (column === 1) {
+          const link = document.createElement("a");
+          link.href = "#";
+          link.textContent = text;
+          link.addEventListener("click", function (event) {
+            event.preventDefault();
+            const target = document.getElementById("card-" + row.qid);
+            if (target && target.scrollIntoView) target.scrollIntoView({ block: "center" });
+          });
+          td.appendChild(link);
+        } else {
+          td.textContent = text;
+          if (column === 2 && row.bare) td.className = "bare";
+        }
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+    wrap.appendChild(table);
+    details.appendChild(wrap);
+    return details;
+  }
+
+  function questionMatches(item) {
+    if (!state.query) return true;
+    const hay = (item.qid + " " + item.question + " " + (item.lang || "")).toLowerCase();
+    return hay.indexOf(state.query.toLowerCase()) >= 0;
+  }
+
+  function renderList() {
+    const host = $("list");
+    host.textContent = "";
+    const visible = state.items
+      .map((item, index) => ({ item: item, index: index }))
+      .filter(entry => questionMatches(entry.item))
+      .filter(entry => state.filter === "all"
+        || (state.filter === "todo" && !isFilled(entry.item, state.mode))
+        || (state.filter === "done" && isFilled(entry.item, state.mode)));
+    if (!visible.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = state.items.length ? "当前筛选下没有题目。" : "还没有加载文件。";
+      host.appendChild(empty);
+      return;
+    }
+    visible.forEach(entry => host.appendChild(renderCard(entry.item, entry.index)));
+  }
+
+  function optionRow(name, value, label, meaning, checked, onPick) {
+    const row = document.createElement("label");
+    row.className = "opt";
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = name; input.value = value; input.checked = checked;
+    input.addEventListener("change", onPick);
+    const text = document.createElement("span");
+    const val = document.createElement("span");
+    val.className = "val"; val.textContent = value;
+    const mean = document.createElement("span");
+    mean.className = "mean"; mean.textContent = meaning ? "  " + meaning : "";
+    text.appendChild(val); text.appendChild(mean);
+    if (label) { const extra = document.createElement("span"); extra.className = "mean"; extra.textContent = "  " + label; text.appendChild(extra); }
+    row.appendChild(input); row.appendChild(text);
+    return row;
+  }
+
+  function renderCard(item, index) {
+    const card = document.createElement("div");
+    card.className = "card " + (isFilled(item, state.mode) ? "done" : "todo")
+      + (index === state.cursor ? " cursor" : "");
+    card.dataset.index = String(index);
+    card.id = "card-" + item.qid;   // 53 题速查表的跳转锚点
+    card.addEventListener("mousedown", () => {
+      state.cursor = index;
+      Array.prototype.forEach.call(document.querySelectorAll(".card.cursor"),
+        node => node.classList.remove("cursor"));
+      card.classList.add("cursor");
+    });
+
+    const head = document.createElement("div");
+    head.className = "chead";
+    const qid = document.createElement("span");
+    qid.className = "qid"; qid.textContent = item.qid || "(缺 question_id)";
+    const lang = document.createElement("span");
+    lang.className = "lang"; lang.textContent = item.lang || "?";
+    const seq = document.createElement("span");
+    seq.className = "seq"; seq.textContent = "第 " + (index + 1) + " / " + state.items.length + " 条";
+    head.appendChild(qid); head.appendChild(lang); head.appendChild(seq);
+    card.appendChild(head);
+
+    const text = document.createElement("div");
+    text.className = "qtext"; text.textContent = item.question || "(无题面)";
+    card.appendChild(text);
+
+    if (state.mode === "intent") {
+      const answer = item.answer || blankIntentAnswer();
+      const opts = document.createElement("div");
+      opts.className = "opts";
+      INTENT_VALUES.forEach(value => {
+        opts.appendChild(optionRow("intent-" + index, value, "", INTENT_MEANING[value],
+          answer.expected_intent === value, () => {
+            answer.expected_intent = value;
+            if (value !== "ambiguous") answer.acceptable_intents = [];
+            state.cursor = index;
+            replaceCard(index);
+            if (value !== "ambiguous") focusNextUnfilled(index);
+          }));
+      });
+      card.appendChild(opts);
+      if (answer.expected_intent === "ambiguous") {
+        const box = document.createElement("div");
+        box.className = "subopts";
+        const hint = document.createElement("div");
+        hint.className = "hint";
+        hint.textContent = "勾选可接受的任务标签（至少一个，不含 ambiguous；多个会用英文分号连接写入 acceptable_intents）";
+        box.appendChild(hint);
+        INTENTS.forEach(value => {
+          const label = document.createElement("label");
+          const input = document.createElement("input");
+          input.type = "checkbox"; input.value = value;
+          input.checked = (answer.acceptable_intents || []).indexOf(value) >= 0;
+          input.addEventListener("change", () => {
+            const set = new Set(answer.acceptable_intents || []);
+            if (input.checked) set.add(value); else set.delete(value);
+            answer.acceptable_intents = INTENTS.filter(v => set.has(v));
+            updateProgress();
+          });
+          label.appendChild(input);
+          label.appendChild(document.createTextNode(value));
+          box.appendChild(label);
+        });
+        card.appendChild(box);
+      }
+      card.appendChild(noteBox("判断理由 note（建议填；歧义题请说明为什么有多种合理解释）",
+        answer.note, value => { answer.note = value; }));
+    } else {
+      const detail = item.detail;
+      if (detail) {
+        const answerLabel = document.createElement("div");
+        answerLabel.className = "note";
+        const status = document.createElement("span");
+        status.className = "status";
+        const response = detail.response;
+        status.textContent = response && typeof response === "object" && response.status
+          ? "status=" + response.status : "回答";
+        answerLabel.appendChild(status);
+        card.appendChild(answerLabel);
+        const answerBox = document.createElement("div");
+        answerBox.className = "answer";
+        answerBox.textContent = response && typeof response === "object"
+          ? (response.answer || JSON.stringify(response, null, 2))
+          : (typeof response === "string" ? response : JSON.stringify(response, null, 2));
+        card.appendChild(answerBox);
+        if (response && typeof response === "object" && response.evidence) {
+          card.appendChild(detailsBlock("证据 evidence", response.evidence));
+        }
+        if (detail.case_facts) card.appendChild(detailsBlock("案例事实 case_facts", detail.case_facts));
+      } else {
+        const warn = document.createElement("div");
+        warn.className = "note warn";
+        warn.textContent = "还没加载 responses.json，看不到这一条的回答（加载后自动出现）。";
+        card.appendChild(warn);
+      }
+      const ratings = item.ratings || blankRatings();
+      const grid = document.createElement("div");
+      grid.className = "rate";
+      RATINGS.forEach(key => {
+        const k = document.createElement("div");
+        k.className = "k"; k.textContent = key;
+        const select = document.createElement("select");
+        RATING_OPTIONS[key].forEach(([value, label]) => {
+          const option = document.createElement("option");
+          option.value = value; option.textContent = label;
+          select.appendChild(option);
+        });
+        select.value = ratings[key] || "";
+        select.addEventListener("change", () => {
+          ratings[key] = select.value;
+          state.cursor = index;
+          replaceCard(index);
+          updateProgress();
+        });
+        grid.appendChild(k); grid.appendChild(select);
+      });
+      const kIds = document.createElement("div");
+      kIds.className = "k"; kIds.textContent = "relevant_evidence_ids";
+      const ids = document.createElement("input");
+      ids.type = "text"; ids.value = ratings.relevant_evidence_ids || "";
+      ids.placeholder = "实际相关的证据 ID，多个用英文分号分隔；留空请解释";
+      ids.addEventListener("input", () => { ratings.relevant_evidence_ids = ids.value; updateProgress(); });
+      grid.appendChild(kIds); grid.appendChild(ids);
+      const kUrl = document.createElement("div");
+      kUrl.className = "k"; kUrl.textContent = "checked_source_urls";
+      const urls = document.createElement("input");
+      urls.type = "text"; urls.value = ratings.checked_source_urls || "";
+      urls.placeholder = "你真的打开过的来源 URL（必填），多个用英文分号分隔";
+      urls.addEventListener("input", () => { ratings.checked_source_urls = urls.value; updateProgress(); });
+      grid.appendChild(kUrl); grid.appendChild(urls);
+      card.appendChild(grid);
+      card.appendChild(noteBox("note（扣分理由、来源名称／章节／页码、NA 的原因）",
+        ratings.note, value => { ratings.note = value; }));
+    }
+    return card;
+  }
+
+  function detailsBlock(title, value) {
+    const details = document.createElement("details");
+    details.className = "aux";
+    const summary = document.createElement("summary");
+    summary.textContent = title;
+    const pre = document.createElement("pre");
+    pre.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+    details.appendChild(summary); details.appendChild(pre);
+    return details;
+  }
+
+  function noteBox(labelText, value, onChange) {
+    const box = document.createElement("div");
+    box.className = "notebox";
+    const label = document.createElement("div");
+    label.className = "lbl"; label.textContent = labelText;
+    const area = document.createElement("textarea");
+    area.value = value || "";
+    area.spellcheck = false;
+    area.addEventListener("input", () => onChange(area.value));
+    box.appendChild(label); box.appendChild(area);
+    return box;
+  }
+
+  function replaceCard(index) {
+    const list = $("list");
+    const cards = Array.prototype.slice.call(list.querySelectorAll(".card"));
+    const old = cards.filter(card => card.dataset.index === String(index))[0];
+    if (!old) { renderAll(); return; }
+    const fresh = renderCard(state.items[index], index);
+    old.replaceWith(fresh);
+    updateProgress();
+  }
+
+  function focusNextUnfilled(from) {
+    for (let step = 1; step <= state.items.length; step += 1) {
+      const index = (from + step) % state.items.length;
+      if (!isFilled(state.items[index], state.mode)) {
+        state.cursor = index;
+        const card = Array.prototype.slice.call($("list").querySelectorAll(".card"))
+          .filter(node => node.dataset.index === String(index))[0];
+        if (card) {
+          Array.prototype.forEach.call($("list").querySelectorAll(".card.cursor"),
+            node => node.classList.remove("cursor"));
+          card.scrollIntoView({ block: "center", behavior: "smooth" });
+          card.classList.add("cursor");
+        }
+        return;
+      }
+    }
+  }
+
+  function updateProgress() {
+    const done = state.items.filter(item => isFilled(item, state.mode)).length;
+    const total = state.items.length;
+    $("progressFill").style.width = total ? (done / total * 100) + "%" : "0";
+    $("progressText").textContent = total ? ("已填 " + done + " / " + total) : "未加载";
+    $("modeTag").textContent = state.mode === "intent" ? "第一阶段 · 意图盲标" : "第二阶段 · 答案／证据评分";
+    $("slotTag").textContent = "评审 " + state.slot;
+  }
+
+  function renderAll() {
+    renderLoadBar();
+    renderAux();
+    renderList();
+    updateProgress();
+  }
+
+  function currentValidation() {
+    return validate(state.header, state.items, state.mode, state.annotatorId);
+  }
+
+  function showValidation(auto) {
+    if (!state.items.length) {
+      setMessages([messageBox("warn", "还没加载文件。", [])]);
+      return null;
+    }
+    const result = currentValidation();
+    if (result.errors.length) {
+      setMessages([messageBox("err", "有 " + result.errors.length + " 项错误（这些正是官方 score 会拒绝的原因），"
+        + result.warnings.length + " 项提醒：", result.errors.concat(result.warnings))]);
+    } else if (result.warnings.length) {
+      setMessages([messageBox("warn", "没有错误，但有 " + result.warnings.length + " 项提醒（建议处理）：", result.warnings)]);
+    } else {
+      setMessages([messageBox("ok", "自检通过：没有错误，也没有提醒。可以导出交给协调人。", [])]);
+    }
+    if (!auto && result.errors.length) {
+      window.alert("还有 " + result.errors.length + " 项错误，见页面顶部的清单。");
+    }
+    return result;
+  }
+
+  function exportCSV(force) {
+    if (!state.items.length) { window.alert("先加载文件。"); return; }
+    const result = showValidation(true);
+    if (result && result.errors.length && !force) {
+      if (!window.confirm("还有 " + result.errors.length + " 项错误，导出后仍会被官方 score 拒绝。"
+        + "仍要导出（用于保存进度）吗？")) return;
+    }
+    const out = buildExport(state.header, state.items, state.mode, state.annotatorId);
+    const text = toCSV(out.header, out.rows, state.eol, state.trailing);
+    $("csvWrap").style.display = "";
+    $("csvOut").value = text;
+    const name = (state.mode === "intent" ? "intent-" : "ratings-") + state.slot + ".csv";
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url; link.download = name;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  function copyCSV() {
+    const area = $("csvOut");
+    if (!area.value) { window.alert("先点「导出 CSV」生成文本。"); return; }
+    area.style.display = "";
+    area.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (error) { ok = false; }
+    if (ok) { window.alert("已复制 CSV 文本。"); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(area.value)
+        .then(() => window.alert("已复制 CSV 文本。"))
+        .catch(() => window.alert("复制失败：请手动全选文本框内容复制。"));
+      return;
+    }
+    window.alert("复制失败：请手动全选文本框内容复制。");
+  }
+
+  function resetAll() {
+    if (!window.confirm("清空当前页面里所有已填内容（磁盘上的文件不受影响）？")) return;
+    state.header = []; state.items = []; state.responses = null; state.sources = null; state.cursor = -1;
+    $("csvWrap").style.display = "none"; $("csvOut").value = "";
+    renderAll();
+    setMessages([messageBox("warn", "已清空。重新选择文件即可。", [])]);
+  }
+
+  function wire() {
+    const switchMode = mode => {
+      if (state.items.length && state.mode !== mode) {
+        if (!window.confirm("切换阶段会清空页面里已加载的内容（磁盘文件不受影响）。继续？")) return;
+        state.items = []; state.header = []; state.responses = null; state.sources = null;
+        state.cursor = -1;
+        $("csvWrap").style.display = "none"; $("csvOut").value = "";
+      }
+      state.mode = mode;
+      $("modeIntent").classList.toggle("primary", mode === "intent");
+      $("modeRatings").classList.toggle("primary", mode === "ratings");
+      renderAll();
+    };
+    $("modeIntent").addEventListener("click", () => switchMode("intent"));
+    $("modeRatings").addEventListener("click", () => switchMode("ratings"));
+    $("slot").addEventListener("change", () => {
+      const previous = "reviewer_" + state.slot;
+      state.slot = $("slot").value;
+      if ($("annotatorId").value === previous || !$("annotatorId").value) {
+        state.annotatorId = "reviewer_" + state.slot;
+        $("annotatorId").value = state.annotatorId;
+      }
+      updateProgress();
+    });
+    $("annotatorId").addEventListener("input", () => {
+      state.annotatorId = $("annotatorId").value.trim();
+      updateProgress();
+    });
+    $("filter").addEventListener("change", () => { state.filter = $("filter").value; renderList(); });
+    $("btnNextTodo").addEventListener("click", () => {
+      if (!state.items.length) return;
+      const start = state.cursor >= 0 ? state.cursor : -1;
+      focusNextUnfilled(start);
+    });
+    $("btnValidate").addEventListener("click", () => showValidation(false));
+    $("btnExport").addEventListener("click", () => exportCSV(false));
+    $("btnCopy").addEventListener("click", copyCSV);
+    $("btnReset").addEventListener("click", resetAll);
+    document.addEventListener("keydown", event => {
+      const target = event.target;
+      const typing = target && /^(TEXTAREA|SELECT)$/.test(target.tagName);
+      const textEntry = target && target.tagName === "INPUT" && target.type !== "radio" && target.type !== "checkbox";
+      if (typing || textEntry) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (state.mode !== "intent") return;
+      const index = state.cursor;
+      if (index < 0 || !state.items[index]) return;
+      const digit = parseInt(event.key, 10);
+      if (digit >= 1 && digit <= 7) {
+        const value = INTENT_VALUES[digit - 1];
+        state.items[index].answer.expected_intent = value;
+        if (value !== "ambiguous") state.items[index].answer.acceptable_intents = [];
+        replaceCard(index);
+        if (value !== "ambiguous") focusNextUnfilled(index);
+        event.preventDefault();
+      }
+    });
+  }
+
+  function boot() {
+    wire();
+    renderAll();
+    setMessages([messageBox("warn", "开始前请读一遍这两条：", [
+      "第一阶段只加载 blind-intent 材料；封存你的 53 条意图标签之前，不要打开 answer-review/ 与 coordinator/（尤其 predictions.private.json，那是系统预测，不是人工答案）。",
+      "不要在 " + PACK_HINT + " 里就地修改模板：导出后请把文件放到 data/processed/m6-my-labels/，再用 scripts/check_m6_annotation.py 自检。不要用 Excel 打开或另存（长哈希会被改坏）。"
+    ])]);
+  }
+
+  function bootSafely() {
+    try {
+      boot();
+    } catch (error) {
+      const host = document.getElementById("messages");
+      if (host) {
+        const box = document.createElement("div");
+        box.className = "box err";
+        box.textContent = "页面初始化出错：" + (error && error.message ? error.message : error)
+          + " —— 请把这句原文发给开发者；或改用 scripts/check_m6_annotation.py 手工填 CSV。";
+        host.appendChild(box);
+      }
+      throw error;
+    }
+  }
+
+  global.addEventListener("error", event => {
+    const host = document.getElementById("messages");
+    if (!host) return;
+    const box = document.createElement("div");
+    box.className = "box err";
+    box.textContent = "页面脚本报错：" + (event.message || event.error || "未知错误");
+    host.appendChild(box);
+  });
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootSafely);
+  else bootSafely();
+})(typeof globalThis !== "undefined" ? globalThis : this);
+</script>
+</body>
+</html>
