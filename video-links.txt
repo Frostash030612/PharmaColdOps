@@ -1,0 +1,5 @@
+# Two presentation videos for the course submission.
+# Line order matters: promotion first, system design second.
+# Both must be visible as "Unlisted" on YouTube.
+https://youtu.be/rGx4m3SvhgA
+https://youtu.be/vUg3pPWm6Bg
