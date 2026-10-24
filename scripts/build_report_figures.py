@@ -30,7 +30,7 @@ def event_chart():
 
 def case_flow():
     fig,ax=plt.subplots(figsize=(10,3.8));ax.set_xlim(0,10);ax.set_ylim(0,3.8);ax.axis('off')
-    boxes=[(.05,2.05,'1  Observe','20 C for 90 min\nMKT 19 C; intact packaging'),
+    boxes=[(.05,2.05,'1  Observe','20 °C for 90 min\nMKT 19 °C; intact packaging'),
            (3.4,2.05,'2  Preserve rule result','Rule 3: scrap\nOriginal assessment retained'),
            (6.75,2.05,'3  Exercise review gate','Pending: preview blocked\nScripted review: scrap retained'),
            (6.75,.15,'4  Adopt replacement','V02 spare vehicle selected\n23.22 km; ETA 556.14 min'),

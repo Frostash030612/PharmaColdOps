@@ -2,17 +2,19 @@
 
 ## Executive summary
 
-PharmaColdOps is an explainable decision-support prototype for pharmaceutical cold-chain temperature excursions. We connect simulated temperature observations, rule-based disposition recommendations, human review, replacement delivery planning, and case-specific evidence queries in one runnable system. The prototype covers the IRS technique groups of decision automation, knowledge discovery and data mining, resource optimisation, and cognitive systems.
+PharmaColdOps is an explainable decision-support prototype for pharmaceutical cold-chain temperature excursions. We connect simulated temperature observations, rule-based disposition recommendations, human review, replacement delivery planning, and case-specific evidence queries in one runnable system. The prototype covers the IRS technique groups of decision automation, knowledge discovery and data mining, business resource optimisation, and cognitive systems.
 
-The principal result is an implemented, auditable workflow rather than a validated medicine-quality predictor. M3 agreed with historical adjudicated labels in 54 of 57 synthetic scenarios, but missed all three historical quarantine cases. The shipment-risk experiment achieved five-fold PR-AUC 0.7087 and F1 0.6635; monthly candidate-cause classification remained weak. A subsequent event-level simulation study improved held-out macro-F1, while retaining substantial multi-fault and extreme-condition failures. Static routing experiments produced complete feasible solutions in 49 comparisons.
+The principal result is an implemented, auditable workflow rather than a validated medicine-quality predictor. M3 agreed with historical adjudicated labels in 54 of 57 synthetic scenarios, but missed all three historical quarantine cases. The shipment-risk experiment achieved a five-fold PR-AUC of 0.7087 and an F1 of 0.6635; monthly candidate-cause classification remained weak. A subsequent event-level simulation study improved held-out macro-F1, while retaining substantial multi-fault and extreme-condition failures. Static routing experiments produced complete feasible solutions in all 49 runs.
 
 <!-- M6_ABSTRACT_STATUS_START -->
 
-M6 review covers 53 frozen questions in completed A and current B worksheets. Both identify weak evidence support and failures in scope handling. Historical process gaps and unresolved intent disagreements limit the results to descriptive comparison rather than independent inter-rater validation.
+The M6 review covers 53 frozen questions in the completed A and current B worksheets. Both identify weak evidence support and failures in scope handling. Historical process gaps and unresolved intent disagreements limit the results to a descriptive comparison rather than independent inter-rater validation.
 
 <!-- M6_ABSTRACT_STATUS_END -->
 
-Operational orders and event observations are simulated. Engineering temperature limits are not manufacturer stability limits, model candidates cannot authorise disposition, and human review governs the effective result used by downstream delivery. The deployment is a local demonstration with persistent storage and recovery checks, not a public or clinically validated service.
+Operational orders and event observations are simulated. Engineering temperature limits are not manufacturer stability limits, model candidates cannot authorise a disposition, and human review governs the effective result used by downstream delivery. The deployment is a local demonstration with persistent storage and recovery checks, not a public or clinically validated service.
+
+The report is organised as follows. Section 1 sets out the operational problem, market context and related work. Sections 2–4 describe the domain foundations, system architecture and implemented workflow. Section 5 defines the evaluation design, Section 6 reports the experimental results, Section 7 covers reliability and reproduction, and Section 8 discusses findings, limits and next evaluation. Appendices A–C map the work to the course areas, document installation and operation, and identify the submitted proposal.
 
 ## 1 Business problem, market context and related work
 
@@ -26,21 +28,27 @@ The intended users are quality reviewers, dispatchers, warehouse managers and au
 
 Temperature-controlled pharmaceutical distribution is governed by good-distribution requirements: storage and transport conditions must be specified, monitored and documented, and deviations must be investigated before a batch is released or rejected [2]. Monitoring itself is a mature market. Data loggers, probes and cloud dashboards are widely deployed, and commercial platforms already combine shipment visibility with stability and quality workflows [1]. The bottleneck we address is therefore not sensing but the handover between an observation, a defensible disposition and the logistics response that follows it.
 
+The supplier landscape can be described in three broad layers rather than by individual vendors: monitoring hardware and loggers that record temperature; stability and quality platforms that hold product-specific limits and investigation workflows; and cold-chain visibility services that combine shipment tracking with exception handling [1]. These layers overlap in cloud dashboards, alerting and audit trails, and buyers commonly assemble them as separate systems, so the alert, the disposition record and the replacement plan do not share one case identity. That integration boundary, rather than sensing or reporting alone, is where this prototype is positioned.
+
 The workflow is designed around three requirements: decisions remain inspectable after the event, original recommendations survive subsequent human overrides, and replacement plans retain the same case identity. These requirements define the scope of the prototype. The market research in the submitted proposal provides context, while the evaluation in this report focuses on implemented behaviour rather than comparison with commercial products [1].
 
 ### 1.3 Related work
 
-Cold-chain excursion evidence. Matthias et al. reviewed freezing events in vaccine cold chains and found them widespread and often undetected by routine practice [14]. Kartoglu and Milstien surveyed the tools available for protecting vaccine quality across the chain and argued that the weakest link is frequently the decision and documentation process rather than the sensor [15]. Both findings support an evidence-first disposition workflow, but neither provides an auditable software path from an excursion observation to a logged, reviewable decision.
+**Cold-chain excursion evidence.** Matthias et al. reviewed freezing events in vaccine cold chains and found them widespread and often undetected by routine practice [14]. Kartoglu and Milstien surveyed the tools available for protecting vaccine quality across the chain and argued that the weakest link is frequently the decision and documentation process rather than the sensor [15]. Both findings support an evidence-first disposition workflow, but neither provides an auditable software path from an excursion observation to a logged, reviewable decision.
 
-Explainability and decision support. SHAP assigns additive feature attributions with a consistent theoretical basis [16]. We use it offline to inspect model behaviour and explicitly do not treat attributions as causes; the operational decision remains rule-based and human-reviewed. This reflects a broader lesson from decision-support research: explanation is a property of the whole workflow, not of a single model output.
+**Explainability and decision support.** SHAP assigns additive feature attributions with a consistent theoretical basis [16]. We use it offline to inspect model behaviour and explicitly do not treat attributions as causes; the operational decision remains rule-based and human-reviewed. This reflects a broader lesson from decision-support research: explanation is a property of the whole workflow, not of a single model output.
 
-Routing. Solomon's VRPTW instances remain the standard comparison set for constrained vehicle routing [6], and OR-Tools provides a time-bounded guided-local-search solver over the same formulation. Our contribution is not a new routing algorithm; it is the integration of routing constraints with case-level replacement demand and recorded execution state.
+**Routing.** Solomon's vehicle routing problem with time windows (VRPTW) instances remain the standard comparison set for constrained vehicle routing [6], and OR-Tools provides a time-bounded guided-local-search solver over the same formulation. Our contribution is not a new routing algorithm; it is the integration of routing constraints with case-level replacement demand and recorded execution state.
 
-Knowledge graphs. Property-graph case chains follow the general knowledge-graph model of typed entities and relations [17]. We use fixed template queries rather than an LLM so that every answer has a traceable query, an explicit scope and a distinguishable failure state.
+**Knowledge graphs.** Property-graph case chains follow the general knowledge-graph model of typed entities and relations [17]. We use fixed template queries rather than an LLM so that every answer has a traceable query, an explicit scope and a distinguishable failure state.
 
 ### 1.4 Positioning and contribution
 
-The project contributes an inspectable integration of four IRS technique groups — decision automation, knowledge discovery and data mining, resource optimisation, and cognitive systems — around one case identity. Its distinguishing property is not predictive accuracy but the ability to show, after the fact, which evidence produced which recommendation and which human decision became effective. The prototype is a teaching artefact on simulated data; it is not a validated medicine-quality predictor and does not claim measured operational savings.
+The project contributes an inspectable integration of four IRS technique groups — decision automation, knowledge discovery and data mining, business resource optimisation, and cognitive systems — around one case identity. Its distinguishing property is not predictive accuracy but the ability to show, after the fact, which evidence produced which recommendation and which human decision became effective. The prototype is a teaching artefact on simulated data; it is not a validated medicine-quality predictor and does not claim measured operational savings.
+
+### 1.5 Project scope
+
+The prototype follows one excursion case from temperature observation through assessment, recorded human review, replacement delivery and case-specific evidence retrieval. Its scope is deliberately narrow. Operational orders, event series and execution progress are simulated, map geometry is cached rather than live, and public or synthetic data are used for the learning experiments. Configured durations and mean kinetic temperature (MKT) ceilings are engineering assumptions, not manufacturer stability limits, release specifications or regulatory criteria. Risk and cause models are advisory: they cannot authorise a disposition, and every candidate or abstention is routed to human review. Route planning covers static VRPTW benchmarks and a constrained operational insertion workflow, not live fleet management. The deployment is a single-worker local demonstration without authentication, multi-user transaction control or production monitoring. Consequently, the evaluation in this report measures implemented behaviour, internal consistency and frozen experimental outcomes rather than clinical, regulatory or operational effectiveness.
 
 ## 2 Domain foundations and method selection
 
@@ -50,7 +58,7 @@ We use deterministic priority rules where an operator must inspect the decision 
 
 For routing, Solomon VRPTW instances provide standard capacity and time-window problems. Greedy construction supplies an interpretable baseline; OR-Tools RoutingModel with Guided Local Search supplies time-bounded search; a genetic algorithm provides an additional experimental comparison. This is Routing Solver, not CP-SAT, and time-limited results do not prove optimality [6].
 
-For tabular ML, logistic regression and histogram gradient boosting provide reproducible baselines. Offline SHAP and calibration experiments examine behaviour without treating associations as causes. For question answering, fixed intent routing and template Cypher queries allow explicit evidence and failure states. M6 is not an LLM or unrestricted semantic question-answering service [4, 7].
+For tabular ML, logistic regression and histogram gradient boosting provide reproducible baselines. Offline SHAP and calibration experiments examine behaviour without treating associations as causes. For question answering, fixed intent routing and template Cypher queries allow explicit evidence and failure states. M6 is not an LLM-based or unrestricted semantic question-answering service [4, 7].
 
 ### 2.1 Exposure calculation and rule priority
 
@@ -58,13 +66,15 @@ For each known interval i, M2 uses its duration d_i and absolute temperature T_i
 
 The automatic policy evaluates the following ordered conditions and stops at the first match. Let D be the configured allowable duration and K the configured MKT ceiling. These are project assumptions, not regulatory release limits [2, 3].
 
+Table 1. Ordered automatic disposition policy. The first matching condition determines the recommendation; thresholds are project assumptions.
+
 | Priority | Condition | Automatic output |
 |---|---|---|
-| 1 | Freeze-sensitive product at or below 0 C | scrap |
+| 1 | Freeze-sensitive product at or below 0 °C | scrap |
 | 2 | Compromised packaging above the configured storage maximum | scrap |
-| 3 | Duration >= 2D, or MKT >= K + 3 C | scrap |
+| 3 | Duration ≥ 2D, or MKT ≥ K + 3 °C | scrap |
 | 4 | Duration > D, or MKT > K | scrap |
-| 5 | Retestable product and (duration >= 0.8D or MKT >= K - 0.5 C) | retest |
+| 5 | Retestable product and (duration ≥ 0.8D or MKT ≥ K − 0.5 °C) | retest |
 | 6 | No preceding condition matches | release |
 
 Human-review guards are applied separately for missing observations, unsupported cold exposure, boundary conditions or an explicit review request. A retained rule recommendation is not an authorisation to release stock. The original snapshot and the effective human disposition remain separate [3].
@@ -73,25 +83,29 @@ Human-review guards are applied separately for missing observations, unsupported
 
 The static benchmark ranks only complete solutions with zero recorded hard violations, then minimises vehicle count, then total distance. Its constraints include serving each target once, vehicle capacity, delivery time windows, travel and service time, and return to the benchmark depot. The operational dispatcher additionally groups compatible source/temperature demands, respects remaining vehicle state and mileage, and restricts final parking to selected warehouses. Those operational constraints are not all present in the static Solomon experiment [6, 12, 13].
 
+Table 2. Routing methods and frozen experimental settings.
+
 | Method | Implementation and fixed settings | Reason for inclusion |
 |---|---|---|
 | Greedy | Feasible route construction; no timed search budget | Interpretable baseline |
 | OR-Tools | RoutingModel; parallel cheapest insertion, then Guided Local Search; 10/30/60 s budgets | Established constrained search within a fixed time budget |
 | Genetic algorithm | Permutation encoding with split; population 60, seed 42; 10/30/60 s | Evolutionary comparison |
 
-The GA starts with a greedy seed and is therefore not independent of the greedy baseline. Its search cost is 1,000,000 times unserved targets plus 1,000 times vehicles plus distance; these fixed penalties are not proven to impose lexicographic dominance for every instance. The final evaluator independently of that cost applies the complete-feasibility and vehicle-first ranking. OR-Tools is the Routing Solver, not CP-SAT; reaching the time limit does not prove optimality [6].
+The GA starts with a greedy seed and is therefore not independent of the greedy baseline. Its search cost is 1,000,000 per unserved target plus 1,000 per vehicle plus total distance; these fixed penalties are not proven to impose lexicographic dominance for every instance. The final evaluator applies the complete-feasibility and vehicle-first ranking independently of that cost. OR-Tools is the Routing Solver, not CP-SAT; reaching the time limit does not prove optimality [6].
 
 ### 2.3 Learning tasks and model selection
 
-Shipment risk is binary classification from 13 shipment summaries. Monthly candidate cause is ten-class classification from 15 facility/month descriptors. The formal executable candidates are logistic regression and histogram gradient boosting (HGB); optional LightGBM and XGBoost were unavailable in the recorded environment and are not reported as trained models. Each outer training pool is split approximately 60/20/20 into fitting, calibration and selection; the outer test remains untouched until final scoring. All five risk folds selected HGB with sigmoid calibration. Selection uses PR-AUC for the risk classifier, macro-F1 for the cause classifier, Brier score or log loss for calibration, and selection-set F1 for the risk decision threshold [4].
+Shipment risk is a binary classification task using 13 shipment summaries. Monthly candidate cause is a ten-class classification task using 15 facility/month descriptors. The formal executable candidates are logistic regression and histogram gradient boosting (HGB); optional LightGBM and XGBoost were unavailable in the recorded environment and are not reported as trained models. Each outer training pool is split approximately 60/20/20 into fitting, calibration and selection; the outer test remains untouched until final scoring. All five risk folds selected HGB with sigmoid calibration. Selection uses PR-AUC for the risk classifier, macro-F1 for the cause classifier, Brier score or log loss for calibration, and selection-set F1 for the risk decision threshold [4].
 
-Event-v2 is a different, multilabel task: an event can contain several of 11 injected-mechanism labels. It fits 11 binary HGB classifiers with 100 iterations, 15 leaves, learning rate 0.1, L2 regularisation 1, no early stopping and seed 42. Its 111 features comprise 33 aggregate observations, 60 statistics across four equal-duration observed segments, and 18 temporal/joint statistics. The split uses only the observed prefix, not future fault times or event completion. Candidate screening is chosen on validation data, requiring at least 30 supported events, complete-set precision of at least 90%, and a normal-event supported false-positive rate no greater than 5%; coverage is then maximised. These selection constraints do not guarantee the same precision on new data [5].
+Event-v2 is a different, multi-label task: an event can contain several of 11 injected-mechanism labels. It fits 11 binary HGB classifiers with 100 iterations, 15 leaves, learning rate 0.1, L2 regularisation 1, no early stopping and seed 42. Its 111 features comprise 33 aggregate observations, 60 statistics across four equal-duration observed segments, and 18 temporal/joint statistics. The split uses only the observed prefix, not future fault times or event completion. Candidate screening is chosen on validation data, requiring at least 30 supported events, complete-set precision of at least 90%, and a normal-event supported false-positive rate no greater than 5%; coverage is then maximised. These selection constraints do not guarantee the same precision on new data [5].
 
 ## 3 System architecture
 
 ![Figure 1. Implemented module flow. The advisory path (M4) is drawn separately from the decision path (M3).](figures/final-architecture-clean.png)
 
-The seven modules share case, order and product identifiers while preserving different responsibilities.
+The seven modules share case, order and product identifiers while retaining distinct responsibilities.
+
+Table 3. Seven modules and their implemented responsibilities.
 
 | Module | Implemented responsibility | Principal output |
 |---|---|---|
@@ -111,23 +125,27 @@ The Vue client supports same-origin API mode and an explicit offline rule sandbo
 
 ## 4 Implementation and workflow
 
+The implemented workflow is operated through a Vue client backed by the FastAPI service. Figure 2 shows the recorded English interface used for the demonstration: the delivery map, the excursion event list and the structured evidence panel share the same case identity, while the advisory model panels remain separate from the decision path.
+
+![Figure 2. Main Vue interface in English locale, recorded on 17 October 2026: delivery map, excursion event list and structured evidence panel. All orders and temperature data shown are simulated.|6.5](figures/final-ui-overview.png)
+
 ### 4.1 Temperature assessment and human review
 
 M2 consumes explicit simulated temperature intervals and records known coverage. It calculates duration-weighted MKT, contiguous excursion windows and the selected event range. Missing intervals are not replaced with fabricated readings. A wholly unassessed sequence does not acquire an invented scalar temperature or MKT. The API recalculates derived values rather than trusting a mismatching client summary [10].
 
 M3 records product, stage, packaging, exposure, rule number, reason and mapped evidence. Registration is durable and idempotent by draft identity. A boundary result can be registered for review without being treated as final approval. Pending review blocks linked downstream actions; an explicit human decision records reviewer identity, reason and time. Version checks reject stale mutations, and executed outcomes cannot be retroactively changed [3].
 
-Case audit export provides printable HTML and a full JSON snapshot. It includes original assessment, human review history, recorded model identity, associated delivery state and actual graph coverage. It does not recompute an old case with a newer model. A content hash detects a changed snapshot but is not a cryptographic signature or compliance certificate [11].
+The case audit export provides printable HTML and a full JSON snapshot. It includes original assessment, human review history, recorded model identity, associated delivery state and actual graph coverage. It does not recompute an old case with a newer model. A content hash detects a changed snapshot but is not a cryptographic signature or compliance certificate [11].
 
 ### 4.2 Delivery planning and execution
 
 The order generator records effective configuration, date, seed and source hashes. Operators can demonstrate routine demand, tight delivery windows, multiple sources or temperature zones, and insufficient resources. Real hospital orders, exact cargo quantities and warehouse stock balances are not required for this teaching scenario [12].
 
-Independent urgent orders use the same operation and candidate constraints as ordinary replacement demand. Plan previews do not reserve a vehicle; adoption is an explicit action with version and retry protection. Execution uses a simulated clock. The final allowed parking facilities are a user-selected subset of five warehouses; hospitals cannot be day-end terminals. Parking must complete before a new day inherits vehicle positions [12].
+Independent urgent orders use the same operation and candidate constraints as ordinary replacement demand. Plan previews do not reserve a vehicle; adoption is an explicit action with version and retry protection. Execution uses a simulated clock. The final allowed parking facilities are a user-selected subset of five warehouses; hospitals cannot be final parking sites. Parking must complete before a new day inherits vehicle positions [12].
 
 The isolated worked example in Section 4.4 makes this state flow concrete. It follows one operation and its linked case through assessment, replacement and closure.
 
-Delay inspection identifies late remaining work and can preview reordering under the same constraints. Mechanical failures freeze the affected vehicle and retain failed original orders while separately tracking feasible replacement work. The demonstration does not invent vehicle-to-vehicle transfer, towing or repair capability. PDPTW in-transit rescue is explicitly unsupported rather than silently approximated [13].
+Delay inspection identifies late remaining work and can preview reordering under the same constraints. Mechanical failures freeze the affected vehicle and retain failed original orders while separately tracking feasible replacement work. The demonstration does not invent vehicle-to-vehicle transfer, towing or repair capability. Pickup-and-delivery problem with time windows (PDPTW) in-transit rescue is explicitly unsupported rather than silently approximated [13].
 
 ### 4.3 Advisory models and graph queries
 
@@ -139,11 +157,13 @@ M6 supports disposition reasons, audit chains, product requirements, cause conte
 
 A fresh isolated API run on 23 October 2026 used simulated operating date 1 October 2026, seed 41, four ordinary vaccine orders, one urgent insertion and three available vehicles. The case was R20261023-001308-994369-2b56602c, linked to order SIM-20261001-e813eb7885-O001 in operation PLAN-DEMO-DAY1. All quantities and observations are simulated. The event was entered as a scalar summary, so this example does not claim a new sensor-series/M2 evaluation [19].
 
-The vaccine_2_8 event occurred at W-WESTGATE for delivery to H-NTFGH: 20 C for 90 min, MKT 19 C and intact packaging. The configured duration allowance is 30 min and MKT ceiling 10 C. Rule 3 fires first because 90 >= 2 times 30 and 19 >= 10 + 3, yielding scrap. An explicit review request keeps the effective decision pending and replacement preview returns HTTP 422. An automated test transaction then exercises the review API and retains scrap. This verifies the software transition under a prescribed decision; it does not evaluate a quality reviewer's judgement [19].
+The vaccine_2_8 event occurred at W-WESTGATE for delivery to H-NTFGH, with 20 °C for 90 min, an MKT of 19 °C and intact packaging. The configured duration allowance is 30 min and MKT ceiling 10 °C. Rule 3 is the first matching condition: both triggers hold (90 ≥ 2 × 30 and 19 ≥ 10 + 3), yielding scrap. An explicit review request keeps the effective decision pending, and the replacement preview returns HTTP 422. An automated test transaction then exercises the review API and retains scrap. This verifies the software transition under a prescribed decision; it does not evaluate a quality reviewer's judgement [19].
 
-![Figure 2. One isolated case from observation through review gating, replacement delivery and closure. The review transaction is automated test input, not a human assessment; graph verification is outside this run.|6.7](figures/final-case-flow.png)
+![Figure 3. One isolated case from observation through review gating, replacement delivery and closure. The review transaction is automated test input, not a human assessment; graph verification is outside this run.|6.7](figures/final-case-flow.png)
 
 After that transaction, four feasible replacement candidates were returned. V01/V02/V03 abbreviate the corresponding vehicle suffixes. ETA is minutes after midnight on the simulated day; distance is the candidate schedule distance returned by the API, not extra distance saved against a common baseline [19].
+
+Table 4. Replacement candidates returned for the isolated case, ordered by displayed schedule distance.
 
 | Candidate | Vehicle | Schedule km | ETA min | Other orders affected |
 |---|---|---:|---:|---:|
@@ -154,13 +174,13 @@ After that transaction, four feasible replacement candidates were returned. V01/
 
 All four had zero predicted lateness. The two spare vehicles tie on the displayed metrics; choosing V02 demonstrates an accepted feasible option, not a claim that it is uniquely optimal. The accepted replacement RO-R20261023-001308-994369-2b56602c was subsequently recorded as delivered while the original order remained scrapped. The case progressed to handled and then closed; retrying registration retained the same case identity, and closing before replacement delivery was rejected [19].
 
-The day-one snapshot contains six orders: five delivered (three unaffected ordinary orders, one urgent order and one replacement) and one scrapped original. No vehicle remained on its return trip. Parking was completed before day two inherited the actual vehicle locations; temporary urgent/replacement jobs were not copied into the next fixed daily batch. The example passed 27 assertions. The stored reference IDs remain visible in the case record, but graph writing was explicitly disabled and graph coverage was not verified. These API/state checks are not browser acceptance, M6 answer-quality scores or a real operational-benefit trial [19].
+The day-one snapshot contains six orders: five delivered (three unaffected ordinary orders, one urgent order and one replacement) and one scrapped original. No vehicle remained on its return trip. Parking was completed before day two inherited the actual vehicle locations; temporary urgent/replacement jobs were not copied into the next fixed daily batch. The example passed 27 automated checks. The stored reference IDs remain visible in the case record, but graph writing was explicitly disabled and graph coverage was not verified. These API/state checks are not browser acceptance, M6 answer-quality scores or a real operational-benefit trial [19].
 
 ## 5 Data and evaluation design
 
 There is no public dataset in this project with independently validated medicine release, quarantine, retest and scrap decisions. We therefore evaluate each component against an appropriate and explicitly limited reference. The M3 scenario bank contains 57 synthetic scenarios with historical human adjudication. ML sources and licences are recorded in the data dictionary: the shipment-risk set is a public Kaggle release under CC0 whose documentation and internal checks indicate synthetic generation, and the monthly cause set is explicitly simulated [2, 4].
 
-The risk task uses 8,000 shipment rows, including 1,574 failures, with 13 summary features. The cause task filters 16,192 excursion-month rows into ten candidate-cause classes with 15 features. The latter has 447 provided facility-ID groups and 48 months, but these are not verified real institutions or event timestamps [4].
+The risk task uses 8,000 shipment rows, including 1,574 failures, with 13 summary features. The cause task filters 16,192 excursion-month rows into ten candidate-cause classes with 15 features. The latter has 447 provided facility-ID groups and 48 months, but the facility IDs are not verified real institutions and the months are not event timestamps [4].
 
 The formal ML protocol separates fitting, calibration, selection and final outer testing. Risk uses five stratified outer folds because its source lacks timestamps. Cause experiments include random, provided-facility-ID and month-forward folds, with full and context-only feature sets. Preprocessing and weighting use the fitting partition; test data do not choose thresholds. These are separate tasks from event-v2 simulation and must not share an accuracy headline [4].
 
@@ -170,7 +190,9 @@ Event-v2 has 10,200 simulated events and 9,597 families across training, validat
 
 ### 6.1 Rule engine
 
-M3 agreed with 54 of 57 historical labels, or 94.7368%. Macro-F1 was 0.717437. Engine-to-gold Cohen's kappa was 0.909667; historical annotator-to-annotator kappa was 0.6434. These are different statistics. All three quarantine-labelled cases were missed because the current frozen engine policy has no automatic quarantine output. We retain those cases and the four-class denominator [3].
+M3 agreed with 54 of 57 historical labels, or 94.7368%. Macro-F1 was 0.717437. Engine-to-gold Cohen's kappa was 0.909667; historical annotator-to-annotator kappa was 0.6434. The two kappa values are different statistics and are not directly comparable. All three quarantine-labelled cases were missed because the current frozen engine policy has no automatic quarantine output. We retain those cases and the four-class denominator [3].
+
+Table 5. Rule-engine agreement with the 57 historical adjudications, by class.
 
 | Historical class | Support | Recall | F1 |
 |---|---:|---:|---:|
@@ -183,18 +205,22 @@ The three discrepancies are S034, S035 and S052. They represent a difference bet
 
 ### 6.2 Shipment risk and monthly candidate causes
 
+Table 6. Five-fold shipment-risk results.
+
 | Risk metric | Five-fold result |
 |---|---:|
-| F1 at selection-chosen thresholds | 0.6635 +/- 0.0179 |
-| ROC-AUC | 0.9045 +/- 0.0092 |
-| PR-AUC | 0.7087 +/- 0.0296 |
-| Brier score before and after calibration | 0.1091 to 0.0933 |
+| F1 at selection-chosen thresholds | 0.6635 ± 0.0179 |
+| ROC-AUC | 0.9045 ± 0.0092 |
+| PR-AUC | 0.7087 ± 0.0296 |
+| Brier score, uncalibrated → calibrated | 0.1091 → 0.0933 |
 
 The selected risk model can also be compared with the recorded empirical-prior/majority baseline. The baseline has F1 0, ROC-AUC 0.5, PR-AUC approximately 0.1968 and Brier approximately 0.1580. The model's PR-AUC of 0.7087 therefore exceeds prevalence-based prediction on this dataset. F1, ROC-AUC and PR-AUC values above are fold means with sample standard deviations, not confidence intervals or evidence of real-world clinical performance [4].
 
-For full15 monthly cause classification, macro-F1 was 0.1322 under random folds, 0.1308 under provided-ID folds and 0.1259 under month-forward testing. Corresponding Top-1 results were 0.1713, 0.1500 and 0.1497. Calibration improved probability losses but did not change class rankings. Weak extra feature signal, contextual shortcuts and insufficient event-level information motivated the separate learnability audit and simulator work [4].
+For full15 monthly cause classification, macro-F1 was 0.1322 under random folds, 0.1308 under provided-facility-ID folds and 0.1259 under month-forward testing. Corresponding Top-1 results were 0.1713, 0.1500 and 0.1497. Calibration improved probability losses but did not change class rankings. Weak extra feature signal, contextual shortcuts and insufficient event-level information motivated the separate learnability audit and simulator work [4].
 
 The cause-feature ablation uses identical outer partitions for the 15-feature model and the seven context features. The latter retain facility level, region, equipment type and age, vaccine name, and freeze/heat sensitivity; they omit same-month equipment/power/logging fields and calendar fields [4].
+
+Table 7. Monthly cause-feature ablation across three split protocols.
 
 | Split | Full15 macro-F1 | Context7 macro-F1 | Full15 Top-1 | Context7 Top-1 |
 |---|---:|---:|---:|---:|
@@ -202,13 +228,15 @@ The cause-feature ablation uses identical outer partitions for the 15-feature mo
 | Provided facility ID | 0.1308 | 0.1358 | 0.1500 | 0.1618 |
 | Month-forward | 0.1259 | 0.1314 | 0.1497 | 0.1588 |
 
-Random-fold and facility-fold tests cover all 16,192 rows. Month-forward tests cover 14,520 rows after excluding the first 1,672 warm-up rows, so these are not identical test populations. The full15 random-fold majority baseline achieves Top-1 approximately 0.1607 and macro-F1 approximately 0.0277. Additional dynamic monthly inputs do not consistently beat the context-only model; facility/time Top-1 is below the corresponding majority baselines. The risk out-of-fold predictions also include 360 false negatives and 871 false positives. These failures matter more than a single overall accuracy claim [4].
+Random-fold and provided-facility-ID tests cover all 16,192 rows. Month-forward tests cover 14,520 rows after excluding the first 1,672 warm-up rows, so these are not identical test populations. The full15 random-fold majority baseline achieves Top-1 approximately 0.1607 and macro-F1 approximately 0.0277. Additional dynamic monthly inputs do not consistently beat the context-only model, and full15 Top-1 remains below that 0.1607 baseline under the provided-facility-ID and month-forward splits. The risk out-of-fold predictions also include 360 false negatives and 871 false positives. These failures matter more than a single overall accuracy claim [4].
 
 The M4 experiment used model-identity-matched offline Kernel SHAP with 12 held-out examples, 12 training-background examples and a subset budget of 128 per model, including additive reconstruction checks. The small explanation sets limit population-level interpretation. Online single-feature reference replacement provides a separate sensitivity display; neither procedure establishes the cause of an individual event [4].
 
 ### 6.3 Event-level temporal study
 
 The five test cohorts each contain 600 events. Training uses 3,000 nominal and 3,000 stress events; validation uses 600 of each. The selected model and screening policy are frozen before the 3,000 test events are generated [5].
+
+Table 8. Frozen event-v2 macro-F1 across five held-out cohorts.
 
 | Held-out role | Frozen v1 | Mixed aggregate | Mixed temporal v2 | Shuffled labels |
 |---|---:|---:|---:|---:|
@@ -220,7 +248,9 @@ The five test cohorts each contain 600 events. Training uses 3,000 nominal and 3
 
 All entries are macro-F1 over 11 labels, not the fraction of events with every mechanism correct. Mixed aggregate and mixed temporal use the same 6,000 training events and differ in observed features (33 versus 111). The shuffled-label control retains product/family structure and is a diagnostic control, not an independent statistical null. Frozen-v1 versus v2 also changes training coverage and thresholds, so that comparison alone cannot attribute the gain to temporal features [5].
 
-![Figure 3. Recorded event-study macro-F1 across the same five held-out cohorts. Each cohort has 600 simulated events; values are reproduced from the frozen event-v2 experiment, not new training.|6.7](figures/final-event-comparison.png)
+![Figure 4. Recorded event-study macro-F1 across the same five held-out cohorts. Each cohort has 600 simulated events; values are reproduced from the frozen event-v2 experiment, not new training.|6.7](figures/final-event-comparison.png)
+
+Table 9. Screening coverage and complete-set precision by held-out cohort.
 
 | Held-out role | Supported / tested | Supported coverage | Complete-set correct / supported |
 |---|---:|---:|---:|
@@ -230,19 +260,21 @@ All entries are macro-F1 over 11 labels, not the fraction of events with every m
 | Covered stress | 15 / 600 | 2.50% | 15 / 15 |
 | More extreme stress | 0 / 600 | 0% | Unavailable |
 
-For the fixed selected model, 300 family-bootstrap resamples give conditional 95% macro-F1 intervals of [0.7462, 0.7876], [0.7444, 0.7809], [0.6982, 0.7443], [0.7298, 0.7701] and [0.6301, 0.6703] in table order. They exclude training/selection uncertainty and external-generator uncertainty; they are not clinical confidence intervals [5].
+For the fixed selected model, 300 family-bootstrap resamples give conditional 95% macro-F1 intervals of [0.7462, 0.7876], [0.7444, 0.7809], [0.6982, 0.7443], [0.7298, 0.7701] and [0.6301, 0.6703] in Table 8 row order. They exclude training/selection uncertainty and external-generator uncertainty; they are not clinical confidence intervals [5].
 
 Among supported candidates, complete-set precision was 96/104, 116/124 and 75/83 in the first three roles. Covered stress had only 15 supported events; 15/15 does not establish a population guarantee. Extreme stress supported none, so precision is unavailable rather than 100%. All 3,000 test events still required human review [5].
 
-Raw normal-event false alarms remained 47.73-90.80%. Extreme multi-fault complete-set accuracy fell from 11.96% to 8.70% despite improved recall. Thermal-buffer F1 remained approximately 0.079-0.260. Observationally identical door/staff and power/fuel mechanism combinations show why tuning alone cannot resolve every cause label. The system must expose ambiguity and request additional evidence [5].
+Raw normal-event false alarms remained 47.73–90.80%. Extreme multi-fault complete-set accuracy fell from 11.96% to 8.70% despite improved recall. Thermal-buffer F1 remained approximately 0.079–0.260. Door/staff and power/fuel mechanism pairs that are observationally identical show why tuning alone cannot resolve every cause label. The system must expose ambiguity and request additional evidence [5].
 
 ### 6.4 Static routing
 
-The formal comparison has 49 solver runs across six Solomon instances and one Singapore instance. All runs served every target without recorded hard violations. On Singapore, greedy used three vehicles and 165.26 km; OR-Tools used three and 137.85 km. This is a 16.59% distance reduction for that frozen static instance, not an operational savings estimate [6].
+The formal comparison has 49 solver runs across six Solomon instances and one Singapore instance. All 49 runs served every target without recorded hard violations. On Singapore, greedy used three vehicles and 165.26 km; OR-Tools used three vehicles and 137.85 km. This is a 16.59% distance reduction for that frozen static instance, not an operational savings estimate [6].
 
 OR-Tools matched the published two-decimal reference distances on C101 and C201. R101 and R201 had same-fleet distance gaps of approximately 0.1656% and 0.1753%. RC101 used 16 vehicles against the reference 14, so its shorter distance cannot be described as beating that reference. GA did not outperform OR-Tools in this experiment. Each configuration had one run; no multi-seed significance claim is made [6].
 
 The distance comparison below uses the 60-second budget for both search methods. Each cell is vehicles / distance; Solomon distance is in Euclidean instance units and Singapore distance is in road kilometres. Distances across those two scales must not be averaged [6].
+
+Table 10. Vehicle count and distance by instance at the 60-second budget.
 
 | Instance | Greedy | OR-Tools 60 s | GA 60 s |
 |---|---:|---:|---:|
@@ -254,7 +286,9 @@ The distance comparison below uses the 60-second budget for both search methods.
 | RC201 | 5 / 2075.83 | 4 / 1443.75 | 5 / 2054.67 |
 | Singapore | 3 / 165.26 | 3 / 137.85 | 3 / 137.85 |
 
-The 49 runs comprise one greedy run and six timed runs per instance (two search algorithms times three budgets). Every run recorded zero unserved targets and zero hard violations; served/all and on-time/all were both 100%. The following selected cases illustrate where extra time did and did not help; vehicle count is unchanged across budgets within each listed method [6].
+The 49 runs comprise one greedy run and six timed runs per instance (two search algorithms × three timed budgets). Every run recorded zero unserved targets and zero hard violations; served/all and on-time/all were both 100%. The following selected cases illustrate where extra time did and did not help; vehicle count is unchanged across budgets within each listed method [6].
+
+Table 11. Selected cases showing distance sensitivity to the search budget.
 
 | Instance and method | 10 s distance | 30 s distance | 60 s distance |
 |---|---:|---:|---:|
@@ -263,7 +297,7 @@ The 49 runs comprise one greedy run and six timed runs per instance (two search 
 | R101 GA, 20 vehicles | 2039.23 | 2039.23 | 2029.57 |
 | Singapore OR-Tools, 3 vehicles | 137.85 | 137.85 | 137.85 |
 
-Observed solver runtimes were 10.001-10.113 s, 30.001-30.048 s and 60.001-60.073 s for the three budgets. The machine was not CPU-exclusive, so these are execution records rather than a dedicated-hardware speed benchmark. Singapore summed vehicle work time was 495.93 min for greedy and 484.62 min for OR-Tools/GA; this is not the arrival time of the final vehicle. For RC201, OR-Tools' same-fleet distance gap to the reference was 2.6163%, retaining a visible failure to match the best-known solution [6].
+Observed solver runtimes were 10.001–10.113 s, 30.001–30.048 s and 60.001–60.073 s for the three budgets. The machine was not CPU-exclusive, so these are execution records rather than a dedicated-hardware speed benchmark. Singapore summed vehicle work time was 495.93 min for greedy and 484.62 min for OR-Tools/GA; this is not the arrival time of the final vehicle. For RC201, OR-Tools' same-fleet distance gap to the reference was 2.6163%, retaining a visible failure to match the best-known solution [6].
 
 These are static single-origin algorithm comparisons. Urgent insertion, grouped operations, delay recovery, failure handling and overnight parking are implemented workflow features verified separately, not additional measured rows in that benchmark [6, 13].
 
@@ -277,6 +311,8 @@ The A and current B review sets each contain 53 intent labels and 53 answer/evid
 
 Intent labels and acceptable-label sets match on 15/53 questions and differ on 38/53. B marked 37/53 questions ambiguous. Disagreements remain unadjudicated, so no adjudicated intent gold standard, independent accuracy, kappa or jointly validated answer-adequacy score is reported. The table retains all 53 questions per reviewer, including not-applicable (NA) ratings. Correctness, relevance and sufficiency use 0, 1 and 2; refusal appropriateness uses 0 or 1. B's source consultation includes external and project references as declared by the reviewer; the compiler did not independently re-audit those sources [7, 20].
 
+Table 12. Distribution of A and B review ratings across the 53 frozen questions.
+
 | Review dimension | Sheet | Score 0 | Score 1 | Score 2 | NA |
 |---|---|---:|---:|---:|---:|
 | Answer correctness | A | 4 | 21 | 28 | 0 |
@@ -288,11 +324,13 @@ Intent labels and acceptable-label sets match on 15/53 questions and differ on 3
 | Refusal appropriateness | A | 4 | 2 | Not used | 47 |
 | Refusal appropriateness | B | 4 | 2 | Not used | 47 |
 
-A assigns full correctness to 28/53 answers, compared with 6/53 in B; partial correctness accounts for 21/53 and 37/53 respectively. Unsupported claims are marked in 10/53 answers by A and 15/53 by B. These differences concern judgements of the same answers, not a change in system performance. B more often distinguishes a relevant conceptual response from a complete answer to the case-specific request. Both reviews rate evidence sufficiency as zero for 41/53 answers, making inadequate support a consistent weakness [7, 20].
+A assigns full correctness to 28/53 answers, compared with 6/53 in B; partial correctness accounts for 21/53 and 37/53 respectively. Separately, unsupported claims are flagged in 10/53 answers by A and 15/53 by B. These differences concern judgements of the same answers, not a change in system performance. B more often distinguishes a relevant conceptual response from a complete answer to the case-specific request. Both reviews rate evidence sufficiency as zero for 41/53 answers, making inadequate support a consistent weakness [7, 20].
 
 The ratings are retained as submitted rather than reconciled to force agreement. An answer can be plausible while its cited source does not support its product-specific conclusion. Review findings therefore guide failure analysis and interface repair; they do not establish pharmaceutical validity.
 
 <!-- M6_HUMAN_RESULTS_END -->
+
+Table 13. Representative frozen failures and the current repair boundary.
 
 | Frozen example | Observed failure | Current repair and verification boundary |
 |---|---|---|
@@ -303,17 +341,17 @@ The ratings are retained as submitted rather than reconciled to force agreement.
 
 These examples illustrate failures in the frozen responses; they are not mutually exclusive error counts. The interface changes address the observed problems, but their effect on answer quality requires evaluation on a new frozen question set. The current software checks do not replace that evaluation [7, 18, 20].
 
-The current interface now separates structured graph queries, concept help, clarification and refusal. It offers five explicit query types, clears stale replies on context changes and exposes recorded reference links. General FAQ text no longer asserts mandatory destruction or that every response has regulatory grounding. These are repairs informed by observed failures and developer regression checks; they do not change or re-score the frozen v1 answers.
+The current interface separates structured graph queries, concept help, clarification and refusal. It offers five explicit query types, clears stale replies on context changes and exposes recorded reference links. General FAQ text no longer asserts mandatory destruction or that every response has regulatory grounding. These are repairs informed by observed failures and developer regression checks; they do not change or re-score the frozen v1 answers.
 
-![Figure 4. Structured knowledge-graph query panel: explicit query type, scope and a recorded engineering-assumption answer.|3.2](figures/m6-qa-current-en.png)
+![Figure 5. Structured knowledge-graph query panel: explicit query type, scope and a recorded engineering-assumption answer.|3.2](figures/m6-qa-current-en.png)
 
 ## 7 Reliability and reproduction
 
-The latest recorded full-suite regression on 2026-10-17 passed 926 tests with zero skips and six existing warnings; a separate API walkthrough passed 36 checks against its own test graph. Frontend production build and nine frontend check scripts passed. Real browser checks covered refusal, concepts, source links, missing and conflicting scope, late replies after case changes, and injected transport failure without changing case records. Twenty live advisory sample replays retained their prior result fingerprint after the QA-only deployment update. These are software checks, not new model-accuracy observations [9].
+The latest recorded full-suite regression on 17 October 2026 passed 926 tests with zero skips and six existing warnings; a separate API walkthrough passed 36 checks against its own test graph. Frontend production build and nine frontend check scripts passed. Real browser checks covered refusal, concepts, source links, missing and conflicting scope, late replies after case changes, and injected transport failure without changing case records. Twenty live advisory sample replays retained their prior result fingerprint after the QA-only deployment update. These are software checks, not new model-accuracy observations [9].
 
 Additional isolated API acceptance on 23 October 2026 passed 33 checks; the explicit review-gate case study passed 27 checks. These counts overlap in covered behaviours and must not be added as distinct coverage. Neo4j was not verified in either fresh run. The worked example used Python 3.12.14, FastAPI 0.159.1, httpx 0.28.1, OR-Tools 9.15.6755, NumPy 2.5.4 and scikit-learn 1.9.1 on macOS arm64. This acceptance environment differs from the original locked demonstration baseline; the new runs do not replace the historical full-suite or deployment evidence [19].
 
-Earlier checks passed 909 tests after correcting an incomplete temporary graph seed. A later 925-test run exposed optional reference metadata being filtered from HTTP responses; the response schema and serialization contract were repaired before the successful 926-test run. These earlier results and the historical 888-test baseline remain separate records. Local map-tile and no-active-operation 404 responses, plus a large-JavaScript-chunk warning, remain disclosed presentation limitations [9].
+Earlier checks passed 909 tests after correcting an incomplete temporary graph seed. A later 925-test run exposed optional reference metadata being filtered from HTTP responses; the response schema and serialisation contract were repaired before the successful 926-test run. These earlier results and the historical 888-test baseline remain separate records. Local map-tile and no-active-operation 404 responses, plus a large-JavaScript-chunk warning, remain disclosed presentation limitations [9].
 
 The deployment pins Python, frontend and Docker dependencies, runs the API as a non-root user with read-only root filesystem, and persists authoritative case data independently of Neo4j. Previous acceptance exercised actual API restart, graph outage, outbox recovery and backup restoration into new volumes. These checks demonstrate recovery for the tested configuration, not high availability or a production service-level agreement [8, 9].
 
@@ -323,13 +361,13 @@ For reproduction, clone the repository, create the documented Python 3.12 enviro
 
 ### 8.1 What the results support
 
-The implemented workflow supports a narrow but real claim: an excursion can travel from observation to a recorded, inspectable decision and a synchronised delivery response without losing the original evidence. The rule engine reproduces 54 of 57 historical adjudications; the risk model reaches a five-fold PR-AUC of 0.7087; the event-level study improves held-out macro-F1 across five roles; and static routing produces complete feasible plans in 49 runs. Each result belongs to its own protocol, and none of them is an end-to-end accuracy figure.
+The implemented workflow supports a narrow but real claim: an excursion can travel from observation to a recorded, inspectable decision and a synchronised delivery response without losing the original evidence. The rule engine agrees with 54 of 57 historical adjudications; the risk model reaches a five-fold PR-AUC of 0.7087; the event-level study improves held-out macro-F1 across five roles; and static routing produces complete feasible plans in 49 runs. Each result belongs to its own protocol, and none of them is an end-to-end accuracy figure.
 
 ### 8.2 Why the rule engine misses quarantine
 
 All three disagreements are quarantine cases (S034, S035 and S052). The frozen policy emits only release, retest and scrap, while quarantine exists as a human outcome and as a historical label. The gap is therefore a specification difference, not a coding defect: the historical annotators used a category the deployed policy does not produce. We keep the four-class denominator and report zero quarantine recall rather than relabelling the cases to improve the headline number.
 
-The same reasoning limits how the agreement rate should be read. Fifty-four of fifty-seven is agreement with one frozen adjudication on a small synthetic scenario bank, not clinical accuracy. Engine-to-gold kappa is 0.909667 on this particular class distribution; we have not established that class imbalance inflates it. Release, retest and scrap each have recall 1.0, but release/retest F1 values of 0.9286/0.9412 show that their predictions are not perfect: the missed quarantine cases enter those predicted classes. Historical annotator-to-annotator kappa of 0.6434 describes a different comparison and must not be presented as a directly comparable system-improvement baseline.
+The same reasoning limits how the agreement rate should be read. Fifty-four of fifty-seven is agreement with one frozen adjudication on a small synthetic scenario bank, not clinical accuracy. Engine-to-gold kappa is 0.909667 on this particular class distribution; we have not established whether class imbalance inflates it. Release, retest and scrap each have recall 1.0, but release/retest F1 values of 0.9286/0.9412 show that their predictions are not perfect: the missed quarantine cases enter those predicted classes. Historical annotator-to-annotator kappa of 0.6434 describes a different comparison and must not be presented as a directly comparable system-improvement baseline.
 
 ### 8.3 Why monthly cause classification remains weak
 
@@ -345,11 +383,13 @@ The system is a single-worker, loopback-bound demonstration with persistent stor
 
 ### 8.6 Future work
 
-The next evaluation should test the revised M6 interface on a newly frozen question set, with judgements collected independently before comparison and disagreement resolution. The current A and B reviews describe the earlier frozen responses. Product-specific stability evidence is also required to replace engineering assumptions with defensible release limits. Authenticated multi-user operation, integration with real orders and production monitoring remain directions for deployment beyond the teaching prototype.
+The next evaluation should test the revised M6 interface on a newly frozen question set, with judgements collected independently before the disagreements are adjudicated. The current A and B reviews describe the earlier frozen responses. Product-specific stability evidence is also required to replace engineering assumptions with defensible release limits. Authenticated multi-user operation, integration with real orders and production monitoring remain directions for deployment beyond the teaching prototype.
 
 ### 8.7 Team contributions and cross-review
 
 Role identifiers map to A: Xu Wenzhe, B: Zhu Jianyu, C: Wang Lepeng and D: Shen Ziyi, consistent with the submitted proposal. Module ownership follows the proposal and is recorded here for traceability. It is not a mark allocation, and the confidential peer-review forms remain the official contribution record.
+
+Table 14. Module ownership and cross-review responsibilities.
 
 | Area | Primary responsibility | Cross-review responsibility |
 |---|---|---|
@@ -362,11 +402,11 @@ Role identifiers map to A: Xu Wenzhe, B: Zhu Jianyu, C: Wang Lepeng and D: Shen 
 | M7 API, frontend and deployment | D | C: dispatch contract review |
 | Report, videos and submission pack | A report, D videos, C packaging, B data statements | Whole-team read-through |
 
-The table summarises module ownership and the planned cross-review structure. Individual contribution assessment is documented separately through the course peer-review process. The module role codes A-D are distinct from the A/B labels used for the M6 review worksheets.
+The table summarises module ownership and the planned cross-review structure. Individual contribution assessment is documented separately through the course peer-review process. The module role codes A–D are distinct from the A/B labels used for the M6 review worksheets.
 
 ### 8.8 Changes from the proposal and next evaluation
 
-The initial plan combined four dispositions, tabular risk/cause prediction, route optimisation and evidence queries. Implementation clarified that automatic policy emits three dispositions, while quarantine is a human outcome and a historical gold label. The weak monthly cause benchmark led to a separate event-level simulator and temporal-feature study. The QA design remained bounded graph queries; observed fallback and provenance failures led to explicit scope, clarification and refusal states. These changes preserve the integration goal while narrowing what the metrics can justify [1, 3-7].
+The initial plan combined four dispositions, tabular risk/cause prediction, route optimisation and evidence queries. Implementation clarified that automatic policy emits three dispositions, while quarantine is a human outcome and a historical gold label. The weak monthly cause benchmark led to a separate event-level simulator and temporal-feature study. The QA design remained bounded graph queries; observed fallback and provenance failures led to explicit scope, clarification and refusal states. These changes preserve the integration goal while narrowing what the metrics can justify [1, 3–7].
 
 The expected business value is fewer disconnected handovers: one case identity links the original evidence, effective decision, replacement order and audit. No time-saving or waste-reduction percentage has been measured. A next operational study should compare the same scripted tasks against a documented manual workflow, measuring completion time, missing required records, incorrect case/order links and successful audit retrieval. Task success criteria and failure handling should be fixed before recruiting participants; technical acceptance counts are not user-productivity measurements.
 
@@ -401,6 +441,8 @@ PharmaColdOps integrates exposure assessment, recorded disposition, replacement 
 20. [M6 descriptive review closeout](M6评审收尾.md), 23 October 2026. Current B worksheets and process record are retained in the private handoff package with A inputs, file hashes and 38 unresolved intent disagreements. Earlier B worksheets remain a separate historical version.
 
 ## Appendix A Mapping to modular course techniques
+
+Table 15. Mapping of implemented functionality to the MR, RS and CGS course areas.
 
 | Course area | Applied knowledge and implemented functionality | Evaluation evidence |
 |---|---|---|

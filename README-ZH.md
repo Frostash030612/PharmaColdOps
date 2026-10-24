@@ -45,7 +45,7 @@ docker compose --env-file deploy/demo.env -f deploy/compose.demo.yml up -d --bui
 | 交付物 | 位置 |
 |---|---|
 | **用户手册** | 中文：[`docs/用户手册.md`](docs/用户手册.md) · English: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) |
-| 小组报告 | [正文](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [含原proposal的PDF](docs/PharmaColdOps-Group-Report.pdf)；已同步本次M6描述性评审收尾，独立指标不可用 |
+| 小组报告 | [正文](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [含原proposal的PDF](docs/PharmaColdOps-Group-Report.pdf)；2026-10-24完成排版润色（范围、市场分层、界面截图、表题、封面学号），已同步M6描述性评审收尾，独立指标不可用 |
 | 演示视频（2 × 5 分钟） | [英文画面版与配音交接](docs/英文画面视频与真人配音交接.md)已备；真人旁白与合成终审仍待补 |
 | 项目科普动画 | [90秒全英文代码动画](docs/English-Code-Explainer.md)，含原创程序配乐；独立新片，不替代课程要求的两段视频 |
 | 电影感概念片 | [新版2分30秒英文程序化3D影片](docs/Cinematic-Concept-Film.md)，按六段分镜重制、含原创配乐；未用Kling、无旁白 |
