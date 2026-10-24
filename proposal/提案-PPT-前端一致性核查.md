@@ -7,8 +7,8 @@
 | 提交件（已交 Canvas，冻结） | `proposal/PharmaColdOps-Proposal-Group 41.pdf`（源自 `PharmaColdOps-Proposal-EN.docx`；2026-09-28 随组号更正改名） | 2026-09-13 提交的英文提案 |
 | 提案源稿（提交后仍在修订） | `proposal/PharmaColdOps-Proposal-EN.md` / `-ZH.md` | §8.3 等数字已按 rubric v1.1 更新到 2026-09-14 |
 | 课程要求 | `proposal/IRS practice module project proposal & final presentation guidelines v016.pdf`、`IRS practice module & exam briefing v2.17.pdf` | 演讲结构、评分项 |
-| 演讲用 PPT | `proposal/PharmaColdOps_tune.pptx`（推荐版，带设计） / `PharmaColdOps-Proposal-Presentation.pptx`（旧版，12 页） | 两份都是 9/13 前写的，事实停在 W0 |
-| 已修正版（本次生成） | `proposal/PharmaColdOps-Proposal-Presentation-Final.pptx`（17 页） | 由 tune 版生成，见下文「已做的修正」 |
+| 演讲用 PPT | `proposal/archive/PharmaColdOps_tune.pptx`（推荐版，带设计） / `proposal/archive/PharmaColdOps-Proposal-Presentation.pptx`（旧版，12 页） | 两份都是 9/13 前写的，事实停在 W0 |
+| 已修正版（本次生成） | `proposal/archive/PharmaColdOps-Proposal-Presentation-Final.pptx`（17 页） | 由 tune 版生成，见下文「已做的修正」 |
 | 前端 | `frontend-vue/`（Vue 3 + Vite + Pinia + Leaflet），后端 `src/api/main.py` | 2026-09-18 现状 |
 | 演讲稿 | `proposal/演讲稿-4人版.md` | 四人分段，英文正文＋中文对照 |
 
@@ -18,7 +18,7 @@
 
 ## 0. 最优先的三件事（演讲前必做）
 
-1. **别用旧 PPT 直接讲**：`PharmaColdOps_tune.pptx` 第 1 页成员是 `[Member 2] [Member 3] [Member 4]`、日期写死「13 Sep 2026」（那是提案截止日，不是演讲日），第 12 页「下一步：9/13 前提交提案」也已经过期。→ 已生成修正版 17 页：`proposal/PharmaColdOps-Proposal-Presentation-Final.pptx`。
+1. **别用旧 PPT 直接讲**：`PharmaColdOps_tune.pptx` 第 1 页成员是 `[Member 2] [Member 3] [Member 4]`、日期写死「13 Sep 2026」（那是提案截止日，不是演讲日），第 12 页「下一步：9/13 前提交提案」也已经过期。→ 已生成修正版 17 页：`proposal/archive/PharmaColdOps-Proposal-Presentation-Final.pptx`。
 2. **删掉/改写 3 句会被当场打脸的绝对化表述**（§2 的 G1、G2、G6）：数据「real」、现有系统「不会推理」、MVP「multi-temperature zones」。这三句与提案原文直接冲突。
 3. **补一页量化结果**：v016 指南第 10 页明确要「evaluation metrics and quantitative results / graphs」。旧 PPT 只列了「将用哪些指标」，一个数字都没有，而你们其实已经有 54/57、κ=0.6434、LightGBM ROC-AUC 0.925、新加坡 6.19% 距离下降——不展示等于白做。
 4. **演示前先读 §3.1 的两个陷阱**：离线模式打开时决策沙盒（规则路径/证据/风险）是**点不出来**的；另外前端目前**没有**触发 `/api/route` 的入口。演示顺序必须按 §4 走。
@@ -164,7 +164,7 @@ pnpm dev                  # 离线模式：http://localhost:5173
 
 | 文件 | 说明 |
 |---|---|
-| `proposal/PharmaColdOps-Proposal-Presentation-Final.pptx` | 17 页修正版（修 8 处事实冲突 + 补 5 页指南要求的内容） |
+| `proposal/archive/PharmaColdOps-Proposal-Presentation-Final.pptx` | 17 页修正版（修 8 处事实冲突 + 补 5 页指南要求的内容） |
 | `scripts/build_presentation_final.py` | 生成上面这份 PPT 的脚本，可重跑；改日期/文案只需改常量。每次重建都会跑一遍「与原文字数预算」检查 |
 | `scripts/check_ppt_text_budget.py` | 逐框对比「原设计字数 vs 现在字数」——排版溢出/压叠的硬判据（见 §6） |
 | `scripts/check-frontend-sfc.mjs`、`scripts/check-frontend-i18n.mjs` | 前端 Vue 模板编译校验、中英 i18n key 覆盖校验 |
@@ -180,7 +180,7 @@ pnpm dev                  # 离线模式：http://localhost:5173
 .venv/Scripts/python.exe scripts/build_presentation_final.py     # 生成 PPT + 版式预算检查
 node scripts/check-frontend-sfc.mjs                              # 前端模板编译校验
 node scripts/check-frontend-i18n.mjs                             # 中英 key 覆盖校验
-.venv/Scripts/python.exe scripts/dump_pptx_text.py "proposal/PharmaColdOps-Proposal-Presentation-Final.pptx" out.txt
+.venv/Scripts/python.exe scripts/dump_pptx_text.py "proposal/archive/PharmaColdOps-Proposal-Presentation-Final.pptx" out.txt
 ```
 
 > 注：修正版 PPT 只在**文字层**做了改正与新增（沿用 tune 版母版与配色，新页为纯文本页，未加图标）。若要更精致，可在 PowerPoint 里给第 13–17 页套用与前面一致的图标/配色。

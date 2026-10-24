@@ -10,7 +10,7 @@ from pptx import Presentation
 
 DECKS = [
     Path("proposal/PharmaColdOps .pptx"),
-    Path("proposal/PharmaColdOps-Proposal-Presentation-Final.pptx"),
+    Path("proposal/archive/PharmaColdOps-Proposal-Presentation-Final.pptx"),
 ]
 
 for deck in DECKS:

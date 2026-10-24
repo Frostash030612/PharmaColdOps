@@ -6,7 +6,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from pptx import Presentation
 
-prs = Presentation("proposal/PharmaColdOps-Proposal-Presentation-Final.pptx")
+prs = Presentation("proposal/archive/PharmaColdOps-Proposal-Presentation-Final.pptx")
 
 THEME_FONTS = {"Libre Baskerville", "DM Sans", "DM Sans Bold"}
 THEME_INK = {"454240", "5C4E3D", "B88E23", "063E5F", "F7EDD4", "DDD3BA", "FFFDFA", "FFFFFF"}

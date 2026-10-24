@@ -1,6 +1,6 @@
 # PharmaColdOps
 
-**🌏 Language / 语言:** **English** · [中文](README-ZH.md)
+**🌏 Language:** **English** · [Chinese](README-ZH.md)
 
 An explainable decision-support prototype for cold-chain pharmaceutical temperature excursions. When an excursion occurs, PharmaColdOps issues a traceable disposition recommendation (release / quarantine / retest / scrap) and flags whether a separate reshipment workflow should be considered, grounded in WHO / EU GDP / ICH principles and product-specific stability assumptions.
 
@@ -24,19 +24,19 @@ docker compose --env-file deploy/demo.env -f deploy/compose.demo.yml up -d --bui
 **Then open → http://127.0.0.1:8080/?lang=zh**  (first start takes 1–2 min while it seeds the graph)
 
 These commands are for a fresh base deployment. To resume the existing v2-enabled instance, use the
-[controlled deployment configuration](docs/v2演示受控更新.md), which requires both env files and both Compose files.
+[controlled deployment configuration](docs/v2%E6%BC%94%E7%A4%BA%E5%8F%97%E6%8E%A7%E6%9B%B4%E6%96%B0.md), which requires both env files and both Compose files.
 
 > Windows: use `.venv\Scripts\python.exe`. Stop it with the same `compose … down` command — **never add `-v`**, that deletes your data.
 
 ### The 60-second tour
 
-1. **🎲 生成今日批次（按日期）** → **确认发车** — this creates today's main delivery run.
-2. Pick a case in the left list (e.g. `R01`, same product as the batch) → **结案并查看处置方案** — you get the disposition *with its rule path and regulatory grounding*, plus a side-by-side comparison of re-routing options.
-3. **⛶ 展开地图** — the big map draws **dashed grey = before re-route** vs **solid red = after**, with per-stop delivery progress.
-4. **采用此方案** — commits the option you picked. Until you click it, nothing is reserved and no vehicle is reassigned.
+1. **Generate today's batch (by date)** → **Confirm departure** — this creates today's main delivery run.
+2. Pick a case in the left list (e.g. `R01`, same product as the batch) → **Close case and view disposition options** — you get the disposition *with its rule path and regulatory grounding*, plus a side-by-side comparison of re-routing options.
+3. **Expand map** — the big map draws **dashed grey = before re-route** vs **solid red = after**, with per-stop delivery progress.
+4. **Adopt this plan** — commits the option you picked. Until you click it, nothing is reserved and no vehicle is reassigned.
 5. Ask the knowledge graph *"why was this case scrapped?"* — answers carry WHO / EU GDP / ICH citations, and say so plainly when there is no evidence.
 
-**📖 Full instructions — startup, every panel, troubleshooting and limitations: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) (English) · [`docs/用户手册.md`](docs/用户手册.md) (中文).**
+**📖 Full instructions — startup, every panel, troubleshooting and limitations: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) (English) · [Chinese manual](docs/%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C.md) (Chinese).**
 
 **Requirements, submission and presentation material live in [`proposal/`](proposal/).**
 
@@ -46,16 +46,16 @@ These commands are for a fresh base deployment. To resume the existing v2-enable
 
 | Deliverable | Where |
 |---|---|
-| **User manual** (使用手册) | English: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) · 中文: [`docs/用户手册.md`](docs/用户手册.md) |
+| **User manual** | English: [`docs/user-manual-EN.md`](docs/user-manual-EN.md) · Chinese: [Chinese manual](docs/%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C.md) |
 | Group report | [Source](docs/FINAL_REPORT_EN.md) · [Word](docs/PharmaColdOps-Group-Report.docx) · [PDF with submitted proposal](docs/PharmaColdOps-Group-Report.pdf); updated 2026-10-24 with layout polish, project scope and market context, and the current B descriptive closeout; independent metrics remain unavailable |
-| Demo videos (2 × 5 min) | [English visual cuts and voice handoff](docs/英文画面视频与真人配音交接.md) are prepared locally; genuine human speech and final review are still required |
+| Demo videos (2 × 5 min) | [English visual cuts and voice handoff](docs/%E8%8B%B1%E6%96%87%E7%94%BB%E9%9D%A2%E8%A7%86%E9%A2%91%E4%B8%8E%E7%9C%9F%E4%BA%BA%E9%85%8D%E9%9F%B3%E4%BA%A4%E6%8E%A5.md) are prepared locally; genuine human speech and final review are still required |
 | Animated project explainer | [90-second English code-drawn film](docs/English-Code-Explainer.md), with original instrumental audio; separate from the course's two required videos |
 | Cinematic concept film | [New 2:30 English procedural 3D film](docs/Cinematic-Concept-Film.md), following the six requested shots, with original music; no Kling or spoken narration |
-| Final delivery | [Checklist and packaging](docs/最终交付与验收.md) · [Member information](member-github.txt) |
+| Final delivery | [Checklist and packaging](docs/%E6%9C%80%E7%BB%88%E4%BA%A4%E4%BB%98%E4%B8%8E%E9%AA%8C%E6%94%B6.md) · [Member information](member-github.txt) |
 | Proposal (submitted 2026-09-13) | [PharmaColdOps-Proposal-Group 41.pdf](proposal/PharmaColdOps-Proposal-Group%2041.pdf) |
-| Proposal source (EN / 中文) | [`EN`](proposal/PharmaColdOps-Proposal-EN.md) · [`ZH`](proposal/PharmaColdOps-Proposal-ZH.md) |
-| Final presentation | [Current 10-slide deck](proposal/PharmaColdOps-Final-Presentation.pptx) · [Roles and recording handoff](docs/最终答辩分工与录制交接.md) · [Defense Q&A](docs/最终答辩问答.md); original proposal decks preserved |
-| M6 coordination | [Current review closeout](docs/M6评审收尾.md) · [Coordinator workflow](docs/M6协调人一键收尾.md); descriptive review archived, with 38 unadjudicated intent disagreements |
+| Proposal source (EN / ZH) | [`EN`](proposal/PharmaColdOps-Proposal-EN.md) · [`ZH`](proposal/PharmaColdOps-Proposal-ZH.md) |
+| Final presentation | [Current 10-slide deck](proposal/PharmaColdOps-Final-Presentation.pptx) · [Roles and recording handoff](docs/%E6%9C%80%E7%BB%88%E7%AD%94%E8%BE%A9%E5%88%86%E5%B7%A5%E4%B8%8E%E5%BD%95%E5%88%B6%E4%BA%A4%E6%8E%A5.md) · [Defense Q&A](docs/%E6%9C%80%E7%BB%88%E7%AD%94%E8%BE%A9%E9%97%AE%E7%AD%94.md); original proposal decks preserved |
+| M6 coordination | [Current review closeout](docs/M6%E8%AF%84%E5%AE%A1%E6%94%B6%E5%B0%BE.md) · [Coordinator workflow](docs/M6%E5%8D%8F%E8%B0%83%E4%BA%BA%E4%B8%80%E9%94%AE%E6%94%B6%E5%B0%BE.md); descriptive review archived, with 38 unadjudicated intent disagreements |
 | Architecture | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | Progress log & measured results | [`PROGRESS.md`](PROGRESS.md) |
 
@@ -72,26 +72,26 @@ M4 advisory inference is now available alongside (not instead of) the rule decis
 Run `.venv/bin/python scripts/train_m4_models.py` before starting the API to generate trusted
 local risk/candidate-cause artifacts. The online registration panel accepts explicit simulated
 transport/monthly contexts, preserves model snapshots, and never maps a failure score to scrap.
-See [M4 integration, limitations and input contracts](docs/M4模型集成.md).
+See [M4 integration, limitations and input contracts](docs/M4%E6%A8%A1%E5%9E%8B%E9%9B%86%E6%88%90.md).
 
 Formal M4 experiments now include outer five-fold validation, provided-facility-ID
 and time-forward cause stress tests, independent calibration, context-only ablations,
 failure/confusion analysis and hash-matched offline SHAP. Run
 `.venv/bin/python scripts/evaluate_m4.py --output data/processed/m4-formal-new`.
 Fresh outputs only; serving models and historical cases are not replaced.
-See [formal results and reproducibility](docs/M4正式实验.md).
+See [formal results and reproducibility](docs/M4%E6%AD%A3%E5%BC%8F%E5%AE%9E%E9%AA%8C.md).
 
 The cause-data learnability audit now adds learning curves, source-conditional priors,
 fixed-budget capacity probes and shuffled-training-label controls. It recommends event-level
 simulation data before large-scale tuning, without claiming random labels or a performance ceiling.
-See [audit evidence and research-effort decision](docs/原因数据可学性审计.md).
+See [audit evidence and research-effort decision](docs/%E5%8E%9F%E5%9B%A0%E6%95%B0%E6%8D%AE%E5%8F%AF%E5%AD%A6%E6%80%A7%E5%AE%A1%E8%AE%A1.md).
 
 An independent event-level simulation dataset is now available: matched temperature,
 door/power/equipment/progress observations and hidden injected-mechanism labels, with
 normal/unknown/multi-fault and observationally ambiguous cases. Six roles separate IID,
 unseen assets, temporal excitation and parameter shifts; identity/label files are not predictors.
 This is data construction, not a newly trained serving model or clinical validation.
-See [event-data contract and generation](docs/事件级仿真数据.md).
+See [event-data contract and generation](docs/%E4%BA%8B%E4%BB%B6%E7%BA%A7%E4%BB%BF%E7%9C%9F%E6%95%B0%E6%8D%AE.md).
 
 Formal M3 evaluation now reports all four classes: 54/57 historical-gold agreement,
 macro-F1 0.7174, and explicitly zero quarantine recall. M5 has 49 fresh static
@@ -103,20 +103,20 @@ B was prepared with access to A, so these inputs do not establish independent in
 Frozen inputs are committed under `data/qa/m6-review-20261003-v3/`, and reviewers can fill them in
 offline with `scripts/m6_review_form.html` (self-checked by `scripts/m6_review_form_selftest.mjs`);
 the original independent-review protocol remains distinct from the descriptive A/B comparison in the final report.
-See [M3 formal report](docs/M3正式评估.md), [M5 formal report](docs/M5正式评估.md)
-and [M6 independent evaluation protocol](docs/M6独立评估.md).
+See [M3 formal report](docs/M3%E6%AD%A3%E5%BC%8F%E8%AF%84%E4%BC%B0.md), [M5 formal report](docs/M5%E6%AD%A3%E5%BC%8F%E8%AF%84%E4%BC%B0.md)
+and [M6 independent evaluation protocol](docs/M6%E7%8B%AC%E7%AB%8B%E8%AF%84%E4%BC%B0.md).
 
 M2 now calculates duration-weighted MKT from explicit simulated temperature intervals,
 detects contiguous hot/cold windows, and archives the original series with a selected event.
 The new-case panel supports seeded generation and JSON editing; gaps and unsupported cold
-rules block automatic registration. See [M2 contracts and demo guide](docs/M2温度序列与MKT.md).
+rules block automatic registration. See [M2 contracts and demo guide](docs/M2%E6%B8%A9%E5%BA%A6%E5%BA%8F%E5%88%97%E4%B8%8EMKT.md).
 
 Boundary cases now register for human review without overwriting the original rule result.
 The effective human outcome governs reshipment; pending review protects linked deliveries,
-and executed outcomes are locked. See [human-review workflow](docs/人工审核与有效处置.md).
+and executed outcomes are locked. See [human-review workflow](docs/%E4%BA%BA%E5%B7%A5%E5%AE%A1%E6%A0%B8%E4%B8%8E%E6%9C%89%E6%95%88%E5%A4%84%E7%BD%AE.md).
 Case details export printable standalone HTML and complete JSON snapshots including original
 assessments, reviews, recorded delivery state and actual graph coverage.
-See [audit export scope and integrity](docs/案例审计报告导出.md).
+See [audit export scope and integrity](docs/%E6%A1%88%E4%BE%8B%E5%AE%A1%E8%AE%A1%E6%8A%A5%E5%91%8A%E5%AF%BC%E5%87%BA.md).
 
 Proposal & related documents live in [`proposal/`](proposal/):
 
@@ -125,10 +125,10 @@ and regenerated speech document**. The submitted English PDF remains a frozen 20
 see [proposal version status](proposal/README.md) for the documented differences.
 
 - Proposal (EN): [proposal/PharmaColdOps-Proposal-EN.md](proposal/PharmaColdOps-Proposal-EN.md)
-- Proposal (中文): [proposal/PharmaColdOps-Proposal-ZH.md](proposal/PharmaColdOps-Proposal-ZH.md)
-- Presentation deck: [proposal/PharmaColdOps .pptx](proposal/PharmaColdOps%20.pptx) (**this is the deck we present with**; the older `PharmaColdOps-Proposal-Presentation.pptx` is superseded)
+- Proposal (ZH): [proposal/PharmaColdOps-Proposal-ZH.md](proposal/PharmaColdOps-Proposal-ZH.md)
+- Presentation deck: [proposal/PharmaColdOps .pptx](proposal/PharmaColdOps%20.pptx) (**this is the deck we present with**; the older `proposal/archive/PharmaColdOps-Proposal-Presentation.pptx` is superseded)
 - Figures: [`proposal/figures/`](proposal/figures/)
-- Ground-truth evaluation design: [proposal/处置决策-ground-truth评估方案.md](proposal/处置决策-ground-truth评估方案.md)
+- Ground-truth evaluation design: [ground-truth evaluation design](proposal/%E5%A4%84%E7%BD%AE%E5%86%B3%E7%AD%96-ground-truth%E8%AF%84%E4%BC%B0%E6%96%B9%E6%A1%88.md)
 
 ## Modules (IRS technique groups)
 
@@ -136,32 +136,32 @@ The API-mode delivery panel now includes a reproducible simulated-order generato
 routine, tight-deadline, multi-source/multi-temperature and insufficient-fleet scenarios,
 with editable date, seed, demand, windows and resources. Generated JSON includes the
 effective configuration and source-data hashes; business inputs remain entirely simulated.
-The legacy fixed demo is retained. See [generator guide](docs/模拟订单生成器.md).
+The legacy fixed demo is retained. See [generator guide](docs/%E6%A8%A1%E6%8B%9F%E8%AE%A2%E5%8D%95%E7%94%9F%E6%88%90%E5%99%A8.md).
 
 Independent urgent delivery now uses the same operation, route candidates and execution
 clock without asking for real cargo quantities or warehouse balances. Final parking is
 restricted to the five warehouse nodes selected by the operator; hospitals cannot be
 end-of-day terminals. Default overnight demos assume supply automatically rather than
-requiring quantity entry. See [urgent and parking rules](docs/独立加急与仓库停车规则.md).
+requiring quantity entry. See [urgent and parking rules](docs/%E7%8B%AC%E7%AB%8B%E5%8A%A0%E6%80%A5%E4%B8%8E%E4%BB%93%E5%BA%93%E5%81%9C%E8%BD%A6%E8%A7%84%E5%88%99.md).
 
 Incident registration is now durable and idempotent by draft identity, with a recoverable
 browser retry envelope. A header-level offline rule sandbox works without the API and
-does not register cases or dispatch routes. See [registration and offline guide](docs/异常登记与离线沙箱.md).
+does not register cases or dispatch routes. See [registration and offline guide](docs/%E5%BC%82%E5%B8%B8%E7%99%BB%E8%AE%B0%E4%B8%8E%E7%A6%BB%E7%BA%BF%E6%B2%99%E7%AE%B1.md).
 
 Run `.venv/bin/python scripts/run_demo_acceptance.py` for the reproducible full API workflow
 in isolated storage; add `--graph` to verify a configured, seeded test Neo4j. A separate
-Playwright CLI script drives the visible Vue main flow. See [full acceptance guide](docs/完整演示与端到端验收.md).
+Playwright CLI script drives the visible Vue main flow. See [full acceptance guide](docs/%E5%AE%8C%E6%95%B4%E6%BC%94%E7%A4%BA%E4%B8%8E%E7%AB%AF%E5%88%B0%E7%AB%AF%E9%AA%8C%E6%94%B6.md).
 Case registration now commits a durable graph outbox in the same DB transaction. Enable
 automatic retry with `KG_SYNC_ENABLED=1`, or run `scripts/sync_knowledge_graph.py`.
-See [graph reliability and recovery](docs/知识图谱可靠性与恢复.md), especially before rebuilding a graph.
+See [graph reliability and recovery](docs/%E7%9F%A5%E8%AF%86%E5%9B%BE%E8%B0%B1%E5%8F%AF%E9%9D%A0%E6%80%A7%E4%B8%8E%E6%81%A2%E5%A4%8D.md), especially before rebuilding a graph.
 `scripts/check_case_graph.py` performs a read-only check of actual per-case graph coverage;
 `--repair` replays only non-conflicting missing chains. `scripts/verify_graph_recovery.py`
 verifies actual graph stop/restart and automatic recovery using only its own temporary container.
 `scripts/evaluate_qa.py` now defaults to its own disposable graph and isolated SQLite/JSONL,
 cleans graph cases and registration/outbox/archive together, and preserves a manifest/report.
-See [QA evaluation safety and options](docs/问答评测工具.md); existing test graphs require explicit opt-in.
+See [QA evaluation safety and options](docs/%E9%97%AE%E7%AD%94%E8%AF%84%E6%B5%8B%E5%B7%A5%E5%85%B7.md); existing test graphs require explicit opt-in.
 
-新加坡路网与前端的完成范围、实测结果及复用方式：[交付记录](docs/M5_singapore_handover.md)。
+Singapore road network and frontend scope, measured results and reuse notes: [delivery record](docs/M5_singapore_handover.md).
 
 | Module | Directory | Technique group |
 |---|---|---|
@@ -195,7 +195,7 @@ pnpm dev                       # http://localhost:5173          (offline)
 **Map basemap** — optional tiles are generated under `frontend-vue/public/tiles/` with
 `node scripts/fetch_map_tiles.mjs`. This cache is Git-ignored and absent from a fresh clone or the current Docker image.
 Missing cached tiles can return 404 while route geometry remains visible; `?tiles=osm` explicitly requests an online basemap.
-See [docs/前端地图底图说明.md](docs/前端地图底图说明.md) for coverage and offline limits.
+See [map tiles and offline limits](docs/%E5%89%8D%E7%AB%AF%E5%9C%B0%E5%9B%BE%E5%BA%95%E5%9B%BE%E8%AF%B4%E6%98%8E.md) for coverage and offline limits.
 
 Backend (terminal 1):
 
@@ -230,7 +230,7 @@ consumed inventory is not restored and daily mileage starts afresh.
 - 🧠 **Decision core** (what the back-end calls) — [`src/rule_engine/`](src/rule_engine/); behaviour is driven by [`rules_config.json`](src/rule_engine/rules_config.json).
 - 🔗 **Contract tests** — [`tests/test_api_contract.py`](tests/test_api_contract.py): change `front-end ↔ back-end` fields together with this file.
 
-Full stack + how-to-connect notes for the team: [docs/前后端技术栈与连接说明.md](docs/前后端技术栈与连接说明.md)（中文）.
+Full stack + how-to-connect notes for the team: [stack and connection notes](docs/%E5%89%8D%E5%90%8E%E7%AB%AF%E6%8A%80%E6%9C%AF%E6%A0%88%E4%B8%8E%E8%BF%9E%E6%8E%A5%E8%AF%B4%E6%98%8E.md)(Chinese).
 Knowledge-graph entity/relation model draft: [docs/KG_SCHEMA_v1.md](docs/KG_SCHEMA_v1.md).
 
 ## Data layout
@@ -252,7 +252,7 @@ with `python scripts/audit_datasets.py` → `data/processed/ml_audit_report.md`.
 
 The full local demo now has its own Docker deployment (frontend + API + regenerated
 M4 models + persistent audit storage + Neo4j). It does not reuse the old project graph.
-See [reproduction, deployment, backup and recovery](docs/复现与本机部署.md).
+See [reproduction, deployment, backup and recovery](docs/%E5%A4%8D%E7%8E%B0%E4%B8%8E%E6%9C%AC%E6%9C%BA%E9%83%A8%E7%BD%B2.md).
 
 ```bash
 python3.12 -m venv .venv

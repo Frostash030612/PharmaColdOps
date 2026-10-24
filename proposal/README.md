@@ -15,21 +15,21 @@
 | [正式 Word（中）](PharmaColdOps_正式Proposal_4人版.docx) | 已按**合并后**的中文 Markdown 重新生成（`scripts/build_proposal_docx.py`，零第三方依赖，图片随 Markdown 引用一并嵌入）；组名、成员姓名及学号已填入；仍需人工终审 |
 | [正式 Word（英）](PharmaColdOps-Proposal-EN.docx) | 英文内容在 2026-09-13 的**版本之锚**（含人工对头部的简化）；**重建会覆盖这些人工修改** |
 | [提交件（英）](PharmaColdOps-Proposal-Group%2041.pdf) | **2026-09-13 提交用**：由上述英文 Word 导出的 PDF（20 页 / 4,246 词 / Letter），内容与提交时的英文 Word 一致 |
-| [提案 PPT](PharmaColdOps-Proposal-Presentation.pptx) | 旧版演示文稿，提交前需要同步范围、指标和未完成项 |
-| [调整版 PPT](PharmaColdOps_tune.pptx) | 保留原文件，提交前需确认是否继续使用 |
+| [提案 PPT](archive/PharmaColdOps-Proposal-Presentation.pptx) | 旧版演示文稿，提交前需要同步范围、指标和未完成项 |
+| [调整版 PPT](archive/PharmaColdOps_tune.pptx) | 保留原文件，提交前需确认是否继续使用 |
 
 ### 演讲用的两份 deck（2026-09-28）
 
 | 文件 | 定位 | 怎么改 |
 |---|---|---|
 | [`PharmaColdOps .pptx`](PharmaColdOps%20.pptx) | **演讲当天用这份**：10 页，队友在 `tune` 版基础上做了视觉美化（深蓝标题条、卡片版式、金色分隔线、侧栏配图），组号已为 41，第 7 页前端截图已恢复为未裁剪原图 | 直接在 PowerPoint 里改；文字与版式改动不会自动回流到生成器 |
-| [`PharmaColdOps-Proposal-Presentation-Final.pptx`](PharmaColdOps-Proposal-Presentation-Final.pptx) | **生成版与留存版**：同一内容由脚本产出（`scripts/build_presentation_final.py --short`），字体/配色已按原设计对齐（Libre Baskerville + DM Sans、#454240 系、金色点缀） | 改 `scripts/build_presentation_final.py` 后重跑；**不要手改**，会被下一次生成覆盖 |
+| [`PharmaColdOps-Proposal-Presentation-Final.pptx`](archive/PharmaColdOps-Proposal-Presentation-Final.pptx) | **生成版与留存版**：同一内容由脚本产出（`scripts/build_presentation_final.py --short`），字体/配色已按原设计对齐（Libre Baskerville + DM Sans、#454240 系、金色点缀） | 改 `scripts/build_presentation_final.py` 后重跑；**不要手改**，会被下一次生成覆盖 |
 
 两份不要同时改同一处文案，否则会出现两个互相矛盾的版本；**已定稿：演讲用 `PharmaColdOps .pptx`，它不再由脚本生成**（见下）。运维脚本：`scripts/set_group_number.py`（统一改组号）、`scripts/restore_screenshot.py`（换回未裁剪截图）、`scripts/deck_theme.py`（配色与字体常量）、`scripts/check_decks.py` 与 `scripts/check_deck_theme.py`（校验）、`scripts/check_deck_facts.py`（把 deck 第 7 页的实测数字与仓库重算比对，数字漂了就报错）。
 
 ### 2026-09-28：演讲用 deck 定稿与事实同步
 
-- **定稿基准 = `PharmaColdOps .pptx`**（10 页，队友手工美化）。演讲稿 `演讲稿-4人版.md` 的页序、页码归属与数字口径**全部以这份为准**；`PharmaColdOps-Proposal-Presentation-Final.pptx` 降级为脚本生成/留存版，**不再用于现场**（它仍停在 2026-09-27：封面缺学号、日期 22 Sep，第 7 页数字为旧值）。
+- **定稿基准 = `PharmaColdOps .pptx`**（10 页，队友手工美化）。演讲稿 `演讲稿-4人版.md` 的页序、页码归属与数字口径**全部以这份为准**；`proposal/archive/PharmaColdOps-Proposal-Presentation-Final.pptx` 降级为脚本生成/留存版，**不再用于现场**（它仍停在 2026-09-27：封面缺学号、日期 22 Sep，第 7 页数字为旧值）。
 - 已改 `PharmaColdOps .pptx` 三处（脚本 `scripts/fix_deck_facts.py`，运行前自动在 `proposal/` 生成带时间戳的备份）：
   1. 封面成员行下补学号行（A0328771W · A0353769L · A0357864L · A0350940J，10pt，与其余两行同款字体，避免溢出）；
   2. 封面演讲日期 `22 Sep 2026` → **`29 Sep 2026`**（实际演讲日）；

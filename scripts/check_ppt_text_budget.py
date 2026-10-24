@@ -13,8 +13,8 @@ from pptx import Presentation
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-SRC = "proposal/PharmaColdOps_tune.pptx"
-DST = "proposal/PharmaColdOps-Proposal-Presentation-Final.pptx"
+SRC = "proposal/archive/PharmaColdOps_tune.pptx"
+DST = "proposal/archive/PharmaColdOps-Proposal-Presentation-Final.pptx"
 
 
 def collect(path):

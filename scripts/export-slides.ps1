@@ -42,9 +42,9 @@ $here = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 $repo = Split-Path -Parent $here
 if (-not $Deck) {
     $candidates = @(
-        (Join-Path $repo 'proposal\PharmaColdOps-Proposal-Presentation-Final.pptx'),
+        (Join-Path $repo 'proposal\archive\PharmaColdOps-Proposal-Presentation-Final.pptx'),
         (Join-Path $here 'PharmaColdOps-Proposal-Presentation-Final.pptx'),
-        (Join-Path (Get-Location).Path 'proposal\PharmaColdOps-Proposal-Presentation-Final.pptx')
+        (Join-Path (Get-Location).Path 'proposal\archive\PharmaColdOps-Proposal-Presentation-Final.pptx')
     )
     $Deck = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 }

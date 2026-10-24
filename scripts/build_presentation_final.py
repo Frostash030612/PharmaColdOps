@@ -30,8 +30,8 @@ from deck_theme import (  # noqa: E402  (path set above)
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "proposal" / "PharmaColdOps_tune.pptx"
-DST = ROOT / "proposal" / "PharmaColdOps-Proposal-Presentation-Final.pptx"
+SRC = ROOT / "proposal" / "archive" / "PharmaColdOps_tune.pptx"
+DST = ROOT / "proposal" / "archive" / "PharmaColdOps-Proposal-Presentation-Final.pptx"
 
 # Colours, fonts and sizes come from deck_theme (measured off the hand-designed
 # pages) — do not reintroduce local literal colours here, or the added slides

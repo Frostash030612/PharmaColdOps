@@ -1,6 +1,6 @@
 """The original deck's visual language, extracted so added slides can match it.
 
-Measured from proposal/PharmaColdOps_tune.pptx (the hand-designed first 12 pages)
+Measured from proposal/archive/PharmaColdOps_tune.pptx (the hand-designed first 12 pages)
 by scripts/inspect_deck_style.py:
 
   fonts   Libre Baskerville (headings, 69 runs) · DM Sans / DM Sans Bold (body, 78)

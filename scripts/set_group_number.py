@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 NEW = sys.argv[1] if len(sys.argv) > 1 else "41"
 DECKS = ([Path(a) for a in sys.argv[2:]] if len(sys.argv) > 2
          else [ROOT / "proposal" / "PharmaColdOps .pptx",
-               ROOT / "proposal" / "PharmaColdOps-Proposal-Presentation-Final.pptx"])
+               ROOT / "proposal" / "archive" / "PharmaColdOps-Proposal-Presentation-Final.pptx"])
 
 
 def main() -> None:
