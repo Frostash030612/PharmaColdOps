@@ -41,6 +41,40 @@ def test_missing_human_recordings_remain_missing(tmp_path):
     assert missing == ["promotion", "system"]
 
 
+def test_video_links_replace_the_two_video_files(tmp_path):
+    report = tmp_path / "report.pdf"
+    report.write_bytes(b"unit fixture, not a final report")
+    links = tmp_path / "links.txt"
+    links.write_text("Promotion: https://youtu.be/aaaaaaaaaaa\nSystem: https://youtu.be/bbbbbbbbbbb\n",
+                     encoding="utf-8")
+    files, missing = submission.audit(report, None, None, links)
+    assert missing == []
+    assert "promotion" not in files and "system" not in files
+    assert submission.parse_video_links(links) == ["https://youtu.be/aaaaaaaaaaa", "https://youtu.be/bbbbbbbbbbb"]
+
+
+@pytest.mark.parametrize("body", ["https://youtu.be/only-one\n",
+                                  "https://youtu.be/a\nhttps://youtu.be/b\nhttps://youtu.be/c\n",
+                                  "https://youtu.be/same\nhttps://youtu.be/same\n",
+                                  "no links here\n"])
+def test_video_links_require_two_distinct_urls(tmp_path, body):
+    links = tmp_path / "links.txt"
+    links.write_text(body, encoding="utf-8")
+    with pytest.raises(ValueError):
+        submission.parse_video_links(links)
+
+
+def test_video_files_and_links_cannot_be_combined(tmp_path):
+    report = tmp_path / "report.pdf"
+    report.write_bytes(b"unit fixture")
+    video = tmp_path / "promotion.mp4"
+    video.write_bytes(b"unit fixture")
+    links = tmp_path / "links.txt"
+    links.write_text("https://youtu.be/a\nhttps://youtu.be/b\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        submission.audit(report, video, None, links)
+
+
 def test_assembly_preserves_unicode_paths_and_uses_only_the_committed_source(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()

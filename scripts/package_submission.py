@@ -1,5 +1,7 @@
 """Audit/assemble the course hand-in from a committed repository and human videos.
 
+Videos are either passed as two files or as a text file with two YouTube URLs
+(the Canvas note allows Unlisted YouTube links instead of large uploads).
 Only tracked source enters the nested repository ZIP. Env files, runtime data,
 model binaries and local generated evaluation outputs must not enter that archive.
 This checks packaging inputs, not human authorship or scientific validity.
@@ -24,9 +26,26 @@ def safe_name(name):
     return name
 
 
-def audit(report, promotion, system):
-    files = {"member-github": ROOT / "member-github.txt", "report": report,
-             "promotion": promotion, "system": system}
+def parse_video_links(path):
+    """Return the two presentation URLs from a plain-text link file."""
+    text = path.read_text(encoding="utf-8")
+    urls = [match.rstrip(").,;") for match in re.findall(r"https?://[^\s]+", text)]
+    if len(urls) != 2:
+        raise ValueError("video-links must contain exactly two URLs")
+    if len(set(urls)) != 2:
+        raise ValueError("video-links URLs must be distinct")
+    return urls
+
+
+def audit(report, promotion, system, video_links=None):
+    files = {"member-github": ROOT / "member-github.txt", "report": report}
+    if video_links is not None:
+        if promotion is not None or system is not None:
+            raise ValueError("pass either two video files or one video-links file, not both")
+        files["video-links"] = video_links
+    else:
+        files["promotion"] = promotion
+        files["system"] = system
     missing = [name for name, path in files.items() if path is None or not path.is_file() or path.stat().st_size == 0]
     if report and report.suffix.lower() not in {".pdf", ".doc", ".docx"}:
         raise ValueError("course report must be PDF or Word")
@@ -54,7 +73,7 @@ def validate_source(names):
             raise ValueError("runtime/model artifact accidentally tracked")
 
 
-def assemble(name, output, files):
+def assemble(name, output, files, links=None):
     safe_name(name)
     if output.exists():
         raise FileExistsError("fresh output required")
@@ -73,6 +92,8 @@ def assemble(name, output, files):
     manifest = {"schema": "pharmacoldops-course-submission-v1", "source_commit": commit,
                 "scope": "file assembly only; verify human speech, 5-minute durations, M6 evidence and Canvas naming separately",
                 "sha256": {}}
+    if "video-links" in files:
+        manifest["videos"] = {"mode": "youtube-urls", "urls": links}
     with tempfile.TemporaryDirectory(prefix="pharma-submission-", dir=output.parent) as temp:
         staging = Path(temp) / "submission.zip"
         with ZipFile(staging, "w", ZIP_DEFLATED) as archive:
@@ -80,9 +101,12 @@ def assemble(name, output, files):
             archive.writestr(source_name, source)
             manifest["sha256"][source_name] = hashlib.sha256(source).hexdigest()
             payloads = {"member-github.txt": files["member-github"]}
-            for key, suffix in [("report", "Group-Report"), ("promotion", "promotion"), ("system", "system")]:
-                path = files[key]
-                payloads[name + "-" + suffix + path.suffix.lower()] = path
+            payloads[name + "-Group-Report" + files["report"].suffix.lower()] = files["report"]
+            if "video-links" in files:
+                payloads[name + "-video-links.txt"] = files["video-links"]
+            else:
+                for key, suffix in [("promotion", "promotion"), ("system", "system")]:
+                    payloads[name + "-" + suffix + files[key].suffix.lower()] = files[key]
             for target, path in payloads.items():
                 digest = hashlib.sha256()
                 with path.open("rb") as incoming, archive.open(target, "w", force_zip64=True) as outgoing:
@@ -101,14 +125,21 @@ def main():
     parser.add_argument("--report", type=Path, default=ROOT / "docs/PharmaColdOps-Group-Report.pdf")
     parser.add_argument("--promotion", type=Path)
     parser.add_argument("--system", type=Path)
+    parser.add_argument("--video-links", type=Path,
+                        help="text file with two YouTube URLs; replaces the two video files")
     parser.add_argument("--check", action="store_true", help="read-only input inventory; does not create an archive")
     parser.add_argument("--name", help="confirm date, class and group naming against the actual Canvas instructions")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     try:
-        files, missing = audit(args.report, args.promotion, args.system)
+        links = None
+        if args.video_links is not None and args.video_links.is_file() and args.video_links.stat().st_size:
+            links = parse_video_links(args.video_links)
+        files, missing = audit(args.report, args.promotion, args.system, args.video_links)
         if args.check:
             print(json.dumps({"status": "missing_inputs" if missing else "inputs_present", "missing": missing,
+                              "videos_mode": "youtube-urls" if args.video_links else "files",
+                              "video_urls": links,
                               "files": {key: str(value) if value else None for key, value in files.items()},
                               "scope": "availability only; not project completion, media validation or M6 scoring"}))
             return 1 if missing else 0
@@ -116,7 +147,7 @@ def main():
             parser.error("missing required inputs: " + ", ".join(missing))
         if not args.name or not args.output:
             parser.error("--name and --output are required for assembly")
-        manifest = assemble(args.name, args.output, files)
+        manifest = assemble(args.name, args.output, files, links)
         print(json.dumps({"status": "assembled", "output": str(args.output), "source_commit": manifest["source_commit"]}))
         return 0
     except (ValueError, OSError, subprocess.SubprocessError) as error:
